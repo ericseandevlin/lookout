@@ -1,0 +1,39 @@
+# Runs on the VPS in /opt/lookout. Caddy (Plane's proxy container) terminates TLS
+# and proxies to 172.17.0.1:3200. Postgres is not exposed outside the compose network.
+name: lookout
+services:
+  db:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: lookout
+      POSTGRES_DB: lookout
+      POSTGRES_PASSWORD_FILE: /run/secrets/db_password
+    command: ["postgres", "-c", "shared_buffers=64MB", "-c", "max_connections=30", "-c", "work_mem=4MB"]
+    volumes:
+      - ./pg:/var/lib/postgresql/data
+      - ./secrets/db_password:/run/secrets/db_password:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U lookout"]
+      interval: 10s
+      retries: 5
+    mem_limit: 256m
+
+  app:
+    image: lookout:latest
+    restart: unless-stopped
+    env_file: .env
+    depends_on:
+      db:
+        condition: service_healthy
+    volumes:
+      - ./data:/data
+    ports:
+      - "172.17.0.1:3200:3000"
+    mem_limit: 512m
+    read_only: true
+    tmpfs:
+      - /tmp
+      - /app/.next/cache:mode=1777
+    security_opt:
+      - no-new-privileges:true

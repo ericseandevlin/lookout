@@ -9,6 +9,8 @@ import { addUsage, assertBudget, claude, emptyUsage, finishRun, startRun } from 
 
 const MAX_RESUME_CHARS = 60_000;
 
+class NoTextError extends Error {}
+
 export async function extractResumeText(buf: Buffer, mime: string) {
   if (mime === "application/pdf") {
     const { extractText, getDocumentProxy } = await import("unpdf");
@@ -46,7 +48,7 @@ export async function scanResume(userId: string, materialId: string) {
   let runId: string | null = null;
   try {
     const text = (await extractResumeText(await readUserFile(m.fileKey), m.mime ?? "")).slice(0, MAX_RESUME_CHARS).trim();
-    if (!text) throw new Error("No text found in the file");
+    if (!text) throw new NoTextError("no readable text in this file");
     await assertBudget(userId);
     runId = (await startRun(userId, "resume")).id;
 
@@ -87,7 +89,7 @@ export async function scanResume(userId: string, materialId: string) {
     console.error("scanResume", e);
     await db
       .update(schema.materials)
-      .set({ status: "failed", filledNote: e instanceof Error ? e.message.slice(0, 120) : "Scan failed" })
+      .set({ status: "failed", filledNote: e instanceof NoTextError ? e.message : "try again in a few minutes" })
       .where(eq(schema.materials.id, materialId));
     if (runId) await finishRun(runId, usage, { error: String(e) });
   }
