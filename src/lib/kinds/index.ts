@@ -1,0 +1,93 @@
+/**
+ * Opportunity type config. Jobs are the only type in v1. Every type-specific
+ * piece (profile questions, which answer counts as the comp floor, copy, the
+ * discovery brief) lives here so RFPs, rentals, etc. can be added as new configs.
+ */
+export type Question =
+  | { key: string; kind: "text"; prompt: string; helper: string; placeholder: string }
+  | { key: string; kind: "comp"; prompt: string; helper: string; floorKey: string; targetKey: string }
+  | { key: string; kind: "modes"; prompt: string; modesKey: string; areaKey: string; options: string[] };
+
+export type KindConfig = {
+  id: string;
+  noun: { one: string; many: string };
+  questions: Question[];
+  /** Turns profile answers into a plain brief for the discovery agent. */
+  brief: (a: Record<string, string | string[]>) => string;
+};
+
+const str = (v: unknown) => (typeof v === "string" ? v.trim() : "");
+const arr = (v: unknown) => (Array.isArray(v) ? v.filter((x): x is string => typeof x === "string") : []);
+
+export const job: KindConfig = {
+  id: "job",
+  noun: { one: "role", many: "roles" },
+  questions: [
+    {
+      key: "q1",
+      kind: "text",
+      prompt: "What's the next role, and what would make it a real step up?",
+      helper: "Title, scope, team size, the kind of venue or company.",
+      placeholder: "e.g. Director of Events at a flagship venue, owning sales and production",
+    },
+    {
+      key: "comp",
+      kind: "comp",
+      prompt: "What comp would you walk away from, and what would make you jump?",
+      helper: "Base salary. Roles below your floor get marked down, not hidden.",
+      floorKey: "floor",
+      targetKey: "target",
+    },
+    {
+      key: "where",
+      kind: "modes",
+      prompt: "Where and how do you want to work?",
+      modesKey: "modes",
+      areaKey: "area",
+      options: ["On-site", "Hybrid", "Remote"],
+    },
+    {
+      key: "q4",
+      kind: "text",
+      prompt: "What's the win you'd lead with in an interview?",
+      helper: "One result from the last few years, with a number if you have one.",
+      placeholder: "e.g. Rebuilt the banquet sales team and grew private-event revenue 40% in two years",
+    },
+    {
+      key: "q5",
+      kind: "text",
+      prompt: "What's off the table?",
+      helper: "Companies, schedules, cultures or travel you'd rule out.",
+      placeholder: "e.g. No overnight shifts, no more than 20% travel",
+    },
+  ],
+  brief: (a) =>
+    [
+      `Next role they want: ${str(a.q1) || "(not given)"}`,
+      `Comp floor (base): ${str(a.floor) || "(not given)"}; would jump for: ${str(a.target) || "(not given)"}`,
+      `Work modes: ${arr(a.modes).join(", ") || "(any)"}; areas: ${str(a.area) || "(not given)"}`,
+      `Win they lead with: ${str(a.q4) || "(not given)"}`,
+      `Dealbreakers: ${str(a.q5) || "(none given)"}`,
+    ].join("\n"),
+};
+
+export const kinds: Record<string, KindConfig> = { job };
+
+/** Count answered questions the same way the prototype does: a question counts once any of its fields is set. */
+export function answeredCount(cfg: KindConfig, a: Record<string, string | string[]>) {
+  return cfg.questions.filter((q) => {
+    if (q.kind === "text") return !!str(a[q.key]);
+    if (q.kind === "comp") return !!(str(a[q.floorKey]) || str(a[q.targetKey]));
+    return arr(a[q.modesKey]).length > 0 || !!str(a[q.areaKey]);
+  }).length;
+}
+
+/** "$120,000" / "120k" / "120000" -> 120000 */
+export function parseMoney(v: unknown): number | null {
+  const s = str(v).toLowerCase().replace(/[,$\s]/g, "");
+  if (!s) return null;
+  const m = /^(\d+(?:\.\d+)?)(k)?/.exec(s);
+  if (!m) return null;
+  const n = parseFloat(m[1]) * (m[2] ? 1000 : 1);
+  return Number.isFinite(n) && n > 0 ? Math.round(n) : null;
+}
