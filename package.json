@@ -6,7 +6,12 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "db:generate": "drizzle-kit generate",
+    "import-legacy": "tsx --env-file=.env.local scripts/import-legacy.ts",
+    "login-link": "tsx --env-file=.env.local scripts/login-link.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.131.0",
