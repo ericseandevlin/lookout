@@ -5,7 +5,7 @@ import { body, clientIp, HttpError, json, publicRoute } from "@/lib/api";
 import { hashToken } from "@/lib/auth/crypto";
 import { createSession } from "@/lib/auth/session";
 import { rateLimit } from "@/lib/ratelimit";
-import { ensureUser, mayLogIn, touchLogin } from "@/lib/users";
+import { ensureUser, findUserByEmail, touchLogin } from "@/lib/users";
 
 const Input = z.object({ token: z.string().min(20).max(100) });
 
@@ -25,7 +25,9 @@ export const POST = publicRoute(async (req) => {
     )
     .returning();
   if (!row) throw new HttpError(400, "This link has expired or was already used.");
-  if (!(await mayLogIn(row.email))) throw new HttpError(403, "This email can't sign in.");
+  // A valid token is proof the email was let in (sign-up request passed mayLogIn, or an admin invited it).
+  // Still refuse disabled accounts.
+  if ((await findUserByEmail(row.email))?.disabled) throw new HttpError(403, "This email can't sign in.");
   const user = await ensureUser(row.email);
   await touchLogin(user.id);
   await createSession(user.id);

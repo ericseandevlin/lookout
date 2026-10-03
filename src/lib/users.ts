@@ -38,6 +38,9 @@ export async function ensureUser(email: string) {
   });
 }
 
+export const isAdmin = (u: { isAdmin: boolean; email: string }) =>
+  u.isAdmin || env.adminEmails.includes(normalizeEmail(u.email));
+
 export async function touchLogin(userId: string) {
   await db.update(schema.users).set({ lastLoginAt: new Date() }).where(eq(schema.users.id, userId));
 }

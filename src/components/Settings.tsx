@@ -140,6 +140,13 @@ export function Settings() {
         <Seg opts={[["3 days", 3], ["7 days", 7], ["14 days", 14]]} cur={st.newDays} pick={(v) => put({ newDays: v })} />
       </Row>
 
+      {state.user.isAdmin && (
+        <>
+          <Section>Admin</Section>
+          <InviteRow />
+        </>
+      )}
+
       <Section>Your data</Section>
       <Row title="Export" help="Download your roles, stages, notes and profile as a file.">
         <a href="/api/export" download style={{ ...btn("outline"), display: "inline-flex", alignItems: "center", textDecoration: "none" }}>Export data</a>
@@ -216,5 +223,51 @@ function DeleteModal({ close }: { close: () => void }) {
         </div>
       </div>
     </>
+  );
+}
+
+function InviteRow() {
+  const [email, setEmail] = useState("");
+  const [link, setLink] = useState<{ url: string; email: string } | null>(null);
+  const [copied, setCopied] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
+  const create = async () => {
+    setErr(null);
+    setCopied(false);
+    try {
+      const r = await api<{ link: string; email: string }>("/api/admin/invite", { method: "POST", json: { email } });
+      setLink({ url: r.link, email: r.email });
+      setEmail("");
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : "Couldn't create a link");
+    }
+  };
+  const copy = () => navigator.clipboard?.writeText(link!.url).then(() => setCopied(true)).catch(() => {});
+  return (
+    <Row title="Invite someone" help="Make a sign-in link to text or DM. It works once, lasts 7 days, and creates their account. No email needed.">
+      <div style={{ display: "flex", flexDirection: "column", gap: 10, maxWidth: 420 }}>
+        <div style={{ display: "flex", gap: 6 }}>
+          <input
+            type="email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && create()}
+            placeholder="their@email.com"
+            aria-label="Email to invite"
+            className="f-brick"
+            style={{ flex: 1, minWidth: 0, height: 42, border: "1.5px solid #E6E0D8", background: "#fff", borderRadius: 10, padding: "0 13px", fontSize: 14, outline: "none", color: "#1D1A0F" }}
+          />
+          <button onClick={create} style={btn("solid")}>Create link</button>
+        </div>
+        {err && <span style={{ fontSize: 13, color: "#99220F" }}>{err}</span>}
+        {link && (
+          <div style={{ display: "flex", flexDirection: "column", gap: 8, padding: 12, borderRadius: 10, background: "#fff", border: "1.5px solid #E6E0D8" }}>
+            <span style={{ fontSize: 12.5, color: "#6B6358" }}>Sign-in link for <strong style={{ color: "#1D1A0F" }}>{link.email}</strong></span>
+            <code style={{ fontSize: 12, wordBreak: "break-all", color: "#1D1A0F" }}>{link.url}</code>
+            <button onClick={copy} style={{ ...btn("outline"), alignSelf: "flex-start", height: 34 }}>{copied ? "Copied" : "Copy link"}</button>
+          </div>
+        )}
+      </div>
+    </Row>
   );
 }

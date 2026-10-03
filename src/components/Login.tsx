@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 
-export function Login() {
+export function Login({ emailEnabled }: { emailEnabled: boolean }) {
   const [email, setEmail] = useState("");
   const [state, setState] = useState<"idle" | "sending" | "sent" | "error">("idle");
   const [msg, setMsg] = useState("");
@@ -19,7 +19,13 @@ export function Login() {
 
   return (
     <AuthCard>
-      {state === "sent" ? (
+      {!emailEnabled ? (
+        <>
+          <Eyebrow>Lookout</Eyebrow>
+          <h1 style={h1}>Invite only for now</h1>
+          <p style={p}>Lookout is in a private test. If someone invited you, use the sign-in link they sent you.</p>
+        </>
+      ) : state === "sent" ? (
         <>
           <Eyebrow>Check your email</Eyebrow>
           <h1 style={h1}>A sign-in link is on its way</h1>

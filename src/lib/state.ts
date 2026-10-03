@@ -2,6 +2,7 @@ import "server-only";
 import { and, asc, desc, eq } from "drizzle-orm";
 import { db, schema } from "@/lib/db";
 import type { SessionUser } from "@/lib/auth/session";
+import { isAdmin } from "@/lib/users";
 import type { AppState, Find, Resume } from "@/lib/types";
 
 export function toFind(
@@ -79,7 +80,7 @@ export async function getState(user: SessionUser): Promise<AppState> {
     .limit(1);
   const s = settingsRow;
   return {
-    user: { name: user.name, email: user.email },
+    user: { name: user.name, email: user.email, isAdmin: isAdmin(user) },
     settings: {
       freq: s?.freq ?? "Weekly",
       day: s?.runDay ?? "Mon",
