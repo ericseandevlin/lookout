@@ -1,3 +1,15 @@
+findsboard.com {
+	encode zstd gzip
+	request_body {
+		max_size 6MB
+	}
+	reverse_proxy 172.17.0.1:3200
+}
+
+www.findsboard.com {
+	redir https://findsboard.com{uri} permanent
+}
+
 paulfinds.pauljustinscott.com {
 	encode zstd gzip
 	request_body {

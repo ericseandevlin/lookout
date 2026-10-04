@@ -19,6 +19,16 @@ services:
       retries: 5
     mem_limit: 256m
 
+  searxng:
+    image: searxng/searxng:latest
+    restart: unless-stopped
+    env_file: .env.searxng
+    volumes:
+      - ./searxng/settings.yml:/etc/searxng/settings.yml:ro
+    mem_limit: 256m
+    security_opt:
+      - no-new-privileges:true
+
   app:
     image: lookout:latest
     restart: unless-stopped
@@ -26,6 +36,8 @@ services:
     depends_on:
       db:
         condition: service_healthy
+      searxng:
+        condition: service_started
     volumes:
       - ./data:/data
     ports:

@@ -6,4 +6,4 @@ export function proxy(req: NextRequest) {
   return NextResponse.next();
 }
 
-export const config = { matcher: ["/finds/:path*", "/profile/:path*", "/materials/:path*", "/settings/:path*"] };
+export const config = { matcher: ["/finds/:path*", "/profile/:path*", "/materials/:path*", "/settings/:path*", "/admin/:path*"] };

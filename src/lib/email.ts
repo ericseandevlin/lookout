@@ -42,3 +42,17 @@ export function magicLinkEmail(to: string, link: string): Mail {
     ),
   };
 }
+
+export function inviteEmail(to: string, link: string, from: string): Mail {
+  return {
+    to,
+    subject: `${from} invited you to Lookout`,
+    text: `${from} invited you to Lookout, a search agent that finds roles that fit you and puts them on a board.\n\nSet up your account:\n${link}\n\nThe link works once and expires in 7 days.`,
+    html: emailShell(
+      "You're invited to Lookout",
+      `<p style="font-size:14.5px;line-height:1.5;color:#6B6358;margin:0 0 20px">${escapeHtml(from)} invited you. Lookout searches for roles that fit you every week and puts the matches on a board.</p>
+<a href="${escapeHtml(link)}" style="display:inline-block;background:#99220F;color:#fff;text-decoration:none;font-weight:600;font-size:14.5px;padding:13px 24px;border-radius:12px">Set up my account</a>
+<p style="font-size:12.5px;color:#8A8175;margin:24px 0 0">The link works once and expires in 7 days.</p>`,
+    ),
+  };
+}

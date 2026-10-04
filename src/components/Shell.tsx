@@ -5,7 +5,7 @@ import { usePathname } from "next/navigation";
 import { answeredCount, job } from "@/lib/kinds";
 import { initialsOf, isNewFind } from "@/lib/board";
 import type { AppState } from "@/lib/types";
-import { BoardIcon, FileIcon, ListIcon, PanelIcon } from "./icons";
+import { BoardIcon, FileIcon, ListIcon, PanelIcon, ShieldIcon } from "./icons";
 import { useStore } from "./store";
 import { TooltipLayer } from "./Tooltip";
 
@@ -93,6 +93,21 @@ export function Shell({ children }: { children: React.ReactNode }) {
               </Link>
             );
           })}
+          {state.user.isAdmin && (
+            <Link
+              href="/admin"
+              data-tip={closed ? "Admin" : undefined}
+              aria-label="Admin"
+              style={{
+                display: "flex", alignItems: "center", justifyContent: closed ? "center" : "flex-start", gap: 10, padding: "10px 12px", marginTop: 14,
+                borderRadius: 10, background: path.startsWith("/admin") ? "rgba(255,255,255,.09)" : "transparent", color: path.startsWith("/admin") ? "#fff" : "#C9C1B5",
+                fontSize: 14.5, fontWeight: 600, textDecoration: "none", whiteSpace: "nowrap",
+              }}
+            >
+              <span style={{ width: 18, height: 18, flex: "none", display: "flex", alignItems: "center", justifyContent: "center" }}><ShieldIcon size={17} /></span>
+              {!closed && <span style={{ flex: 1 }}>Admin</span>}
+            </Link>
+          )}
         </nav>
         <div style={{ marginTop: "auto", paddingTop: 14, borderTop: "1px solid rgba(255,255,255,.1)" }}>
           <Link

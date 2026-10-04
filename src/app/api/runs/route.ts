@@ -1,5 +1,5 @@
 import { authed, HttpError, json } from "@/lib/api";
-import { assertBudget, BudgetError } from "@/lib/agent/claude";
+import { assertBudget, BudgetError } from "@/lib/ai/runs";
 import { discover, isRunning } from "@/lib/agent/discover";
 import { rateLimit } from "@/lib/ratelimit";
 

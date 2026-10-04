@@ -1,0 +1,13 @@
+# Private SearXNG for Lookout. Only reachable on the Compose network.
+use_default_settings: true
+general:
+  instance_name: "lookout-search"
+server:
+  # Overridden by SEARXNG_SECRET in compose
+  secret_key: "change-me"
+  limiter: false
+  image_proxy: false
+  public_instance: false
+search:
+  formats: [html, json]
+  safe_search: 0

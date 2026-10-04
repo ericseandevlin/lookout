@@ -1,0 +1,439 @@
+"use client";
+
+import Link from "next/link";
+import { usePathname } from "next/navigation";
+import { useCallback, useEffect, useState } from "react";
+import { PageHead } from "./Profile";
+import { btn, Row, Section, Seg } from "./Settings";
+import { api } from "./store";
+
+type Overview = {
+  totals: { users: number; usdDay: number; usdWeek: number; usdMonth: number };
+  emailEnabled: boolean;
+  users: {
+    id: string; email: string; name: string; isAdmin: boolean; disabled: boolean; createdAt: string;
+    lastLoginAt: string | null; finds: number; runs30: number; usd30: number; lastRunAt: string | null;
+  }[];
+  invites: { email: string; createdAt: string; accepted: boolean }[];
+  runs: {
+    id: string; email: string; trigger: string; status: string; startedAt: string; finishedAt: string | null;
+    found: number; added: number; searches: number; costUsd: number; error: string | null;
+  }[];
+};
+
+type Config = {
+  ai: { provider: "openai" | "anthropic"; baseUrl: string; model: string; apiKey: string; apiKeyHint: string; priceIn: number; priceOut: number; jsonMode: "schema" | "object" };
+  search: { provider: "searxng" | "brave" | "none"; searxngUrl: string; braveKey: string; braveKeyHint: string; pricePerQuery: number };
+  access: { signupMode: "open" | "invite"; dailyBudgetUsd: number; userDailyBudgetUsd: number };
+};
+
+const usd = (n: number) => (n < 0.01 && n > 0 ? "<$0.01" : `$${n.toFixed(2)}`);
+const when = (iso: string | null) =>
+  iso ? new Date(iso).toLocaleString("en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" }) : "Never";
+const input: React.CSSProperties = { width: "100%", maxWidth: 420, height: 42, border: "1.5px solid #E6E0D8", background: "#fff", borderRadius: 10, padding: "0 13px", fontSize: 14, outline: "none", color: "#1D1A0F" };
+const card: React.CSSProperties = { background: "#fff", borderRadius: 16, padding: "16px 18px" };
+const th: React.CSSProperties = { fontSize: 11.5, fontWeight: 600, letterSpacing: ".08em", textTransform: "uppercase", color: "#8A8175", textAlign: "left", padding: "12px 14px", borderBottom: "1px solid #EEEAE4", whiteSpace: "nowrap" };
+const td: React.CSSProperties = { fontSize: 13.5, padding: "12px 14px", borderBottom: "1px solid #F2EEE8", verticalAlign: "top" };
+
+function Tabs() {
+  const path = usePathname();
+  const tabs = [["/admin", "People"], ["/admin/ai", "AI settings"]] as const;
+  return (
+    <div style={{ display: "flex", gap: 8, marginTop: 18 }}>
+      {tabs.map(([href, label]) => {
+        const on = path === href;
+        return (
+          <Link key={href} href={href} style={{ display: "flex", alignItems: "center", height: 34, padding: "0 15px", borderRadius: 999, border: `1.5px solid ${on ? "#99220F" : "#E0D9CF"}`, background: on ? "#99220F" : "#fff", color: on ? "#fff" : "#1D1A0F", fontSize: 13.5, fontWeight: 600, textDecoration: "none" }}>
+            {label}
+          </Link>
+        );
+      })}
+    </div>
+  );
+}
+
+function Msg({ text, ok }: { text: string | null; ok?: boolean }) {
+  if (!text) return null;
+  return <div aria-live="polite" style={{ fontSize: 13, color: ok ? "#35662A" : "#99220F", lineHeight: 1.45 }}>{text}</div>;
+}
+
+// --- People ---------------------------------------------------------------------
+
+export function AdminPeople() {
+  const [data, setData] = useState<Overview | null>(null);
+  const [cfg, setCfg] = useState<Config | null>(null);
+  const [err, setErr] = useState<string | null>(null);
+  const load = useCallback(
+    () =>
+      Promise.all([api<Overview>("/api/admin/overview"), api<Config>("/api/admin/settings")])
+        .then(([o, c]) => {
+          setData(o);
+          setCfg(c);
+        })
+        .catch((e) => setErr(e instanceof Error ? e.message : "Couldn't load")),
+    [],
+  );
+  useEffect(() => {
+    load();
+  }, [load]);
+
+  const patchUser = async (id: string, p: { disabled?: boolean; isAdmin?: boolean }) => {
+    try {
+      await api(`/api/admin/users/${id}`, { method: "PATCH", json: p });
+      await load();
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : "Couldn't update");
+    }
+  };
+  const revoke = async (email: string) => {
+    if (!confirm(`Revoke the invite for ${email}? Unused sign-in links stop working.`)) return;
+    await api(`/api/admin/invites/${encodeURIComponent(email)}`, { method: "DELETE" }).catch(() => {});
+    await load();
+  };
+  const saveAccess = async (access: Config["access"]) => {
+    if (!cfg) return;
+    setCfg({ ...cfg, access });
+    await api("/api/admin/settings", { method: "PUT", json: { access } }).catch((e) => setErr(e.message));
+  };
+
+  return (
+    <div className="page-pad settings" style={{ display: "flex", flexDirection: "column", maxWidth: 1100, gap: 4 }}>
+      <PageHead eyebrow="Admin" title="People and activity" intro="Who's using Lookout, what it costs, and who gets in.">
+        <Tabs />
+      </PageHead>
+      <Msg text={err} />
+      {data && cfg && (
+        <>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(160px,1fr))", gap: 12, marginTop: 14 }}>
+            {[["People", String(data.totals.users)], ["Spend, 24 hours", usd(data.totals.usdDay)], ["Spend, 7 days", usd(data.totals.usdWeek)], ["Spend, 30 days", usd(data.totals.usdMonth)]].map(([k, v]) => (
+              <div key={k} style={card}>
+                <div style={{ fontSize: 12, fontWeight: 600, letterSpacing: ".06em", textTransform: "uppercase", color: "#8A8175" }}>{k}</div>
+                <div style={{ fontSize: 27, fontWeight: 700, letterSpacing: "-0.02em", marginTop: 6, fontVariantNumeric: "tabular-nums" }}>{v}</div>
+              </div>
+            ))}
+          </div>
+
+          <Section>Access</Section>
+          <Row title="Who can sign up" help={cfg.access.signupMode === "invite" ? "Only people you invite (and existing accounts) can get in." : "Anyone with an email address can create an account. Their searches spend your budget."}>
+            <Seg opts={[["Invite only", "invite"], ["Open", "open"]]} cur={cfg.access.signupMode} pick={(v) => saveAccess({ ...cfg.access, signupMode: v as "open" | "invite" })} />
+          </Row>
+          <Row title="Daily spend caps" help="Rolling 24 hours. New searches stop when either cap is reached.">
+            <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
+              <MoneyInput label="All users" value={cfg.access.dailyBudgetUsd} onSave={(v) => saveAccess({ ...cfg.access, dailyBudgetUsd: v })} />
+              <MoneyInput label="Per user" value={cfg.access.userDailyBudgetUsd} onSave={(v) => saveAccess({ ...cfg.access, userDailyBudgetUsd: v })} />
+            </div>
+          </Row>
+          <Invite emailEnabled={data.emailEnabled} onDone={load} />
+
+          {data.invites.filter((i) => !i.accepted).length > 0 && (
+            <Row title="Pending invites" help="Invited but not signed in yet.">
+              <div style={{ display: "flex", flexDirection: "column", gap: 6, maxWidth: 420 }}>
+                {data.invites.filter((i) => !i.accepted).map((i) => (
+                  <div key={i.email} style={{ display: "flex", alignItems: "center", gap: 10, background: "#fff", border: "1.5px solid #E6E0D8", borderRadius: 10, padding: "8px 8px 8px 12px" }}>
+                    <span style={{ flex: 1, minWidth: 0, fontSize: 13.5, overflow: "hidden", textOverflow: "ellipsis" }}>{i.email}</span>
+                    <span style={{ fontSize: 12, color: "#8A8175" }}>{when(i.createdAt)}</span>
+                    <button onClick={() => revoke(i.email)} className="h-danger" style={{ ...btn("danger"), height: 30, padding: "0 10px", fontSize: 12.5 }}>Revoke</button>
+                  </div>
+                ))}
+              </div>
+            </Row>
+          )}
+
+          <Section>People</Section>
+          <div style={{ ...card, padding: 0, overflowX: "auto", marginTop: 8 }}>
+            <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 860 }}>
+              <thead>
+                <tr>{["Person", "Joined", "Last sign-in", "Finds", "Searches (30d)", "Spend (30d)", "Access", ""].map((h) => <th key={h} style={th}>{h}</th>)}</tr>
+              </thead>
+              <tbody>
+                {data.users.map((u) => (
+                  <tr key={u.id}>
+                    <td style={td}>
+                      <div style={{ fontWeight: 600 }}>{u.name || "No name yet"}</div>
+                      <div style={{ color: "#6B6358", fontSize: 12.5 }}>{u.email}</div>
+                    </td>
+                    <td style={td}>{when(u.createdAt)}</td>
+                    <td style={td}>{when(u.lastLoginAt)}</td>
+                    <td style={{ ...td, fontVariantNumeric: "tabular-nums" }}>{u.finds}</td>
+                    <td style={{ ...td, fontVariantNumeric: "tabular-nums" }}>{u.runs30}</td>
+                    <td style={{ ...td, fontVariantNumeric: "tabular-nums" }}>{usd(u.usd30)}</td>
+                    <td style={td}>
+                      <span style={{ fontSize: 12, fontWeight: 600, padding: "3px 8px", borderRadius: 6, background: u.disabled ? "#FBEDEA" : u.isAdmin ? "#FDE7D3" : "#F4F1EC", color: u.disabled ? "#99220F" : u.isAdmin ? "#7A3A10" : "#6B6358" }}>
+                        {u.disabled ? "Disabled" : u.isAdmin ? "Admin" : "Member"}
+                      </span>
+                    </td>
+                    <td style={{ ...td, whiteSpace: "nowrap", textAlign: "right" }}>
+                      <button onClick={() => patchUser(u.id, { isAdmin: !u.isAdmin })} style={{ ...btn("outline"), height: 30, padding: "0 10px", fontSize: 12.5, marginRight: 6 }}>{u.isAdmin ? "Remove admin" : "Make admin"}</button>
+                      <button onClick={() => (u.disabled || confirm(`Disable ${u.email}? They're signed out and can't sign back in.`)) && patchUser(u.id, { disabled: !u.disabled })} className="h-danger" style={{ ...btn("danger"), height: 30, padding: "0 10px", fontSize: 12.5 }}>{u.disabled ? "Enable" : "Disable"}</button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          <Section>Recent searches</Section>
+          <div style={{ ...card, padding: 0, overflowX: "auto", marginTop: 8 }}>
+            <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 860 }}>
+              <thead>
+                <tr>{["When", "Who", "Type", "Result", "Found / added", "Web searches", "Cost"].map((h) => <th key={h} style={th}>{h}</th>)}</tr>
+              </thead>
+              <tbody>
+                {data.runs.length === 0 && (
+                  <tr><td style={{ ...td, color: "#8A8175" }} colSpan={7}>No searches yet.</td></tr>
+                )}
+                {data.runs.map((r) => (
+                  <tr key={r.id}>
+                    <td style={{ ...td, whiteSpace: "nowrap" }}>{when(r.startedAt)}</td>
+                    <td style={td}>{r.email}</td>
+                    <td style={td}>{({ scheduled: "Scheduled", manual: "Search now", url: "Added link", resume: "Resume scan" } as Record<string, string>)[r.trigger] ?? r.trigger}</td>
+                    <td style={td}>
+                      <span data-tip={r.error ?? undefined} style={{ fontWeight: 600, color: r.status === "failed" ? "#99220F" : r.status === "running" ? "#7A3A10" : "#35662A" }}>
+                        {r.status === "failed" ? "Failed" : r.status === "running" ? "Running" : "Done"}
+                      </span>
+                      {r.error && <div style={{ fontSize: 12, color: "#8A8175", maxWidth: 320, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{r.error}</div>}
+                    </td>
+                    <td style={{ ...td, fontVariantNumeric: "tabular-nums" }}>{r.found} / {r.added}</td>
+                    <td style={{ ...td, fontVariantNumeric: "tabular-nums" }}>{r.searches}</td>
+                    <td style={{ ...td, fontVariantNumeric: "tabular-nums" }}>{usd(r.costUsd)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
+function MoneyInput({ label, value, onSave }: { label: string; value: number; onSave: (v: number) => void }) {
+  const [v, setV] = useState(String(value));
+  const commit = () => {
+    const n = Number(v.replace(/[$,\s]/g, ""));
+    if (Number.isFinite(n) && n >= 0 && n !== value) onSave(n);
+    else setV(String(value));
+  };
+  return (
+    <label style={{ display: "flex", flexDirection: "column", gap: 6, fontSize: 12, fontWeight: 600, letterSpacing: ".06em", textTransform: "uppercase", color: "#8A8175" }}>
+      {label}
+      <input inputMode="decimal" value={v} onChange={(e) => setV(e.target.value)} onBlur={commit} onKeyDown={(e) => e.key === "Enter" && commit()} className="f-brick" style={{ ...input, width: 140, textTransform: "none", letterSpacing: 0, fontWeight: 500 }} />
+    </label>
+  );
+}
+
+function Invite({ emailEnabled, onDone }: { emailEnabled: boolean; onDone: () => void }) {
+  const [email, setEmail] = useState("");
+  const [send, setSend] = useState(emailEnabled);
+  const [res, setRes] = useState<{ link: string; email: string; emailed: boolean } | null>(null);
+  const [copied, setCopied] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
+  const create = async () => {
+    setErr(null);
+    setCopied(false);
+    try {
+      const r = await api<{ link: string; email: string; emailed: boolean }>("/api/admin/invite", { method: "POST", json: { email, send } });
+      setRes(r);
+      setEmail("");
+      onDone();
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : "Couldn't create the invite");
+    }
+  };
+  return (
+    <Row title="Invite someone" help="Creates their invite and a sign-in link that works once and lasts 7 days. Text it to them, or email it if email is set up.">
+      <div style={{ display: "flex", flexDirection: "column", gap: 10, maxWidth: 460 }}>
+        <div style={{ display: "flex", gap: 6 }}>
+          <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} onKeyDown={(e) => e.key === "Enter" && create()} placeholder="their@email.com" aria-label="Email to invite" className="f-brick" style={{ ...input, flex: 1, minWidth: 0 }} />
+          <button onClick={create} style={btn("solid")}>Invite</button>
+        </div>
+        <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13, color: emailEnabled ? "#1D1A0F" : "#A89F92" }}>
+          <input type="checkbox" checked={send && emailEnabled} disabled={!emailEnabled} onChange={(e) => setSend(e.target.checked)} />
+          {emailEnabled ? "Also email them the link" : "Email isn't set up yet, so copy the link and send it yourself"}
+        </label>
+        <Msg text={err} />
+        {res && (
+          <div style={{ display: "flex", flexDirection: "column", gap: 8, padding: 12, borderRadius: 10, background: "#fff", border: "1.5px solid #E6E0D8" }}>
+            <span style={{ fontSize: 12.5, color: "#6B6358" }}>
+              {res.emailed ? "Emailed to " : "Sign-in link for "}
+              <strong style={{ color: "#1D1A0F" }}>{res.email}</strong>
+            </span>
+            <code style={{ fontSize: 12, wordBreak: "break-all" }}>{res.link}</code>
+            <button onClick={() => navigator.clipboard?.writeText(res.link).then(() => setCopied(true)).catch(() => {})} style={{ ...btn("outline"), alignSelf: "flex-start", height: 34 }}>{copied ? "Copied" : "Copy link"}</button>
+          </div>
+        )}
+      </div>
+    </Row>
+  );
+}
+
+// --- AI settings --------------------------------------------------------------------
+
+const PRESETS: [string, string][] = [
+  ["OpenRouter", "https://openrouter.ai/api/v1"],
+  ["DeepInfra", "https://api.deepinfra.com/v1/openai"],
+  ["Together", "https://api.together.xyz/v1"],
+  ["Groq", "https://api.groq.com/openai/v1"],
+  ["Ollama (local)", "http://host.docker.internal:11434/v1"],
+];
+
+export function AdminAi() {
+  const [cfg, setCfg] = useState<Config | null>(null);
+  const [aiMsg, setAiMsg] = useState<{ text: string; ok: boolean } | null>(null);
+  const [searchMsg, setSearchMsg] = useState<{ text: string; ok: boolean } | null>(null);
+  const [fetchUrl, setFetchUrl] = useState("");
+  const [fetchMsg, setFetchMsg] = useState<{ text: string; ok: boolean } | null>(null);
+
+  useEffect(() => {
+    api<Config>("/api/admin/settings").then(setCfg).catch((e) => setAiMsg({ text: e.message, ok: false }));
+  }, []);
+  if (!cfg) return <div className="page-pad"><PageHead eyebrow="Admin" title="AI settings"><Tabs /></PageHead>{aiMsg && <Msg text={aiMsg.text} />}</div>;
+
+  const ai = cfg.ai, search = cfg.search;
+  const setAi = (p: Partial<Config["ai"]>) => setCfg({ ...cfg, ai: { ...ai, ...p } });
+  const setSearch = (p: Partial<Config["search"]>) => setCfg({ ...cfg, search: { ...search, ...p } });
+  const aiBody = () => { const { apiKeyHint: _h, ...rest } = ai; void _h; return rest; };
+  const searchBody = () => { const { braveKeyHint: _h, ...rest } = search; void _h; return rest; };
+
+  const save = async (section: "ai" | "search") => {
+    const set = section === "ai" ? setAiMsg : setSearchMsg;
+    try {
+      const next = await api<Config>("/api/admin/settings", { method: "PUT", json: section === "ai" ? { ai: aiBody() } : { search: searchBody() } });
+      setCfg(next);
+      set({ text: "Saved. New searches use these settings.", ok: true });
+    } catch (e) {
+      set({ text: e instanceof Error ? e.message : "Couldn't save", ok: false });
+    }
+  };
+  const test = async (section: "ai" | "search") => {
+    const set = section === "ai" ? setAiMsg : setSearchMsg;
+    set({ text: "Testing…", ok: true });
+    type T = { ok: boolean; error?: string; ms?: number; sample?: string; count?: number };
+    const r: T = await api<T>("/api/admin/settings/test", {
+      method: "POST",
+      json: section === "ai" ? { section, values: aiBody() } : { section, values: searchBody() },
+    }).catch((e): T => ({ ok: false, error: e.message as string }));
+    if (!r.ok) return set({ text: `Didn't work: ${r.error ?? "no result"}`, ok: false });
+    set({
+      text: section === "ai" ? `Works. Answered "${r.sample}" in ${((r.ms ?? 0) / 1000).toFixed(1)}s.` : `Works. ${r.count} results in ${((r.ms ?? 0) / 1000).toFixed(1)}s, e.g. ${r.sample}`,
+      ok: true,
+    });
+  };
+  const testFetch = async () => {
+    setFetchMsg({ text: "Fetching…", ok: true });
+    type F = { ok: boolean; error?: string; chars?: number; ms?: number };
+    const r: F = await api<F>("/api/admin/settings/test", { method: "POST", json: { section: "fetch", url: fetchUrl } }).catch((e): F => ({ ok: false, error: e.message as string }));
+    setFetchMsg(r.ok ? { text: `Read ${r.chars} characters in ${((r.ms ?? 0) / 1000).toFixed(1)}s.`, ok: true } : { text: `Couldn't read it: ${r.error}`, ok: false });
+  };
+
+  return (
+    <div className="page-pad settings" style={{ display: "flex", flexDirection: "column", maxWidth: 820 }}>
+      <PageHead eyebrow="Admin" title="AI settings" intro="The model that writes queries, reads postings and scores them, and the search engine it uses. Keys are stored encrypted and never shown again.">
+        <Tabs />
+      </PageHead>
+
+      <Section>Model</Section>
+      <Row title="Provider" help="Any OpenAI-compatible API works: OpenRouter, DeepInfra, Together, Groq, or your own Ollama or vLLM server.">
+        <Seg opts={[["OpenAI-compatible", "openai"], ["Anthropic", "anthropic"]]} cur={ai.provider} pick={(v) => setAi({ provider: v as Config["ai"]["provider"] })} />
+      </Row>
+      {ai.provider === "openai" && (
+        <Row title="API address" help="The base URL, ending before /chat/completions.">
+          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+            <input value={ai.baseUrl} onChange={(e) => setAi({ baseUrl: e.target.value })} aria-label="API address" className="f-brick" style={input} />
+            <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+              {PRESETS.map(([label, url]) => (
+                <button key={label} onClick={() => setAi({ baseUrl: url })} style={{ height: 30, padding: "0 11px", borderRadius: 999, border: `1.5px solid ${ai.baseUrl === url ? "#1D1A0F" : "#E0D9CF"}`, background: ai.baseUrl === url ? "#1D1A0F" : "#fff", color: ai.baseUrl === url ? "#fff" : "#1D1A0F", fontSize: 12.5, fontWeight: 600, cursor: "pointer" }}>{label}</button>
+              ))}
+            </div>
+          </div>
+        </Row>
+      )}
+      <Row title="Model" help={ai.provider === "openai" ? "The model ID exactly as your provider writes it, e.g. a Qwen, DeepSeek or Llama model." : "e.g. claude-sonnet-5-5"}>
+        <input value={ai.model} onChange={(e) => setAi({ model: e.target.value })} placeholder="provider/model-name" aria-label="Model" className="f-brick" style={input} />
+      </Row>
+      <Row title="API key" help={ai.apiKeyHint ? `Saved key: ${ai.apiKeyHint}. Leave blank to keep it.` : "Not set. Local servers like Ollama don't need one."}>
+        <input type="password" autoComplete="off" value={ai.apiKey} onChange={(e) => setAi({ apiKey: e.target.value })} placeholder={ai.apiKeyHint ? "Leave blank to keep the saved key" : "Paste a key"} aria-label="API key" className="f-brick" style={input} />
+      </Row>
+      <Row title="Price" help="Dollars per million tokens, from your provider's model page. Used for the spend totals and the daily caps.">
+        <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
+          <NumberField label="Input" value={ai.priceIn} onChange={(v) => setAi({ priceIn: v })} />
+          <NumberField label="Output" value={ai.priceOut} onChange={(v) => setAi({ priceOut: v })} />
+        </div>
+      </Row>
+      {ai.provider === "openai" && (
+        <Row title="Structured output" help="Strict schema works on most providers. If tests fail with a format error, switch to plain JSON.">
+          <Seg opts={[["Strict schema", "schema"], ["Plain JSON", "object"]]} cur={ai.jsonMode} pick={(v) => setAi({ jsonMode: v as Config["ai"]["jsonMode"] })} />
+        </Row>
+      )}
+      <Row title="" help="">
+        <div style={{ display: "flex", flexDirection: "column", gap: 8, alignItems: "flex-start" }}>
+          <div style={{ display: "flex", gap: 8 }}>
+            <button onClick={() => test("ai")} style={btn("outline")}>Test</button>
+            <button onClick={() => save("ai")} style={btn("solid")}>Save model</button>
+          </div>
+          {aiMsg && <Msg text={aiMsg.text} ok={aiMsg.ok} />}
+        </div>
+      </Row>
+
+      <Section>Web search</Section>
+      <Row title="Search engine" help="SearXNG runs on your server next to Lookout and costs nothing. Brave is a paid API that is more consistent.">
+        <Seg opts={[["SearXNG (self-hosted)", "searxng"], ["Brave", "brave"], ["Off", "none"]]} cur={search.provider} pick={(v) => setSearch({ provider: v as Config["search"]["provider"] })} />
+      </Row>
+      {search.provider === "searxng" && (
+        <Row title="SearXNG address" help="Inside the server this is http://searxng:8080.">
+          <input value={search.searxngUrl} onChange={(e) => setSearch({ searxngUrl: e.target.value })} aria-label="SearXNG address" className="f-brick" style={input} />
+        </Row>
+      )}
+      {search.provider === "brave" && (
+        <>
+          <Row title="Brave API key" help={search.braveKeyHint ? `Saved key: ${search.braveKeyHint}. Leave blank to keep it.` : "From api.search.brave.com."}>
+            <input type="password" autoComplete="off" value={search.braveKey} onChange={(e) => setSearch({ braveKey: e.target.value })} aria-label="Brave API key" className="f-brick" style={input} />
+          </Row>
+          <Row title="Price per search" help="Dollars per query, for the spend totals.">
+            <NumberField label="Per query" value={search.pricePerQuery} onChange={(v) => setSearch({ pricePerQuery: v })} />
+          </Row>
+        </>
+      )}
+      <Row title="" help="">
+        <div style={{ display: "flex", flexDirection: "column", gap: 8, alignItems: "flex-start" }}>
+          <div style={{ display: "flex", gap: 8 }}>
+            <button onClick={() => test("search")} style={btn("outline")}>Test</button>
+            <button onClick={() => save("search")} style={btn("solid")}>Save search</button>
+          </div>
+          {searchMsg && <Msg text={searchMsg.text} ok={searchMsg.ok} />}
+        </div>
+      </Row>
+
+      <Section>Page reading</Section>
+      <Row title="Test a link" help="Checks that Lookout can open and read a posting. Private and internal addresses are always refused.">
+        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+          <div style={{ display: "flex", gap: 6, maxWidth: 460 }}>
+            <input value={fetchUrl} onChange={(e) => setFetchUrl(e.target.value)} placeholder="https://..." aria-label="Link to test" className="f-brick" style={{ ...input, flex: 1, minWidth: 0 }} />
+            <button onClick={testFetch} style={btn("outline")}>Test</button>
+          </div>
+          {fetchMsg && <Msg text={fetchMsg.text} ok={fetchMsg.ok} />}
+        </div>
+      </Row>
+    </div>
+  );
+}
+
+function NumberField({ label, value, onChange }: { label: string; value: number; onChange: (v: number) => void }) {
+  const [v, setV] = useState(String(value));
+  return (
+    <label style={{ display: "flex", flexDirection: "column", gap: 6, fontSize: 12, fontWeight: 600, letterSpacing: ".06em", textTransform: "uppercase", color: "#8A8175" }}>
+      {label}
+      <input
+        inputMode="decimal"
+        value={v}
+        onChange={(e) => {
+          setV(e.target.value);
+          const n = Number(e.target.value);
+          if (Number.isFinite(n) && n >= 0) onChange(n);
+        }}
+        className="f-brick"
+        style={{ ...input, width: 140, textTransform: "none", letterSpacing: 0, fontWeight: 500 }}
+      />
+    </label>
+  );
+}

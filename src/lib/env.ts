@@ -17,9 +17,9 @@ export const env = {
   get dataDir() {
     return process.env.DATA_DIR || "./data";
   },
-  /** "open" lets anyone sign up; "invite" only lets in emails already in users or ALLOWED_EMAILS. */
+  /** Default sign-up mode; admins can change it in the app. "invite" (default) only lets in invited emails. */
   get signupMode(): "open" | "invite" {
-    return process.env.SIGNUP_MODE === "invite" ? "invite" : "open";
+    return process.env.SIGNUP_MODE === "open" ? "open" : "invite";
   },
   get allowedEmails() {
     return list(process.env.ALLOWED_EMAILS);

@@ -1,22 +1,34 @@
 import { z } from "zod";
-import { authed, body, HttpError, json } from "@/lib/api";
+import { adminRoute, body, json } from "@/lib/api";
 import { hashToken, newToken } from "@/lib/auth/crypto";
 import { db, schema } from "@/lib/db";
+import { inviteEmail, sendMail } from "@/lib/email";
 import { env } from "@/lib/env";
-import { isAdmin, normalizeEmail } from "@/lib/users";
+import { normalizeEmail } from "@/lib/users";
 
-const Input = z.object({ email: z.string().trim().email().max(254) });
+const Input = z.object({ email: z.string().trim().email().max(254), send: z.boolean().optional() });
 const INVITE_DAYS = 7;
 
 /**
- * Admin-only: mint a one-time sign-in link to hand to someone directly (text, DM).
- * Works without SMTP. Using the link creates the account, even in invite-only mode.
+ * Invite someone: records the invite (so they can request sign-in links later in
+ * invite-only mode) and returns a one-time 7-day link to share directly. With
+ * `send` and SMTP configured, the link is also emailed.
  */
-export const POST = authed(async (req, { user }) => {
-  if (!isAdmin(user)) throw new HttpError(403, "Admins only");
-  const email = normalizeEmail((await body(req, Input)).email);
+export const POST = adminRoute(async (req, { user }) => {
+  const p = await body(req, Input);
+  const email = normalizeEmail(p.email);
+  await db
+    .insert(schema.invites)
+    .values({ email, invitedBy: user.id })
+    .onConflictDoUpdate({ target: schema.invites.email, set: { revokedAt: null, invitedBy: user.id, createdAt: new Date() } });
   const token = newToken();
   const expiresAt = new Date(Date.now() + INVITE_DAYS * 864e5);
   await db.insert(schema.loginTokens).values({ tokenHash: hashToken(token), email, expiresAt });
-  return json({ link: `${env.appUrl}/auth/verify?token=${token}`, email, expiresAt: expiresAt.toISOString() });
+  const link = `${env.appUrl}/auth/verify?token=${token}`;
+  let emailed = false;
+  if (p.send && env.smtpUrl) {
+    await sendMail(inviteEmail(email, link, user.name || user.email));
+    emailed = true;
+  }
+  return json({ link, email, expiresAt: expiresAt.toISOString(), emailed });
 });

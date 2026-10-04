@@ -1,11 +1,10 @@
 import "server-only";
 import { eq } from "drizzle-orm";
 import { z } from "zod";
-import { betaZodOutputFormat } from "@anthropic-ai/sdk/helpers/beta/zod";
 import { db, schema } from "@/lib/db";
-import { env } from "@/lib/env";
 import { readUserFile } from "@/lib/files";
-import { addUsage, assertBudget, claude, emptyUsage, finishRun, startRun } from "./claude";
+import { completeJSON, emptyUsage } from "@/lib/ai/llm";
+import { assertBudget, finishRun, startRun } from "@/lib/ai/runs";
 
 const MAX_RESUME_CHARS = 60_000;
 
@@ -46,25 +45,25 @@ export async function scanResume(userId: string, materialId: string) {
   if (!m?.fileKey) return;
   const usage = emptyUsage();
   let runId: string | null = null;
+  let hasText = false;
   try {
     const text = (await extractResumeText(await readUserFile(m.fileKey), m.mime ?? "")).slice(0, MAX_RESUME_CHARS).trim();
     if (!text) throw new NoTextError("no readable text in this file");
+    // Keep the text even if the AI step fails: discovery still reads it, and setup can finish.
+    await db.update(schema.materials).set({ extracted: { text } }).where(eq(schema.materials.id, materialId));
+    hasText = true;
     await assertBudget(userId);
     runId = (await startRun(userId, "resume")).id;
 
-    const res = await claude().beta.messages.parse({
-      model: env.model,
-      max_tokens: 4000,
-      betas: ["server-side-fallback-2026-07-01"],
-      fallbacks: "default",
-      output_config: { effort: "low", format: betaZodOutputFormat(Fills) },
+    const f = await completeJSON({
+      name: "resume",
+      schema: Fills,
+      usage,
+      maxTokens: 3000,
       system:
         "You read resumes and pull out facts for a job-search profile. Only use what the resume says or clearly implies. Leave a field empty rather than guess.",
-      messages: [{ role: "user", content: `<resume>\n${text}\n</resume>` }],
+      user: `<resume>\n${text}\n</resume>`,
     });
-    addUsage(usage, env.model, res.usage);
-    if (res.stop_reason === "refusal" || !res.parsed_output) throw new Error("Could not read the resume");
-    const f = res.parsed_output;
 
     const n = await applyFills(userId, {
       q1: f.next_role,
@@ -89,7 +88,11 @@ export async function scanResume(userId: string, materialId: string) {
     console.error("scanResume", e);
     await db
       .update(schema.materials)
-      .set({ status: "failed", filledNote: e instanceof NoTextError ? e.message : "try again in a few minutes" })
+      .set(
+        !hasText
+          ? { status: "failed", filledNote: e instanceof NoTextError ? e.message : "couldn't read this file" }
+          : { status: "done", scannedAt: new Date(), filledNote: "saved, couldn't auto-fill answers" },
+      )
       .where(eq(schema.materials.id, materialId));
     if (runId) await finishRun(runId, usage, { error: String(e) });
   }

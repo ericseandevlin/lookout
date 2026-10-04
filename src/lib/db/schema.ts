@@ -181,3 +181,18 @@ export const runs = pgTable(
   },
   (t) => [index("runs_user_started_idx").on(t.userId, t.startedAt)],
 );
+
+/** Admin-editable app config (AI provider, search, sign-up mode, budgets). Secrets inside are encrypted. */
+export const appSettings = pgTable("app_settings", {
+  key: text("key").primaryKey(),
+  value: jsonb("value").$type<Record<string, unknown>>().notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+/** Emails an admin has let in. In invite-only mode these may request sign-in links. */
+export const invites = pgTable("invites", {
+  email: text("email").primaryKey(),
+  invitedBy: uuid("invited_by").references(() => users.id, { onDelete: "set null" }),
+  createdAt: createdAt(),
+  revokedAt: timestamp("revoked_at", { withTimezone: true }),
+});

@@ -3,9 +3,12 @@ import { and, eq, gte, lt, sql } from "drizzle-orm";
 import { db, schema, sqlClient } from "@/lib/db";
 import { env } from "@/lib/env";
 import { answeredCount, kinds } from "@/lib/kinds";
-import { BudgetError } from "@/lib/agent/claude";
+import { BudgetError } from "@/lib/ai/runs";
+import { AiConfigError } from "@/lib/ai/llm";
+import { SearchConfigError } from "@/lib/ai/search";
 import { discover } from "@/lib/agent/discover";
 import { sendDigest } from "@/lib/digest";
+import { getAiConfig } from "@/lib/config";
 
 const TICK_MS = 10 * 60_000;
 const RUN_HOUR = 7; // local time
@@ -52,8 +55,14 @@ async function dueUsers() {
     const runs = db
       .select({ n: sql<number>`count(*)::int` })
       .from(schema.runs)
-      .where(and(eq(schema.runs.userId, user.id), sql`${schema.runs.trigger} in ('scheduled','manual')`));
+      .where(and(eq(schema.runs.userId, user.id), sql`${schema.runs.trigger} in ('scheduled','manual')`, eq(schema.runs.status, "done")));
     const [{ n: ever }] = await runs;
+    // Back off for 2h after a failed search so a broken setup doesn't retry every tick.
+    const [{ n: failing }] = await db
+      .select({ n: sql<number>`count(*)::int` })
+      .from(schema.runs)
+      .where(and(eq(schema.runs.userId, user.id), eq(schema.runs.status, "failed"), gte(schema.runs.startedAt, new Date(Date.now() - 2 * 3600_000))));
+    if (failing > 0) continue;
     if (ever === 0) {
       due.push(user.id);
       continue;
@@ -74,6 +83,8 @@ async function tick() {
   const [{ locked }] = await sqlClient`select pg_try_advisory_lock(${LOCK_ID}) as locked`;
   if (!locked) return;
   try {
+    const ai = await getAiConfig();
+    if (!ai.model) return; // Nothing to run with until an admin sets a model.
     // Runs orphaned by a restart never finish; close them out.
     await db
       .update(schema.runs)
@@ -84,7 +95,8 @@ async function tick() {
         const { added } = await discover(userId, "scheduled");
         if (added > 0) await sendDigest(userId);
       } catch (e) {
-        if (e instanceof BudgetError) break;
+        // Caps and missing config affect everyone; stop this tick instead of failing user by user.
+        if (e instanceof BudgetError || e instanceof AiConfigError || e instanceof SearchConfigError) break;
         console.error(`[scheduler] run failed for ${userId}`, e);
       }
     }

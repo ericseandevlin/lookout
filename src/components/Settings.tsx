@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useState } from "react";
 import { DAYS } from "@/lib/board";
 import type { Settings as S } from "@/lib/types";
@@ -9,11 +10,11 @@ import { api, useStore } from "./store";
 
 const ORDER = Object.keys(DAYS);
 
-const Section = ({ children }: { children: React.ReactNode }) => (
+export const Section = ({ children }: { children: React.ReactNode }) => (
   <div style={{ fontSize: 12, fontWeight: 700, letterSpacing: ".14em", textTransform: "uppercase", color: "#99220F", padding: "28px 0 4px" }}>{children}</div>
 );
 
-function Row({ title, help, danger, children }: { title: string; help: string; danger?: boolean; children: React.ReactNode }) {
+export function Row({ title, help, danger, children }: { title: string; help: string; danger?: boolean; children: React.ReactNode }) {
   return (
     <div className="set-grid">
       <div>
@@ -25,7 +26,7 @@ function Row({ title, help, danger, children }: { title: string; help: string; d
   );
 }
 
-function Seg<T extends string | number>({ opts, cur, pick }: { opts: [string, T][]; cur: T | ((v: T) => boolean); pick: (v: T) => void }) {
+export function Seg<T extends string | number>({ opts, cur, pick }: { opts: [string, T][]; cur: T | ((v: T) => boolean); pick: (v: T) => void }) {
   return (
     <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
       {opts.map(([label, v]) => {
@@ -40,7 +41,7 @@ function Seg<T extends string | number>({ opts, cur, pick }: { opts: [string, T]
   );
 }
 
-const btn = (kind: "outline" | "danger" | "solid"): React.CSSProperties => ({
+export const btn = (kind: "outline" | "danger" | "solid"): React.CSSProperties => ({
   height: 38, padding: "0 16px", borderRadius: 10, fontSize: 13.5, fontWeight: 600, cursor: "pointer",
   ...(kind === "outline" && { border: "1.5px solid #1D1A0F", background: "#fff", color: "#1D1A0F" }),
   ...(kind === "danger" && { border: "1.5px solid #E8B4AA", background: "#fff", color: "#99220F" }),
@@ -143,7 +144,9 @@ export function Settings() {
       {state.user.isAdmin && (
         <>
           <Section>Admin</Section>
-          <InviteRow />
+          <Row title="Admin" help="Invite people, see who's using Lookout and what it costs, and set the AI model and search.">
+            <Link href="/admin" style={{ ...btn("outline"), display: "inline-flex", alignItems: "center", textDecoration: "none" }}>Open admin</Link>
+          </Row>
         </>
       )}
 
@@ -226,48 +229,3 @@ function DeleteModal({ close }: { close: () => void }) {
   );
 }
 
-function InviteRow() {
-  const [email, setEmail] = useState("");
-  const [link, setLink] = useState<{ url: string; email: string } | null>(null);
-  const [copied, setCopied] = useState(false);
-  const [err, setErr] = useState<string | null>(null);
-  const create = async () => {
-    setErr(null);
-    setCopied(false);
-    try {
-      const r = await api<{ link: string; email: string }>("/api/admin/invite", { method: "POST", json: { email } });
-      setLink({ url: r.link, email: r.email });
-      setEmail("");
-    } catch (e) {
-      setErr(e instanceof Error ? e.message : "Couldn't create a link");
-    }
-  };
-  const copy = () => navigator.clipboard?.writeText(link!.url).then(() => setCopied(true)).catch(() => {});
-  return (
-    <Row title="Invite someone" help="Make a sign-in link to text or DM. It works once, lasts 7 days, and creates their account. No email needed.">
-      <div style={{ display: "flex", flexDirection: "column", gap: 10, maxWidth: 420 }}>
-        <div style={{ display: "flex", gap: 6 }}>
-          <input
-            type="email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            onKeyDown={(e) => e.key === "Enter" && create()}
-            placeholder="their@email.com"
-            aria-label="Email to invite"
-            className="f-brick"
-            style={{ flex: 1, minWidth: 0, height: 42, border: "1.5px solid #E6E0D8", background: "#fff", borderRadius: 10, padding: "0 13px", fontSize: 14, outline: "none", color: "#1D1A0F" }}
-          />
-          <button onClick={create} style={btn("solid")}>Create link</button>
-        </div>
-        {err && <span style={{ fontSize: 13, color: "#99220F" }}>{err}</span>}
-        {link && (
-          <div style={{ display: "flex", flexDirection: "column", gap: 8, padding: 12, borderRadius: 10, background: "#fff", border: "1.5px solid #E6E0D8" }}>
-            <span style={{ fontSize: 12.5, color: "#6B6358" }}>Sign-in link for <strong style={{ color: "#1D1A0F" }}>{link.email}</strong></span>
-            <code style={{ fontSize: 12, wordBreak: "break-all", color: "#1D1A0F" }}>{link.url}</code>
-            <button onClick={copy} style={{ ...btn("outline"), alignSelf: "flex-start", height: 34 }}>{copied ? "Copied" : "Copy link"}</button>
-          </div>
-        )}
-      </div>
-    </Row>
-  );
-}

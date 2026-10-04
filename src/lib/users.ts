@@ -1,5 +1,6 @@
 import "server-only";
-import { eq, sql } from "drizzle-orm";
+import { and, eq, isNull, sql } from "drizzle-orm";
+import { getAccessConfig } from "@/lib/config";
 import { db, schema } from "@/lib/db";
 import { env } from "@/lib/env";
 
@@ -18,8 +19,13 @@ export async function mayLogIn(email: string) {
   const e = normalizeEmail(email);
   const existing = await findUserByEmail(e);
   if (existing) return !existing.disabled;
-  if (env.signupMode === "open") return true;
-  return env.allowedEmails.includes(e) || env.adminEmails.includes(e);
+  if ((await getAccessConfig()).signupMode === "open") return true;
+  if (env.allowedEmails.includes(e) || env.adminEmails.includes(e)) return true;
+  const [inv] = await db
+    .select()
+    .from(schema.invites)
+    .where(and(eq(schema.invites.email, e), isNull(schema.invites.revokedAt)));
+  return !!inv;
 }
 
 /** Create the user plus default settings/profile rows. Idempotent on email. */

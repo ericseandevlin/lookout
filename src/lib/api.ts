@@ -19,7 +19,8 @@ async function assertSameOrigin(method: string) {
   const h = await headers();
   const origin = h.get("origin");
   if (!origin) throw new HttpError(403, "Missing origin");
-  const allowed = new Set([env.appUrl, `http://localhost:${process.env.PORT || 3000}`]);
+  const extra = (process.env.EXTRA_ORIGINS || "").split(",").map((o) => o.trim().replace(/\/$/, "")).filter(Boolean);
+  const allowed = new Set([env.appUrl, `http://localhost:${process.env.PORT || 3000}`, ...extra]);
   if (!allowed.has(origin)) throw new HttpError(403, "Bad origin");
 }
 
@@ -67,4 +68,13 @@ export async function body<T extends z.ZodType>(req: Request, schema: T): Promis
 export async function clientIp() {
   const h = await headers();
   return h.get("x-forwarded-for")?.split(",")[0].trim() || h.get("x-real-ip") || "unknown";
+}
+
+/** Like authed, but only for admins. */
+export function adminRoute<C = object>(fn: Handler<C>) {
+  return authed<C>(async (req, ctx) => {
+    const { isAdmin } = await import("@/lib/users");
+    if (!isAdmin(ctx.user)) throw new HttpError(403, "Admins only");
+    return fn(req, ctx);
+  });
 }

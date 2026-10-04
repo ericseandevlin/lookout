@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 
-export function Login({ emailEnabled }: { emailEnabled: boolean }) {
+export function Login({ emailEnabled, inviteOnly }: { emailEnabled: boolean; inviteOnly: boolean }) {
   const [email, setEmail] = useState("");
   const [state, setState] = useState<"idle" | "sending" | "sent" | "error">("idle");
   const [msg, setMsg] = useState("");
@@ -55,7 +55,9 @@ export function Login({ emailEnabled }: { emailEnabled: boolean }) {
             />
             <button type="submit" disabled={state === "sending"} style={primary}>{state === "sending" ? "Sending…" : "Email me a sign-in link"}</button>
             {state === "error" && <div role="alert" style={{ fontSize: 13, color: "#99220F" }}>{msg}</div>}
-            <div style={{ fontSize: 12.5, color: "#8A8175", lineHeight: 1.5 }}>New here? The same link creates your account. No password.</div>
+            <div style={{ fontSize: 12.5, color: "#8A8175", lineHeight: 1.5 }}>
+              {inviteOnly ? "Lookout is invite only for now. Use the email you were invited with." : "New here? The same link creates your account. No password."}
+            </div>
           </form>
         </>
       )}

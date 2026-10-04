@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { authed, body, HttpError, json } from "@/lib/api";
-import { BudgetError } from "@/lib/agent/claude";
+import { BudgetError } from "@/lib/ai/runs";
 import { addByUrl, isRunning } from "@/lib/agent/discover";
 import { rateLimit } from "@/lib/ratelimit";
 

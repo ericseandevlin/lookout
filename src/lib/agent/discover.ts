@@ -1,16 +1,26 @@
 import "server-only";
-import type Anthropic from "@anthropic-ai/sdk";
 import { and, eq } from "drizzle-orm";
 import { z } from "zod";
-import { betaZodOutputFormat } from "@anthropic-ai/sdk/helpers/beta/zod";
 import { db, schema } from "@/lib/db";
-import { env } from "@/lib/env";
 import { kinds, parseMoney } from "@/lib/kinds";
-import { addUsage, assertBudget, claude, emptyUsage, finishRun, startRun, textOf, type Usage } from "./claude";
+import { fetchPage, FetchError, pageToText } from "@/lib/ai/fetchPage";
+import { completeJSON, emptyUsage, type Usage } from "@/lib/ai/llm";
+import { assertBudget, finishRun, startRun } from "@/lib/ai/runs";
+import { webSearch, type SearchHit } from "@/lib/ai/search";
 import { applyRules, fingerprint, normUrl } from "./rules";
 
-const FALLBACK = { betas: ["server-side-fallback-2026-07-01"], fallbacks: "default" as const };
-const MAX_CONTINUATIONS = 6;
+/**
+ * Discovery pipeline, built to work with small, cheap models:
+ *  1. the model writes search queries from the profile
+ *  2. we run them against the search backend and dedupe
+ *  3. the model picks the hits that look like real, single postings
+ *  4. we fetch those pages ourselves (SSRF-safe) and extract text + JobPosting data
+ *  5. the model scores them a few at a time; hard rules run on top
+ */
+
+const MAX_QUERIES = 6;
+const MAX_PICKS = 15;
+const BATCH = 4;
 
 type Context = {
   userId: string;
@@ -36,7 +46,7 @@ async function loadContext(userId: string): Promise<Context> {
     userId,
     brief: kinds[p?.kind ?? "job"].brief(answers),
     resume: resume?.extracted?.summary
-      ? `${resume.extracted.summary}\n\n${(resume.extracted.text ?? "").slice(0, 12_000)}`
+      ? `${resume.extracted.summary}\n\n${(resume.extracted.text ?? "").slice(0, 6000)}`
       : "",
     links: [
       ...(li?.url ? [`https://www.linkedin.com/in/${li.url}`] : []),
@@ -48,64 +58,152 @@ async function loadContext(userId: string): Promise<Context> {
 }
 
 const profileBlock = (c: Context) =>
-  `<profile>\n${c.brief}\n</profile>\n<resume>\n${c.resume || "(no resume uploaded)"}\n</resume>\n<links>\n${c.links.join("\n") || "(none)"}\n</links>`;
+  `<profile>\n${c.brief}\n</profile>\n<resume>\n${c.resume || "(no resume uploaded)"}\n</resume>`;
 
-/** Run a server-tool request to completion, resuming on pause_turn. */
-async function runWithTools(params: Anthropic.Beta.MessageCreateParamsNonStreaming, usage: Usage) {
-  const messages = [...params.messages];
-  for (let i = 0; i <= MAX_CONTINUATIONS; i++) {
-    const res = await claude().beta.messages.stream({ ...params, messages }).finalMessage();
-    addUsage(usage, params.model, res.usage);
-    if (res.stop_reason === "refusal") throw new Error("The model declined this search");
-    if (res.stop_reason !== "pause_turn") return res;
-    messages.push({ role: "assistant", content: res.content });
-  }
-  throw new Error("Search did not finish");
+const today = () => new Date().toISOString().slice(0, 10);
+
+// --- 1. queries --------------------------------------------------------------
+
+const Queries = z.object({ queries: z.array(z.string()).describe("4 to 6 web search queries") });
+
+async function makeQueries(ctx: Context, usage: Usage) {
+  const out = await completeJSON({
+    name: "queries",
+    schema: Queries,
+    usage,
+    maxTokens: 1000,
+    system: "You write web search queries that surface currently open job postings for one candidate.",
+    user: `${profileBlock(ctx)}
+
+Write 4 to 6 search queries for open roles that fit. Mix:
+- plain queries a person would type, e.g. "Director of Events jobs New York"
+- queries aimed at employer job pages, e.g. "Director of Events" New York site:greenhouse.io OR site:lever.co OR site:myworkdayjobs.com OR site:ashbyhq.com
+Use the candidate's target titles, close variants, and their city. Keep each under 120 characters.`,
+  });
+  return out.queries.map((q) => q.trim()).filter(Boolean).slice(0, MAX_QUERIES);
 }
 
-const Candidate = z.object({
+// --- 2+3. search and pick ----------------------------------------------------
+
+const AGGREGATOR = /(indeed|linkedin|glassdoor|ziprecruiter|simplyhired|monster|careerbuilder)\.com\/(jobs|q-|m\/jobs)|\/search\?|\/jobs\/?$/i;
+
+async function gatherHits(ctx: Context, queries: string[], usage: Usage) {
+  const known = new Set(ctx.knownUrls.map(normUrl));
+  const seen = new Set<string>();
+  const hits: SearchHit[] = [];
+  const results = await Promise.allSettled(queries.map((q) => webSearch(q, usage)));
+  for (const r of results) {
+    if (r.status !== "fulfilled") continue;
+    for (const h of r.value) {
+      const k = normUrl(h.url);
+      if (seen.has(k) || known.has(k) || AGGREGATOR.test(h.url)) continue;
+      seen.add(k);
+      hits.push(h);
+    }
+  }
+  if (!hits.length && results.every((r) => r.status === "rejected")) {
+    throw (results[0] as PromiseRejectedResult).reason;
+  }
+  return hits.slice(0, 60);
+}
+
+const Picks = z.object({ picks: z.array(z.number().int()).describe("Indexes of the most promising single job postings") });
+
+async function pickHits(ctx: Context, hits: SearchHit[], usage: Usage) {
+  if (hits.length <= MAX_PICKS) return hits;
+  const list = hits.map((h, i) => `[${i}] ${h.title}\n${h.url}\n${h.snippet.slice(0, 200)}`).join("\n\n");
+  const out = await completeJSON({
+    name: "picks",
+    schema: Picks,
+    usage,
+    maxTokens: 800,
+    system: "You triage search results for a recruiter.",
+    user: `${profileBlock(ctx)}\n\n<results>\n${list}\n</results>\n\nPick up to ${MAX_PICKS} results that are most likely a single, currently open job posting that fits this candidate. Skip list pages, articles, salary guides and expired posts. Return their indexes.`,
+  });
+  const chosen = [...new Set(out.picks)].filter((i) => i >= 0 && i < hits.length).map((i) => hits[i]);
+  return chosen.length ? chosen.slice(0, MAX_PICKS) : hits.slice(0, MAX_PICKS);
+}
+
+// --- 4. fetch ------------------------------------------------------------------
+
+type Page = { url: string; text: string };
+
+async function fetchAll(urls: string[]): Promise<Page[]> {
+  const out: Page[] = [];
+  const queue = [...urls];
+  const worker = async () => {
+    for (let u = queue.shift(); u; u = queue.shift()) {
+      try {
+        const { url, html } = await fetchPage(u);
+        const text = pageToText(html, 7000);
+        if (text.length > 300) out.push({ url, text });
+      } catch {
+        // Dead, blocked or non-HTML pages are skipped.
+      }
+    }
+  };
+  await Promise.all(Array.from({ length: 4 }, worker));
+  return out;
+}
+
+// --- 5. score ------------------------------------------------------------------
+
+const Scored = z.object({
+  index: z.number().int().describe("The [n] of the page this entry is about"),
+  is_open_job_posting: z.boolean().describe("True only if the page is one specific job that still looks open"),
   company: z.string(),
   title: z.string(),
   location: z.string().describe("City and state, plus (on-site), (hybrid) or (remote) when known"),
   work_mode: z.enum(["On-site", "Hybrid", "Remote", "Unknown"]),
   comp_min: z.number().nullable().describe("Annual base salary low end in USD, null if not posted"),
   comp_max: z.number().nullable().describe("Annual base salary high end in USD, null if not posted"),
-  posted_at: z.string().nullable().describe("ISO date YYYY-MM-DD the posting went up, null if unknown"),
-  url: z.string().describe("Direct URL to the posting"),
-  description: z.string().describe("Two or three plain sentences on the role"),
-  score: z.number().int().min(1).max(5).describe("Fit against the profile: 5 = bullseye, 1 = poor"),
-  reasons_match: z.array(z.string()).describe("Up to 4 short, specific reasons it fits. One line each, addressed to the candidate as 'you'."),
-  reasons_gap: z.array(z.string()).describe("Up to 3 short, specific reasons it may not fit. Empty if none."),
-  location_fit: z.boolean().describe("True if the location and work mode fit the stated preferences (or none were stated)"),
+  posted_at: z.string().nullable().describe("YYYY-MM-DD the posting went up, null if unknown"),
+  description: z.string().describe("Two plain sentences on the role"),
+  score: z.number().int().min(1).max(5).describe("Fit: 5 = bullseye, 4 = strong with one gap, 3 = sideways, 2 = weak, 1 = poor"),
+  reasons_match: z.array(z.string()).describe("Up to 4 short, specific reasons it fits, addressed to the candidate as 'you'"),
+  reasons_gap: z.array(z.string()).describe("Up to 3 short, specific reasons it may not fit"),
+  location_fit: z.boolean().describe("True if location and work mode fit the stated preferences (or none were given)"),
   dealbreaker: z.boolean().describe("True only if it clearly hits something the candidate ruled out"),
 });
-const Candidates = z.object({ finds: z.array(Candidate) });
-type CandidateT = z.infer<typeof Candidate>;
+const ScoredList = z.object({ finds: z.array(Scored) });
+type ScoredT = z.infer<typeof Scored> & { url: string };
 
-const SCORER_SYSTEM = `You score job postings for one candidate. Read the profile, resume and postings, then return structured data.
-Scoring: 5 = the role they described at the level they want; 4 = strong fit with one real gap; 3 = plausible but a step sideways or with several gaps; 2 = weak; 1 = poor.
-Reasons are for the candidate to read on a phone: short, concrete, no filler. Do not invent comp or dates that the posting does not state.`;
+const SCORER_SYSTEM = `You score job postings for one candidate. Today is ${today()}.
+Only use facts on the page. Never invent pay or dates; use null when the page doesn't state them. Annualize hourly pay only if it is clearly full time.
+Reasons are read on a phone: short, concrete, no filler.`;
 
-async function score(ctx: Context, research: string, usage: Usage): Promise<CandidateT[]> {
-  const res = await claude().beta.messages.parse({
-    model: env.model,
-    max_tokens: 16000,
-    ...FALLBACK,
-    output_config: { effort: "low", format: betaZodOutputFormat(Candidates) },
-    system: SCORER_SYSTEM,
-    messages: [{ role: "user", content: `${profileBlock(ctx)}\n\n<postings>\n${research}\n</postings>` }],
-  });
-  addUsage(usage, env.model, res.usage);
-  if (res.stop_reason === "refusal" || !res.parsed_output) throw new Error("Scoring failed");
-  return res.parsed_output.finds;
+async function scorePages(ctx: Context, pages: Page[], usage: Usage): Promise<ScoredT[]> {
+  const out: ScoredT[] = [];
+  for (let i = 0; i < pages.length; i += BATCH) {
+    const batch = pages.slice(i, i + BATCH);
+    const body = batch.map((p, j) => `[${j}] URL: ${p.url}\n${p.text}`).join("\n\n=====\n\n");
+    try {
+      const res = await completeJSON({
+        name: "score",
+        schema: ScoredList,
+        usage,
+        maxTokens: 4000,
+        system: SCORER_SYSTEM,
+        user: `${profileBlock(ctx)}\n\n<pages>\n${body}\n</pages>\n\nReturn one entry per page, using its [n] as index.`,
+      });
+      for (const f of res.finds) {
+        const page = batch[f.index];
+        if (page) out.push({ ...f, url: page.url });
+      }
+    } catch (e) {
+      console.error("[discover] scoring batch failed", e);
+    }
+  }
+  return out;
 }
 
-/** Insert scored finds the user doesn't already have. Returns how many were added. */
-async function save(ctx: Context, finds: CandidateT[], via: "agent" | "manual") {
+// --- save ----------------------------------------------------------------------
+
+async function save(ctx: Context, finds: ScoredT[], via: "agent" | "manual") {
   const known = new Set(ctx.knownUrls.map(normUrl));
   let added = 0;
   for (const f of finds) {
-    if (!f.company || !f.title || !/^https?:\/\//i.test(f.url)) continue;
+    if (!f.is_open_job_posting || !f.company || !f.title) continue;
     if (via === "agent" && known.has(normUrl(f.url))) continue;
     const ruled = applyRules(
       {
@@ -113,14 +211,13 @@ async function save(ctx: Context, finds: CandidateT[], via: "agent" | "manual") 
         reasonsMatch: f.reasons_match,
         reasonsGap: f.reasons_gap,
         locationFit: f.location_fit,
-        dealbreaker: f.dealbreaker,
+        dealbreaker: via === "manual" ? false : f.dealbreaker,
         compMin: f.comp_min,
         compMax: f.comp_max,
       },
       ctx.floor,
     );
     if (!ruled) continue;
-    const fp = fingerprint(f.company, f.title, f.location);
     const posted = f.posted_at && /^\d{4}-\d{2}-\d{2}$/.test(f.posted_at) ? f.posted_at : null;
     const [opp] = await db
       .insert(schema.opportunities)
@@ -135,11 +232,10 @@ async function save(ctx: Context, finds: CandidateT[], via: "agent" | "manual") 
         postedAt: posted,
         sourceUrl: f.url.slice(0, 1000),
         description: f.description.slice(0, 2000),
-        fingerprint: fp,
+        fingerprint: fingerprint(f.company, f.title, f.location),
       })
       .onConflictDoUpdate({
         target: schema.opportunities.fingerprint,
-        // Refresh fields a newer read may have improved.
         set: { sourceUrl: f.url.slice(0, 1000), description: f.description.slice(0, 2000) },
       })
       .returning();
@@ -161,83 +257,48 @@ async function save(ctx: Context, finds: CandidateT[], via: "agent" | "manual") 
   return added;
 }
 
-const today = () => new Date().toISOString().slice(0, 10);
+// --- entry points ----------------------------------------------------------------
 
-/** Weekly (or scheduled) search: find new postings, score them, add them to the board. */
+/** Scheduled (or "Search now") discovery for one user. */
 export async function discover(userId: string, trigger: "scheduled" | "manual" = "scheduled") {
   await assertBudget(userId);
   const run = await startRun(userId, trigger);
   const usage = emptyUsage();
   try {
     const ctx = await loadContext(userId);
-    const skip = ctx.knownUrls.slice(-150);
-    const research = await runWithTools(
-      {
-        model: env.model,
-        max_tokens: 32000,
-        ...FALLBACK,
-        output_config: { effort: "medium" },
-        tools: [
-          { type: "web_search_20260209", name: "web_search", max_uses: 15 },
-          { type: "web_fetch_20260209", name: "web_fetch", max_uses: 20, max_content_tokens: 12000 },
-        ],
-        system: `You are a recruiter's research assistant. Today is ${today()}. You find currently open job postings for one candidate.`,
-        messages: [
-          {
-            role: "user",
-            content: `${profileBlock(ctx)}
-
-Find 8 to 15 open roles that fit this candidate. Rules:
-- Prefer the employer's own posting (company careers page or an ATS such as Greenhouse, Lever, Ashby, Workday, iCIMS, SmartRecruiters). Use job boards to discover roles, then follow through to the real posting when you can.
-- Only include postings that look open now and were posted in roughly the last 45 days. Fetch a posting when you need to confirm it is live or to read the pay range.
-- Respect the comp floor, locations, work modes and dealbreakers, but include a strong role slightly outside them and say why.
-- Skip these URLs, already on the board:
-${skip.join("\n") || "(none)"}
-
-For each role, report company, title, location, work mode, posted pay range (base, exactly as stated), posting date, the direct URL and two sentences on the role. Plain text is fine.`,
-          },
-        ],
-      },
-      usage,
-    );
-    const text = textOf(research.content);
-    const finds = text.trim() ? await score(ctx, text, usage) : [];
-    const added = await save(ctx, finds, "agent");
-    await finishRun(run.id, usage, { found: finds.length, added });
-    return { found: finds.length, added };
+    const queries = await makeQueries(ctx, usage);
+    const hits = await gatherHits(ctx, queries, usage);
+    const picks = await pickHits(ctx, hits, usage);
+    const pages = await fetchAll(picks.map((h) => h.url));
+    const scored = await scorePages(ctx, pages, usage);
+    const added = await save(ctx, scored, "agent");
+    const found = scored.filter((s) => s.is_open_job_posting).length;
+    await finishRun(run.id, usage, { found, added });
+    return { found, added };
   } catch (e) {
     await finishRun(run.id, usage, { error: e instanceof Error ? e.message : String(e) });
     throw e;
   }
 }
 
-/** Manual add: fetch one posting by URL, score it, add it. */
+/** Manual add: read one posting by URL, score it, add it. */
 export async function addByUrl(userId: string, url: string) {
   await assertBudget(userId);
   const run = await startRun(userId, "url");
   const usage = emptyUsage();
   try {
     const ctx = await loadContext(userId);
-    const read = await runWithTools(
-      {
-        model: env.model,
-        max_tokens: 8000,
-        ...FALLBACK,
-        output_config: { effort: "low" },
-        tools: [{ type: "web_fetch_20260209", name: "web_fetch", max_uses: 3, max_content_tokens: 15000 }],
-        messages: [
-          {
-            role: "user",
-            content: `Fetch this job posting and report company, title, location, work mode, posted pay range (base, exactly as stated), posting date and a short summary. If the page is not a job posting or will not load, say so.\n\n${url}`,
-          },
-        ],
-      },
-      usage,
-    );
-    const finds = await score(ctx, `URL: ${url}\n${textOf(read.content)}`, usage);
-    const one = finds.slice(0, 1).map((f) => ({ ...f, url, dealbreaker: false }));
+    let page: Page;
+    try {
+      const { url: finalUrl, html } = await fetchPage(url);
+      page = { url: finalUrl, text: pageToText(html, 12000) };
+    } catch (e) {
+      throw new Error(e instanceof FetchError ? e.message : "Couldn't load that page");
+    }
+    const scored = await scorePages(ctx, [page], usage);
+    const one = scored.slice(0, 1).map((s) => ({ ...s, url, is_open_job_posting: s.is_open_job_posting || !!s.title }));
     const added = await save(ctx, one, "manual");
-    await finishRun(run.id, usage, { found: one.length, added });
+    await finishRun(run.id, usage, { found: one.length, added, error: one.length ? null : "That page didn't look like a job posting" });
     return { added };
   } catch (e) {
     await finishRun(run.id, usage, { error: e instanceof Error ? e.message : String(e) });
