@@ -20,6 +20,8 @@ COPY --from=build --chown=app:app /app/.next/static ./.next/static
 COPY --from=build --chown=app:app /app/public ./public
 COPY --from=build --chown=app:app /app/drizzle ./drizzle
 COPY --from=build --chown=app:app /app/scripts/login-link.mjs ./scripts/login-link.mjs
+# The standalone trace does not keep postgres as a plain package; give the CLI its own copy (it has no deps).
+COPY --from=deps --chown=app:app /app/node_modules/postgres ./scripts/node_modules/postgres
 USER app
 EXPOSE 3000
 HEALTHCHECK --interval=30s --timeout=5s --retries=3 CMD wget -qO- http://127.0.0.1:3000/api/health || exit 1
