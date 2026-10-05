@@ -40,6 +40,7 @@ type JsonReq<T extends z.ZodType> = {
 /** One structured call to whichever model is configured. Validates with zod and retries once on bad JSON. */
 export async function completeJSON<T extends z.ZodType>(req: JsonReq<T>): Promise<z.infer<T>> {
   const cfg = req.cfg ?? (await getAiConfig());
+  if (cfg.provider === "agent") throw new AiConfigError("Searches run through the external agent, not a model API.");
   if (!cfg.model) throw new AiConfigError("No AI model is set. An admin can set one under Admin > AI settings.");
   if (!cfg.apiKey && !/localhost|127\.0\.0\.1|host\.docker\.internal|ollama/.test(cfg.baseUrl) && cfg.provider === "openai")
     throw new AiConfigError("No AI API key is set. An admin can add one under Admin > AI settings.");

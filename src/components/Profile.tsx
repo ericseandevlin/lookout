@@ -41,7 +41,7 @@ export function Profile() {
   };
 
   return (
-    <div className="page-pad" style={{ display: "flex", flexWrap: "wrap", gap: 24, alignItems: "flex-start" }}>
+    <div className="page-pad lk-page" style={{ display: "flex", flexWrap: "wrap", gap: 24, alignItems: "flex-start" }}>
       <div style={{ flex: "1 1 520px", minWidth: 0, display: "flex", flexDirection: "column", gap: 16 }}>
         <PageHead
           eyebrow="Search profile"

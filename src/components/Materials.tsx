@@ -5,13 +5,28 @@ import { cleanUrl, hrefOf, LINK_KINDS, LINK_TILE, linkKind } from "@/lib/links";
 import { ChevronDown, PencilIcon, TrashIcon } from "./icons";
 import { PageHead } from "./Profile";
 import { useStore } from "./store";
+import { useConfirm } from "./Confirm";
 
 const SectionLabel = ({ children }: { children: React.ReactNode }) => (
   <div style={{ fontSize: 11.5, fontWeight: 600, letterSpacing: ".08em", textTransform: "uppercase", color: "#8A8175" }}>{children}</div>
 );
 
+const FIELD_NAMES: Record<string, string> = { q1: "next role", area: "where you work", modes: "work modes", q4: "lead win" };
+
+/** Accept a handle or any pasted LinkedIn profile URL. */
+const linkedinHandle = (v: string) =>
+  v.trim().replace(/^(https?:\/\/)?([a-z]{2,3}\.)?(www\.)?linkedin\.com\/in\//i, "").replace(/[/?#].*$/, "");
+
+function statusLine(note: string) {
+  if (!note) return "Saved";
+  const n = note.replace(/^saved,?\s*/i, "");
+  if (/^filled /i.test(n)) return `Saved · Filled ${n.slice(7)} on your profile`;
+  return `Saved · ${n.charAt(0).toUpperCase()}${n.slice(1)}`;
+}
+
 export function Materials() {
   const { state, materials: m } = useStore();
+  const ask = useConfirm();
   const { resume, linkedin, links } = state.materials;
   const rs = resume?.status;
   const [draft, setDraft] = useState("");
@@ -40,15 +55,20 @@ export function Materials() {
   const uploaded = resume ? new Date(resume.uploadedAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }) : "";
 
   return (
-    <div className="page-pad" style={{ display: "flex", flexDirection: "column", gap: 16, maxWidth: 640 }}>
+    <div className="page-pad lk-page" style={{ display: "flex", flexDirection: "column", gap: 16, maxWidth: 640 }}>
       <PageHead
         eyebrow="Materials"
         title="Resume, LinkedIn and links"
-        intro="Lookout scans these to fill in your search profile and to write in your voice when it drafts applications. Changes save automatically."
+        intro="Lookout reads these to understand your background, so it can fill in your search profile and judge which roles fit. Changes save automatically."
       />
       <div style={{ display: "flex", flexDirection: "column", gap: 26, paddingTop: 8 }}>
         <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
           <SectionLabel>Resume</SectionLabel>
+          <p style={{ margin: "0 0 4px", fontSize: 13, lineHeight: 1.5, color: "#6B6358", textWrap: "pretty" }}>
+            Lookout keeps the text of your resume with your account and uses it two ways. It fills any profile answers you left empty (next role,
+            where you work, work modes, your lead win); those get a &ldquo;Filled from resume&rdquo; tag and are yours to edit. And every search
+            reads it to judge fit. It never overwrites an answer you wrote. Deleting the resume removes the file and its text.
+          </p>
           <label className="h-border" style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 4, padding: rs ? "14px" : "22px 14px", border: "1.5px dashed #D0C7BA", background: "#fff", borderRadius: 12, cursor: "pointer", textAlign: "center" }}>
             <input type="file" accept=".pdf,.docx,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document" onChange={onFile} style={{ position: "absolute", width: 1, height: 1, opacity: 0 }} />
             <span style={{ fontSize: 14, fontWeight: 600 }}>{rs ? "Upload a new resume" : "Upload resume"}</span>
@@ -76,7 +96,7 @@ export function Materials() {
               <div style={{ minWidth: 0, flex: 1, display: "flex", flexDirection: "column", gap: 3 }}>
                 <a href="/api/materials/resume" target="_blank" rel="noopener" className="h-link" style={{ fontSize: 14.5, fontWeight: 600, color: "#1D1A0F", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", textDecoration: "none" }}>{resume.name}</a>
                 <div style={{ fontSize: 12.5, color: "#6B6358" }}>Uploaded {uploaded}</div>
-                <div style={{ fontSize: 12.5, color: "#99220F" }}>{rs === "failed" ? `Couldn't scan · ${resume.filled || "try another file"}` : `Scanned · ${resume.filled}`}</div>
+                <div style={{ fontSize: 12.5, color: "#99220F" }}>{rs === "failed" ? `Couldn't read this file · ${resume.filled || "try a PDF or DOCX"}` : statusLine(resume.filled)}</div>
               </div>
               <div style={{ display: "flex", gap: 6, flex: "none" }}>
                 <a href="/api/materials/resume" target="_blank" rel="noopener" className="h-ink-border" style={{ height: 32, padding: "0 12px", borderRadius: 8, border: "1.5px solid #E6E0D8", background: "#fff", fontSize: 12.5, fontWeight: 600, color: "#1D1A0F", display: "flex", alignItems: "center", textDecoration: "none" }}>View</a>
@@ -84,7 +104,19 @@ export function Materials() {
                   data-tip="Delete resume"
                   aria-label="Delete resume"
                   className="h-border"
-                  onClick={() => confirm(`Delete ${resume.name}? Answers already filled from it will stay.`) && m.deleteResume()}
+                  onClick={async () => {
+                    const filled = Object.entries(state.profile.auto).filter(([, src]) => src === "resume").map(([k]) => FIELD_NAMES[k] ?? k);
+                    const ok = await ask({
+                      eyebrow: "Delete resume",
+                      title: `Delete ${resume.name}?`,
+                      body: filled.length
+                        ? `The file and its text are removed. The answers it filled (${filled.join(", ")}) stay on your profile; edit them anytime.`
+                        : "The file and its text are removed from your account. Searches will rely on your profile answers until you upload another.",
+                      confirmLabel: "Delete",
+                      danger: true,
+                    });
+                    if (ok) m.deleteResume();
+                  }}
                   style={{ width: 32, height: 32, borderRadius: 8, border: "1.5px solid #E6E0D8", background: "#fff", color: "#8A8175", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", padding: 0 }}
                 >
                   <TrashIcon />
@@ -98,9 +130,9 @@ export function Materials() {
           <SectionLabel>LinkedIn</SectionLabel>
           <div style={{ display: "flex", alignItems: "center", height: 42, borderRadius: 10, background: "#fff", border: "1.5px solid #E6E0D8", padding: "0 6px 0 12px", gap: 4 }}>
             <span style={{ fontSize: 13.5, color: "#8A8175" }}>linkedin.com/in/</span>
-            <input value={linkedin.handle} onChange={(e) => m.setLinkedin(e.target.value)} placeholder="your-name" aria-label="LinkedIn handle" maxLength={100} style={{ flex: 1, minWidth: 0, background: "transparent", border: 0, outline: "none", color: "#1D1A0F", fontSize: 13.5 }} />
-            <button onClick={() => m.scanLinkedin()} style={{ height: 30, padding: "0 12px", borderRadius: 8, border: 0, background: linkedin.linked ? "#FDE7D3" : "#F8A865", color: linkedin.linked ? "#7A3A10" : "#1D1A0F", fontSize: 12.5, fontWeight: 600, cursor: "pointer" }}>
-              {linkedin.linked ? "Linked" : "Scan"}
+            <input value={linkedin.handle} onChange={(e) => m.setLinkedin(linkedinHandle(e.target.value))} placeholder="your-name or paste the full URL" aria-label="LinkedIn profile" maxLength={200} style={{ flex: 1, minWidth: 0, background: "transparent", border: 0, outline: "none", color: "#1D1A0F", fontSize: 13.5 }} />
+            <button onClick={() => m.scanLinkedin()} disabled={!linkedin.handle.trim()} style={{ height: 30, padding: "0 12px", borderRadius: 8, border: 0, background: linkedin.linked ? "#FDE7D3" : "#F8A865", color: linkedin.linked ? "#7A3A10" : "#1D1A0F", fontSize: 12.5, fontWeight: 600, cursor: linkedin.handle.trim() ? "pointer" : "default" }}>
+              {linkedin.linked ? "Saved" : "Save"}
             </button>
           </div>
         </div>

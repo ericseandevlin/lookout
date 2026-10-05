@@ -160,6 +160,8 @@ export const userOpportunities = pgTable(
   (t) => [primaryKey({ columns: [t.userId, t.opportunityId] })],
 );
 
+export type RunProgress = { pct: number; step: string; log: { at: string; text: string }[] };
+
 export const runs = pgTable(
   "runs",
   {
@@ -168,7 +170,11 @@ export const runs = pgTable(
       .notNull()
       .references(() => users.id, { onDelete: "cascade" }),
     trigger: text("trigger").$type<"scheduled" | "manual" | "url" | "resume">().notNull(),
-    status: text("status").$type<"running" | "done" | "failed">().notNull().default("running"),
+    status: text("status").$type<"queued" | "running" | "done" | "failed">().notNull().default("running"),
+    /** Live progress for the UI: percent, current step, and a short log of steps */
+    progress: jsonb("progress").$type<RunProgress>().notNull().default({ pct: 0, step: "", log: [] }),
+    /** Input for runs handled by an external agent, e.g. the URL for a manual add */
+    request: jsonb("request").$type<Record<string, unknown>>(),
     startedAt: timestamp("started_at", { withTimezone: true }).notNull().defaultNow(),
     finishedAt: timestamp("finished_at", { withTimezone: true }),
     found: integer("found").notNull().default(0),

@@ -6,6 +6,7 @@ import { useCallback, useEffect, useState } from "react";
 import { PageHead } from "./Profile";
 import { btn, Row, Section, Seg } from "./Settings";
 import { api } from "./store";
+import { useConfirm } from "./Confirm";
 
 type Overview = {
   totals: { users: number; usdDay: number; usdWeek: number; usdMonth: number };
@@ -22,7 +23,8 @@ type Overview = {
 };
 
 type Config = {
-  ai: { provider: "openai" | "anthropic"; baseUrl: string; model: string; apiKey: string; apiKeyHint: string; priceIn: number; priceOut: number; jsonMode: "schema" | "object" };
+  agent: { tokenSet: boolean; lastSeen: string | null };
+  ai: { provider: "openai" | "anthropic" | "agent"; baseUrl: string; model: string; apiKey: string; apiKeyHint: string; priceIn: number; priceOut: number; jsonMode: "schema" | "object" };
   search: { provider: "searxng" | "brave" | "none"; searxngUrl: string; braveKey: string; braveKeyHint: string; pricePerQuery: number };
   access: { signupMode: "open" | "invite"; dailyBudgetUsd: number; userDailyBudgetUsd: number };
 };
@@ -60,6 +62,7 @@ function Msg({ text, ok }: { text: string | null; ok?: boolean }) {
 // --- People ---------------------------------------------------------------------
 
 export function AdminPeople() {
+  const ask = useConfirm();
   const [data, setData] = useState<Overview | null>(null);
   const [cfg, setCfg] = useState<Config | null>(null);
   const [err, setErr] = useState<string | null>(null);
@@ -86,7 +89,7 @@ export function AdminPeople() {
     }
   };
   const revoke = async (email: string) => {
-    if (!confirm(`Revoke the invite for ${email}? Unused sign-in links stop working.`)) return;
+    if (!(await ask({ eyebrow: "Revoke invite", title: `Revoke ${email}?`, body: "Their unused sign-in links stop working. If they already have an account, it stays.", confirmLabel: "Revoke", danger: true }))) return;
     await api(`/api/admin/invites/${encodeURIComponent(email)}`, { method: "DELETE" }).catch(() => {});
     await load();
   };
@@ -97,7 +100,7 @@ export function AdminPeople() {
   };
 
   return (
-    <div className="page-pad settings" style={{ display: "flex", flexDirection: "column", maxWidth: 1100, gap: 4 }}>
+    <div className="page-pad settings lk-page" style={{ display: "flex", flexDirection: "column", maxWidth: 1100, gap: 4 }}>
       <PageHead eyebrow="Admin" title="People and activity" intro="Who's using Lookout, what it costs, and who gets in.">
         <Tabs />
       </PageHead>
@@ -164,7 +167,7 @@ export function AdminPeople() {
                     </td>
                     <td style={{ ...td, whiteSpace: "nowrap", textAlign: "right" }}>
                       <button onClick={() => patchUser(u.id, { isAdmin: !u.isAdmin })} style={{ ...btn("outline"), height: 30, padding: "0 10px", fontSize: 12.5, marginRight: 6 }}>{u.isAdmin ? "Remove admin" : "Make admin"}</button>
-                      <button onClick={() => (u.disabled || confirm(`Disable ${u.email}? They're signed out and can't sign back in.`)) && patchUser(u.id, { disabled: !u.disabled })} className="h-danger" style={{ ...btn("danger"), height: 30, padding: "0 10px", fontSize: 12.5 }}>{u.disabled ? "Enable" : "Disable"}</button>
+                      <button onClick={async () => (u.disabled || (await ask({ eyebrow: "Disable account", title: `Disable ${u.email}?`, body: "They're signed out everywhere and can't sign back in until you enable them. Their board and data stay.", confirmLabel: "Disable", danger: true }))) && patchUser(u.id, { disabled: !u.disabled })} className="h-danger" style={{ ...btn("danger"), height: 30, padding: "0 10px", fontSize: 12.5 }}>{u.disabled ? "Enable" : "Disable"}</button>
                     </td>
                   </tr>
                 ))}
@@ -287,7 +290,7 @@ export function AdminAi() {
   useEffect(() => {
     api<Config>("/api/admin/settings").then(setCfg).catch((e) => setAiMsg({ text: e.message, ok: false }));
   }, []);
-  if (!cfg) return <div className="page-pad"><PageHead eyebrow="Admin" title="AI settings"><Tabs /></PageHead>{aiMsg && <Msg text={aiMsg.text} />}</div>;
+  if (!cfg) return <div className="page-pad lk-page"><PageHead eyebrow="Admin" title="AI settings"><Tabs /></PageHead>{aiMsg && <Msg text={aiMsg.text} />}</div>;
 
   const ai = cfg.ai, search = cfg.search;
   const setAi = (p: Partial<Config["ai"]>) => setCfg({ ...cfg, ai: { ...ai, ...p } });
@@ -327,15 +330,23 @@ export function AdminAi() {
   };
 
   return (
-    <div className="page-pad settings" style={{ display: "flex", flexDirection: "column", maxWidth: 820 }}>
+    <div className="page-pad settings lk-page" style={{ display: "flex", flexDirection: "column", maxWidth: 820 }}>
       <PageHead eyebrow="Admin" title="AI settings" intro="The model that writes queries, reads postings and scores them, and the search engine it uses. Keys are stored encrypted and never shown again.">
         <Tabs />
       </PageHead>
 
       <Section>Model</Section>
       <Row title="Provider" help="Any OpenAI-compatible API works: OpenRouter, DeepInfra, Together, Groq, or your own Ollama or vLLM server.">
-        <Seg opts={[["OpenAI-compatible", "openai"], ["Anthropic", "anthropic"]]} cur={ai.provider} pick={(v) => setAi({ provider: v as Config["ai"]["provider"] })} />
+        <Seg opts={[["OpenAI-compatible", "openai"], ["Anthropic", "anthropic"], ["Claude agent", "agent"]]} cur={ai.provider} pick={(v) => setAi({ provider: v as Config["ai"]["provider"] })} />
       </Row>
+      {ai.provider === "agent" && (
+        <Row title="Claude agent" help="Searches, link adds and resume reads are queued here. A poller on your Mac checks the queue every 2 minutes and has Claude Code do the work on your Claude plan, then sends results back. Nothing runs while your Mac is asleep.">
+          <div style={{ display: "flex", flexDirection: "column", gap: 6, fontSize: 13.5 }}>
+            <span style={{ fontWeight: 600, color: cfg.agent.tokenSet ? "#35662A" : "#99220F" }}>{cfg.agent.tokenSet ? "Agent token is set on the server" : "No AGENT_TOKEN on the server yet"}</span>
+            <span style={{ color: "#6B6358" }}>{cfg.agent.lastSeen ? `Agent last checked in ${when(cfg.agent.lastSeen)}` : "The agent hasn't checked in yet"}</span>
+          </div>
+        </Row>
+      )}
       {ai.provider === "openai" && (
         <Row title="API address" help="The base URL, ending before /chat/completions.">
           <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
@@ -348,6 +359,8 @@ export function AdminAi() {
           </div>
         </Row>
       )}
+      {ai.provider !== "agent" && (
+        <>
       <Row title="Model" help={ai.provider === "openai" ? "The model ID exactly as your provider writes it, e.g. a Qwen, DeepSeek or Llama model." : "e.g. claude-sonnet-5-5"}>
         <input value={ai.model} onChange={(e) => setAi({ model: e.target.value })} placeholder="provider/model-name" aria-label="Model" className="f-brick" style={input} />
       </Row>
@@ -365,10 +378,12 @@ export function AdminAi() {
           <Seg opts={[["Strict schema", "schema"], ["Plain JSON", "object"]]} cur={ai.jsonMode} pick={(v) => setAi({ jsonMode: v as Config["ai"]["jsonMode"] })} />
         </Row>
       )}
+        </>
+      )}
       <Row title="" help="">
         <div style={{ display: "flex", flexDirection: "column", gap: 8, alignItems: "flex-start" }}>
           <div style={{ display: "flex", gap: 8 }}>
-            <button onClick={() => test("ai")} style={btn("outline")}>Test</button>
+            {ai.provider !== "agent" && <button onClick={() => test("ai")} style={btn("outline")}>Test</button>}
             <button onClick={() => save("ai")} style={btn("solid")}>Save model</button>
           </div>
           {aiMsg && <Msg text={aiMsg.text} ok={aiMsg.ok} />}

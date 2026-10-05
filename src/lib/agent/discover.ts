@@ -1,12 +1,13 @@
 import "server-only";
-import { and, eq } from "drizzle-orm";
+import { and, eq, inArray } from "drizzle-orm";
 import { z } from "zod";
 import { db, schema } from "@/lib/db";
 import { kinds, parseMoney } from "@/lib/kinds";
 import { fetchPage, FetchError, pageToText } from "@/lib/ai/fetchPage";
 import { completeJSON, emptyUsage, type Usage } from "@/lib/ai/llm";
-import { assertBudget, finishRun, startRun } from "@/lib/ai/runs";
+import { assertBudget, finishRun, progress, startRun } from "@/lib/ai/runs";
 import { webSearch, type SearchHit } from "@/lib/ai/search";
+import { getAiConfig } from "@/lib/config";
 import { applyRules, fingerprint, normUrl } from "./rules";
 
 /**
@@ -31,7 +32,7 @@ type Context = {
   knownUrls: string[];
 };
 
-async function loadContext(userId: string): Promise<Context> {
+export async function loadContext(userId: string): Promise<Context> {
   const [p] = await db.select().from(schema.profiles).where(eq(schema.profiles.userId, userId));
   const mats = await db.select().from(schema.materials).where(eq(schema.materials.userId, userId));
   const resume = mats.find((m) => m.kind === "resume");
@@ -87,11 +88,17 @@ Use the candidate's target titles, close variants, and their city. Keep each und
 
 const AGGREGATOR = /(indeed|linkedin|glassdoor|ziprecruiter|simplyhired|monster|careerbuilder)\.com\/(jobs|q-|m\/jobs)|\/search\?|\/jobs\/?$/i;
 
-async function gatherHits(ctx: Context, queries: string[], usage: Usage) {
+type Report = (pct: number, step: string) => Promise<void>;
+
+async function gatherHits(ctx: Context, queries: string[], usage: Usage, report: Report) {
   const known = new Set(ctx.knownUrls.map(normUrl));
   const seen = new Set<string>();
   const hits: SearchHit[] = [];
-  const results = await Promise.allSettled(queries.map((q) => webSearch(q, usage)));
+  const results: PromiseSettledResult<SearchHit[]>[] = [];
+  for (const [i, q] of queries.entries()) {
+    await report(10 + (25 * i) / queries.length, `Searching “${q}”`);
+    results.push(await webSearch(q, usage).then((value) => ({ status: "fulfilled" as const, value }), (reason) => ({ status: "rejected" as const, reason })));
+  }
   for (const r of results) {
     if (r.status !== "fulfilled") continue;
     for (const h of r.value) {
@@ -128,11 +135,22 @@ async function pickHits(ctx: Context, hits: SearchHit[], usage: Usage) {
 
 type Page = { url: string; text: string };
 
-async function fetchAll(urls: string[]): Promise<Page[]> {
+const host = (u: string) => {
+  try {
+    return new URL(u).hostname.replace(/^www\./, "");
+  } catch {
+    return u;
+  }
+};
+
+async function fetchAll(urls: string[], report?: Report): Promise<Page[]> {
   const out: Page[] = [];
   const queue = [...urls];
+  let done = 0;
   const worker = async () => {
     for (let u = queue.shift(); u; u = queue.shift()) {
+      await report?.(40 + (35 * done) / urls.length, `Reading ${host(u)}`);
+      done++;
       try {
         const { url, html } = await fetchPage(u);
         const text = pageToText(html, 7000);
@@ -165,17 +183,20 @@ const Scored = z.object({
   location_fit: z.boolean().describe("True if location and work mode fit the stated preferences (or none were given)"),
   dealbreaker: z.boolean().describe("True only if it clearly hits something the candidate ruled out"),
 });
-const ScoredList = z.object({ finds: z.array(Scored) });
-type ScoredT = z.infer<typeof Scored> & { url: string };
+export const ScoredList = z.object({ finds: z.array(Scored) });
+export type ScoredT = z.infer<typeof Scored> & { url: string };
 
 const SCORER_SYSTEM = `You score job postings for one candidate. Today is ${today()}.
 Only use facts on the page. Never invent pay or dates; use null when the page doesn't state them. Annualize hourly pay only if it is clearly full time.
 Reasons are read on a phone: short, concrete, no filler.`;
 
-async function scorePages(ctx: Context, pages: Page[], usage: Usage): Promise<ScoredT[]> {
+async function scorePages(ctx: Context, pages: Page[], usage: Usage, report?: Report): Promise<ScoredT[]> {
   const out: ScoredT[] = [];
+  const batches = Math.ceil(pages.length / BATCH);
   for (let i = 0; i < pages.length; i += BATCH) {
     const batch = pages.slice(i, i + BATCH);
+    const n = i / BATCH + 1;
+    await report?.(75 + (20 * (n - 1)) / Math.max(1, batches), `Scoring ${batch.length === 1 ? "the posting" : `postings ${i + 1} to ${i + batch.length}`} against your profile`);
     const body = batch.map((p, j) => `[${j}] URL: ${p.url}\n${p.text}`).join("\n\n=====\n\n");
     try {
       const res = await completeJSON({
@@ -199,7 +220,7 @@ async function scorePages(ctx: Context, pages: Page[], usage: Usage): Promise<Sc
 
 // --- save ----------------------------------------------------------------------
 
-async function save(ctx: Context, finds: ScoredT[], via: "agent" | "manual") {
+export async function save(ctx: Context, finds: ScoredT[], via: "agent" | "manual") {
   const known = new Set(ctx.knownUrls.map(normUrl));
   let added = 0;
   for (const f of finds) {
@@ -261,18 +282,30 @@ async function save(ctx: Context, finds: ScoredT[], via: "agent" | "manual") {
 
 /** Scheduled (or "Search now") discovery for one user. */
 export async function discover(userId: string, trigger: "scheduled" | "manual" = "scheduled") {
+  if ((await getAiConfig()).provider === "agent") {
+    const run = await startRun(userId, trigger, { status: "queued", request: { type: "discover" } });
+    await progress(run.id, 0, "Queued. Waiting for the search agent to pick this up");
+    return { found: 0, added: 0, queued: true };
+  }
   await assertBudget(userId);
   const run = await startRun(userId, trigger);
   const usage = emptyUsage();
   try {
+    const report: Report = (pct, step) => progress(run.id, pct, step);
+    await report(3, "Reading your profile and resume");
     const ctx = await loadContext(userId);
+    await report(6, "Planning searches");
     const queries = await makeQueries(ctx, usage);
-    const hits = await gatherHits(ctx, queries, usage);
+    const hits = await gatherHits(ctx, queries, usage, report);
+    await report(37, `Found ${hits.length} new results. Picking the most promising`);
     const picks = await pickHits(ctx, hits, usage);
-    const pages = await fetchAll(picks.map((h) => h.url));
-    const scored = await scorePages(ctx, pages, usage);
+    const pages = await fetchAll(picks.map((h) => h.url), report);
+    await report(75, `Read ${pages.length} postings`);
+    const scored = await scorePages(ctx, pages, usage, report);
+    await report(97, "Saving new finds");
     const added = await save(ctx, scored, "agent");
     const found = scored.filter((s) => s.is_open_job_posting).length;
+    await progress(run.id, 100, added ? `Added ${added} new ${added === 1 ? "find" : "finds"}` : found ? "No new finds this time. Everything matching is already on your board" : "No matching open roles this time");
     await finishRun(run.id, usage, { found, added });
     return { found, added };
   } catch (e) {
@@ -283,10 +316,16 @@ export async function discover(userId: string, trigger: "scheduled" | "manual" =
 
 /** Manual add: read one posting by URL, score it, add it. */
 export async function addByUrl(userId: string, url: string) {
+  if ((await getAiConfig()).provider === "agent") {
+    const run = await startRun(userId, "url", { status: "queued", request: { type: "url", url } });
+    await progress(run.id, 0, "Queued. Waiting for the search agent to read the posting");
+    return { added: 0, queued: true };
+  }
   await assertBudget(userId);
   const run = await startRun(userId, "url");
   const usage = emptyUsage();
   try {
+    await progress(run.id, 10, `Opening ${host(url)}`);
     const ctx = await loadContext(userId);
     let page: Page;
     try {
@@ -295,9 +334,11 @@ export async function addByUrl(userId: string, url: string) {
     } catch (e) {
       throw new Error(e instanceof FetchError ? e.message : "Couldn't load that page");
     }
+    await progress(run.id, 45, "Reading the posting and scoring it against your profile");
     const scored = await scorePages(ctx, [page], usage);
     const one = scored.slice(0, 1).map((s) => ({ ...s, url, is_open_job_posting: s.is_open_job_posting || !!s.title }));
     const added = await save(ctx, one, "manual");
+    if (one.length) await progress(run.id, 100, added ? `Added ${one[0].title} at ${one[0].company}` : "That posting is already on your board");
     await finishRun(run.id, usage, { found: one.length, added, error: one.length ? null : "That page didn't look like a job posting" });
     return { added };
   } catch (e) {
@@ -310,7 +351,7 @@ export async function isRunning(userId: string) {
   const r = await db
     .select({ id: schema.runs.id })
     .from(schema.runs)
-    .where(and(eq(schema.runs.userId, userId), eq(schema.runs.status, "running")))
+    .where(and(eq(schema.runs.userId, userId), inArray(schema.runs.status, ["queued", "running"])))
     .limit(1);
   return r.length > 0;
 }

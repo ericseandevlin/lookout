@@ -4,7 +4,8 @@ import { z } from "zod";
 import { db, schema } from "@/lib/db";
 import { readUserFile } from "@/lib/files";
 import { completeJSON, emptyUsage } from "@/lib/ai/llm";
-import { assertBudget, finishRun, startRun } from "@/lib/ai/runs";
+import { assertBudget, finishRun, progress, startRun } from "@/lib/ai/runs";
+import { getAiConfig } from "@/lib/config";
 
 const MAX_RESUME_CHARS = 60_000;
 
@@ -22,7 +23,7 @@ export async function extractResumeText(buf: Buffer, mime: string) {
   return value;
 }
 
-const Fills = z.object({
+export const Fills = z.object({
   summary: z.string().describe("Three to five sentences on who this person is professionally, in plain words."),
   next_role: z
     .string()
@@ -52,6 +53,16 @@ export async function scanResume(userId: string, materialId: string) {
     // Keep the text even if the AI step fails: discovery still reads it, and setup can finish.
     await db.update(schema.materials).set({ extracted: { text } }).where(eq(schema.materials.id, materialId));
     hasText = true;
+    if ((await getAiConfig()).provider === "agent") {
+      // The external agent fills answers when it picks up the job.
+      const run = await startRun(userId, "resume", { status: "queued", request: { type: "resume", materialId } });
+      await progress(run.id, 0, "Waiting for the search agent to read your resume");
+      await db
+        .update(schema.materials)
+        .set({ status: "done", scannedAt: new Date(), filledNote: "saved, auto-fill is queued" })
+        .where(eq(schema.materials.id, materialId));
+      return;
+    }
     await assertBudget(userId);
     runId = (await startRun(userId, "resume")).id;
 
@@ -64,25 +75,7 @@ export async function scanResume(userId: string, materialId: string) {
         "You read resumes and pull out facts for a job-search profile. Only use what the resume says or clearly implies. Leave a field empty rather than guess.",
       user: `<resume>\n${text}\n</resume>`,
     });
-
-    const n = await applyFills(userId, {
-      q1: f.next_role,
-      area: f.area,
-      modes: f.modes,
-      q4: f.lead_win,
-    });
-    if (f.linkedin) await fillLinkedin(userId, f.linkedin);
-    await addMissingLinks(userId, f.links);
-
-    await db
-      .update(schema.materials)
-      .set({
-        status: "done",
-        scannedAt: new Date(),
-        extracted: { text, summary: f.summary },
-        filledNote: n ? `filled ${n} ${n === 1 ? "field" : "fields"}` : "nothing new to fill",
-      })
-      .where(eq(schema.materials.id, materialId));
+    await applyResumeResult(userId, materialId, f);
     await finishRun(runId, usage, {});
   } catch (e) {
     console.error("scanResume", e);
@@ -91,31 +84,51 @@ export async function scanResume(userId: string, materialId: string) {
       .set(
         !hasText
           ? { status: "failed", filledNote: e instanceof NoTextError ? e.message : "couldn't read this file" }
-          : { status: "done", scannedAt: new Date(), filledNote: "saved, couldn't auto-fill answers" },
+          : { status: "done", scannedAt: new Date(), filledNote: "saved, but auto-fill didn't run (the AI isn't set up)" },
       )
       .where(eq(schema.materials.id, materialId));
     if (runId) await finishRun(runId, usage, { error: String(e) });
   }
 }
 
+const LABELS: Record<string, string> = { q1: "next role", area: "where you work", modes: "work modes", q4: "lead win" };
+
+/** Fill empty profile answers from a resume read, then record what was filled. Used by both the built-in model and the external agent. */
+export async function applyResumeResult(userId: string, materialId: string, f: z.infer<typeof Fills>) {
+  const filled = await applyFills(userId, { q1: f.next_role, area: f.area, modes: f.modes, q4: f.lead_win });
+  if (f.linkedin) await fillLinkedin(userId, f.linkedin);
+  await addMissingLinks(userId, f.links);
+  const [m] = await db.select().from(schema.materials).where(eq(schema.materials.id, materialId));
+  await db
+    .update(schema.materials)
+    .set({
+      status: "done",
+      scannedAt: new Date(),
+      extracted: { text: m?.extracted?.text, summary: f.summary },
+      filledNote: filled.length ? `filled ${filled.map((k) => LABELS[k] ?? k).join(", ")}` : "nothing new to fill, your answers were already set",
+    })
+    .where(eq(schema.materials.id, materialId));
+  return filled;
+}
+
 async function applyFills(userId: string, fills: Record<string, string | string[]>) {
   const [p] = await db.select().from(schema.profiles).where(eq(schema.profiles.userId, userId));
   const answers = { ...(p?.answers ?? {}) };
   const auto = { ...(p?.autofilled ?? {}) };
-  let n = 0;
+  const filled: string[] = [];
   for (const [k, v] of Object.entries(fills)) {
     const has = Array.isArray(answers[k]) ? (answers[k] as string[]).length > 0 : !!answers[k];
     const value = Array.isArray(v) ? v.length > 0 : !!v;
     if (has || !value) continue;
     answers[k] = v;
     auto[k] = "resume";
-    if (k !== "modes") n++;
+    filled.push(k);
   }
   await db
     .insert(schema.profiles)
     .values({ userId, answers, autofilled: auto })
     .onConflictDoUpdate({ target: schema.profiles.userId, set: { answers, autofilled: auto, updatedAt: new Date() } });
-  return n;
+  return filled;
 }
 
 async function fillLinkedin(userId: string, handle: string) {

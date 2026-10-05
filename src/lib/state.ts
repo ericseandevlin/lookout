@@ -1,9 +1,9 @@
 import "server-only";
-import { and, asc, desc, eq } from "drizzle-orm";
+import { and, asc, desc, eq, inArray } from "drizzle-orm";
 import { db, schema } from "@/lib/db";
 import type { SessionUser } from "@/lib/auth/session";
 import { isAdmin } from "@/lib/users";
-import type { AppState, Find, Resume } from "@/lib/types";
+import type { AppState, Find, Resume, RunInfo } from "@/lib/types";
 
 export function toFind(
   o: typeof schema.opportunities.$inferSelect,
@@ -70,14 +70,11 @@ export async function getState(user: SessionUser): Promise<AppState> {
   const [lastRun] = await db
     .select()
     .from(schema.runs)
-    .where(and(eq(schema.runs.userId, user.id), eq(schema.runs.status, "done")))
+    .where(and(eq(schema.runs.userId, user.id), eq(schema.runs.status, "done"), inArray(schema.runs.trigger, ["scheduled", "manual"])))
     .orderBy(desc(schema.runs.finishedAt))
     .limit(1);
-  const [running] = await db
-    .select({ id: schema.runs.id, trigger: schema.runs.trigger })
-    .from(schema.runs)
-    .where(and(eq(schema.runs.userId, user.id), eq(schema.runs.status, "running")))
-    .limit(1);
+  const run = await getLatestRun(user.id);
+  const running = run && (run.status === "running" || run.status === "queued") ? run : null;
   const s = settingsRow;
   return {
     user: { name: user.name, email: user.email, isAdmin: isAdmin(user) },
@@ -100,5 +97,30 @@ export async function getState(user: SessionUser): Promise<AppState> {
     finds: await getFinds(user.id),
     lastRunAt: lastRun?.finishedAt?.toISOString() ?? null,
     running: running ? running.trigger : null,
+    run,
+  };
+}
+
+/** Most recent search or link add (resume scans included), for the live progress panel. */
+export async function getLatestRun(userId: string): Promise<RunInfo | null> {
+  const [r] = await db
+    .select()
+    .from(schema.runs)
+    .where(eq(schema.runs.userId, userId))
+    .orderBy(desc(schema.runs.startedAt))
+    .limit(1);
+  if (!r) return null;
+  return {
+    id: r.id,
+    trigger: r.trigger,
+    status: r.status,
+    pct: r.progress?.pct ?? 0,
+    step: r.progress?.step ?? "",
+    log: r.progress?.log ?? [],
+    found: r.found,
+    added: r.added,
+    error: r.error,
+    startedAt: r.startedAt.toISOString(),
+    finishedAt: r.finishedAt?.toISOString() ?? null,
   };
 }

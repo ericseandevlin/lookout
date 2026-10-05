@@ -7,6 +7,7 @@ import type { Settings as S } from "@/lib/types";
 import { Switch } from "./Finds";
 import { PageHead } from "./Profile";
 import { api, useStore } from "./store";
+import { useConfirm } from "./Confirm";
 
 const ORDER = Object.keys(DAYS);
 
@@ -50,6 +51,7 @@ export const btn = (kind: "outline" | "danger" | "solid"): React.CSSProperties =
 
 export function Settings() {
   const { state, putSettings, setName, refresh, searchNow, fail } = useStore();
+  const ask = useConfirm();
   const st = state.settings;
   const [name, setNameDraft] = useState(state.user.name);
   const [delModal, setDelModal] = useState(false);
@@ -68,7 +70,7 @@ export function Settings() {
   };
 
   const resetBoard = async () => {
-    if (!confirm("Reset the board? Pins, archives, stages, notes and new-role dots will be cleared.")) return;
+    if (!(await ask({ eyebrow: "Reset board", title: "Reset your board?", body: "Pins, archives, stages, notes and new-role dots are cleared. Your finds, profile and materials stay.", confirmLabel: "Reset board", danger: true }))) return;
     await api("/api/board/reset", { method: "POST" }).catch(fail);
     await refresh().catch(() => {});
   };
@@ -80,14 +82,14 @@ export function Settings() {
     setSearchMsg(null);
     try {
       await searchNow();
-      setSearchMsg("Searching now. New finds will show up on your board.");
+      setSearchMsg("Started. Follow along on your board; it takes a few minutes.");
     } catch (e) {
       setSearchMsg(e instanceof Error ? e.message : "Couldn't start a search");
     }
   };
 
   return (
-    <div className="page-pad settings" style={{ display: "flex", flexDirection: "column", maxWidth: 820 }}>
+    <div className="page-pad settings lk-page" style={{ display: "flex", flexDirection: "column", maxWidth: 820 }}>
       <PageHead eyebrow="Settings" title="Account and preferences" intro="Changes save automatically." />
 
       <Section>Profile</Section>

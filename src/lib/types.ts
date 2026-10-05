@@ -46,4 +46,19 @@ export type AppState = {
   finds: Find[];
   lastRunAt: string | null;
   running: string | null;
+  run: RunInfo | null;
+};
+
+export type RunInfo = {
+  id: string;
+  trigger: string;
+  status: "queued" | "running" | "done" | "failed";
+  pct: number;
+  step: string;
+  log: { at: string; text: string }[];
+  found: number;
+  added: number;
+  error: string | null;
+  startedAt: string;
+  finishedAt: string | null;
 };

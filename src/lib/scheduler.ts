@@ -6,7 +6,7 @@ import { answeredCount, kinds } from "@/lib/kinds";
 import { BudgetError } from "@/lib/ai/runs";
 import { AiConfigError } from "@/lib/ai/llm";
 import { SearchConfigError } from "@/lib/ai/search";
-import { discover } from "@/lib/agent/discover";
+import { discover, isRunning } from "@/lib/agent/discover";
 import { sendDigest } from "@/lib/digest";
 import { getAiConfig } from "@/lib/config";
 
@@ -63,6 +63,7 @@ async function dueUsers() {
       .from(schema.runs)
       .where(and(eq(schema.runs.userId, user.id), eq(schema.runs.status, "failed"), gte(schema.runs.startedAt, new Date(Date.now() - 2 * 3600_000))));
     if (failing > 0) continue;
+    if (await isRunning(user.id)) continue;
     if (ever === 0) {
       due.push(user.id);
       continue;
@@ -84,12 +85,16 @@ async function tick() {
   if (!locked) return;
   try {
     const ai = await getAiConfig();
-    if (!ai.model) return; // Nothing to run with until an admin sets a model.
+    if (ai.provider !== "agent" && !ai.model) return; // Nothing to run with until an admin sets a model.
     // Runs orphaned by a restart never finish; close them out.
     await db
       .update(schema.runs)
       .set({ status: "failed", error: "Interrupted", finishedAt: new Date() })
       .where(and(eq(schema.runs.status, "running"), lt(schema.runs.startedAt, new Date(Date.now() - 45 * 60_000))));
+    await db
+      .update(schema.runs)
+      .set({ status: "failed", error: "The search agent never picked this up", finishedAt: new Date() })
+      .where(and(eq(schema.runs.status, "queued"), lt(schema.runs.startedAt, new Date(Date.now() - 24 * 3600_000))));
     for (const userId of await dueUsers()) {
       try {
         const { added } = await discover(userId, "scheduled");

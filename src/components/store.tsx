@@ -1,7 +1,7 @@
 "use client";
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
-import type { Answers, AppState, Find, Link, Settings } from "@/lib/types";
+import type { Answers, AppState, Find, Link, RunInfo, Settings } from "@/lib/types";
 
 export async function api<T = unknown>(path: string, init?: RequestInit & { json?: unknown }): Promise<T> {
   const { json, ...rest } = init ?? {};
@@ -47,13 +47,30 @@ function useStoreValue(initial: AppState) {
     setTimeout(() => setError(null), 4000);
   }, []);
 
-  // Poll while the server is working (search, link add, resume scan).
-  const busy = !!state.running || state.materials.resume?.status === "scanning";
+  // While a search runs, poll its progress quickly (cheap) and reload the board when it ends.
+  const runActive = !!state.running;
   useEffect(() => {
-    if (!busy) return;
-    const t = setInterval(() => refresh().catch(() => {}), 4000);
+    if (!runActive) return;
+    const t = setInterval(async () => {
+      try {
+        const { run } = await api<{ run: RunInfo | null }>("/api/runs/latest");
+        const active = run && (run.status === "running" || run.status === "queued");
+        if (active) setState((s) => ({ ...s, run }));
+        else await refresh();
+      } catch {
+        // keep polling
+      }
+    }, 1500);
     return () => clearInterval(t);
-  }, [busy, refresh]);
+  }, [runActive, refresh]);
+
+  // Resume scans: slower poll on the full state.
+  const scanning = state.materials.resume?.status === "scanning";
+  useEffect(() => {
+    if (!scanning) return;
+    const t = setInterval(() => refresh().catch(() => {}), 3000);
+    return () => clearInterval(t);
+  }, [scanning, refresh]);
 
   const patchFind = useCallback(
     (id: string, patch: Partial<Pick<Find, "pinned" | "archived" | "stage" | "notes">> & { seen?: true }) => {
@@ -174,17 +191,19 @@ function useStoreValue(initial: AppState) {
   );
   const liTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
 
-  const addFindByUrl = useCallback(
-    async (url: string) => {
-      await api("/api/finds", { method: "POST", json: { url } });
-      setState((s) => ({ ...s, running: "url" }));
-    },
-    [],
-  );
+  const startedRun = (trigger: string): RunInfo => ({
+    id: "pending", trigger, status: "running", pct: 1, step: trigger === "url" ? "Opening the link" : "Starting the search",
+    log: [], found: 0, added: 0, error: null, startedAt: new Date().toISOString(), finishedAt: null,
+  });
+
+  const addFindByUrl = useCallback(async (url: string) => {
+    await api("/api/finds", { method: "POST", json: { url } });
+    setState((s) => ({ ...s, running: "url", run: startedRun("url") }));
+  }, []);
 
   const searchNow = useCallback(async () => {
     await api("/api/runs", { method: "POST" });
-    setState((s) => ({ ...s, running: "manual" }));
+    setState((s) => ({ ...s, running: "manual", run: startedRun("manual") }));
   }, []);
 
   return {

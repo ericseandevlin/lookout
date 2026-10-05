@@ -20,8 +20,12 @@ export async function assertBudget(userId: string) {
   if (Number(mine.usd) >= cfg.userDailyBudgetUsd) throw new BudgetError("You've hit today's search limit. Try again tomorrow.");
 }
 
-export async function startRun(userId: string, trigger: (typeof schema.runs.$inferInsert)["trigger"]) {
-  const [run] = await db.insert(schema.runs).values({ userId, trigger }).returning();
+export async function startRun(
+  userId: string,
+  trigger: (typeof schema.runs.$inferInsert)["trigger"],
+  opts: { status?: "queued" | "running"; request?: Record<string, unknown> } = {},
+) {
+  const [run] = await db.insert(schema.runs).values({ userId, trigger, status: opts.status ?? "running", request: opts.request }).returning();
   return run;
 }
 
@@ -40,4 +44,26 @@ export async function finishRun(id: string, u: Usage, r: { found?: number; added
       costUsd: u.usd.toFixed(4),
     })
     .where(eq(schema.runs.id, id));
+}
+
+/**
+ * Report progress for the live search panel. Keeps the last 40 steps.
+ * `log: false` updates the percent and current step without adding a log line.
+ */
+export async function progress(runId: string, pct: number, step: string, opts: { log?: boolean } = {}) {
+  const entry = JSON.stringify([{ at: new Date().toISOString(), text: step }]);
+  const p = Math.max(0, Math.min(100, Math.round(pct)));
+  await db
+    .update(schema.runs)
+    .set({
+      progress:
+        opts.log === false
+          ? sql`jsonb_set(jsonb_set(${schema.runs.progress}, '{pct}', ${String(p)}::jsonb), '{step}', to_jsonb(${step}::text))`
+          : sql`jsonb_build_object('pct', ${p}::int, 'step', ${step}::text, 'log',
+              (select coalesce(jsonb_agg(e), '[]'::jsonb) from (
+                select e from jsonb_array_elements(coalesce(${schema.runs.progress}->'log', '[]'::jsonb) || ${entry}::jsonb) e
+                offset greatest(jsonb_array_length(coalesce(${schema.runs.progress}->'log', '[]'::jsonb)) + 1 - 40, 0)
+              ) t))`,
+    })
+    .where(eq(schema.runs.id, runId));
 }

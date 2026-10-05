@@ -8,6 +8,7 @@ import {
 import type { Find, Stage } from "@/lib/types";
 import { ArchiveIcon, ArrowUpRight, CheckIcon, ChevronDown, LinkIcon, PinIcon, PlusIcon, SearchIcon, SlidersIcon, XIcon } from "./icons";
 import { useCounts } from "./Shell";
+import { SearchPanel } from "./SearchPanel";
 import { useStore } from "./store";
 
 type SortKey = "score" | "company" | "role" | "comp" | "listed" | "stage" | "location";
@@ -146,6 +147,7 @@ export function Finds() {
       </div>
 
       <div className="board-body">
+        <SearchPanel ready={counts.answered === 5 && state.materials.resume?.status === "done"} />
         <SetupPanel answered={counts.answered} sources={counts.sources} />
 
         <section className="board-sec" style={{ background: "#fff", overflow: "hidden" }}>
@@ -242,9 +244,9 @@ export function Finds() {
                   <div
                     key={f.id}
                     role="row"
-                    className="h-row"
+                    className="h-row lk-in"
                     onClick={() => open(f.id)}
-                    style={{ display: "grid", gridTemplateColumns: GRID, alignItems: "center", padding: `${dense ? 9 : 16}px 22px`, borderBottom: "1px solid #F2EEE8", cursor: "pointer", background: f.pinned ? "#FFFBF6" : "#fff" }}
+                    style={{ animationDelay: `${Math.min(i, 14) * 28}ms`, display: "grid", gridTemplateColumns: GRID, alignItems: "center", padding: `${dense ? 9 : 16}px 22px`, borderBottom: "1px solid #F2EEE8", cursor: "pointer", background: f.pinned ? "#FFFBF6" : "#fff" }}
                   >
                     <div style={{ display: "flex", gap: 6, alignItems: "center", position: "relative" }}>
                       {isNew(f) && <span data-tip="New this week" style={{ position: "absolute", left: -15, top: "50%", marginTop: -4, width: 8, height: 8, borderRadius: "50%", background: "#427D33" }} />}
@@ -290,7 +292,7 @@ export function Finds() {
               const sc = scoreStyle(f.score);
               const menuUp = rows.length > 4 && i >= rows.length - 3;
               return (
-                <div key={f.id} onClick={() => open(f.id)} style={{ position: "relative", display: "flex", gap: 12, alignItems: "flex-start", padding: "12px 12px 12px 20px", borderBottom: "1px solid #F2EEE8", background: f.pinned ? "#FFFBF6" : "#fff", cursor: "pointer" }}>
+                <div key={f.id} className="lk-in" onClick={() => open(f.id)} style={{ animationDelay: `${Math.min(i, 14) * 28}ms`, position: "relative", display: "flex", gap: 12, alignItems: "flex-start", padding: "12px 12px 12px 20px", borderBottom: "1px solid #F2EEE8", background: f.pinned ? "#FFFBF6" : "#fff", cursor: "pointer" }}>
                   {isNew(f) && <span aria-label="New" style={{ position: "absolute", left: 7, top: 22, width: 8, height: 8, borderRadius: "50%", background: "#427D33" }} />}
                   <div style={{ width: 28, height: 28, borderRadius: "50%", background: sc.bg, color: sc.ink, border: `1.5px solid ${sc.border}`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 13, fontWeight: 700, flex: "none", marginTop: 1 }}>{f.score}</div>
                   <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: 3 }}>
@@ -426,7 +428,7 @@ function SetupPanel({ answered, sources }: { answered: number; sources: number }
     { n: 3, done: false, status: s3, title: "Lookout gets to work", body: "New matches land here each week with a green dot. Pin, archive and move them through stages as you go." },
   ];
   return (
-    <div className="setup board-sec" style={{ background: "#1D1A0F", color: "#fff", display: "flex", flexDirection: "column" }}>
+    <div className="setup board-sec lk-in" style={{ background: "#1D1A0F", color: "#fff", display: "flex", flexDirection: "column" }}>
       <div>
         <div style={{ fontSize: 12, fontWeight: 700, letterSpacing: ".14em", textTransform: "uppercase", color: "#F8A865" }}>Getting started</div>
         <div className="setup-title" style={{ fontWeight: 700, letterSpacing: "-0.01em", marginTop: 6, textWrap: "pretty" }}>Tell Lookout what you&apos;re looking for</div>

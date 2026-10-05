@@ -93,3 +93,19 @@ button:focus-visible, a:focus-visible, label:focus-within { outline: 2px solid v
   .hdr-tools { width: 100%; }
   .hdr-tools > .board-search { flex: 1; width: auto; }
 }
+
+/* Load-in: content settles into place once, quickly. Rows stagger via inline animation-delay. */
+@keyframes lk-in {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: none; }
+}
+.lk-in { animation: lk-in 0.38s cubic-bezier(0.2, 0.7, 0.2, 1) both; }
+.lk-page > * { animation: lk-in 0.32s cubic-bezier(0.2, 0.7, 0.2, 1) both; }
+.lk-page > *:nth-child(2) { animation-delay: 40ms; }
+.lk-page > *:nth-child(3) { animation-delay: 80ms; }
+.lk-page > *:nth-child(n + 4) { animation-delay: 120ms; }
+@media (prefers-reduced-motion: reduce) {
+  .lk-in, .lk-page > * { animation: none; }
+}
+/* Centered dialogs use transform for positioning; don't animate them with the page. */
+.lk-page > [role="dialog"] { animation: none; }

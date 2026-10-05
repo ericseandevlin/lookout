@@ -8,6 +8,7 @@ import type { AppState } from "@/lib/types";
 import { BoardIcon, FileIcon, ListIcon, PanelIcon, ShieldIcon } from "./icons";
 import { useStore } from "./store";
 import { TooltipLayer } from "./Tooltip";
+import { ConfirmProvider } from "./Confirm";
 
 export function useCounts(s: AppState) {
   const answered = answeredCount(job, s.profile.answers);
@@ -35,6 +36,7 @@ export function Shell({ children }: { children: React.ReactNode }) {
     href === "/profile" ? (answered < 5 ? `${answered}/5` : "") : href === "/materials" ? (sources < 3 ? `${sources}/3` : "") : "";
 
   return (
+    <ConfirmProvider>
     <div style={{ display: "flex", minHeight: "100vh" }}>
       <aside
         className="desk-only"
@@ -177,6 +179,7 @@ export function Shell({ children }: { children: React.ReactNode }) {
       )}
       <TooltipLayer />
     </div>
+    </ConfirmProvider>
   );
 }
 

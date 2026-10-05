@@ -8,8 +8,8 @@ const Input = z.object({
     .string()
     .trim()
     .max(100)
-    .transform((s) => s.replace(/^(https?:\/\/)?(www\.)?linkedin\.com\/in\//i, "").replace(/\/+$/, "")),
-  /** "Scan" marks the profile as linked. LinkedIn blocks automated reads, so the URL is passed to the agent as context. */
+    .transform((s) => s.replace(/^(https?:\/\/)?([a-z]{2,3}\.)?(www\.)?linkedin\.com\/in\//i, "").replace(/[/?#].*$/, "")),
+  /** Explicit Save. LinkedIn blocks automated reads, so the profile URL is stored and passed to searches as context; it is not scanned. */
   scan: z.boolean().optional(),
 });
 

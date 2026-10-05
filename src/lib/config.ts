@@ -10,10 +10,11 @@ import { decrypt, encrypt, mask } from "@/lib/secrets";
  * saved from the admin page win. API keys are stored encrypted.
  */
 export const AiConfigSchema = z.object({
-  provider: z.enum(["openai", "anthropic"]),
+  /** "agent" = searches are queued for an external agent (e.g. Claude Code on Eric's Mac) via /api/agent */
+  provider: z.enum(["openai", "anthropic", "agent"]),
   /** OpenAI-compatible endpoint: OpenRouter, DeepInfra, Together, Groq, Fireworks, Ollama, vLLM... */
   baseUrl: z.string().url().max(300),
-  model: z.string().min(1).max(200),
+  model: z.string().max(200),
   apiKey: z.string().max(500),
   /** USD per million tokens, for cost tracking and budgets */
   priceIn: z.number().min(0).max(1000),
@@ -43,7 +44,7 @@ const SECRET_FIELDS: Record<string, string[]> = { ai: ["apiKey"], search: ["brav
 function defaults() {
   return {
     ai: {
-      provider: (process.env.AI_PROVIDER === "anthropic" ? "anthropic" : "openai") as AiConfig["provider"],
+      provider: (["anthropic", "agent"].includes(process.env.AI_PROVIDER ?? "") ? process.env.AI_PROVIDER : "openai") as AiConfig["provider"],
       baseUrl: process.env.AI_BASE_URL || "https://openrouter.ai/api/v1",
       model: process.env.AI_MODEL || "",
       apiKey: process.env.AI_API_KEY || (process.env.AI_PROVIDER === "anthropic" ? process.env.ANTHROPIC_API_KEY || "" : ""),
@@ -107,7 +108,9 @@ export async function saveConfig<N extends Name>(name: N, value: Sections[N]) {
 /** Config as the admin page sees it: secrets masked. */
 export async function publicConfig() {
   const [ai, search, access] = await Promise.all([getAiConfig(), getSearchConfig(), getAccessConfig()]);
+  const [seen] = await db.select().from(schema.appSettings).where(eq(schema.appSettings.key, "agent_seen"));
   return {
+    agent: { tokenSet: (process.env.AGENT_TOKEN ?? "").length >= 32, lastSeen: (seen?.value?.at as string | undefined) ?? null },
     ai: { ...ai, apiKey: "", apiKeyHint: mask(ai.apiKey) },
     search: { ...search, braveKey: "", braveKeyHint: mask(search.braveKey) },
     access,
