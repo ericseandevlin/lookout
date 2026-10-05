@@ -46,9 +46,8 @@ export async function loadContext(userId: string): Promise<Context> {
   return {
     userId,
     brief: kinds[p?.kind ?? "job"].brief(answers),
-    resume: resume?.extracted?.summary
-      ? `${resume.extracted.summary}\n\n${(resume.extracted.text ?? "").slice(0, 6000)}`
-      : "",
+    // Use the resume text even when the AI summary step never ran.
+    resume: [resume?.extracted?.summary, (resume?.extracted?.text ?? "").slice(0, 6000)].filter(Boolean).join("\n\n"),
     links: [
       ...(li?.url ? [`https://www.linkedin.com/in/${li.url}`] : []),
       ...mats.filter((m) => m.kind === "link" && m.url).map((m) => m.url!),
