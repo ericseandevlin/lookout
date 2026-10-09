@@ -466,8 +466,8 @@ export function AdminAi() {
           )}
         </div>
       </Row>
-      <Row title="API key" help={ai.apiKeyHint ? `Saved key: ${ai.apiKeyHint}. Leave blank to keep it.` : "Not set. Local servers like Ollama don't need one."}>
-        <input type="password" autoComplete="off" value={ai.apiKey} onChange={(e) => setAi({ apiKey: e.target.value }, TYPING)} placeholder={ai.apiKeyHint ? "Leave blank to keep the saved key" : "Paste a key"} aria-label="API key" className="f-brick" style={input} />
+      <Row title="API key" help={ai.apiKeyHint ? "Saved and encrypted. Replace it to use a different key." : "Not set. Local servers like Ollama don't need one."}>
+        <SecretField label="API key" hint={ai.apiKeyHint} value={ai.apiKey} onChange={(v) => setAi({ apiKey: v }, TYPING)} />
       </Row>
       {catalog === "openrouter" ? (
         <Row title="Price" help="Dollars per million tokens, from OpenRouter's list. Used for the spend totals and the daily caps.">
@@ -519,8 +519,8 @@ export function AdminAi() {
       )}
       {search.provider === "brave" && (
         <>
-          <Row title="Brave API key" help={search.braveKeyHint ? `Saved key: ${search.braveKeyHint}. Leave blank to keep it.` : "From api.search.brave.com."}>
-            <input type="password" autoComplete="off" value={search.braveKey} onChange={(e) => setSearch({ braveKey: e.target.value }, TYPING)} aria-label="Brave API key" className="f-brick" style={input} />
+          <Row title="Brave API key" help={search.braveKeyHint ? "Saved and encrypted. Replace it to use a different key." : "From api.search.brave.com."}>
+            <SecretField label="Brave API key" hint={search.braveKeyHint} value={search.braveKey} onChange={(v) => setSearch({ braveKey: v }, TYPING)} />
           </Row>
           <Row title="Price per search" help="Dollars per query, for the spend totals.">
             <NumberField label="Per query" value={search.pricePerQuery} onChange={(v) => setSearch({ pricePerQuery: v }, TYPING)} />
@@ -547,6 +547,41 @@ export function AdminAi() {
         </div>
       </Row>
     </div>
+  );
+}
+
+/** A stored key shows as dots plus its last 4 characters; Replace opens an empty field. */
+function SecretField({ label, hint, value, onChange }: { label: string; hint: string; value: string; onChange: (v: string) => void }) {
+  const [editing, setEditing] = useState(false);
+  if (hint && !editing && !value) {
+    return (
+      <div style={{ display: "flex", gap: 8, alignItems: "center", maxWidth: 420 }}>
+        <Fixed>
+          <span aria-label={`${label} saved, ending in ${hint.slice(-4)}`}>
+            <span style={{ letterSpacing: ".12em" }}>••••••••••••</span> {hint.slice(-4)}
+          </span>
+        </Fixed>
+        <button onClick={() => setEditing(true)} style={{ ...btn("outline"), height: 42, flex: "none" }}>Replace</button>
+      </div>
+    );
+  }
+  return (
+    <input
+      type="password"
+      autoComplete="off"
+      autoFocus={editing}
+      value={value}
+      onChange={(e) => {
+        // Once typing starts, the field stays open while there's text and returns to dots after it saves.
+        setEditing(false);
+        onChange(e.target.value);
+      }}
+      onBlur={() => setEditing(false)}
+      placeholder="Paste a key"
+      aria-label={label}
+      className="f-brick"
+      style={input}
+    />
   );
 }
 
