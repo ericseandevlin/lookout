@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { PageHead } from "./Profile";
 import { btn, Row, Section, Seg } from "./Settings";
 import { api } from "./store";
@@ -294,6 +294,14 @@ function Fixed({ children, empty }: { children: React.ReactNode; empty?: boolean
   );
 }
 
+type Part = "ai" | "search";
+const TYPING = 800;
+function withoutHint<T extends object, K extends keyof T>(o: T, k: K): Omit<T, K> {
+  const { [k]: _drop, ...rest } = o;
+  void _drop;
+  return rest;
+}
+
 export function AdminAi() {
   const [cfg, setCfg] = useState<Config | null>(null);
   const [aiMsg, setAiMsg] = useState<{ text: string; ok: boolean } | null>(null);
@@ -303,6 +311,45 @@ export function AdminAi() {
   // Bumped when the picker fills prices, so the price fields show the new values.
   const [picked, setPicked] = useState(0);
   const [custom, setCustom] = useState(false);
+
+  // Every change saves itself: picks right away, typing after a short pause.
+  const latest = useRef<Config | null>(null);
+  const timers = useRef<Partial<Record<Part, ReturnType<typeof setTimeout>>>>({});
+  useEffect(() => { latest.current = cfg; }, [cfg]);
+  const persist = useCallback(async (part: Part) => {
+    delete timers.current[part];
+    const cur = latest.current;
+    if (!cur) return;
+    const set = part === "ai" ? setAiMsg : setSearchMsg;
+    const url = part === "ai" ? cur.ai.baseUrl : cur.search.searxngUrl;
+    if (!/^https?:\/\/[^/\s]+/.test(url)) return set({ text: "Not saved yet: the address needs to start with https://", ok: false });
+    const sentKey = part === "ai" ? cur.ai.apiKey : cur.search.braveKey;
+    const sent = part === "ai" ? withoutHint(cur.ai, "apiKeyHint") : withoutHint(cur.search, "braveKeyHint");
+    set({ text: "Saving…", ok: true });
+    try {
+      const next = await api<Config>("/api/admin/settings", { method: "PUT", json: { [part]: sent } });
+      // Keep anything typed since; take the new key hint and clear a key that was just stored.
+      setCfg((c) => {
+        if (!c) return c;
+        if (part === "ai") return { ...c, ai: { ...c.ai, apiKeyHint: next.ai.apiKeyHint, apiKey: c.ai.apiKey === sentKey ? "" : c.ai.apiKey } };
+        return { ...c, search: { ...c.search, braveKeyHint: next.search.braveKeyHint, braveKey: c.search.braveKey === sentKey ? "" : c.search.braveKey } };
+      });
+      set({ text: "Saved", ok: true });
+    } catch (e) {
+      set({ text: `Not saved: ${e instanceof Error ? e.message : "try again"}`, ok: false });
+    }
+  }, []);
+  const schedule = useCallback((part: Part, delay: number) => {
+    clearTimeout(timers.current[part]);
+    timers.current[part] = setTimeout(() => void persist(part), delay);
+  }, [persist]);
+  // Leaving the page mid-pause still saves.
+  useEffect(() => () => {
+    for (const part of Object.keys(timers.current) as Part[]) {
+      clearTimeout(timers.current[part]);
+      void persist(part);
+    }
+  }, [persist]);
 
   useEffect(() => {
     api<Config>("/api/admin/settings").then(setCfg).catch((e) => setAiMsg({ text: e.message, ok: false }));
@@ -319,21 +366,22 @@ export function AdminAi() {
     setAi({ baseUrl: p.url, model: "", priceIn: 0, priceOut: 0, jsonMode: "schema" });
     setPicked((n) => n + 1);
   };
-  const setAi = (p: Partial<Config["ai"]>) => setCfg({ ...cfg, ai: { ...ai, ...p } });
-  const setSearch = (p: Partial<Config["search"]>) => setCfg({ ...cfg, search: { ...search, ...p } });
-  const aiBody = () => { const { apiKeyHint: _h, ...rest } = ai; void _h; return rest; };
-  const searchBody = () => { const { braveKeyHint: _h, ...rest } = search; void _h; return rest; };
-
-  const save = async (section: "ai" | "search") => {
-    const set = section === "ai" ? setAiMsg : setSearchMsg;
-    try {
-      const next = await api<Config>("/api/admin/settings", { method: "PUT", json: section === "ai" ? { ai: aiBody() } : { search: searchBody() } });
-      setCfg(next);
-      set({ text: "Saved. New searches use these settings.", ok: true });
-    } catch (e) {
-      set({ text: e instanceof Error ? e.message : "Couldn't save", ok: false });
-    }
+  // The ref is updated here too, so a save that fires before the next render still sends this edit.
+  const setAi = (p: Partial<Config["ai"]>, delay = 0) => {
+    const base = latest.current ?? cfg;
+    latest.current = { ...base, ai: { ...base.ai, ...p } };
+    setCfg(latest.current);
+    schedule("ai", delay);
   };
+  const setSearch = (p: Partial<Config["search"]>, delay = 0) => {
+    const base = latest.current ?? cfg;
+    latest.current = { ...base, search: { ...base.search, ...p } };
+    setCfg(latest.current);
+    schedule("search", delay);
+  };
+  const aiBody = () => withoutHint(ai, "apiKeyHint");
+  const searchBody = () => withoutHint(search, "braveKeyHint");
+
   const test = async (section: "ai" | "search") => {
     const set = section === "ai" ? setAiMsg : setSearchMsg;
     set({ text: "Testing…", ok: true });
@@ -357,7 +405,7 @@ export function AdminAi() {
 
   return (
     <div className="page-pad settings lk-page" style={{ display: "flex", flexDirection: "column", maxWidth: 820 }}>
-      <PageHead eyebrow="Admin" title="AI settings" intro="The model that writes queries, reads postings and scores them, and the search engine it uses. Keys are stored encrypted and never shown again.">
+      <PageHead eyebrow="Admin" title="AI settings" intro="The model that writes queries, reads postings and scores them, and the search engine it uses. Changes save as you go. Keys are stored encrypted and never shown again.">
         <Tabs />
       </PageHead>
 
@@ -387,7 +435,7 @@ export function AdminAi() {
             {preset && !preset.editableUrl ? (
               <Fixed>{ai.baseUrl}</Fixed>
             ) : (
-              <input value={ai.baseUrl} onChange={(e) => setAi({ baseUrl: e.target.value })} placeholder="https://..." aria-label="API address" className="f-brick" style={input} />
+              <input value={ai.baseUrl} onChange={(e) => setAi({ baseUrl: e.target.value }, TYPING)} placeholder="https://..." aria-label="API address" className="f-brick" style={input} />
             )}
           </div>
         </Row>
@@ -414,12 +462,12 @@ export function AdminAi() {
               />
             </>
           ) : (
-            <input value={ai.model} onChange={(e) => setAi({ model: e.target.value })} placeholder="provider/model-name" aria-label="Model" className="f-brick" style={input} />
+            <input value={ai.model} onChange={(e) => setAi({ model: e.target.value }, TYPING)} placeholder="provider/model-name" aria-label="Model" className="f-brick" style={input} />
           )}
         </div>
       </Row>
       <Row title="API key" help={ai.apiKeyHint ? `Saved key: ${ai.apiKeyHint}. Leave blank to keep it.` : "Not set. Local servers like Ollama don't need one."}>
-        <input type="password" autoComplete="off" value={ai.apiKey} onChange={(e) => setAi({ apiKey: e.target.value })} placeholder={ai.apiKeyHint ? "Leave blank to keep the saved key" : "Paste a key"} aria-label="API key" className="f-brick" style={input} />
+        <input type="password" autoComplete="off" value={ai.apiKey} onChange={(e) => setAi({ apiKey: e.target.value }, TYPING)} placeholder={ai.apiKeyHint ? "Leave blank to keep the saved key" : "Paste a key"} aria-label="API key" className="f-brick" style={input} />
       </Row>
       {catalog === "openrouter" ? (
         <Row title="Price" help="Dollars per million tokens, from OpenRouter's list. Used for the spend totals and the daily caps.">
@@ -435,8 +483,8 @@ export function AdminAi() {
           }
         >
           <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
-            <NumberField key={`in-${picked}`} label="Input" value={ai.priceIn} onChange={(v) => setAi({ priceIn: v })} />
-            <NumberField key={`out-${picked}`} label="Output" value={ai.priceOut} onChange={(v) => setAi({ priceOut: v })} />
+            <NumberField key={`in-${picked}`} label="Input" value={ai.priceIn} onChange={(v) => setAi({ priceIn: v }, TYPING)} />
+            <NumberField key={`out-${picked}`} label="Output" value={ai.priceOut} onChange={(v) => setAi({ priceOut: v }, TYPING)} />
           </div>
         </Row>
       )}
@@ -455,7 +503,6 @@ export function AdminAi() {
         <div style={{ display: "flex", flexDirection: "column", gap: 8, alignItems: "flex-start" }}>
           <div style={{ display: "flex", gap: 8 }}>
             {ai.provider !== "agent" && <button onClick={() => test("ai")} style={btn("outline")}>Test</button>}
-            <button onClick={() => save("ai")} style={btn("solid")}>Save model</button>
           </div>
           {aiMsg && <Msg text={aiMsg.text} ok={aiMsg.ok} />}
         </div>
@@ -467,16 +514,16 @@ export function AdminAi() {
       </Row>
       {search.provider === "searxng" && (
         <Row title="SearXNG address" help="Inside the server this is http://searxng:8080.">
-          <input value={search.searxngUrl} onChange={(e) => setSearch({ searxngUrl: e.target.value })} aria-label="SearXNG address" className="f-brick" style={input} />
+          <input value={search.searxngUrl} onChange={(e) => setSearch({ searxngUrl: e.target.value }, TYPING)} aria-label="SearXNG address" className="f-brick" style={input} />
         </Row>
       )}
       {search.provider === "brave" && (
         <>
           <Row title="Brave API key" help={search.braveKeyHint ? `Saved key: ${search.braveKeyHint}. Leave blank to keep it.` : "From api.search.brave.com."}>
-            <input type="password" autoComplete="off" value={search.braveKey} onChange={(e) => setSearch({ braveKey: e.target.value })} aria-label="Brave API key" className="f-brick" style={input} />
+            <input type="password" autoComplete="off" value={search.braveKey} onChange={(e) => setSearch({ braveKey: e.target.value }, TYPING)} aria-label="Brave API key" className="f-brick" style={input} />
           </Row>
           <Row title="Price per search" help="Dollars per query, for the spend totals.">
-            <NumberField label="Per query" value={search.pricePerQuery} onChange={(v) => setSearch({ pricePerQuery: v })} />
+            <NumberField label="Per query" value={search.pricePerQuery} onChange={(v) => setSearch({ pricePerQuery: v }, TYPING)} />
           </Row>
         </>
       )}
@@ -484,7 +531,6 @@ export function AdminAi() {
         <div style={{ display: "flex", flexDirection: "column", gap: 8, alignItems: "flex-start" }}>
           <div style={{ display: "flex", gap: 8 }}>
             <button onClick={() => test("search")} style={btn("outline")}>Test</button>
-            <button onClick={() => save("search")} style={btn("solid")}>Save search</button>
           </div>
           {searchMsg && <Msg text={searchMsg.text} ok={searchMsg.ok} />}
         </div>
