@@ -3,7 +3,7 @@ import { NextResponse } from "next/server";
 import { headers } from "next/headers";
 import { z } from "zod";
 import { env } from "@/lib/env";
-import { getSessionUser, type SessionUser } from "@/lib/auth/session";
+import { getSessionUser, refreshSession, type SessionUser } from "@/lib/auth/session";
 
 export class HttpError extends Error {
   constructor(public status: number, message: string) {
@@ -33,6 +33,7 @@ export function authed<C = object>(fn: Handler<C>) {
       await assertSameOrigin(req.method);
       const user = await getSessionUser();
       if (!user) throw new HttpError(401, "Sign in required");
+      await refreshSession();
       return await fn(req, { ...ctx, user });
     } catch (e) {
       return errorResponse(e);
