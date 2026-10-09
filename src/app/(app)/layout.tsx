@@ -9,6 +9,7 @@ export const dynamic = "force-dynamic";
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
   const user = await getSessionUser();
   if (!user) redirect("/");
+  if (!user.onboardedAt) redirect("/welcome");
   const state = await getState(user);
   return (
     <StoreProvider initial={state}>

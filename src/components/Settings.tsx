@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { DAYS } from "@/lib/board";
 import type { Settings as S } from "@/lib/types";
 import { Switch } from "./Finds";
@@ -97,7 +97,7 @@ export function Settings() {
         <input value={name} onChange={(e) => setNameDraft(e.target.value)} placeholder="Your full name" aria-label="Name" maxLength={120} className="f-brick" style={{ width: "100%", maxWidth: 360, height: 42, border: "1.5px solid #E6E0D8", background: "#fff", borderRadius: 10, padding: "0 13px", fontSize: 14, outline: "none", color: "#1D1A0F" }} />
       </Row>
       <Row title="Email" help="You sign in with this address. Discovery summaries are sent here too.">
-        <div style={{ display: "flex", alignItems: "center", height: 42, maxWidth: 360, border: "1.5px solid #EEEAE4", background: "#F4F1EC", borderRadius: 10, padding: "0 13px", fontSize: 14, color: "#6B6358", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{state.user.email}</div>
+        <EmailChange current={state.user.email} />
       </Row>
       <Row title="Email summary" help="A short list of new matches after each run.">
         <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
@@ -105,8 +105,8 @@ export function Settings() {
           <span style={{ fontSize: 13.5, color: "#6B6358" }}>{st.digest ? `On · sent to ${state.user.email}` : "Off"}</span>
         </div>
       </Row>
-      <Row title="Sign out" help="Ends this session on this device.">
-        <button onClick={signOut} style={btn("outline")}>Sign out</button>
+      <Row title="Signed-in devices" help="You stay signed in for 90 days after your last visit on each device. Sign out anywhere you don't recognize.">
+        <Devices onSignOutHere={signOut} />
       </Row>
 
       <Section>Discovery</Section>
@@ -231,3 +231,99 @@ function DeleteModal({ close }: { close: () => void }) {
   );
 }
 
+
+const inputStyle: React.CSSProperties = { width: "100%", maxWidth: 360, height: 42, border: "1.5px solid #E6E0D8", background: "#fff", borderRadius: 10, padding: "0 13px", fontSize: 14, outline: "none", color: "#1D1A0F" };
+
+function EmailChange({ current }: { current: string }) {
+  const [editing, setEditing] = useState(false);
+  const [email, setEmail] = useState("");
+  const [msg, setMsg] = useState<{ text: string; ok: boolean } | null>(null);
+  const [busy, setBusy] = useState(false);
+  const send = async () => {
+    setBusy(true);
+    setMsg(null);
+    try {
+      await api("/api/account/email", { method: "POST", json: { email } });
+      setMsg({ text: `Check ${email} for a confirmation link. Your email changes when you click it.`, ok: true });
+      setEditing(false);
+    } catch (e) {
+      setMsg({ text: e instanceof Error ? e.message : "Couldn't send the confirmation", ok: false });
+    } finally {
+      setBusy(false);
+    }
+  };
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+      {editing ? (
+        <div style={{ display: "flex", gap: 6, maxWidth: 460, flexWrap: "wrap" }}>
+          <input autoFocus type="email" value={email} onChange={(e) => setEmail(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") send(); if (e.key === "Escape") setEditing(false); }} placeholder="New email" aria-label="New email" className="f-brick" style={{ ...inputStyle, flex: 1, minWidth: 200 }} />
+          <button onClick={() => setEditing(false)} style={{ ...btn("outline"), border: "1.5px solid #E6E0D8", color: "#6B6358" }}>Cancel</button>
+          <button onClick={send} disabled={busy || !email.trim()} style={btn("solid")}>{busy ? "Sending…" : "Send confirmation"}</button>
+        </div>
+      ) : (
+        <div style={{ display: "flex", alignItems: "center", gap: 8, maxWidth: 460 }}>
+          <div style={{ flex: 1, minWidth: 0, display: "flex", alignItems: "center", height: 42, border: "1.5px solid #EEEAE4", background: "#F4F1EC", borderRadius: 10, padding: "0 13px", fontSize: 14, color: "#6B6358", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{current}</div>
+          <button onClick={() => { setEditing(true); setMsg(null); }} style={btn("outline")}>Change</button>
+        </div>
+      )}
+      {msg && <span style={{ fontSize: 13, color: msg.ok ? "#35662A" : "#99220F", lineHeight: 1.45 }}>{msg.text}</span>}
+    </div>
+  );
+}
+
+type Device = { id: string; device: string; createdAt: string; lastSeenAt: string; current: boolean; seen?: string };
+
+const ago = (iso: string, now: number) => {
+  const d = Math.floor((now - new Date(iso).getTime()) / 864e5);
+  return d < 1 ? "Active today" : d === 1 ? "Active yesterday" : `Active ${d} days ago`;
+};
+
+function Devices({ onSignOutHere }: { onSignOutHere: () => void }) {
+  const ask = useConfirm();
+  const [list, setList] = useState<Device[] | null>(null);
+  const load = useCallback(
+    () =>
+      api<{ sessions: Device[] }>("/api/account/sessions")
+        .then((r) => {
+          const now = Date.now();
+          setList(r.sessions.map((d) => ({ ...d, seen: ago(d.lastSeenAt, now) })));
+        })
+        .catch(() => setList([])),
+    [],
+  );
+  useEffect(() => {
+    load();
+  }, [load]);
+  const signOut = async (d: Device) => {
+    if (d.current) return onSignOutHere();
+    await api(`/api/account/sessions/${d.id}`, { method: "DELETE" }).catch(() => {});
+    load();
+  };
+  const others = (list ?? []).filter((d) => !d.current).length;
+  const signOutOthers = async () => {
+    const ok = await ask({ eyebrow: "Sign out", title: "Sign out everywhere else?", body: `${others} other ${others === 1 ? "device" : "devices"} will need a new sign-in link. You stay signed in here.`, confirmLabel: "Sign out others", danger: true });
+    if (!ok) return;
+    await api("/api/account/sessions/others", { method: "DELETE" }).catch(() => {});
+    load();
+  };
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 6, maxWidth: 460 }}>
+      {list === null && <span style={{ fontSize: 13, color: "#8A8175" }}>Loading…</span>}
+      {list?.map((d) => (
+        <div key={d.id} style={{ display: "flex", alignItems: "center", gap: 10, padding: "9px 9px 9px 13px", borderRadius: 10, background: "#fff", border: "1.5px solid #E6E0D8" }}>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ fontSize: 13.5, fontWeight: 600 }}>
+              {d.device}
+              {d.current && <span style={{ marginLeft: 8, fontSize: 11.5, fontWeight: 600, padding: "2px 7px", borderRadius: 6, background: "#E6EDD9", color: "#35662A" }}>This device</span>}
+            </div>
+            <div style={{ fontSize: 12.5, color: "#8A8175" }}>{d.seen}</div>
+          </div>
+          <button onClick={() => signOut(d)} style={{ ...btn("outline"), height: 32, padding: "0 12px", fontSize: 12.5 }}>Sign out</button>
+        </div>
+      ))}
+      {others > 0 && (
+        <button onClick={signOutOthers} className="h-danger" style={{ ...btn("danger"), alignSelf: "flex-start", marginTop: 4 }}>Sign out everywhere else</button>
+      )}
+    </div>
+  );
+}

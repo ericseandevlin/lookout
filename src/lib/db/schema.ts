@@ -26,6 +26,8 @@ export const users = pgTable(
     disabled: boolean("disabled").notNull().default(false),
     createdAt: createdAt(),
     lastLoginAt: timestamp("last_login_at", { withTimezone: true }),
+    /** Set when the welcome step is done (name, salary range, work mode) */
+    onboardedAt: timestamp("onboarded_at", { withTimezone: true }),
   },
   (t) => [uniqueIndex("users_email_idx").on(sql`lower(${t.email})`)],
 );
@@ -35,6 +37,9 @@ export const loginTokens = pgTable("login_tokens", {
   email: text("email").notNull(),
   expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
   usedAt: timestamp("used_at", { withTimezone: true }),
+  /** "login" signs in; "email_change" moves userId's account to `email` */
+  purpose: text("purpose").$type<"login" | "email_change">().notNull().default("login"),
+  userId: uuid("user_id").references(() => users.id, { onDelete: "cascade" }),
   createdAt: createdAt(),
 });
 
@@ -47,6 +52,7 @@ export const sessions = pgTable(
       .references(() => users.id, { onDelete: "cascade" }),
     expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
     userAgent: text("user_agent"),
+    lastSeenAt: timestamp("last_seen_at", { withTimezone: true }),
     createdAt: createdAt(),
   },
   (t) => [index("sessions_user_idx").on(t.userId)],
@@ -201,4 +207,15 @@ export const invites = pgTable("invites", {
   invitedBy: uuid("invited_by").references(() => users.id, { onDelete: "set null" }),
   createdAt: createdAt(),
   revokedAt: timestamp("revoked_at", { withTimezone: true }),
+});
+
+/** Request-access form submissions. Approving one creates an invite. */
+export const accessRequests = pgTable("access_requests", {
+  email: text("email").primaryKey(),
+  /** Key of the "What's your next move?" choice; pre-fills profile question 1 */
+  nextMove: text("next_move"),
+  status: text("status").$type<"pending" | "approved" | "declined">().notNull().default("pending"),
+  createdAt: createdAt(),
+  decidedAt: timestamp("decided_at", { withTimezone: true }),
+  decidedBy: uuid("decided_by").references(() => users.id, { onDelete: "set null" }),
 });

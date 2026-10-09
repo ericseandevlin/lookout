@@ -9,6 +9,7 @@ import { api } from "./store";
 import { useConfirm } from "./Confirm";
 
 type Overview = {
+  requests: { email: string; nextMove: string | null; createdAt: string }[];
   totals: { users: number; usdDay: number; usdWeek: number; usdMonth: number };
   emailEnabled: boolean;
   users: {
@@ -126,6 +127,7 @@ export function AdminPeople() {
               <MoneyInput label="Per user" value={cfg.access.userDailyBudgetUsd} onSave={(v) => saveAccess({ ...cfg.access, userDailyBudgetUsd: v })} />
             </div>
           </Row>
+          <Requests requests={data.requests} emailEnabled={data.emailEnabled} onDone={load} />
           <Invite emailEnabled={data.emailEnabled} onDone={load} />
 
           {data.invites.filter((i) => !i.accepted).length > 0 && (
@@ -519,5 +521,58 @@ function ModelPicker({ current, onPick }: { current: string; onPick: (m: OrModel
         </div>
       )}
     </div>
+  );
+}
+
+function Requests({ requests, emailEnabled, onDone }: { requests: Overview["requests"]; emailEnabled: boolean; onDone: () => void }) {
+  const [links, setLinks] = useState<Record<string, { link: string; emailed: boolean }>>({});
+  const [copied, setCopied] = useState<string | null>(null);
+  const [err, setErr] = useState<string | null>(null);
+  const decide = async (email: string, decision: "approve" | "decline") => {
+    setErr(null);
+    try {
+      const r = await api<{ link?: string; emailed?: boolean }>(`/api/admin/requests/${encodeURIComponent(email)}`, { method: "POST", json: { decision, send: emailEnabled } });
+      if (decision === "approve" && r.link) setLinks((l) => ({ ...l, [email]: { link: r.link!, emailed: !!r.emailed } }));
+      else onDone();
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : "Couldn't save that");
+    }
+  };
+  const approved = Object.keys(links);
+  const pending = requests.filter((r) => !links[r.email]);
+  if (!pending.length && !approved.length) {
+    return (
+      <Row title="Access requests" help="People who asked to join from the sign-in page.">
+        <span style={{ fontSize: 13.5, color: "#8A8175" }}>No requests waiting.</span>
+      </Row>
+    );
+  }
+  return (
+    <Row title="Access requests" help={emailEnabled ? "Approving emails them an invite." : "Approving creates an invite link to send them yourself, since email isn't set up yet."}>
+      <div style={{ display: "flex", flexDirection: "column", gap: 8, maxWidth: 520 }}>
+        <Msg text={err} />
+        {approved.map((email) => (
+          <div key={email} style={{ display: "flex", flexDirection: "column", gap: 8, padding: 12, borderRadius: 10, background: "#fff", border: "1.5px solid #E6E0D8" }}>
+            <span style={{ fontSize: 13, color: "#35662A", fontWeight: 600 }}>{links[email].emailed ? `Approved and emailed ${email}` : `Approved ${email}. Send them this link:`}</span>
+            {!links[email].emailed && (
+              <>
+                <code style={{ fontSize: 12, wordBreak: "break-all" }}>{links[email].link}</code>
+                <button onClick={() => navigator.clipboard?.writeText(links[email].link).then(() => setCopied(email)).catch(() => {})} style={{ ...btn("outline"), alignSelf: "flex-start", height: 32, fontSize: 12.5 }}>{copied === email ? "Copied" : "Copy link"}</button>
+              </>
+            )}
+          </div>
+        ))}
+        {pending.map((r) => (
+          <div key={r.email} style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 10px 10px 12px", borderRadius: 10, background: "#fff", border: "1.5px solid #E6E0D8", flexWrap: "wrap" }}>
+            <div style={{ flex: 1, minWidth: 180 }}>
+              <div style={{ fontSize: 13.5, fontWeight: 600, overflow: "hidden", textOverflow: "ellipsis" }}>{r.email}</div>
+              <div style={{ fontSize: 12.5, color: "#6B6358" }}>{r.nextMove ?? "No answer"} · {when(r.createdAt)}</div>
+            </div>
+            <button onClick={() => decide(r.email, "decline")} className="h-danger" style={{ ...btn("danger"), height: 32, padding: "0 12px", fontSize: 12.5 }}>Decline</button>
+            <button onClick={() => decide(r.email, "approve")} style={{ ...btn("solid"), height: 32, padding: "0 12px", fontSize: 12.5 }}>Approve</button>
+          </div>
+        ))}
+      </div>
+    </Row>
   );
 }

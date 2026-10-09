@@ -15,7 +15,7 @@ export async function createSession(userId: string) {
   const token = newToken();
   const expiresAt = new Date(Date.now() + SESSION_DAYS * 864e5);
   const ua = (await headers()).get("user-agent")?.slice(0, 300) ?? null;
-  await db.insert(schema.sessions).values({ idHash: hashToken(token), userId, expiresAt, userAgent: ua });
+  await db.insert(schema.sessions).values({ idHash: hashToken(token), userId, expiresAt, userAgent: ua, lastSeenAt: new Date() });
   await setCookie(token, expiresAt);
 }
 
@@ -37,7 +37,7 @@ export async function refreshSession() {
   const dayAgoCutoff = new Date(fresh.getTime() - 864e5);
   const r = await db
     .update(schema.sessions)
-    .set({ expiresAt: fresh })
+    .set({ expiresAt: fresh, lastSeenAt: new Date() })
     .where(and(eq(schema.sessions.idHash, hashToken(token)), gt(schema.sessions.expiresAt, new Date()), lt(schema.sessions.expiresAt, dayAgoCutoff)))
     .returning({ id: schema.sessions.idHash });
   if (r.length) await setCookie(token, fresh);
@@ -62,4 +62,10 @@ export async function destroySession() {
   const token = jar.get(SESSION_COOKIE)?.value;
   if (token) await db.delete(schema.sessions).where(eq(schema.sessions.idHash, hashToken(token)));
   jar.delete(SESSION_COOKIE);
+}
+
+/** Hash of the current session, to mark "this device" and keep it on "sign out everywhere else". */
+export async function currentSessionHash() {
+  const token = (await cookies()).get(SESSION_COOKIE)?.value;
+  return token ? hashToken(token) : null;
 }

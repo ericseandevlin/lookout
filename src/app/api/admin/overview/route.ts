@@ -3,6 +3,7 @@ import { adminRoute, json } from "@/lib/api";
 import { db, schema } from "@/lib/db";
 import { env } from "@/lib/env";
 import { isAdmin } from "@/lib/users";
+import { NEXT_MOVES } from "@/lib/onboarding";
 
 /** Everything the admin page shows: totals, people, invites, recent runs. */
 export const GET = adminRoute(async () => {
@@ -60,7 +61,14 @@ export const GET = adminRoute(async () => {
     .orderBy(desc(schema.runs.startedAt))
     .limit(50);
 
+  const requests = await db
+    .select()
+    .from(schema.accessRequests)
+    .where(eq(schema.accessRequests.status, "pending"))
+    .orderBy(desc(schema.accessRequests.createdAt));
+
   return json({
+    requests: requests.map((r) => ({ email: r.email, nextMove: NEXT_MOVES.find((m) => m.key === r.nextMove)?.label ?? null, createdAt: r.createdAt })),
     totals: { users: users.length, usdDay: Number(d.usd), usdWeek: Number(w.usd), usdMonth: Number(m.usd) },
     emailEnabled: !!env.smtpUrl,
     users: users.map(({ isAdminFlag, ...u }) => ({ ...u, isAdmin: isAdmin({ isAdmin: isAdminFlag, email: u.email }), usd30: Number(u.usd30) })),

@@ -56,3 +56,17 @@ export function inviteEmail(to: string, link: string, from: string): Mail {
     ),
   };
 }
+
+export function emailChangeEmail(to: string, link: string): Mail {
+  return {
+    to,
+    subject: "Confirm your new Lookout email",
+    text: `Confirm this address for your Lookout account:\n\n${link}\n\nThe link works once and expires in 1 hour. If you didn't ask for this, ignore this email.`,
+    html: emailShell(
+      "Confirm your new email",
+      `<p style="font-size:14.5px;line-height:1.5;color:#6B6358;margin:0 0 20px">Tap the button to make this the email you sign in with. The link works once and expires in 1 hour.</p>
+<a href="${escapeHtml(link)}" style="display:inline-block;background:#99220F;color:#fff;text-decoration:none;font-weight:600;font-size:14.5px;padding:13px 24px;border-radius:12px">Confirm email</a>
+<p style="font-size:12.5px;color:#8A8175;margin:24px 0 0">If you didn't ask for this, ignore this email.</p>`,
+    ),
+  };
+}

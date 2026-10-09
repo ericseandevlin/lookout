@@ -11,7 +11,7 @@ export function Verify({ token }: { token: string }) {
   const go = async () => {
     setState("busy");
     const res = await fetch("/api/auth/verify", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ token }) }).catch(() => null);
-    if (res?.ok) return window.location.replace("/finds");
+    if (res?.ok) return window.location.replace(new URL("/finds", window.location.origin));
     const data = await res?.json().catch(() => ({}));
     setMsg(data?.error || "This link didn't work.");
     setState("error");

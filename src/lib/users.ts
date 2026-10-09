@@ -1,6 +1,7 @@
 import "server-only";
 import { and, eq, isNull, sql } from "drizzle-orm";
 import { getAccessConfig } from "@/lib/config";
+import { NEXT_MOVES } from "@/lib/onboarding";
 import { db, schema } from "@/lib/db";
 import { env } from "@/lib/env";
 
@@ -39,7 +40,12 @@ export async function ensureUser(email: string) {
       .values({ email: e, isAdmin: env.adminEmails.includes(e) })
       .returning();
     await tx.insert(schema.settings).values({ userId: user.id });
-    await tx.insert(schema.profiles).values({ userId: user.id });
+    // The request-access answer seeds question 1.
+    const [req] = await tx.select().from(schema.accessRequests).where(eq(schema.accessRequests.email, e));
+    const move = NEXT_MOVES.find((m) => m.key === req?.nextMove);
+    await tx
+      .insert(schema.profiles)
+      .values({ userId: user.id, ...(move ? { answers: { q1: move.q1 }, autofilled: { q1: "sign-up" } } : {}) });
     return user;
   });
 }
