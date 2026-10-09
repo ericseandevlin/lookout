@@ -286,6 +286,8 @@ export function AdminAi() {
   const [searchMsg, setSearchMsg] = useState<{ text: string; ok: boolean } | null>(null);
   const [fetchUrl, setFetchUrl] = useState("");
   const [fetchMsg, setFetchMsg] = useState<{ text: string; ok: boolean } | null>(null);
+  // Bumped when the picker fills prices, so the price fields show the new values.
+  const [picked, setPicked] = useState(0);
 
   useEffect(() => {
     api<Config>("/api/admin/settings").then(setCfg).catch((e) => setAiMsg({ text: e.message, ok: false }));
@@ -362,15 +364,26 @@ export function AdminAi() {
       {ai.provider !== "agent" && (
         <>
       <Row title="Model" help={ai.provider === "openai" ? "The model ID exactly as your provider writes it, e.g. a Qwen, DeepSeek or Llama model." : "e.g. claude-sonnet-5-5"}>
-        <input value={ai.model} onChange={(e) => setAi({ model: e.target.value })} placeholder="provider/model-name" aria-label="Model" className="f-brick" style={input} />
+        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+          <input value={ai.model} onChange={(e) => setAi({ model: e.target.value })} placeholder="provider/model-name" aria-label="Model" className="f-brick" style={input} />
+          {ai.provider === "openai" && /openrouter\.ai/.test(ai.baseUrl) && (
+            <ModelPicker
+              current={ai.model}
+              onPick={(m) => {
+                setAi({ model: m.id, priceIn: m.priceIn, priceOut: m.priceOut, jsonMode: m.structured ? "schema" : "object" });
+                setPicked((n) => n + 1);
+              }}
+            />
+          )}
+        </div>
       </Row>
       <Row title="API key" help={ai.apiKeyHint ? `Saved key: ${ai.apiKeyHint}. Leave blank to keep it.` : "Not set. Local servers like Ollama don't need one."}>
         <input type="password" autoComplete="off" value={ai.apiKey} onChange={(e) => setAi({ apiKey: e.target.value })} placeholder={ai.apiKeyHint ? "Leave blank to keep the saved key" : "Paste a key"} aria-label="API key" className="f-brick" style={input} />
       </Row>
       <Row title="Price" help="Dollars per million tokens, from your provider's model page. Used for the spend totals and the daily caps.">
         <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
-          <NumberField label="Input" value={ai.priceIn} onChange={(v) => setAi({ priceIn: v })} />
-          <NumberField label="Output" value={ai.priceOut} onChange={(v) => setAi({ priceOut: v })} />
+          <NumberField key={`in-${picked}`} label="Input" value={ai.priceIn} onChange={(v) => setAi({ priceIn: v })} />
+          <NumberField key={`out-${picked}`} label="Output" value={ai.priceOut} onChange={(v) => setAi({ priceOut: v })} />
         </div>
       </Row>
       {ai.provider === "openai" && (
@@ -450,5 +463,61 @@ function NumberField({ label, value, onChange }: { label: string; value: number;
         style={{ ...input, width: 140, textTransform: "none", letterSpacing: 0, fontWeight: 500 }}
       />
     </label>
+  );
+}
+
+type OrModel = { id: string; name: string; context: number; priceIn: number; priceOut: number; structured: boolean };
+
+/** Search OpenRouter's catalog; picking one fills the model ID, prices and JSON mode. */
+function ModelPicker({ current, onPick }: { current: string; onPick: (m: OrModel) => void }) {
+  const [open, setOpen] = useState(false);
+  const [models, setModels] = useState<OrModel[] | null>(null);
+  const [q, setQ] = useState("");
+  const [onlyStructured, setOnlyStructured] = useState(true);
+  const [err, setErr] = useState<string | null>(null);
+  const toggle = () => {
+    setOpen((v) => !v);
+    if (!models) api<{ models: OrModel[] }>("/api/admin/models").then((r) => setModels(r.models)).catch((e) => setErr(e.message));
+  };
+  const needle = q.trim().toLowerCase();
+  const list = (models ?? [])
+    .filter((m) => (!onlyStructured || m.structured) && (!needle || m.id.toLowerCase().includes(needle) || m.name.toLowerCase().includes(needle)))
+    .slice(0, 60);
+  const price = (n: number) => (n === 0 ? "free" : `$${n < 1 ? n.toFixed(2) : n.toFixed(n < 10 ? 2 : 0)}`);
+  return (
+    <div style={{ maxWidth: 520 }}>
+      <button onClick={toggle} style={{ ...btn("outline"), height: 34, padding: "0 12px", fontSize: 13 }}>{open ? "Hide OpenRouter models" : "Browse OpenRouter models"}</button>
+      {open && (
+        <div style={{ marginTop: 8, background: "#fff", border: "1.5px solid #E6E0D8", borderRadius: 12, overflow: "hidden" }}>
+          <div style={{ display: "flex", gap: 10, alignItems: "center", padding: 10, borderBottom: "1px solid #EEEAE4", flexWrap: "wrap" }}>
+            <input autoFocus value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search, e.g. qwen, deepseek, llama" aria-label="Search models" className="f-brick" style={{ ...input, height: 36, flex: 1, minWidth: 180 }} />
+            <label style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12.5, color: "#6B6358" }}>
+              <input type="checkbox" checked={onlyStructured} onChange={(e) => setOnlyStructured(e.target.checked)} />
+              Structured output only
+            </label>
+          </div>
+          {err && <div style={{ padding: 12 }}><Msg text={err} /></div>}
+          {!models && !err && <div style={{ padding: 12, fontSize: 13, color: "#8A8175" }}>Loading models…</div>}
+          {models && (
+            <div style={{ maxHeight: 320, overflowY: "auto" }}>
+              <div style={{ display: "grid", gridTemplateColumns: "minmax(0,1fr) 70px 70px", gap: 8, padding: "8px 12px", fontSize: 11, fontWeight: 600, letterSpacing: ".06em", textTransform: "uppercase", color: "#8A8175", position: "sticky", top: 0, background: "#fff", borderBottom: "1px solid #EEEAE4" }}>
+                <span>Model · cheapest first</span><span style={{ textAlign: "right" }}>In /1M</span><span style={{ textAlign: "right" }}>Out /1M</span>
+              </div>
+              {list.length === 0 && <div style={{ padding: 12, fontSize: 13, color: "#8A8175" }}>No models match.</div>}
+              {list.map((m) => (
+                <button key={m.id} className="h-menu" onClick={() => { onPick(m); setOpen(false); }} style={{ display: "grid", gridTemplateColumns: "minmax(0,1fr) 70px 70px", gap: 8, width: "100%", padding: "9px 12px", border: 0, borderBottom: "1px solid #F2EEE8", background: m.id === current ? "#F6F2EC" : "#fff", cursor: "pointer", textAlign: "left", alignItems: "center" }}>
+                  <span style={{ minWidth: 0 }}>
+                    <span style={{ display: "block", fontSize: 13.5, fontWeight: 600, color: "#1D1A0F", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{m.name}</span>
+                    <span style={{ display: "block", fontSize: 12, color: "#8A8175", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{m.id} · {Math.round(m.context / 1000)}K context</span>
+                  </span>
+                  <span style={{ fontSize: 13, textAlign: "right", fontVariantNumeric: "tabular-nums" }}>{price(m.priceIn)}</span>
+                  <span style={{ fontSize: 13, textAlign: "right", fontVariantNumeric: "tabular-nums" }}>{price(m.priceOut)}</span>
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+    </div>
   );
 }
