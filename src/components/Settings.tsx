@@ -15,7 +15,7 @@ export const Section = ({ children }: { children: React.ReactNode }) => (
   <div style={{ fontSize: 12, fontWeight: 700, letterSpacing: ".14em", textTransform: "uppercase", color: "#99220F", padding: "28px 0 4px" }}>{children}</div>
 );
 
-export function Row({ title, help, danger, children }: { title: string; help: string; danger?: boolean; children: React.ReactNode }) {
+export function Row({ title, help, danger, children }: { title: string; help: React.ReactNode; danger?: boolean; children: React.ReactNode }) {
   return (
     <div className="set-grid">
       <div>

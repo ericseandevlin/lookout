@@ -274,13 +274,24 @@ function Invite({ emailEnabled, onDone }: { emailEnabled: boolean; onDone: () =>
 
 // --- AI settings --------------------------------------------------------------------
 
-const PRESETS: [string, string][] = [
-  ["OpenRouter", "https://openrouter.ai/api/v1"],
-  ["DeepInfra", "https://api.deepinfra.com/v1/openai"],
-  ["Together", "https://api.together.xyz/v1"],
-  ["Groq", "https://api.groq.com/openai/v1"],
-  ["Ollama (local)", "http://host.docker.internal:11434/v1"],
+type Catalog = "openrouter" | "opencode";
+type Preset = { label: string; url: string; catalog?: Catalog; editableUrl?: boolean; pricing?: string };
+// A preset fixes the address. Ollama stays editable because its host differs per setup.
+const PRESETS: Preset[] = [
+  { label: "OpenRouter", url: "https://openrouter.ai/api/v1", catalog: "openrouter" },
+  { label: "OpenCode Zen", url: "https://opencode.ai/zen/v1", catalog: "opencode", pricing: "https://opencode.ai/docs/zen/" },
+  { label: "DeepInfra", url: "https://api.deepinfra.com/v1/openai", pricing: "https://deepinfra.com/pricing" },
+  { label: "Together", url: "https://api.together.xyz/v1", pricing: "https://www.together.ai/pricing" },
+  { label: "Groq", url: "https://api.groq.com/openai/v1", pricing: "https://groq.com/pricing" },
+  { label: "Ollama (local)", url: "http://host.docker.internal:11434/v1", editableUrl: true },
 ];
+const CATALOG_NAME: Record<Catalog, string> = { openrouter: "OpenRouter", opencode: "OpenCode Zen" };
+
+function Fixed({ children, empty }: { children: React.ReactNode; empty?: boolean }) {
+  return (
+    <div style={{ ...input, display: "flex", alignItems: "center", background: "#F6F2EC", borderColor: "#EEEAE4", color: empty ? "#8A8175" : "#1D1A0F", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{children}</div>
+  );
+}
 
 export function AdminAi() {
   const [cfg, setCfg] = useState<Config | null>(null);
@@ -290,6 +301,7 @@ export function AdminAi() {
   const [fetchMsg, setFetchMsg] = useState<{ text: string; ok: boolean } | null>(null);
   // Bumped when the picker fills prices, so the price fields show the new values.
   const [picked, setPicked] = useState(0);
+  const [custom, setCustom] = useState(false);
 
   useEffect(() => {
     api<Config>("/api/admin/settings").then(setCfg).catch((e) => setAiMsg({ text: e.message, ok: false }));
@@ -297,6 +309,15 @@ export function AdminAi() {
   if (!cfg) return <div className="page-pad lk-page"><PageHead eyebrow="Admin" title="AI settings"><Tabs /></PageHead>{aiMsg && <Msg text={aiMsg.text} />}</div>;
 
   const ai = cfg.ai, search = cfg.search;
+  const preset = custom ? undefined : PRESETS.find((p) => p.url === ai.baseUrl);
+  const catalog = ai.provider === "openai" ? preset?.catalog : undefined;
+  const choosePreset = (p: Preset | null) => {
+    setCustom(!p);
+    if (!p || p.url === ai.baseUrl) return;
+    // A model ID from one provider rarely exists on another, so start the pick over.
+    setAi({ baseUrl: p.url, model: "", priceIn: 0, priceOut: 0, jsonMode: "schema" });
+    setPicked((n) => n + 1);
+  };
   const setAi = (p: Partial<Config["ai"]>) => setCfg({ ...cfg, ai: { ...ai, ...p } });
   const setSearch = (p: Partial<Config["search"]>) => setCfg({ ...cfg, search: { ...search, ...p } });
   const aiBody = () => { const { apiKeyHint: _h, ...rest } = ai; void _h; return rest; };
@@ -352,47 +373,81 @@ export function AdminAi() {
         </Row>
       )}
       {ai.provider === "openai" && (
-        <Row title="API address" help="The base URL, ending before /chat/completions.">
+        <Row title="API address" help={preset && !preset.editableUrl ? `Set by ${preset.label}.` : "The base URL, ending before /chat/completions."}>
           <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-            <input value={ai.baseUrl} onChange={(e) => setAi({ baseUrl: e.target.value })} aria-label="API address" className="f-brick" style={input} />
             <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-              {PRESETS.map(([label, url]) => (
-                <button key={label} onClick={() => setAi({ baseUrl: url })} style={{ height: 30, padding: "0 11px", borderRadius: 999, border: `1.5px solid ${ai.baseUrl === url ? "#1D1A0F" : "#E0D9CF"}`, background: ai.baseUrl === url ? "#1D1A0F" : "#fff", color: ai.baseUrl === url ? "#fff" : "#1D1A0F", fontSize: 12.5, fontWeight: 600, cursor: "pointer" }}>{label}</button>
-              ))}
+              {[...PRESETS, null].map((p) => {
+                const on = p ? preset === p : !preset;
+                return (
+                  <button key={p?.label ?? "custom"} onClick={() => choosePreset(p)} style={{ height: 30, padding: "0 11px", borderRadius: 999, border: `1.5px solid ${on ? "#1D1A0F" : "#E0D9CF"}`, background: on ? "#1D1A0F" : "#fff", color: on ? "#fff" : "#1D1A0F", fontSize: 12.5, fontWeight: 600, cursor: "pointer" }}>{p?.label ?? "Custom"}</button>
+                );
+              })}
             </div>
+            {preset && !preset.editableUrl ? (
+              <Fixed>{ai.baseUrl}</Fixed>
+            ) : (
+              <input value={ai.baseUrl} onChange={(e) => setAi({ baseUrl: e.target.value })} placeholder="https://..." aria-label="API address" className="f-brick" style={input} />
+            )}
           </div>
         </Row>
       )}
       {ai.provider !== "agent" && (
         <>
-      <Row title="Model" help={ai.provider === "openai" ? "The model ID exactly as your provider writes it, e.g. a Qwen, DeepSeek or Llama model." : "e.g. claude-sonnet-5-5"}>
+      <Row title="Model" help={catalog ? `Pick from ${CATALOG_NAME[catalog]}'s list.` : ai.provider === "openai" ? "The model ID exactly as your provider writes it, e.g. a Qwen, DeepSeek or Llama model." : "e.g. claude-sonnet-5-5"}>
         <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-          <input value={ai.model} onChange={(e) => setAi({ model: e.target.value })} placeholder="provider/model-name" aria-label="Model" className="f-brick" style={input} />
-          {ai.provider === "openai" && /openrouter\.ai/.test(ai.baseUrl) && (
-            <ModelPicker
-              current={ai.model}
-              onPick={(m) => {
-                setAi({ model: m.id, priceIn: m.priceIn, priceOut: m.priceOut, jsonMode: m.structured ? "schema" : "object" });
-                setPicked((n) => n + 1);
-              }}
-            />
+          {catalog ? (
+            <>
+              <Fixed empty={!ai.model}>{ai.model || "No model picked yet"}</Fixed>
+              <ModelPicker
+                key={catalog}
+                source={catalog}
+                current={ai.model}
+                onPick={(m) => {
+                  setAi(
+                    m.priceIn === null || m.priceOut === null
+                      ? { model: m.id }
+                      : { model: m.id, priceIn: m.priceIn, priceOut: m.priceOut, jsonMode: m.structured ? "schema" : "object" },
+                  );
+                  setPicked((n) => n + 1);
+                }}
+              />
+            </>
+          ) : (
+            <input value={ai.model} onChange={(e) => setAi({ model: e.target.value })} placeholder="provider/model-name" aria-label="Model" className="f-brick" style={input} />
           )}
         </div>
       </Row>
       <Row title="API key" help={ai.apiKeyHint ? `Saved key: ${ai.apiKeyHint}. Leave blank to keep it.` : "Not set. Local servers like Ollama don't need one."}>
         <input type="password" autoComplete="off" value={ai.apiKey} onChange={(e) => setAi({ apiKey: e.target.value })} placeholder={ai.apiKeyHint ? "Leave blank to keep the saved key" : "Paste a key"} aria-label="API key" className="f-brick" style={input} />
       </Row>
-      <Row title="Price" help="Dollars per million tokens, from your provider's model page. Used for the spend totals and the daily caps.">
-        <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
-          <NumberField key={`in-${picked}`} label="Input" value={ai.priceIn} onChange={(v) => setAi({ priceIn: v })} />
-          <NumberField key={`out-${picked}`} label="Output" value={ai.priceOut} onChange={(v) => setAi({ priceOut: v })} />
-        </div>
-      </Row>
-      {ai.provider === "openai" && (
+      {catalog === "openrouter" ? (
+        <Row title="Price" help="Dollars per million tokens, from OpenRouter's list. Used for the spend totals and the daily caps.">
+          <span style={{ fontSize: 14, fontVariantNumeric: "tabular-nums" }}>{ai.model ? `$${ai.priceIn} in · $${ai.priceOut} out` : "Set when you pick a model"}</span>
+        </Row>
+      ) : (
+        <Row
+          title="Price"
+          help={
+            <>
+              Dollars per million tokens. {preset?.pricing ? <>{preset.label} doesn&apos;t publish prices to apps, so copy them from <a href={preset.pricing} target="_blank" rel="noreferrer">its pricing page</a>.</> : "Copy them from your provider's model page."} Used for the spend totals and the daily caps.
+            </>
+          }
+        >
+          <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
+            <NumberField key={`in-${picked}`} label="Input" value={ai.priceIn} onChange={(v) => setAi({ priceIn: v })} />
+            <NumberField key={`out-${picked}`} label="Output" value={ai.priceOut} onChange={(v) => setAi({ priceOut: v })} />
+          </div>
+        </Row>
+      )}
+      {ai.provider === "openai" && (catalog === "openrouter" ? (
+        <Row title="Structured output" help="Set from what OpenRouter says the model supports.">
+          <span style={{ fontSize: 14 }}>{!ai.model ? "Set when you pick a model" : ai.jsonMode === "schema" ? "Strict schema" : "Plain JSON"}</span>
+        </Row>
+      ) : (
         <Row title="Structured output" help="Strict schema works on most providers. If tests fail with a format error, switch to plain JSON.">
           <Seg opts={[["Strict schema", "schema"], ["Plain JSON", "object"]]} cur={ai.jsonMode} pick={(v) => setAi({ jsonMode: v as Config["ai"]["jsonMode"] })} />
         </Row>
-      )}
+      ))}
         </>
       )}
       <Row title="" help="">
@@ -468,10 +523,11 @@ function NumberField({ label, value, onChange }: { label: string; value: number;
   );
 }
 
-type OrModel = { id: string; name: string; context: number; priceIn: number; priceOut: number; structured: boolean };
+type OrModel = { id: string; name: string; context: number; priceIn: number | null; priceOut: number | null; structured: boolean | null };
 
-/** Search OpenRouter's catalog; picking one fills the model ID, prices and JSON mode. */
-function ModelPicker({ current, onPick }: { current: string; onPick: (m: OrModel) => void }) {
+/** Search a provider's catalog. OpenRouter picks also fill prices and JSON mode. */
+function ModelPicker({ source, current, onPick }: { source: Catalog; current: string; onPick: (m: OrModel) => void }) {
+  const priced = source === "openrouter";
   const [open, setOpen] = useState(false);
   const [models, setModels] = useState<OrModel[] | null>(null);
   const [q, setQ] = useState("");
@@ -479,38 +535,40 @@ function ModelPicker({ current, onPick }: { current: string; onPick: (m: OrModel
   const [err, setErr] = useState<string | null>(null);
   const toggle = () => {
     setOpen((v) => !v);
-    if (!models) api<{ models: OrModel[] }>("/api/admin/models").then((r) => setModels(r.models)).catch((e) => setErr(e.message));
+    if (!models) api<{ models: OrModel[] }>(`/api/admin/models?source=${source}`).then((r) => setModels(r.models)).catch((e) => setErr(e.message));
   };
   const needle = q.trim().toLowerCase();
   const list = (models ?? [])
-    .filter((m) => (!onlyStructured || m.structured) && (!needle || m.id.toLowerCase().includes(needle) || m.name.toLowerCase().includes(needle)))
+    .filter((m) => (!priced || !onlyStructured || m.structured) && (!needle || m.id.toLowerCase().includes(needle) || m.name.toLowerCase().includes(needle)))
     .slice(0, 60);
-  const price = (n: number) => (n === 0 ? "free" : `$${n < 1 ? n.toFixed(2) : n.toFixed(n < 10 ? 2 : 0)}`);
+  const price = (n: number | null) => (n === null ? "" : n === 0 ? "free" : `$${n < 1 ? n.toFixed(2) : n.toFixed(n < 10 ? 2 : 0)}`);
   return (
     <div style={{ maxWidth: 520 }}>
-      <button onClick={toggle} style={{ ...btn("outline"), height: 34, padding: "0 12px", fontSize: 13 }}>{open ? "Hide OpenRouter models" : "Browse OpenRouter models"}</button>
+      <button onClick={toggle} style={{ ...btn("outline"), height: 34, padding: "0 12px", fontSize: 13 }}>{open ? `Hide ${CATALOG_NAME[source]} models` : current ? "Change model" : `Browse ${CATALOG_NAME[source]} models`}</button>
       {open && (
         <div style={{ marginTop: 8, background: "#fff", border: "1.5px solid #E6E0D8", borderRadius: 12, overflow: "hidden" }}>
           <div style={{ display: "flex", gap: 10, alignItems: "center", padding: 10, borderBottom: "1px solid #EEEAE4", flexWrap: "wrap" }}>
             <input autoFocus value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search, e.g. qwen, deepseek, llama" aria-label="Search models" className="f-brick" style={{ ...input, height: 36, flex: 1, minWidth: 180 }} />
-            <label style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12.5, color: "#6B6358" }}>
-              <input type="checkbox" checked={onlyStructured} onChange={(e) => setOnlyStructured(e.target.checked)} />
-              Structured output only
-            </label>
+            {priced && (
+              <label style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12.5, color: "#6B6358" }}>
+                <input type="checkbox" checked={onlyStructured} onChange={(e) => setOnlyStructured(e.target.checked)} />
+                Structured output only
+              </label>
+            )}
           </div>
           {err && <div style={{ padding: 12 }}><Msg text={err} /></div>}
           {!models && !err && <div style={{ padding: 12, fontSize: 13, color: "#8A8175" }}>Loading models…</div>}
           {models && (
             <div style={{ maxHeight: 320, overflowY: "auto" }}>
               <div style={{ display: "grid", gridTemplateColumns: "minmax(0,1fr) 70px 70px", gap: 8, padding: "8px 12px", fontSize: 11, fontWeight: 600, letterSpacing: ".06em", textTransform: "uppercase", color: "#8A8175", position: "sticky", top: 0, background: "#fff", borderBottom: "1px solid #EEEAE4" }}>
-                <span>Model · cheapest first</span><span style={{ textAlign: "right" }}>In /1M</span><span style={{ textAlign: "right" }}>Out /1M</span>
+                <span>{priced ? "Model · cheapest first" : "Model"}</span><span style={{ textAlign: "right" }}>{priced && "In /1M"}</span><span style={{ textAlign: "right" }}>{priced && "Out /1M"}</span>
               </div>
               {list.length === 0 && <div style={{ padding: 12, fontSize: 13, color: "#8A8175" }}>No models match.</div>}
               {list.map((m) => (
                 <button key={m.id} className="h-menu" onClick={() => { onPick(m); setOpen(false); }} style={{ display: "grid", gridTemplateColumns: "minmax(0,1fr) 70px 70px", gap: 8, width: "100%", padding: "9px 12px", border: 0, borderBottom: "1px solid #F2EEE8", background: m.id === current ? "#F6F2EC" : "#fff", cursor: "pointer", textAlign: "left", alignItems: "center" }}>
                   <span style={{ minWidth: 0 }}>
                     <span style={{ display: "block", fontSize: 13.5, fontWeight: 600, color: "#1D1A0F", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{m.name}</span>
-                    <span style={{ display: "block", fontSize: 12, color: "#8A8175", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{m.id} · {Math.round(m.context / 1000)}K context</span>
+                    <span style={{ display: "block", fontSize: 12, color: "#8A8175", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{m.context ? `${m.id} · ${Math.round(m.context / 1000)}K context` : m.id}</span>
                   </span>
                   <span style={{ fontSize: 13, textAlign: "right", fontVariantNumeric: "tabular-nums" }}>{price(m.priceIn)}</span>
                   <span style={{ fontSize: 13, textAlign: "right", fontVariantNumeric: "tabular-nums" }}>{price(m.priceOut)}</span>
