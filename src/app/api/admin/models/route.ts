@@ -31,26 +31,31 @@ async function openrouter(): Promise<CatalogModel[]> {
     .sort((a, b) => a.priceIn + a.priceOut - (b.priceIn + b.priceOut));
 }
 
-/**
- * OpenCode Zen lists IDs only, no prices. Claude, GPT, Gemini, Grok and Jev models there
- * use other API formats, so only the /chat/completions ones are offered.
- */
-async function opencode(): Promise<CatalogModel[]> {
-  const res = await fetch("https://opencode.ai/zen/v1/models", { signal: AbortSignal.timeout(15_000) });
+// Families OpenCode serves over /chat/completions. Claude, GPT, Grok, Gemini, Qwen,
+// MiniMax and Muse use its /messages or /responses formats, which Lookout doesn't speak.
+const OPENCODE_CHAT = /^(glm|kimi|longcat|deepseek|mimo|hy\d|space-bunny|step|big-pickle)/i;
+
+/** OpenCode Zen and Go list IDs only, no prices. */
+async function opencode(url: string): Promise<CatalogModel[]> {
+  const res = await fetch(url, { signal: AbortSignal.timeout(15_000) });
   if (!res.ok) throw new HttpError(502, `OpenCode answered ${res.status}`);
   const { data } = (await res.json()) as { data: { id: string }[] };
   return data
-    .filter((m) => !/^(claude|gpt|gemini|grok|jev)/i.test(m.id))
+    .filter((m) => OPENCODE_CHAT.test(m.id))
     .map((m) => ({ id: m.id, name: m.id, context: 0, priceIn: null, priceOut: null, structured: null }))
     .sort((a, b) => a.id.localeCompare(b.id));
 }
 
 /** A provider's public model list, trimmed for the admin picker. Cached for an hour. */
 export const GET = adminRoute(async (req) => {
-  const source = new URL(req.url).searchParams.get("source") === "opencode" ? "opencode" : "openrouter";
+  const asked = new URL(req.url).searchParams.get("source");
+  const source = asked === "opencode" || asked === "opencode-go" ? asked : "openrouter";
   const hit = caches.get(source);
   if (hit && Date.now() - hit.at < 3600_000) return json({ models: hit.models });
-  const models = source === "opencode" ? await opencode() : await openrouter();
+  const models =
+    source === "opencode" ? await opencode("https://opencode.ai/zen/v1/models")
+    : source === "opencode-go" ? await opencode("https://opencode.ai/zen/go/v1/models")
+    : await openrouter();
   caches.set(source, { at: Date.now(), models });
   return json({ models });
 });

@@ -274,18 +274,19 @@ function Invite({ emailEnabled, onDone }: { emailEnabled: boolean; onDone: () =>
 
 // --- AI settings --------------------------------------------------------------------
 
-type Catalog = "openrouter" | "opencode";
+type Catalog = "openrouter" | "opencode" | "opencode-go";
 type Preset = { label: string; url: string; catalog?: Catalog; editableUrl?: boolean; pricing?: string };
 // A preset fixes the address. Ollama stays editable because its host differs per setup.
 const PRESETS: Preset[] = [
   { label: "OpenRouter", url: "https://openrouter.ai/api/v1", catalog: "openrouter" },
   { label: "OpenCode Zen", url: "https://opencode.ai/zen/v1", catalog: "opencode", pricing: "https://opencode.ai/docs/zen/" },
+  { label: "OpenCode Go", url: "https://opencode.ai/zen/go/v1", catalog: "opencode-go", pricing: "https://opencode.ai/docs/zen/" },
   { label: "DeepInfra", url: "https://api.deepinfra.com/v1/openai", pricing: "https://deepinfra.com/pricing" },
   { label: "Together", url: "https://api.together.xyz/v1", pricing: "https://www.together.ai/pricing" },
   { label: "Groq", url: "https://api.groq.com/openai/v1", pricing: "https://groq.com/pricing" },
   { label: "Ollama (local)", url: "http://host.docker.internal:11434/v1", editableUrl: true },
 ];
-const CATALOG_NAME: Record<Catalog, string> = { openrouter: "OpenRouter", opencode: "OpenCode Zen" };
+const CATALOG_NAME: Record<Catalog, string> = { openrouter: "OpenRouter", opencode: "OpenCode Zen", "opencode-go": "OpenCode Go" };
 
 function Fixed({ children, empty }: { children: React.ReactNode; empty?: boolean }) {
   return (
@@ -429,7 +430,7 @@ export function AdminAi() {
           title="Price"
           help={
             <>
-              Dollars per million tokens. {preset?.pricing ? <>{preset.label} doesn&apos;t publish prices to apps, so copy them from <a href={preset.pricing} target="_blank" rel="noreferrer">its pricing page</a>.</> : "Copy them from your provider's model page."} Used for the spend totals and the daily caps.
+              Dollars per million tokens. {catalog === "opencode-go" ? <>Go is a flat monthly plan, but its usage limits are counted in dollars at <a href={preset?.pricing} target="_blank" rel="noreferrer">Zen&apos;s rates</a>. Enter those so the spend totals track your plan limit.</> : preset?.pricing ? <>{preset.label} doesn&apos;t publish prices to apps, so copy them from <a href={preset.pricing} target="_blank" rel="noreferrer">its pricing page</a>.</> : "Copy them from your provider's model page."} Used for the spend totals and the daily caps.
             </>
           }
         >
