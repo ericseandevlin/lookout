@@ -4,6 +4,8 @@ import { z } from "zod";
 import { db, schema } from "@/lib/db";
 import { kinds, parseMoney } from "@/lib/kinds";
 import { fetchPage, FetchError, pageToText } from "@/lib/ai/fetchPage";
+import type { RunReport, RunTally } from "@/lib/db/schema";
+import { buildTips, emptyTally } from "./report";
 import { completeJSON, emptyUsage, type Usage } from "@/lib/ai/llm";
 import { assertBudget, finishRun, progress, startRun } from "@/lib/ai/runs";
 import { webSearch, type SearchHit } from "@/lib/ai/search";
@@ -30,6 +32,8 @@ type Context = {
   links: string[];
   floor: number | null;
   knownUrls: string[];
+  answers: Record<string, string | string[]>;
+  hasResume: boolean;
 };
 
 export async function loadContext(userId: string): Promise<Context> {
@@ -54,6 +58,8 @@ export async function loadContext(userId: string): Promise<Context> {
     ],
     floor: parseMoney(answers.floor),
     knownUrls: known.map((k) => k.url).filter((u): u is string => !!u),
+    answers,
+    hasResume: !!resume?.extracted?.text,
   };
 }
 
@@ -220,12 +226,19 @@ async function scorePages(ctx: Context, pages: Page[], usage: Usage, report?: Re
 
 // --- save ----------------------------------------------------------------------
 
-export async function save(ctx: Context, finds: ScoredT[], via: "agent" | "manual") {
+export async function save(ctx: Context, finds: ScoredT[], via: "agent" | "manual"): Promise<RunTally> {
   const known = new Set(ctx.knownUrls.map(normUrl));
-  let added = 0;
+  const t = emptyTally();
   for (const f of finds) {
-    if (!f.is_open_job_posting || !f.company || !f.title) continue;
-    if (via === "agent" && known.has(normUrl(f.url))) continue;
+    if (!f.is_open_job_posting || !f.company || !f.title) {
+      t.notPostings++;
+      continue;
+    }
+    t.postings++;
+    if (via === "agent" && known.has(normUrl(f.url))) {
+      t.known++;
+      continue;
+    }
     const ruled = applyRules(
       {
         score: f.score,
@@ -238,7 +251,13 @@ export async function save(ctx: Context, finds: ScoredT[], via: "agent" | "manua
       },
       ctx.floor,
     );
-    if (!ruled) continue;
+    if (!ruled) {
+      t.dealbreaker++;
+      continue;
+    }
+    const top = f.comp_max ?? f.comp_min;
+    if (ctx.floor && top && top < ctx.floor) t.belowFloor++;
+    if (!f.location_fit) t.offLocation++;
     const posted = f.posted_at && /^\d{4}-\d{2}-\d{2}$/.test(f.posted_at) ? f.posted_at : null;
     const [opp] = await db
       .insert(schema.opportunities)
@@ -272,10 +291,17 @@ export async function save(ctx: Context, finds: ScoredT[], via: "agent" | "manua
       })
       .onConflictDoNothing()
       .returning();
-    if (inserted.length) added++;
+    if (inserted.length) t.added++;
+    else t.known++;
     known.add(normUrl(f.url));
   }
-  return added;
+  return t;
+}
+
+/** The funnel, queries and tips shown after a search. */
+export function makeReport(ctx: Context, r: Omit<RunReport, "tips">): RunReport {
+  const floor = typeof ctx.answers.floor === "string" ? ctx.answers.floor.trim() : "";
+  return { ...r, tips: buildTips(r, { answers: ctx.answers, hasResume: ctx.hasResume, floor }) };
 }
 
 // --- entry points ----------------------------------------------------------------
@@ -303,10 +329,11 @@ export async function discover(userId: string, trigger: "scheduled" | "manual" =
     await report(75, `Read ${pages.length} postings`);
     const scored = await scorePages(ctx, pages, usage, report);
     await report(97, "Saving new finds");
-    const added = await save(ctx, scored, "agent");
-    const found = scored.filter((s) => s.is_open_job_posting).length;
+    const tally = await save(ctx, scored, "agent");
+    const { added, postings: found } = tally;
     await progress(run.id, 100, added ? `Added ${added} new ${added === 1 ? "find" : "finds"}` : found ? "No new finds this time. Everything matching is already on your board" : "No matching open roles this time");
-    await finishRun(run.id, usage, { found, added });
+    const summary = makeReport(ctx, { queries, results: hits.length, picked: picks.length, read: pages.length, tally });
+    await finishRun(run.id, usage, { found, added, report: summary });
     return { found, added };
   } catch (e) {
     await finishRun(run.id, usage, { error: e instanceof Error ? e.message : String(e) });
@@ -337,7 +364,7 @@ export async function addByUrl(userId: string, url: string) {
     await progress(run.id, 45, "Reading the posting and scoring it against your profile");
     const scored = await scorePages(ctx, [page], usage);
     const one = scored.slice(0, 1).map((s) => ({ ...s, url, is_open_job_posting: s.is_open_job_posting || !!s.title }));
-    const added = await save(ctx, one, "manual");
+    const { added } = await save(ctx, one, "manual");
     if (one.length) await progress(run.id, 100, added ? `Added ${one[0].title} at ${one[0].company}` : "That posting is already on your board");
     await finishRun(run.id, usage, { found: one.length, added, error: one.length ? null : "That page didn't look like a job posting" });
     return { added };

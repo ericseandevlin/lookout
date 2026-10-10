@@ -1,5 +1,5 @@
 // Shapes shared by the API and the client.
-import type { Density, Freq, SetupMode, Stage } from "@/lib/db/schema";
+import type { Density, Freq, RunReport, SetupMode, Stage } from "@/lib/db/schema";
 
 export type { Density, Freq, SetupMode, Stage };
 
@@ -61,4 +61,5 @@ export type RunInfo = {
   error: string | null;
   startedAt: string;
   finishedAt: string | null;
+  report: RunReport | null;
 };

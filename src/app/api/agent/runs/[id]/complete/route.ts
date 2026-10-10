@@ -3,7 +3,7 @@ import { z } from "zod";
 import { body, HttpError, json } from "@/lib/api";
 import { agentRoute } from "@/lib/agentAuth";
 import { db, schema } from "@/lib/db";
-import { loadContext, save, ScoredList } from "@/lib/agent/discover";
+import { loadContext, makeReport, save, ScoredList } from "@/lib/agent/discover";
 import { applyResumeResult, Fills } from "@/lib/agent/resume";
 import { emptyUsage } from "@/lib/ai/llm";
 import { finishRun, progress } from "@/lib/ai/runs";
@@ -15,6 +15,10 @@ const Input = z.object({
   fills: Fills.optional(),
   error: z.string().max(500).optional(),
   searches: z.number().int().min(0).max(500).optional(),
+  /** For the after-search report: the queries run, results seen, and pages opened. */
+  queries: z.array(z.string().max(300)).max(20).optional(),
+  results: z.number().int().min(0).max(1000).optional(),
+  read: z.number().int().min(0).max(200).optional(),
 });
 type Ctx = { params: Promise<{ id: string }> };
 
@@ -43,10 +47,12 @@ export const POST = agentRoute<Ctx>(async (req, { params }) => {
 
   const ctx = await loadContext(run.userId);
   const finds = (p.finds ?? []).map((f, index) => ({ ...f, index }));
-  const added = await save(ctx, finds, type === "url" ? "manual" : "agent");
-  const found = finds.filter((f) => f.is_open_job_posting).length;
+  const tally = await save(ctx, finds, type === "url" ? "manual" : "agent");
+  const { added, postings: found } = tally;
   await progress(id, 100, added ? `Added ${added} new ${added === 1 ? "find" : "finds"}` : found ? "No new finds this time. Everything matching is already on your board" : "No matching open roles this time");
-  await finishRun(id, usage, { found, added });
+  const report =
+    type === "url" ? undefined : makeReport(ctx, { queries: p.queries ?? [], results: p.results ?? finds.length, picked: p.read ?? finds.length, read: p.read ?? finds.length, tally });
+  await finishRun(id, usage, { found, added, report });
   if (added > 0 && run.trigger === "scheduled") await sendDigest(run.userId).catch(() => {});
   return json({ ok: true, found, added });
 });

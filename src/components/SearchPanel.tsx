@@ -1,6 +1,8 @@
 "use client";
 
+import Link from "next/link";
 import { useState, useSyncExternalStore } from "react";
+import type { RunReport } from "@/lib/db/schema";
 import type { RunInfo } from "@/lib/types";
 import { CheckIcon, XIcon } from "./icons";
 import { useStore } from "./store";
@@ -128,7 +130,7 @@ function Finished({ run, onDismiss, onRetry, retrying, retryError }: { run: RunI
       ? "They're marked with a green dot. Open one to see why it matched."
       : run.found
         ? `Lookout read ${run.found} matching ${run.found === 1 ? "posting" : "postings"}, and they're already on your board. It'll look again on your schedule.`
-        : "Nothing new matched your profile. It'll look again on your schedule. Loosening your areas or titles can widen the search.";
+        : "Nothing new matched your profile. It'll look again on your schedule.";
   return (
     <Shell>
       <div style={{ display: "flex", alignItems: "flex-start", gap: 12 }}>
@@ -139,6 +141,7 @@ function Finished({ run, onDismiss, onRetry, retrying, retryError }: { run: RunI
           </div>
           <Title>{title}</Title>
           <Body>{body}</Body>
+          {!failed && run.report && <Report r={run.report} />}
           {failed && run.trigger !== "url" && (
             <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap", marginTop: 6 }}>
               <button onClick={onRetry} disabled={retrying} style={primaryBtn}>{retrying ? "Starting…" : "Try again"}</button>
@@ -149,6 +152,58 @@ function Finished({ run, onDismiss, onRetry, retrying, retryError }: { run: RunI
         <button onClick={onDismiss} aria-label="Dismiss" style={{ border: 0, background: "rgba(255,255,255,.1)", color: "#fff", width: 30, height: 30, borderRadius: "50%", cursor: "pointer", fontSize: 16, lineHeight: 1, flex: "none" }}>×</button>
       </div>
     </Shell>
+  );
+}
+
+/** What the search did, where postings dropped out, and what to change. */
+function Report({ r }: { r: RunReport }) {
+  const t = r.tally;
+  const steps: [number, string][] = [
+    [r.queries.length, r.queries.length === 1 ? "search" : "searches"],
+    [r.results, r.results === 1 ? "result" : "results"],
+    [r.read, "pages read"],
+    [t.postings, t.postings === 1 ? "job post" : "job posts"],
+    [t.added, "added"],
+  ];
+  const outs = [
+    t.known && `${t.known} already on your board`,
+    t.dealbreaker && `${t.dealbreaker} hit a dealbreaker`,
+    t.belowFloor && `${t.belowFloor} under your pay floor`,
+    t.offLocation && `${t.offLocation} off on location`,
+  ].filter(Boolean) as string[];
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 12, marginTop: 8 }}>
+      <ol aria-label="What this search did" style={{ listStyle: "none", margin: 0, padding: 0, display: "flex", flexWrap: "wrap", alignItems: "baseline", gap: "6px 0" }}>
+        {steps.map(([n, label], i) => (
+          <li key={label} style={{ display: "flex", alignItems: "baseline", gap: 5, fontSize: 13, color: "#C9C1B5" }}>
+            {i > 0 && <span aria-hidden style={{ color: "#6B6358", margin: "0 8px" }}>→</span>}
+            <span style={{ fontSize: 16, fontWeight: 700, color: i === steps.length - 1 ? "#F8A865" : "#fff", fontVariantNumeric: "tabular-nums" }}>{n}</span>
+            {label}
+          </li>
+        ))}
+      </ol>
+      {outs.length > 0 && <div style={{ fontSize: 12.5, color: "#A89F92" }}>Of the job posts: {outs.join(" · ")}. Pay and location only mark a role down; it still goes on your board.</div>}
+      {r.tips.length > 0 && (
+        <ul style={{ listStyle: "none", margin: 0, padding: 0, display: "flex", flexDirection: "column", gap: 8 }}>
+          {r.tips.map((tip) => (
+            <li key={tip.text} style={{ display: "flex", gap: 12, alignItems: "flex-start", justifyContent: "space-between", flexWrap: "wrap", padding: "11px 13px", borderRadius: 10, background: "rgba(255,255,255,.06)" }}>
+              <span style={{ flex: "1 1 280px", fontSize: 13.5, lineHeight: 1.45, color: "#E9E3DA", textWrap: "pretty" }}>{tip.text}</span>
+              {tip.href && (
+                <Link href={tip.href} style={{ flex: "none", fontSize: 13, fontWeight: 600, color: "#F8A865", textDecoration: "none", whiteSpace: "nowrap" }}>{tip.label ?? "Edit"} →</Link>
+              )}
+            </li>
+          ))}
+        </ul>
+      )}
+      {r.queries.length > 0 && (
+        <details style={{ fontSize: 12.5, color: "#A89F92" }}>
+          <summary style={{ cursor: "pointer", width: "fit-content" }}>See the searches it ran</summary>
+          <ul style={{ margin: "8px 0 0", paddingLeft: 18, display: "flex", flexDirection: "column", gap: 4, color: "#C9C1B5" }}>
+            {r.queries.map((q) => <li key={q} style={{ wordBreak: "break-word" }}>{q}</li>)}
+          </ul>
+        </details>
+      )}
+    </div>
   );
 }
 

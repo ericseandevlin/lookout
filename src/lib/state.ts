@@ -122,5 +122,6 @@ export async function getLatestRun(userId: string): Promise<RunInfo | null> {
     error: r.error,
     startedAt: r.startedAt.toISOString(),
     finishedAt: r.finishedAt?.toISOString() ?? null,
+    report: r.report ?? null,
   };
 }

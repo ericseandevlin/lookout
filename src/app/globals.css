@@ -109,3 +109,6 @@ button:focus-visible, a:focus-visible, label:focus-within { outline: 2px solid v
 }
 /* Centered dialogs use transform for positioning; don't animate them with the page. */
 .lk-page > [role="dialog"] { animation: none; }
+
+/* Tips on the board link to profile fields; leave room above the one you land on. */
+[id^="q-"] { scroll-margin-top: 140px; }

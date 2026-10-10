@@ -193,7 +193,7 @@ function useStoreValue(initial: AppState) {
 
   const startedRun = (trigger: string): RunInfo => ({
     id: "pending", trigger, status: "running", pct: 1, step: trigger === "url" ? "Opening the link" : "Starting the search",
-    log: [], found: 0, added: 0, error: null, startedAt: new Date().toISOString(), finishedAt: null,
+    log: [], found: 0, added: 0, error: null, startedAt: new Date().toISOString(), finishedAt: null, report: null,
   });
 
   const addFindByUrl = useCallback(async (url: string) => {

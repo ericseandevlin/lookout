@@ -167,6 +167,11 @@ export const userOpportunities = pgTable(
 );
 
 export type RunProgress = { pct: number; step: string; log: { at: string; text: string }[] };
+/** What happened to the postings a search read. Floor and location only mark a find down; the rest keep it off the board. */
+export type RunTally = { postings: number; notPostings: number; known: number; dealbreaker: number; belowFloor: number; offLocation: number; added: number };
+export type RunTip = { text: string; href?: string; label?: string };
+/** The after-search report: the funnel, the queries used, and what to change. */
+export type RunReport = { queries: string[]; results: number; picked: number; read: number; tally: RunTally; tips: RunTip[] };
 
 export const runs = pgTable(
   "runs",
@@ -181,6 +186,7 @@ export const runs = pgTable(
     progress: jsonb("progress").$type<RunProgress>().notNull().default({ pct: 0, step: "", log: [] }),
     /** Input for runs handled by an external agent, e.g. the URL for a manual add */
     request: jsonb("request").$type<Record<string, unknown>>(),
+    report: jsonb("report").$type<RunReport>(),
     startedAt: timestamp("started_at", { withTimezone: true }).notNull().defaultNow(),
     finishedAt: timestamp("finished_at", { withTimezone: true }),
     found: integer("found").notNull().default(0),

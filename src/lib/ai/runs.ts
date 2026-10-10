@@ -1,6 +1,7 @@
 import "server-only";
 import { and, eq, gte, sql } from "drizzle-orm";
 import { db, schema } from "@/lib/db";
+import type { RunReport } from "@/lib/db/schema";
 import { getAccessConfig } from "@/lib/config";
 import type { Usage } from "./llm";
 
@@ -29,7 +30,7 @@ export async function startRun(
   return run;
 }
 
-export async function finishRun(id: string, u: Usage, r: { found?: number; added?: number; error?: string | null }) {
+export async function finishRun(id: string, u: Usage, r: { found?: number; added?: number; error?: string | null; report?: RunReport }) {
   await db
     .update(schema.runs)
     .set({
@@ -42,6 +43,7 @@ export async function finishRun(id: string, u: Usage, r: { found?: number; added
       outputTokens: u.output,
       searches: u.searches,
       costUsd: u.usd.toFixed(4),
+      ...(r.report && { report: r.report }),
     })
     .where(eq(schema.runs.id, id));
 }
