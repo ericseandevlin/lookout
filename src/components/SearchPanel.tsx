@@ -155,6 +155,23 @@ function Finished({ run, onDismiss, onRetry, retrying, retryError }: { run: RunI
   );
 }
 
+/** The last search's report, opened from the board header after the live panel is gone. */
+export function LastReport({ at, added, report, onClose }: { at: string; added: number; report: RunReport; onClose: () => void }) {
+  const when = new Date(at).toLocaleString(undefined, { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" });
+  return (
+    <Shell>
+      <div style={{ display: "flex", alignItems: "flex-start", gap: 12 }}>
+        <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: 6 }}>
+          <Eyebrow>Last search · {when}</Eyebrow>
+          <Title>{added ? `${added} new ${added === 1 ? "find" : "finds"} added` : "No new finds"}</Title>
+          <Report r={report} />
+        </div>
+        <button onClick={onClose} aria-label="Close report" style={{ border: 0, background: "rgba(255,255,255,.1)", color: "#fff", width: 30, height: 30, borderRadius: "50%", cursor: "pointer", fontSize: 16, lineHeight: 1, flex: "none" }}>×</button>
+      </div>
+    </Shell>
+  );
+}
+
 /** What the search did, where postings dropped out, and what to change. */
 function Report({ r }: { r: RunReport }) {
   const t = r.tally;

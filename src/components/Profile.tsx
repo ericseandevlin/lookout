@@ -25,6 +25,43 @@ const AutoTag = ({ src }: { src?: string }) =>
     <span style={{ fontSize: 11.5, fontWeight: 600, padding: "3px 8px", borderRadius: 6, background: "#FDE7D3", color: "#7A3A10" }}>Filled from {src}</span>
   ) : null;
 
+const focusEnd = (id: string) => {
+  const el = document.getElementById(id) as HTMLTextAreaElement | null;
+  if (!el) return;
+  el.focus();
+  el.setSelectionRange(el.value.length, el.value.length);
+};
+
+const splitList = (v: string) => v.split(/\s*[,;\n]\s*/).map((x) => x.trim()).filter(Boolean);
+
+/** Chips that get someone started: drop in a sentence to finish, or toggle common items in a list. */
+function Starters({ mode, options, value, onChange }: { mode: "insert" | "toggle"; options: { label: string; text: string }[]; value: string; onChange: (v: string) => void }) {
+  const items = splitList(value);
+  const has = (t: string) => items.some((x) => x.toLowerCase() === t.toLowerCase());
+  const pick = (t: string) => {
+    if (mode === "insert") return onChange(value.trim() ? `${value.trimEnd()}\n${t}` : t);
+    onChange((has(t) ? items.filter((x) => x.toLowerCase() !== t.toLowerCase()) : [...items, t]).join(", "));
+  };
+  return (
+    <div role="group" aria-label={mode === "insert" ? "Sentence starters" : "Common answers"} style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+      {options.map((o) => {
+        const on = mode === "toggle" && has(o.text);
+        return (
+          <button
+            key={o.label}
+            type="button"
+            onClick={() => pick(o.text)}
+            aria-pressed={mode === "toggle" ? on : undefined}
+            style={{ height: 32, padding: "0 12px", borderRadius: 999, border: `1.5px solid ${on ? "#1D1A0F" : "#E0D9CF"}`, background: on ? "#1D1A0F" : "#fff", color: on ? "#fff" : "#1D1A0F", fontSize: 13, fontWeight: 600, cursor: "pointer" }}
+          >
+            {mode === "insert" ? `+ ${o.label}` : on ? `✓ ${o.label}` : o.label}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
 export function Profile() {
   const { state, editAnswers, saveProfile } = useStore();
   const { answered } = useCounts(state);
@@ -67,6 +104,17 @@ export function Profile() {
               </div>
               {q.kind !== "modes" && <div style={{ fontSize: 13.5, color: "#8A8175" }}>{q.helper}</div>}
 
+              {q.kind === "text" && q.starters && (
+                <Starters
+                  mode={q.starters.mode}
+                  options={q.starters.options}
+                  value={str(q.key)}
+                  onChange={(v) => {
+                    editAnswers({ [q.key]: v }, [q.key]);
+                    if (q.starters!.mode === "insert") requestAnimationFrame(() => focusEnd(`q-${q.key}`));
+                  }}
+                />
+              )}
               {q.kind === "text" && (
                 <textarea id={`q-${q.key}`} className="f-brick" value={str(q.key)} onChange={set(q.key)} rows={3} placeholder={q.placeholder} maxLength={4000} style={{ ...inputBase, resize: "vertical", padding: "11px 13px", lineHeight: 1.5 }} />
               )}

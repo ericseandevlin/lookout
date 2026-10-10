@@ -8,7 +8,7 @@ import {
 import type { Find, Stage } from "@/lib/types";
 import { ArchiveIcon, ArrowUpRight, CheckIcon, ChevronDown, LinkIcon, PinIcon, PlusIcon, SearchIcon, SlidersIcon, XIcon } from "./icons";
 import { useCounts } from "./Shell";
-import { SearchPanel } from "./SearchPanel";
+import { LastReport, SearchPanel } from "./SearchPanel";
 import { useStore } from "./store";
 
 type SortKey = "score" | "company" | "role" | "comp" | "listed" | "stage" | "location";
@@ -48,6 +48,7 @@ export function Finds() {
   const [sheetOpen, setSheetOpen] = useState(false);
   const [openId, setOpenId] = useState<string | null>(null);
   const [addOpen, setAddOpen] = useState(false);
+  const [showReport, setShowReport] = useState(false);
 
   const finds = state.finds;
   const isNew = useCallback((f: Find) => isNewFind(f, settings.newDays), [settings.newDays]);
@@ -128,7 +129,14 @@ export function Finds() {
         <div style={{ display: "flex", alignItems: "center", gap: 20, flexWrap: "wrap" }}>
           <div style={{ flex: 1, minWidth: 260 }}>
             <h1 style={{ margin: 0, fontSize: 27, fontWeight: 700, letterSpacing: "-0.02em", lineHeight: "32px" }}>Finds</h1>
-            <div className={state.running ? "pulse" : undefined} style={{ fontSize: 13.5, color: "#6B6358", marginTop: 4 }}>{sub}</div>
+            <div style={{ display: "flex", alignItems: "baseline", gap: 8, flexWrap: "wrap", marginTop: 4 }}>
+              <span className={state.running ? "pulse" : undefined} style={{ fontSize: 13.5, color: "#6B6358" }}>{sub}</span>
+              {!state.running && state.lastReport && (
+                <button onClick={() => setShowReport((v) => !v)} aria-expanded={showReport} style={{ border: 0, background: "transparent", padding: 0, fontSize: 13.5, fontWeight: 600, color: "#99220F", cursor: "pointer", textDecoration: "underline", textUnderlineOffset: 3 }}>
+                  {showReport ? "Hide search report" : "See search report"}
+                </button>
+              )}
+            </div>
           </div>
           <div className="hdr-tools" style={{ display: "flex", gap: 8, alignItems: "center", maxWidth: "100%" }}>
             <div className="board-search" style={{ display: "flex", alignItems: "center", gap: 10, background: "#F4F1EC", borderRadius: 999, padding: "0 16px", maxWidth: "100%" }}>
@@ -141,12 +149,14 @@ export function Finds() {
                 style={{ flex: 1, minWidth: 0, background: "transparent", border: 0, outline: "none", color: "#1D1A0F", fontSize: 13.5 }}
               />
             </div>
+            <SearchNowButton />
             <AddLink open={addOpen} setOpen={setAddOpen} />
           </div>
         </div>
       </div>
 
       <div className="board-body">
+        {showReport && !state.running && state.lastReport && <LastReport {...state.lastReport} onClose={() => setShowReport(false)} />}
         <SearchPanel ready={counts.answered === 5 && state.materials.resume?.status === "done"} />
         <SetupPanel answered={counts.answered} sources={counts.sources} />
 
@@ -457,6 +467,35 @@ function SetupPanel({ answered, sources }: { answered: number; sources: number }
         ))}
       </div>
     </div>
+  );
+}
+
+function SearchNowButton() {
+  const { searchNow, fail, state } = useStore();
+  const [busy, setBusy] = useState(false);
+  const running = !!state.running;
+  const go = async () => {
+    setBusy(true);
+    try {
+      await searchNow();
+    } catch (e) {
+      fail(e);
+    } finally {
+      setBusy(false);
+    }
+  };
+  return (
+    <button
+      onClick={go}
+      disabled={running || busy}
+      data-tip={running ? "A search is running" : "Look for new roles now"}
+      aria-label="Search now"
+      className="board-search"
+      style={{ width: "auto", flex: "none", display: "flex", alignItems: "center", gap: 6, padding: "0 14px", borderRadius: 999, border: "1.5px solid #1D1A0F", background: "#fff", color: "#1D1A0F", fontSize: 13.5, fontWeight: 600, cursor: running || busy ? "default" : "pointer", opacity: running || busy ? 0.5 : 1 }}
+    >
+      <span aria-hidden style={{ fontSize: 15, lineHeight: 1 }}>↻</span>
+      <span className="desk-only">{running ? "Searching…" : "Search now"}</span>
+    </button>
   );
 }
 

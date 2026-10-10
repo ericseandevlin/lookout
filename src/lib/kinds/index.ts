@@ -4,7 +4,15 @@
  * discovery brief) lives here so RFPs, rentals, etc. can be added as new configs.
  */
 export type Question =
-  | { key: string; kind: "text"; prompt: string; helper: string; placeholder: string }
+  | {
+      key: string;
+      kind: "text";
+      prompt: string;
+      helper: string;
+      placeholder: string;
+      /** Quick picks: "insert" drops a sentence starter in to finish; "toggle" adds or removes a list item. */
+      starters?: { mode: "insert" | "toggle"; options: { label: string; text: string }[] };
+    }
   | { key: string; kind: "comp"; prompt: string; helper: string; floorKey: string; targetKey: string }
   | { key: string; kind: "modes"; prompt: string; modesKey: string; areaKey: string; options: string[] };
 
@@ -52,6 +60,17 @@ export const job: KindConfig = {
       prompt: "What's the win you'd lead with in an interview?",
       helper: "One result from the last few years, with a number if you have one.",
       placeholder: "e.g. Rebuilt the banquet sales team and grew private-event revenue 40% in two years",
+      starters: {
+        mode: "insert",
+        options: [
+          { label: "Grew revenue", text: "Grew revenue __% in __ years by " },
+          { label: "Cut costs", text: "Cut costs by $__ a year by " },
+          { label: "Launched something", text: "Launched __, which reached __ " },
+          { label: "Built a team", text: "Built and led a team of __ that " },
+          { label: "Turned it around", text: "Took __ from __ to __ by " },
+          { label: "Landed a big client", text: "Won __, a $__ account, by " },
+        ],
+      },
     },
     {
       key: "q5",
@@ -59,6 +78,19 @@ export const job: KindConfig = {
       prompt: "What's off the table?",
       helper: "Companies, schedules, cultures or travel you'd rule out.",
       placeholder: "e.g. No overnight shifts, no more than 20% travel",
+      starters: {
+        mode: "toggle",
+        options: [
+          { label: "Relocating", text: "No relocation" },
+          { label: "Lots of travel", text: "No more than 20% travel" },
+          { label: "Fully on-site", text: "Not fully on-site" },
+          { label: "Early startups", text: "No early-stage startups" },
+          { label: "Agencies", text: "No agencies" },
+          { label: "Contract roles", text: "No contract roles" },
+          { label: "Commission pay", text: "No commission-heavy pay" },
+          { label: "Nights and weekends", text: "No nights or weekends" },
+        ],
+      },
     },
   ],
   brief: (a) =>

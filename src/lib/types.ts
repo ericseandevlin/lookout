@@ -45,6 +45,8 @@ export type AppState = {
   materials: { resume: Resume | null; linkedin: { handle: string; linked: boolean }; links: Link[] };
   finds: Find[];
   lastRunAt: string | null;
+  /** The newest finished search that has a report, kept on the board after the panel goes away. */
+  lastReport: { at: string; added: number; report: RunReport } | null;
   running: string | null;
   run: RunInfo | null;
 };

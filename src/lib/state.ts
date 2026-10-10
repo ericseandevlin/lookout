@@ -96,6 +96,7 @@ export async function getState(user: SessionUser): Promise<AppState> {
     materials: await getMaterials(user.id),
     finds: await getFinds(user.id),
     lastRunAt: lastRun?.finishedAt?.toISOString() ?? null,
+    lastReport: lastRun?.report && lastRun.finishedAt ? { at: lastRun.finishedAt.toISOString(), added: lastRun.added, report: lastRun.report } : null,
     running: running ? running.trigger : null,
     run,
   };

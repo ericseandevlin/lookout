@@ -124,6 +124,7 @@ const Picks = z.object({ picks: z.array(z.number().int()).describe("Indexes of t
 async function pickHits(ctx: Context, hits: SearchHit[], usage: Usage) {
   if (hits.length <= MAX_PICKS) return hits;
   const list = hits.map((h, i) => `[${i}] ${h.title}\n${h.url}\n${h.snippet.slice(0, 200)}`).join("\n\n");
+  // A bad answer here shouldn't sink the whole search; fall back to the top results.
   const out = await completeJSON({
     name: "picks",
     schema: Picks,
@@ -131,6 +132,9 @@ async function pickHits(ctx: Context, hits: SearchHit[], usage: Usage) {
     maxTokens: 800,
     system: "You triage search results for a recruiter.",
     user: `${profileBlock(ctx)}\n\n<results>\n${list}\n</results>\n\nPick up to ${MAX_PICKS} results that are most likely a single, currently open job posting that fits this candidate. Skip list pages, articles, salary guides and expired posts. Return their indexes.`,
+  }).catch((e) => {
+    console.warn("[discover] picks failed, using top results", e instanceof Error ? e.message : e);
+    return { picks: [] as number[] };
   });
   const chosen = [...new Set(out.picks)].filter((i) => i >= 0 && i < hits.length).map((i) => hits[i]);
   return chosen.length ? chosen.slice(0, MAX_PICKS) : hits.slice(0, MAX_PICKS);
