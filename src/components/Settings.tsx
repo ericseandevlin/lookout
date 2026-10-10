@@ -42,11 +42,12 @@ export function Seg<T extends string | number>({ opts, cur, pick }: { opts: [str
   );
 }
 
-export const btn = (kind: "outline" | "danger" | "solid"): React.CSSProperties => ({
+export const btn = (kind: "outline" | "danger" | "solid" | "text"): React.CSSProperties => ({
   height: 38, padding: "0 16px", borderRadius: 10, fontSize: 13.5, fontWeight: 600, cursor: "pointer",
   ...(kind === "outline" && { border: "1.5px solid #1D1A0F", background: "#fff", color: "#1D1A0F" }),
   ...(kind === "danger" && { border: "1.5px solid #E8B4AA", background: "#fff", color: "#99220F" }),
   ...(kind === "solid" && { border: 0, background: "#99220F", color: "#fff" }),
+  ...(kind === "text" && { border: 0, background: "transparent", color: "#1D1A0F", padding: "0 8px", textDecoration: "underline", textUnderlineOffset: 3 }),
 });
 
 export function Settings() {

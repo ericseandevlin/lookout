@@ -396,6 +396,7 @@ export function AdminAi() {
       ok: true,
     });
   };
+  const searchTest = <button onClick={() => test("search")} style={{ ...btn("text"), height: 42, flex: "none" }}>Test</button>;
   const testFetch = async () => {
     setFetchMsg({ text: "Fetching…", ok: true });
     type F = { ok: boolean; error?: string; chars?: number; ms?: number };
@@ -467,7 +468,10 @@ export function AdminAi() {
         </div>
       </Row>
       <Row title="API key" help={ai.apiKeyHint ? "Saved and encrypted. Replace it to use a different key." : "Not set. Local servers like Ollama don't need one."}>
-        <SecretField label="API key" hint={ai.apiKeyHint} value={ai.apiKey} onChange={(v) => setAi({ apiKey: v }, TYPING)} />
+        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+          <SecretField label="API key" hint={ai.apiKeyHint} value={ai.apiKey} onChange={(v) => setAi({ apiKey: v }, TYPING)} action={<button onClick={() => test("ai")} style={{ ...btn("text"), height: 42, flex: "none" }}>Test</button>} />
+          {aiMsg && <Msg text={aiMsg.text} ok={aiMsg.ok} />}
+        </div>
       </Row>
       {catalog === "openrouter" ? (
         <Row title="Price" help="Dollars per million tokens, from OpenRouter's list. Used for the spend totals and the daily caps.">
@@ -499,14 +503,7 @@ export function AdminAi() {
       ))}
         </>
       )}
-      <Row title="" help="">
-        <div style={{ display: "flex", flexDirection: "column", gap: 8, alignItems: "flex-start" }}>
-          <div style={{ display: "flex", gap: 8 }}>
-            {ai.provider !== "agent" && <button onClick={() => test("ai")} style={btn("outline")}>Test</button>}
-          </div>
-          {aiMsg && <Msg text={aiMsg.text} ok={aiMsg.ok} />}
-        </div>
-      </Row>
+      {ai.provider === "agent" && aiMsg && <Row title="" help=""><Msg text={aiMsg.text} ok={aiMsg.ok} /></Row>}
 
       <Section>Web search</Section>
       <Row title="Search engine" help="SearXNG runs on your server next to Lookout and costs nothing. Brave is a paid API that is more consistent.">
@@ -514,27 +511,29 @@ export function AdminAi() {
       </Row>
       {search.provider === "searxng" && (
         <Row title="SearXNG address" help="Inside the server this is http://searxng:8080.">
-          <input value={search.searxngUrl} onChange={(e) => setSearch({ searxngUrl: e.target.value }, TYPING)} aria-label="SearXNG address" className="f-brick" style={input} />
+          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+            <div style={{ display: "flex", gap: 8, alignItems: "center", maxWidth: 420 }}>
+              <input value={search.searxngUrl} onChange={(e) => setSearch({ searxngUrl: e.target.value }, TYPING)} aria-label="SearXNG address" className="f-brick" style={{ ...input, flex: 1, minWidth: 0 }} />
+              {searchTest}
+            </div>
+            {searchMsg && <Msg text={searchMsg.text} ok={searchMsg.ok} />}
+          </div>
         </Row>
       )}
       {search.provider === "brave" && (
         <>
           <Row title="Brave API key" help={search.braveKeyHint ? "Saved and encrypted. Replace it to use a different key." : "From api.search.brave.com."}>
-            <SecretField label="Brave API key" hint={search.braveKeyHint} value={search.braveKey} onChange={(v) => setSearch({ braveKey: v }, TYPING)} />
+            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+              <SecretField label="Brave API key" hint={search.braveKeyHint} value={search.braveKey} onChange={(v) => setSearch({ braveKey: v }, TYPING)} action={searchTest} />
+              {searchMsg && <Msg text={searchMsg.text} ok={searchMsg.ok} />}
+            </div>
           </Row>
           <Row title="Price per search" help="Dollars per query, for the spend totals.">
             <NumberField label="Per query" value={search.pricePerQuery} onChange={(v) => setSearch({ pricePerQuery: v }, TYPING)} />
           </Row>
         </>
       )}
-      <Row title="" help="">
-        <div style={{ display: "flex", flexDirection: "column", gap: 8, alignItems: "flex-start" }}>
-          <div style={{ display: "flex", gap: 8 }}>
-            <button onClick={() => test("search")} style={btn("outline")}>Test</button>
-          </div>
-          {searchMsg && <Msg text={searchMsg.text} ok={searchMsg.ok} />}
-        </div>
-      </Row>
+      {search.provider === "none" && searchMsg && <Row title="" help=""><Msg text={searchMsg.text} ok={searchMsg.ok} /></Row>}
 
       <Section>Page reading</Section>
       <Row title="Test a link" help="Checks that Lookout can open and read a posting. Private and internal addresses are always refused.">
@@ -551,7 +550,7 @@ export function AdminAi() {
 }
 
 /** A stored key shows as dots plus its last 4 characters; Replace opens an empty field. */
-function SecretField({ label, hint, value, onChange }: { label: string; hint: string; value: string; onChange: (v: string) => void }) {
+function SecretField({ label, hint, value, onChange, action }: { label: string; hint: string; value: string; onChange: (v: string) => void; action?: React.ReactNode }) {
   const [editing, setEditing] = useState(false);
   if (hint && !editing && !value) {
     return (
@@ -562,10 +561,12 @@ function SecretField({ label, hint, value, onChange }: { label: string; hint: st
           </span>
         </Fixed>
         <button onClick={() => setEditing(true)} style={{ ...btn("outline"), height: 42, flex: "none" }}>Replace</button>
+        {action}
       </div>
     );
   }
   return (
+    <div style={{ display: "flex", gap: 8, alignItems: "center", maxWidth: 420 }}>
     <input
       type="password"
       autoComplete="off"
@@ -580,8 +581,10 @@ function SecretField({ label, hint, value, onChange }: { label: string; hint: st
       placeholder="Paste a key"
       aria-label={label}
       className="f-brick"
-      style={input}
+      style={{ ...input, flex: 1, minWidth: 0 }}
     />
+    {action}
+    </div>
   );
 }
 

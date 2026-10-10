@@ -1,7 +1,8 @@
 import "server-only";
 import { lookup } from "node:dns";
 import { isIP } from "node:net";
-import { Agent } from "undici";
+// undici's own fetch: Node 22's built-in fetch rejects an Agent from a newer undici.
+import { Agent, fetch } from "undici";
 
 /**
  * Fetch a public web page safely. Users paste arbitrary links, so this must
@@ -62,7 +63,6 @@ export async function fetchPage(rawUrl: string): Promise<{ url: string; html: st
     if (isIP(url.hostname.replace(/^\[|\]$/g, "")) && !isPublicIp(url.hostname.replace(/^\[|\]$/g, ""))) throw new FetchError("That address isn't allowed");
     const res = await fetch(url, {
       redirect: "manual",
-      // @ts-expect-error undici dispatcher on Node's fetch
       dispatcher: agent,
       signal: AbortSignal.timeout(15_000),
       headers: {
