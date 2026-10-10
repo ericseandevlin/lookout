@@ -156,7 +156,7 @@ function useStoreValue(initial: AppState) {
         await api("/api/materials/resume", { method: "DELETE" }).catch(fail);
       },
       setLinkedin(handle: string) {
-        setState((s) => ({ ...s, materials: { ...s.materials, linkedin: { handle, linked: false } } }));
+        setState((s) => ({ ...s, materials: { ...s.materials, linkedin: { ...s.materials.linkedin, handle, linked: false } } }));
         clearTimeout(liTimer.current);
         liTimer.current = setTimeout(() => api("/api/materials/linkedin", { method: "PUT", json: { handle } }).catch(fail), 600);
       },
@@ -164,8 +164,18 @@ function useStoreValue(initial: AppState) {
         const handle = stateRef.current.materials.linkedin.handle.trim();
         if (!handle) return;
         clearTimeout(liTimer.current);
-        setState((s) => ({ ...s, materials: { ...s.materials, linkedin: { handle, linked: true } } }));
+        setState((s) => ({ ...s, materials: { ...s.materials, linkedin: { ...s.materials.linkedin, handle, linked: true } } }));
         await api("/api/materials/linkedin", { method: "PUT", json: { handle, scan: true } }).catch(fail);
+      },
+      async uploadLinkedinPdf(file: File) {
+        const fd = new FormData();
+        fd.append("file", file);
+        const { pdf } = await api<{ pdf: { name: string; uploadedAt: string } }>("/api/materials/linkedin/pdf", { method: "POST", body: fd });
+        setState((s) => ({ ...s, materials: { ...s.materials, linkedin: { ...s.materials.linkedin, pdf } } }));
+      },
+      async deleteLinkedinPdf() {
+        setState((s) => ({ ...s, materials: { ...s.materials, linkedin: { ...s.materials.linkedin, pdf: null } } }));
+        await api("/api/materials/linkedin/pdf", { method: "DELETE" }).catch(fail);
       },
       async addLink(url: string) {
         try {

@@ -59,7 +59,7 @@ export async function getMaterials(userId: string) {
   const li = rows.find((m) => m.kind === "linkedin");
   return {
     resume: toResume(rows.find((m) => m.kind === "resume")),
-    linkedin: { handle: li?.url ?? "", linked: !!li?.scannedAt },
+    linkedin: { handle: li?.url ?? "", linked: !!li?.scannedAt, pdf: li?.fileKey ? { name: li.fileName ?? "LinkedIn.pdf", uploadedAt: li.extracted?.uploadedAt ?? li.createdAt.toISOString() } : null },
     links: rows.filter((m) => m.kind === "link").map((m) => ({ id: m.id, url: m.url ?? "", kind: m.linkKind })),
   };
 }

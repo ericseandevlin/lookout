@@ -42,7 +42,7 @@ export type AppState = {
   user: { name: string; email: string; isAdmin: boolean };
   settings: Settings;
   profile: { answers: Answers; auto: Record<string, string>; savedAt: string | null };
-  materials: { resume: Resume | null; linkedin: { handle: string; linked: boolean }; links: Link[] };
+  materials: { resume: Resume | null; linkedin: { handle: string; linked: boolean; pdf: { name: string; uploadedAt: string } | null }; links: Link[] };
   finds: Find[];
   lastRunAt: string | null;
   /** The newest finished search that has a report, kept on the board after the panel goes away. */

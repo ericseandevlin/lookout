@@ -10,8 +10,11 @@ export type Question =
       prompt: string;
       helper: string;
       placeholder: string;
-      /** Quick picks: "insert" drops a sentence starter in to finish; "toggle" adds or removes a list item. */
-      starters?: { mode: "insert" | "toggle"; options: { label: string; text: string }[] };
+      /**
+       * Quick picks. "insert" drops in a sentence starter to finish; "toggle" adds or removes an item in a
+       * comma list; "append" adds or removes a phrase at the end of free text without touching the rest.
+       */
+      starters?: { mode: "insert" | "toggle" | "append"; options: { label: string; text: string }[] };
     }
   | { key: string; kind: "comp"; prompt: string; helper: string; floorKey: string; targetKey: string }
   | { key: string; kind: "modes"; prompt: string; modesKey: string; areaKey: string; options: string[] };
@@ -37,6 +40,19 @@ export const job: KindConfig = {
       prompt: "What's the next role, and what would make it a real step up?",
       helper: "Title, scope, team size, the kind of venue or company.",
       placeholder: "e.g. Director of Events at a flagship venue, owning sales and production",
+      starters: {
+        mode: "append",
+        options: [
+          { label: "Bigger title", text: "a bigger title" },
+          { label: "Larger team", text: "leading a larger team" },
+          { label: "Own the strategy", text: "owning the strategy, not just executing it" },
+          { label: "P&L or budget", text: "owning a P&L or budget" },
+          { label: "More pay", text: "a real jump in pay" },
+          { label: "Stronger brand", text: "a stronger company or brand" },
+          { label: "Broader scope", text: "a broader scope across more of the business" },
+          { label: "New industry", text: "moving into a new industry" },
+        ],
+      },
     },
     {
       key: "comp",

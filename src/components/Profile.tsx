@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { job } from "@/lib/kinds";
+import { togglePhrase } from "@/lib/phrases";
 import { useCounts } from "./Shell";
 import { useStore } from "./store";
 
@@ -35,23 +36,25 @@ const focusEnd = (id: string) => {
 const splitList = (v: string) => v.split(/\s*[,;\n]\s*/).map((x) => x.trim()).filter(Boolean);
 
 /** Chips that get someone started: drop in a sentence to finish, or toggle common items in a list. */
-function Starters({ mode, options, value, onChange }: { mode: "insert" | "toggle"; options: { label: string; text: string }[]; value: string; onChange: (v: string) => void }) {
+function Starters({ mode, options, value, onChange }: { mode: "insert" | "toggle" | "append"; options: { label: string; text: string }[]; value: string; onChange: (v: string) => void }) {
   const items = splitList(value);
-  const has = (t: string) => items.some((x) => x.toLowerCase() === t.toLowerCase());
+  const has = (t: string) =>
+    mode === "append" ? value.toLowerCase().includes(t.toLowerCase()) : items.some((x) => x.toLowerCase() === t.toLowerCase());
   const pick = (t: string) => {
     if (mode === "insert") return onChange(value.trim() ? `${value.trimEnd()}\n${t}` : t);
+    if (mode === "append") return onChange(togglePhrase(value, t));
     onChange((has(t) ? items.filter((x) => x.toLowerCase() !== t.toLowerCase()) : [...items, t]).join(", "));
   };
   return (
     <div role="group" aria-label={mode === "insert" ? "Sentence starters" : "Common answers"} style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
       {options.map((o) => {
-        const on = mode === "toggle" && has(o.text);
+        const on = mode !== "insert" && has(o.text);
         return (
           <button
             key={o.label}
             type="button"
             onClick={() => pick(o.text)}
-            aria-pressed={mode === "toggle" ? on : undefined}
+            aria-pressed={mode !== "insert" ? on : undefined}
             style={{ height: 32, padding: "0 12px", borderRadius: 999, border: `1.5px solid ${on ? "#1D1A0F" : "#E0D9CF"}`, background: on ? "#1D1A0F" : "#fff", color: on ? "#fff" : "#1D1A0F", fontSize: 13, fontWeight: 600, cursor: "pointer" }}
           >
             {mode === "insert" ? `+ ${o.label}` : on ? `✓ ${o.label}` : o.label}

@@ -18,7 +18,9 @@ export const PUT = authed(async (req, { user }) => {
   const where = and(eq(schema.materials.userId, user.id), eq(schema.materials.kind, "linkedin"));
   const [existing] = await db.select().from(schema.materials).where(where);
   if (!handle) {
-    if (existing) await db.delete(schema.materials).where(eq(schema.materials.id, existing.id));
+    // Clearing the URL keeps an uploaded LinkedIn PDF.
+    if (existing?.fileKey) await db.update(schema.materials).set({ url: null, scannedAt: null }).where(eq(schema.materials.id, existing.id));
+    else if (existing) await db.delete(schema.materials).where(eq(schema.materials.id, existing.id));
     return json({ ok: true });
   }
   const scannedAt = scan ? new Date() : existing && existing.url === handle ? existing.scannedAt : null;

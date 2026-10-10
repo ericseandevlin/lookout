@@ -110,7 +110,7 @@ export const materials = pgTable(
     status: text("status").$type<"scanning" | "done" | "failed">(),
     filledNote: text("filled_note"),
     scannedAt: timestamp("scanned_at", { withTimezone: true }),
-    extracted: jsonb("extracted").$type<{ text?: string; summary?: string }>(),
+    extracted: jsonb("extracted").$type<{ text?: string; summary?: string; uploadedAt?: string }>(),
     position: integer("position").notNull().default(0),
     createdAt: createdAt(),
   },

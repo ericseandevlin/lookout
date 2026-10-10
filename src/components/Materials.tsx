@@ -24,6 +24,79 @@ function statusLine(note: string) {
   return `Saved · ${n.charAt(0).toUpperCase()}${n.slice(1)}`;
 }
 
+/** LinkedIn won't let apps read profiles, so people upload the PDF LinkedIn makes for them. */
+function LinkedinPdf() {
+  const { state, materials: m } = useStore();
+  const ask = useConfirm();
+  const pdf = state.materials.linkedin.pdf;
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
+  const onFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const f = e.target.files?.[0];
+    e.target.value = "";
+    if (!f) return;
+    setErr(null);
+    setBusy(true);
+    try {
+      await m.uploadLinkedinPdf(f);
+    } catch (x) {
+      setErr(x instanceof Error ? x.message : "Couldn't upload that file");
+    } finally {
+      setBusy(false);
+    }
+  };
+  const picker = (label: string) => (
+    <label className="h-border" style={{ display: "inline-flex", alignItems: "center", height: 34, padding: "0 13px", borderRadius: 8, border: "1.5px solid #1D1A0F", background: "#fff", fontSize: 13, fontWeight: 600, cursor: busy ? "default" : "pointer", opacity: busy ? 0.6 : 1, alignSelf: "flex-start" }}>
+      <input type="file" accept=".pdf,application/pdf" onChange={onFile} disabled={busy} style={{ position: "absolute", width: 1, height: 1, opacity: 0 }} />
+      {busy ? "Reading…" : label}
+    </label>
+  );
+
+  if (pdf) {
+    const when = new Date(pdf.uploadedAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+    return (
+      <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 12, padding: "11px 14px", borderRadius: 12, background: "#fff", border: "1.5px solid #E6E0D8" }}>
+          <div style={{ minWidth: 0, flex: 1, display: "flex", flexDirection: "column", gap: 2 }}>
+            <a href="/api/materials/linkedin/pdf" target="_blank" rel="noopener" className="h-link" style={{ fontSize: 14, fontWeight: 600, color: "#1D1A0F", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", textDecoration: "none" }}>{pdf.name}</a>
+            <span style={{ fontSize: 12.5, color: "#6B6358" }}>LinkedIn profile PDF · uploaded {when} · read on every search</span>
+          </div>
+          {picker("Replace")}
+          <button
+            aria-label="Delete LinkedIn PDF"
+            data-tip="Delete LinkedIn PDF"
+            className="h-border"
+            onClick={async () => {
+              const ok = await ask({ eyebrow: "Delete LinkedIn PDF", title: `Delete ${pdf.name}?`, body: "The file and its text are removed. Searches will use your resume and answers.", confirmLabel: "Delete", danger: true });
+              if (ok) m.deleteLinkedinPdf();
+            }}
+            style={{ width: 32, height: 32, flex: "none", borderRadius: 8, border: "1.5px solid #E6E0D8", background: "#fff", color: "#8A8175", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", padding: 0 }}
+          >
+            <TrashIcon />
+          </button>
+        </div>
+        {err && <span role="alert" style={{ fontSize: 12.5, color: "#99220F" }}>{err}</span>}
+      </div>
+    );
+  }
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 10, padding: 14, borderRadius: 12, background: "#FBF8F4", border: "1.5px solid #EEEAE4" }}>
+      <div style={{ fontSize: 13.5, fontWeight: 600 }}>Add your full LinkedIn profile</div>
+      <p style={{ margin: 0, fontSize: 13, lineHeight: 1.5, color: "#6B6358", textWrap: "pretty" }}>
+        LinkedIn doesn&apos;t let apps read profiles, so Lookout only keeps the link above. To use your full history, have LinkedIn save it as a PDF and upload it here:
+      </p>
+      <ol style={{ margin: 0, paddingLeft: 20, fontSize: 13, lineHeight: 1.6, color: "#3B362C" }}>
+        <li>On a computer, open <a href="https://www.linkedin.com/in/me/" target="_blank" rel="noopener noreferrer" style={{ color: "#99220F" }}>your LinkedIn profile</a>.</li>
+        <li>Under your headline, click <b>Resources</b> (on some accounts it&apos;s <b>More</b>).</li>
+        <li>Click <b>Save to PDF</b>. It downloads right away.</li>
+        <li>Upload that file here.</li>
+      </ol>
+      {picker("Upload LinkedIn PDF")}
+      {err && <span role="alert" style={{ fontSize: 12.5, color: "#99220F" }}>{err}</span>}
+    </div>
+  );
+}
+
 export function Materials() {
   const { state, materials: m } = useStore();
   const ask = useConfirm();
@@ -135,6 +208,7 @@ export function Materials() {
               {linkedin.linked ? "Saved" : "Save"}
             </button>
           </div>
+          <LinkedinPdf />
         </div>
 
         <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
