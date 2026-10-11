@@ -13,7 +13,7 @@ import { ConfirmProvider } from "./Confirm";
 export function useCounts(s: AppState) {
   const answered = answeredCount(job, s.profile.answers);
   const m = s.materials;
-  const sources = [m.resume?.status === "done", !!m.linkedin.handle.trim() || !!m.linkedin.pdf, m.links.length > 0].filter(Boolean).length;
+  const sources = [m.resume?.status === "done", !!m.linkedin.pdf, m.links.length > 0].filter(Boolean).length;
   const newCount = s.finds.filter((f) => isNewFind(f, s.settings.newDays)).length;
   return { answered, sources, newCount };
 }

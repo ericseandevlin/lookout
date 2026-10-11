@@ -1,4 +1,5 @@
 import "server-only";
+import { readLink } from "./links";
 import { eq } from "drizzle-orm";
 import { z } from "zod";
 import { db, schema } from "@/lib/db";
@@ -145,7 +146,8 @@ async function addMissingLinks(userId: string, links: string[]) {
   for (const url of links.slice(0, 6)) {
     if (!url || /linkedin\.com/i.test(url) || /^(javascript|data):/i.test(url) || have.has(norm(url))) continue;
     have.add(norm(url));
-    await db.insert(schema.materials).values({ userId, kind: "link", url: url.slice(0, 500), position: pos++ });
+    const [row] = await db.insert(schema.materials).values({ userId, kind: "link", url: url.slice(0, 500), position: pos++ }).returning();
+    if (/^https?:\/\//i.test(row.url ?? "")) void readLink(row.id, row.url!).catch(() => {});
   }
 }
 

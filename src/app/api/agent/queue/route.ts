@@ -50,7 +50,7 @@ export const GET = agentRoute(async (req) => {
       runId: run.id,
       type: req.type ?? "discover",
       url: req.url,
-      profile: { brief: ctx.brief, resume: ctx.resume, links: ctx.links, compFloor: ctx.floor },
+      profile: { brief: ctx.brief, resume: ctx.resume, linkedin: ctx.linkedin, links: ctx.links, compFloor: ctx.floor },
       skipUrls: ctx.knownUrls.slice(-200),
       resumeText,
     });

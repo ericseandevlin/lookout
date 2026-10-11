@@ -132,6 +132,11 @@ function useStoreValue(initial: AppState) {
     clearTimeout(answerTimer.current);
     answerTimer.current = setTimeout(() => flushAnswers(false), 800);
   }, [flushAnswers]);
+  // Links are read on the server in the background; check back so "Reading…" turns into a result.
+  const recheckLinks = useCallback(() => {
+    for (const ms of [4000, 12000]) setTimeout(() => void refresh().catch(() => {}), ms);
+  }, [refresh]);
+
   const materials = useMemo(
     () => ({
       async uploadResume(file: File) {
@@ -155,18 +160,6 @@ function useStoreValue(initial: AppState) {
         setState((s) => ({ ...s, materials: { ...s.materials, resume: null } }));
         await api("/api/materials/resume", { method: "DELETE" }).catch(fail);
       },
-      setLinkedin(handle: string) {
-        setState((s) => ({ ...s, materials: { ...s.materials, linkedin: { ...s.materials.linkedin, handle, linked: false } } }));
-        clearTimeout(liTimer.current);
-        liTimer.current = setTimeout(() => api("/api/materials/linkedin", { method: "PUT", json: { handle } }).catch(fail), 600);
-      },
-      async scanLinkedin() {
-        const handle = stateRef.current.materials.linkedin.handle.trim();
-        if (!handle) return;
-        clearTimeout(liTimer.current);
-        setState((s) => ({ ...s, materials: { ...s.materials, linkedin: { ...s.materials.linkedin, handle, linked: true } } }));
-        await api("/api/materials/linkedin", { method: "PUT", json: { handle, scan: true } }).catch(fail);
-      },
       async uploadLinkedinPdf(file: File) {
         const fd = new FormData();
         fd.append("file", file);
@@ -181,6 +174,7 @@ function useStoreValue(initial: AppState) {
         try {
           const { link } = await api<{ link: Link }>("/api/materials/links", { method: "POST", json: { url } });
           setState((s) => ({ ...s, materials: { ...s.materials, links: [...s.materials.links, link] } }));
+          recheckLinks();
         } catch (e) {
           fail(e);
         }
@@ -188,18 +182,18 @@ function useStoreValue(initial: AppState) {
       async updateLink(id: string, patch: { url?: string; kind?: string | null }) {
         setState((s) => ({
           ...s,
-          materials: { ...s.materials, links: s.materials.links.map((l) => (l.id === id ? { ...l, ...patch } : l)) },
+          materials: { ...s.materials, links: s.materials.links.map((l) => (l.id === id ? { ...l, ...patch, ...(patch.url && { status: "scanning" as const, note: null }) } : l)) },
         }));
         await api(`/api/materials/links/${id}`, { method: "PATCH", json: patch }).catch(fail);
+        if (patch.url) recheckLinks();
       },
       async removeLink(id: string) {
         setState((s) => ({ ...s, materials: { ...s.materials, links: s.materials.links.filter((l) => l.id !== id) } }));
         await api(`/api/materials/links/${id}`, { method: "DELETE" }).catch(fail);
       },
     }),
-    [fail, refresh],
+    [fail, refresh, recheckLinks],
   );
-  const liTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
 
   const startedRun = (trigger: string): RunInfo => ({
     id: "pending", trigger, status: "running", pct: 1, step: trigger === "url" ? "Opening the link" : "Starting the search",

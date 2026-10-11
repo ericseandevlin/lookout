@@ -31,7 +31,8 @@ type Context = {
   resume: string;
   /** Text of the profile PDF from LinkedIn's Save to PDF, if uploaded. */
   linkedin: string;
-  links: string[];
+  /** Text read from the user's other links (portfolio, site, writing). */
+  links: { url: string; text: string }[];
   floor: number | null;
   knownUrls: string[];
   answers: Record<string, string | string[]>;
@@ -55,10 +56,10 @@ export async function loadContext(userId: string): Promise<Context> {
     // Use the resume text even when the AI summary step never ran.
     resume: [resume?.extracted?.summary, (resume?.extracted?.text ?? "").slice(0, 6000)].filter(Boolean).join("\n\n"),
     linkedin: (li?.extracted?.text ?? "").slice(0, 5000),
-    links: [
-      ...(li?.url ? [`https://www.linkedin.com/in/${li.url}`] : []),
-      ...mats.filter((m) => m.kind === "link" && m.url).map((m) => m.url!),
-    ],
+    links: mats
+      .filter((m) => m.kind === "link" && m.url && m.extracted?.text)
+      .slice(0, 4)
+      .map((m) => ({ url: m.url!, text: m.extracted!.text!.slice(0, 1500) })),
     floor: parseMoney(answers.floor),
     knownUrls: known.map((k) => k.url).filter((u): u is string => !!u),
     answers,
@@ -68,7 +69,8 @@ export async function loadContext(userId: string): Promise<Context> {
 
 const profileBlock = (c: Context) =>
   `<profile>\n${c.brief}\n</profile>\n<resume>\n${c.resume || "(no resume uploaded)"}\n</resume>` +
-  (c.linkedin ? `\n<linkedin_profile>\n${c.linkedin}\n</linkedin_profile>` : "");
+  (c.linkedin ? `\n<linkedin_profile>\n${c.linkedin}\n</linkedin_profile>` : "") +
+  (c.links.length ? `\n<their_links>\n${c.links.map((l) => `${l.url}\n${l.text}`).join("\n---\n")}\n</their_links>` : "");
 
 const today = () => new Date().toISOString().slice(0, 10);
 

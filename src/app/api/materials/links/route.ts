@@ -3,6 +3,7 @@ import { z } from "zod";
 import { authed, body, HttpError, json } from "@/lib/api";
 import { db, schema } from "@/lib/db";
 import { LinkUrl } from "@/lib/validators";
+import { readLink } from "@/lib/agent/links";
 
 export const POST = authed(async (req, { user }) => {
   const { url } = await body(req, z.object({ url: LinkUrl }));
@@ -15,5 +16,6 @@ export const POST = authed(async (req, { user }) => {
     .insert(schema.materials)
     .values({ userId: user.id, kind: "link", url, position: n })
     .returning();
-  return json({ link: { id: row.id, url, kind: null } });
+  void readLink(row.id, url).catch((e) => console.error("link read failed", e));
+  return json({ link: { id: row.id, url, kind: null, status: "scanning", note: null } });
 });

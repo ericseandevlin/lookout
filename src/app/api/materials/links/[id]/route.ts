@@ -4,6 +4,7 @@ import { authed, body, HttpError, json } from "@/lib/api";
 import { db, schema } from "@/lib/db";
 import { LINK_KINDS } from "@/lib/links";
 import { LinkUrl } from "@/lib/validators";
+import { readLink } from "@/lib/agent/links";
 
 type Ctx = { params: Promise<{ id: string }> };
 
@@ -21,6 +22,7 @@ export const PATCH = authed<Ctx>(async (req, { user, params }) => {
   if (p.kind !== undefined) set.linkKind = p.kind;
   const r = await db.update(schema.materials).set(set).where(whereLink(user.id, id)).returning({ id: schema.materials.id });
   if (!r.length) throw new HttpError(404, "Not found");
+  if (p.url) void readLink(id, p.url).catch((e) => console.error("link read failed", e));
   return json({ ok: true });
 });
 

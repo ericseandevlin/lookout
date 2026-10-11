@@ -94,6 +94,18 @@ export function AdminPeople() {
     await api(`/api/admin/invites/${encodeURIComponent(email)}`, { method: "DELETE" }).catch(() => {});
     await load();
   };
+  // Resend mints a fresh 7-day link and emails it again; the link is also shown to copy and send yourself.
+  const [resent, setResent] = useState<Record<string, { link: string; emailed: boolean; copied?: boolean }>>({});
+  const resend = async (email: string) => {
+    try {
+      const r = await api<{ link: string; emailed: boolean }>("/api/admin/invite", { method: "POST", json: { email, send: !!data?.emailEnabled } });
+      setResent((m) => ({ ...m, [email]: { link: r.link, emailed: r.emailed } }));
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : "Couldn't resend");
+    }
+  };
+  const copyResent = (email: string) =>
+    navigator.clipboard?.writeText(resent[email].link).then(() => setResent((m) => ({ ...m, [email]: { ...m[email], copied: true } }))).catch(() => {});
   const saveAccess = async (access: Config["access"]) => {
     if (!cfg) return;
     setCfg({ ...cfg, access });
@@ -131,13 +143,22 @@ export function AdminPeople() {
           <Invite emailEnabled={data.emailEnabled} onDone={load} />
 
           {data.invites.filter((i) => !i.accepted).length > 0 && (
-            <Row title="Pending invites" help="Invited but not signed in yet.">
-              <div style={{ display: "flex", flexDirection: "column", gap: 6, maxWidth: 420 }}>
+            <Row title="Pending invites" help="Invited but not signed in yet. Resend sends a fresh link; if it keeps landing in spam, copy the link and text it to them.">
+              <div style={{ display: "flex", flexDirection: "column", gap: 6, maxWidth: 520 }}>
                 {data.invites.filter((i) => !i.accepted).map((i) => (
-                  <div key={i.email} style={{ display: "flex", alignItems: "center", gap: 10, background: "#fff", border: "1.5px solid #E6E0D8", borderRadius: 10, padding: "8px 8px 8px 12px" }}>
-                    <span style={{ flex: 1, minWidth: 0, fontSize: 13.5, overflow: "hidden", textOverflow: "ellipsis" }}>{i.email}</span>
-                    <span style={{ fontSize: 12, color: "#8A8175" }}>{when(i.createdAt)}</span>
-                    <button onClick={() => revoke(i.email)} className="h-danger" style={{ ...btn("danger"), height: 30, padding: "0 10px", fontSize: 12.5 }}>Revoke</button>
+                  <div key={i.email} style={{ display: "flex", flexDirection: "column", gap: 8, background: "#fff", border: "1.5px solid #E6E0D8", borderRadius: 10, padding: "8px 8px 8px 12px" }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                      <span style={{ flex: 1, minWidth: 0, fontSize: 13.5, overflow: "hidden", textOverflow: "ellipsis" }}>{i.email}</span>
+                      <span style={{ fontSize: 12, color: "#8A8175" }}>{when(i.createdAt)}</span>
+                      <button onClick={() => resend(i.email)} style={{ ...btn("outline"), height: 30, padding: "0 10px", fontSize: 12.5 }}>{data.emailEnabled ? "Resend" : "New link"}</button>
+                      <button onClick={() => revoke(i.email)} className="h-danger" style={{ ...btn("danger"), height: 30, padding: "0 10px", fontSize: 12.5 }}>Revoke</button>
+                    </div>
+                    {resent[i.email] && (
+                      <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap", fontSize: 12.5 }}>
+                        <span style={{ color: "#35662A", fontWeight: 600 }}>{resent[i.email].emailed ? "Sent again with a fresh 7-day link." : "New link ready."}</span>
+                        <button onClick={() => copyResent(i.email)} style={{ ...btn("text"), height: 26, fontSize: 12.5 }}>{resent[i.email].copied ? "Copied" : "Copy link to send yourself"}</button>
+                      </div>
+                    )}
                   </div>
                 ))}
               </div>

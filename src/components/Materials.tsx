@@ -13,10 +13,6 @@ const SectionLabel = ({ children }: { children: React.ReactNode }) => (
 
 const FIELD_NAMES: Record<string, string> = { q1: "next role", area: "where you work", modes: "work modes", q4: "lead win" };
 
-/** Accept a handle or any pasted LinkedIn profile URL. */
-const linkedinHandle = (v: string) =>
-  v.trim().replace(/^(https?:\/\/)?([a-z]{2,3}\.)?(www\.)?linkedin\.com\/in\//i, "").replace(/[/?#].*$/, "");
-
 function statusLine(note: string) {
   if (!note) return "Saved";
   const n = note.replace(/^saved,?\s*/i, "");
@@ -83,11 +79,11 @@ function LinkedinPdf() {
     <div style={{ display: "flex", flexDirection: "column", gap: 10, padding: 14, borderRadius: 12, background: "#FBF8F4", border: "1.5px solid #EEEAE4" }}>
       <div style={{ fontSize: 13.5, fontWeight: 600 }}>Add your full LinkedIn profile</div>
       <p style={{ margin: 0, fontSize: 13, lineHeight: 1.5, color: "#6B6358", textWrap: "pretty" }}>
-        LinkedIn doesn&apos;t let apps read profiles, so Lookout only keeps the link above. To use your full history, have LinkedIn save it as a PDF and upload it here:
+        LinkedIn doesn&apos;t let apps read profiles, so have LinkedIn save yours as a PDF and upload it here. Lookout reads your full history from it.
       </p>
       <ol style={{ margin: 0, paddingLeft: 20, fontSize: 13, lineHeight: 1.6, color: "#3B362C" }}>
         <li>On a computer, open <a href="https://www.linkedin.com/in/me/" target="_blank" rel="noopener noreferrer" style={{ color: "#99220F" }}>your LinkedIn profile</a>.</li>
-        <li>Under your headline, click <b>Resources</b> (on some accounts it&apos;s <b>More</b>).</li>
+        <li>In the row of buttons under your headline (<b>Open to</b>, <b>Add section</b>…), click the round <b>⋯</b> button at the end.</li>
         <li>Click <b>Save to PDF</b>. It downloads right away.</li>
         <li>Upload that file here.</li>
       </ol>
@@ -100,7 +96,7 @@ function LinkedinPdf() {
 export function Materials() {
   const { state, materials: m } = useStore();
   const ask = useConfirm();
-  const { resume, linkedin, links } = state.materials;
+  const { resume, links } = state.materials;
   const rs = resume?.status;
   const [draft, setDraft] = useState("");
   const [editId, setEditId] = useState<string | null>(null);
@@ -201,13 +197,6 @@ export function Materials() {
 
         <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
           <SectionLabel>LinkedIn</SectionLabel>
-          <div style={{ display: "flex", alignItems: "center", height: 42, borderRadius: 10, background: "#fff", border: "1.5px solid #E6E0D8", padding: "0 6px 0 12px", gap: 4 }}>
-            <span style={{ fontSize: 13.5, color: "#8A8175" }}>linkedin.com/in/</span>
-            <input value={linkedin.handle} onChange={(e) => m.setLinkedin(linkedinHandle(e.target.value))} placeholder="your-name or paste the full URL" aria-label="LinkedIn profile" maxLength={200} style={{ flex: 1, minWidth: 0, background: "transparent", border: 0, outline: "none", color: "#1D1A0F", fontSize: 13.5 }} />
-            <button onClick={() => m.scanLinkedin()} disabled={!linkedin.handle.trim()} style={{ height: 30, padding: "0 12px", borderRadius: 8, border: 0, background: linkedin.linked ? "#FDE7D3" : "#F8A865", color: linkedin.linked ? "#7A3A10" : "#1D1A0F", fontSize: 12.5, fontWeight: 600, cursor: linkedin.handle.trim() ? "pointer" : "default" }}>
-              {linkedin.linked ? "Saved" : "Save"}
-            </button>
-          </div>
           <LinkedinPdf />
         </div>
 
@@ -259,6 +248,11 @@ export function Materials() {
                         )}
                       </div>
                       <a href={hrefOf(lk.url)} target="_blank" rel="noopener noreferrer" className="h-link" style={{ fontSize: 14, fontWeight: 500, color: "#1D1A0F", textDecoration: "none", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{cleanUrl(lk.url)}</a>
+                      {lk.status && (
+                        <span style={{ fontSize: 12, color: lk.status === "failed" ? "#99220F" : "#8A8175" }}>
+                          {lk.status === "scanning" ? "Reading…" : lk.status === "done" ? "Read · used in searches" : `${lk.note ?? "Couldn't read this page"} · not used in searches`}
+                        </span>
+                      )}
                     </div>
                     <div style={{ display: "flex", gap: 4, flex: "none" }}>
                       <button data-tip="Edit link" aria-label="Edit link" className="h-soft" onClick={() => { setEditId(lk.id); setEditDraft(lk.url); setKindMenu(null); }} style={iconBtn}><PencilIcon /></button>

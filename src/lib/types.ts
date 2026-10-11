@@ -23,7 +23,7 @@ export type Find = {
 };
 
 export type Resume = { id: string; name: string; status: "scanning" | "done" | "failed"; uploadedAt: string; filled: string };
-export type Link = { id: string; url: string; kind: string | null };
+export type Link = { id: string; url: string; kind: string | null; status: "scanning" | "done" | "failed" | null; note: string | null };
 
 export type Settings = {
   freq: Freq;
