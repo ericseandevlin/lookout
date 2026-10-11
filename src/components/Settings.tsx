@@ -154,6 +154,9 @@ export function Settings() {
       )}
 
       <Section>Your data</Section>
+      <Row title="Privacy" help="What Lookout keeps, who sees it, and the services it uses.">
+        <a href="/privacy" target="_blank" rel="noopener" style={{ ...btn("outline"), display: "inline-flex", alignItems: "center", textDecoration: "none" }}>Read the privacy page</a>
+      </Row>
       <Row title="Export" help="Download your roles, stages, notes and profile as a file.">
         <a href="/api/export" download style={{ ...btn("outline"), display: "inline-flex", alignItems: "center", textDecoration: "none" }}>Export data</a>
       </Row>

@@ -145,13 +145,14 @@ function RequestAccess({ emailEnabled, onSignIn }: { emailEnabled: boolean; onSi
 
 export function AuthCard({ children }: { children: React.ReactNode }) {
   return (
-    <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", padding: "32px 16px", background: "#EFEEEC" }}>
+    <div style={{ minHeight: "100vh", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "32px 16px", background: "#EFEEEC" }}>
       <div style={{ width: "100%", maxWidth: 460, background: "#fff", borderRadius: 16, overflow: "hidden", boxShadow: "0 24px 60px rgba(29,26,15,.08)" }}>
         <div style={{ background: "#1D1A0F", color: "#fff", padding: "22px 26px" }}>
           <div className="wordmark">Lookout</div>
         </div>
         <div style={{ padding: "28px 26px 30px" }}>{children}</div>
       </div>
+      <a href="/privacy" style={{ marginTop: 16, fontSize: 12.5, color: "#8A8175" }}>Privacy</a>
     </div>
   );
 }
