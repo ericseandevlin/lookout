@@ -89,7 +89,25 @@ export const profiles = pgTable("profiles", {
   autofilled: jsonb("autofilled").$type<Record<string, string>>().notNull().default({}),
   savedAt: timestamp("saved_at", { withTimezone: true }),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  /** What searches use: built by the model from answers + materials, shown to the user as "What Lookout sees". */
+  searchProfile: jsonb("search_profile").$type<SearchProfile>(),
+  searchProfileAt: timestamp("search_profile_at", { withTimezone: true }),
+  /** Hash of the inputs it was built from; a mismatch means it's stale. */
+  searchProfileHash: text("search_profile_hash"),
 });
+
+export type SearchProfile = {
+  summary: string;
+  targetTitles: string[];
+  seniority: string;
+  industries: string[];
+  strengths: string[];
+  proof: string[];
+  where: string;
+  pay: string;
+  avoid: string[];
+  searchTerms: string[];
+};
 
 export type MaterialKind = "resume" | "linkedin" | "link";
 
@@ -159,6 +177,8 @@ export const userOpportunities = pgTable(
     pinned: boolean("pinned").notNull().default(false),
     archived: boolean("archived").notNull().default(false),
     notes: text("notes").notNull().default(""),
+    /** "Not a fit" from the user, fed back into later searches. */
+    feedback: jsonb("feedback").$type<{ reason: string; at: string }>(),
     seenAt: timestamp("seen_at", { withTimezone: true }),
     addedAt: timestamp("added_at", { withTimezone: true }).notNull().defaultNow(),
     addedVia: text("added_via").$type<"agent" | "manual" | "import">().notNull().default("agent"),

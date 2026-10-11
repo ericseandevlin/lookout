@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { cleanUrl, hrefOf, LINK_KINDS, LINK_TILE, linkKind } from "@/lib/links";
 import { ChevronDown, PencilIcon, TrashIcon } from "./icons";
-import { PageHead } from "./Profile";
+import { PageHead, ProfileTabs } from "./Profile";
 import { useStore } from "./store";
 import { useConfirm } from "./Confirm";
 
@@ -125,6 +125,7 @@ export function Materials() {
 
   return (
     <div className="page-pad lk-page" style={{ display: "flex", flexDirection: "column", gap: 16, maxWidth: 640 }}>
+      <ProfileTabs />
       <PageHead
         eyebrow="Materials"
         title="Resume, LinkedIn and links"

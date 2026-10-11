@@ -73,7 +73,7 @@ function useStoreValue(initial: AppState) {
   }, [scanning, refresh]);
 
   const patchFind = useCallback(
-    (id: string, patch: Partial<Pick<Find, "pinned" | "archived" | "stage" | "notes">> & { seen?: true }) => {
+    (id: string, patch: Partial<Pick<Find, "pinned" | "archived" | "stage" | "notes" | "feedback">> & { seen?: true }) => {
       setState((s) => ({
         ...s,
         finds: s.finds.map((f) => (f.id === id ? { ...f, ...patch, seen: true } : f)),

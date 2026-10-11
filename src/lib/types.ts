@@ -18,6 +18,8 @@ export type Find = {
   pinned: boolean;
   archived: boolean;
   notes: string;
+  /** "Not a fit" reason the user gave, if any. */
+  feedback: string | null;
   seen: boolean;
   addedAt: string;
 };

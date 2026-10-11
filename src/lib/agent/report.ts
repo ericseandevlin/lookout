@@ -37,7 +37,7 @@ export function buildTips(
     tips.push({ text: "Your first answer is short, and Lookout writes its searches from it. Add title variants and the kind of company you want.", href: "/profile#q-q1", label: "Edit your next role" });
   }
   if (!p.hasResume) {
-    tips.push({ text: "Add your resume. Lookout uses it to judge fit and to write better searches.", href: "/materials", label: "Add resume" });
+    tips.push({ text: "Add your resume. Lookout uses it to judge fit and to write better searches.", href: "/profile/materials", label: "Add resume" });
   }
   if (t.known >= Math.max(2, t.postings / 2)) {
     tips.push({ text: "Most of what matched is already on your board. New roles show up as they're posted." });

@@ -1,5 +1,7 @@
 "use client";
 
+import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { useState } from "react";
 import { job } from "@/lib/kinds";
 import { togglePhrase } from "@/lib/phrases";
@@ -9,6 +11,24 @@ import { useStore } from "./store";
 const inputBase: React.CSSProperties = {
   border: "1.5px solid #E6E0D8", background: "#fff", borderRadius: 10, fontSize: 14, outline: "none", color: "#1D1A0F",
 };
+
+/** Tabs across the Profile pages: what you want, what you've done, and what searches use. */
+export function ProfileTabs() {
+  const path = usePathname();
+  const tabs = [["/profile", "Your answers"], ["/profile/materials", "Materials"], ["/profile/sees", "What Lookout sees"]] as const;
+  return (
+    <nav aria-label="Profile sections" style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 18 }}>
+      {tabs.map(([href, label]) => {
+        const on = path === href;
+        return (
+          <Link key={href} href={href} aria-current={on ? "page" : undefined} style={{ display: "flex", alignItems: "center", height: 34, padding: "0 15px", borderRadius: 999, border: `1.5px solid ${on ? "#1D1A0F" : "#E0D9CF"}`, background: on ? "#1D1A0F" : "#fff", color: on ? "#fff" : "#1D1A0F", fontSize: 13.5, fontWeight: 600, textDecoration: "none" }}>
+            {label}
+          </Link>
+        );
+      })}
+    </nav>
+  );
+}
 
 export function PageHead({ eyebrow, title, intro, children }: { eyebrow: string; title: string; intro?: string; children?: React.ReactNode }) {
   return (
@@ -83,6 +103,7 @@ export function Profile() {
   return (
     <div className="page-pad lk-page" style={{ display: "flex", flexWrap: "wrap", gap: 24, alignItems: "flex-start" }}>
       <div style={{ flex: "1 1 520px", minWidth: 0, display: "flex", flexDirection: "column", gap: 16 }}>
+        <ProfileTabs />
         <PageHead
           eyebrow="Search profile"
           title="Five questions from your recruiter"

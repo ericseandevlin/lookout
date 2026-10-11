@@ -434,7 +434,7 @@ function SetupPanel({ answered, sources }: { answered: number; sources: number }
 
   const tiles = [
     { n: 1, done: d1, status: d1 ? "Done" : `${answered} of 5 answered`, title: "Answer five questions", body: "What you want next, the comp you need, and what’s off the table.", href: "/profile", btn: d1 ? "Review answers" : answered > 0 ? "Continue" : "Start profile" },
-    { n: 2, done: d2, status: d2 ? `${sources} of 3 added` : "Resume needed", title: "Add your materials", body: "Your resume, LinkedIn and any links. Lookout reads these to fill in gaps and to write in your voice.", href: "/materials", btn: d2 ? "Review materials" : "Add materials" },
+    { n: 2, done: d2, status: d2 ? `${sources} of 3 added` : "Resume needed", title: "Add your materials", body: "Your resume, LinkedIn and any links. Lookout reads these to fill in gaps and to write in your voice.", href: "/profile/materials", btn: d2 ? "Review materials" : "Add materials" },
     { n: 3, done: false, status: s3, title: "Lookout gets to work", body: "New matches land here each week with a green dot. Pin, archive and move them through stages as you go." },
   ];
   return (
@@ -633,11 +633,14 @@ const Label = ({ children, style }: { children: React.ReactNode; style?: React.C
   <div style={{ fontSize: 12, letterSpacing: ".1em", textTransform: "uppercase", color: "#1D1A0F", fontWeight: 700, ...style }}>{children}</div>
 );
 
+const NOT_A_FIT = ["Wrong level", "Wrong kind of role", "Wrong industry", "Location", "Pay", "Not that company", "Just not interested"];
+
 function Drawer({ f, close, toggle, setStage }: { f: Find; close: () => void; toggle: (f: Find, k: "pinned" | "archived") => void; setStage: (f: Find, s: Stage) => void }) {
   const { patchFind } = useStore();
   const [notes, setNotes] = useState(f.notes);
   const [saved, setSaved] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [asking, setAsking] = useState(false);
   const timers = useRef<{ save?: ReturnType<typeof setTimeout>; hide?: ReturnType<typeof setTimeout>; copy?: ReturnType<typeof setTimeout> }>({});
   const closeBtn = useRef<HTMLButtonElement>(null);
 
@@ -755,9 +758,23 @@ function Drawer({ f, close, toggle, setStage }: { f: Find; close: () => void; to
             <textarea value={notes} onChange={(e) => onNotes(e.target.value)} placeholder="Contacts, follow-ups, interview prep..." aria-label="Notes" className="f-brick" style={{ flex: 1, minHeight: 160, resize: "vertical", border: "1.5px solid #E6E0D8", borderRadius: 10, padding: "12px 14px", fontSize: 14, lineHeight: 1.5, outline: "none", color: "#1D1A0F" }} />
           </div>
         </div>
-        <div style={{ padding: "16px 26px", borderTop: "1px solid #EEEAE4", display: "flex", gap: 8 }}>
-          <button onClick={() => toggle(f, "archived")} style={{ flex: 1, height: 42, borderRadius: 10, border: "1.5px solid #1D1A0F", background: "#fff", fontSize: 14, fontWeight: 600, color: "#1D1A0F", cursor: "pointer" }}>
-            {f.archived ? "Restore" : "Not interested"}
+        {asking && !f.archived && (
+          <div style={{ padding: "14px 26px 0", borderTop: "1px solid #EEEAE4", display: "flex", flexDirection: "column", gap: 8 }}>
+            <div style={{ fontSize: 13.5, fontWeight: 600 }}>What&apos;s off about it? Lookout uses this on your next searches.</div>
+            <div role="group" aria-label="Why it's not a fit" style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+              {NOT_A_FIT.map((r) => (
+                <button key={r} onClick={() => { patchFind(f.id, { archived: true, feedback: r === "Just not interested" ? null : r }); setAsking(false); }} style={{ height: 32, padding: "0 12px", borderRadius: 999, border: "1.5px solid #E0D9CF", background: "#fff", color: "#1D1A0F", fontSize: 13, fontWeight: 600, cursor: "pointer" }}>{r}</button>
+              ))}
+            </div>
+          </div>
+        )}
+        <div style={{ padding: "16px 26px", borderTop: asking && !f.archived ? 0 : "1px solid #EEEAE4", display: "flex", gap: 8 }}>
+          <button
+            onClick={() => (f.archived ? patchFind(f.id, { archived: false, feedback: null }) : setAsking((v) => !v))}
+            aria-expanded={f.archived ? undefined : asking}
+            style={{ flex: 1, height: 42, borderRadius: 10, border: "1.5px solid #1D1A0F", background: asking ? "#F4F1EC" : "#fff", fontSize: 14, fontWeight: 600, color: "#1D1A0F", cursor: "pointer" }}
+          >
+            {f.archived ? (f.feedback ? `Restore · was “${f.feedback}”` : "Restore") : asking ? "Cancel" : "Not a fit"}
           </button>
           <a href={posting} target="_blank" rel="noopener noreferrer" style={{ flex: 1, height: 42, borderRadius: 10, background: "#99220F", fontSize: 14, fontWeight: 600, color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", gap: 7, textDecoration: "none" }}>
             View posting

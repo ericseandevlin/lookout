@@ -24,6 +24,7 @@ export function toFind(
     pinned: u.pinned,
     archived: u.archived,
     notes: u.notes,
+    feedback: u.feedback?.reason ?? null,
     seen: !!u.seenAt,
     addedAt: u.addedAt.toISOString(),
   };

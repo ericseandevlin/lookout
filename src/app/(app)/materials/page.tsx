@@ -1,7 +1,6 @@
-import { Materials } from "@/components/Materials";
+import { redirect } from "next/navigation";
 
-export const metadata = { title: "Materials · Lookout" };
-
+// Materials moved under Profile.
 export default function Page() {
-  return <Materials />;
+  redirect("/profile/materials");
 }

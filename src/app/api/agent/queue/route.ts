@@ -2,6 +2,7 @@ import { and, asc, eq, inArray, sql } from "drizzle-orm";
 import { json } from "@/lib/api";
 import { agentRoute } from "@/lib/agentAuth";
 import { db, schema } from "@/lib/db";
+import { renderSearchProfile } from "@/lib/agent/searchProfile";
 import { loadContext } from "@/lib/agent/discover";
 import { progress } from "@/lib/ai/runs";
 
@@ -50,7 +51,7 @@ export const GET = agentRoute(async (req) => {
       runId: run.id,
       type: req.type ?? "discover",
       url: req.url,
-      profile: { brief: ctx.brief, resume: ctx.resume, linkedin: ctx.linkedin, links: ctx.links, compFloor: ctx.floor },
+      profile: { brief: ctx.brief, searchProfile: ctx.searchProfile ? renderSearchProfile(ctx.searchProfile) : null, notAFit: ctx.rejected, resume: ctx.resume, linkedin: ctx.linkedin, links: ctx.links, compFloor: ctx.floor },
       skipUrls: ctx.knownUrls.slice(-200),
       resumeText,
     });

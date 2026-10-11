@@ -5,7 +5,7 @@ import { usePathname } from "next/navigation";
 import { answeredCount, job } from "@/lib/kinds";
 import { initialsOf, isNewFind } from "@/lib/board";
 import type { AppState } from "@/lib/types";
-import { BoardIcon, FileIcon, ListIcon, PanelIcon, ShieldIcon } from "./icons";
+import { BoardIcon, ListIcon, PanelIcon, ShieldIcon } from "./icons";
 import { useStore } from "./store";
 import { TooltipLayer } from "./Tooltip";
 import { ConfirmProvider } from "./Confirm";
@@ -21,7 +21,6 @@ export function useCounts(s: AppState) {
 const PAGES = [
   { href: "/finds", label: "Finds", mob: "Finds", Icon: BoardIcon },
   { href: "/profile", label: "Search profile", mob: "Profile", Icon: ListIcon },
-  { href: "/materials", label: "Materials", mob: "Materials", Icon: FileIcon },
 ] as const;
 
 export function Shell({ children }: { children: React.ReactNode }) {
@@ -33,7 +32,7 @@ export function Shell({ children }: { children: React.ReactNode }) {
   const initials = initialsOf(name || state.user.email);
   const onSettings = path.startsWith("/settings");
   const meta = (href: string) =>
-    href === "/profile" ? (answered < 5 ? `${answered}/5` : "") : href === "/materials" ? (sources < 3 ? `${sources}/3` : "") : "";
+    href === "/profile" ? (answered < 5 ? `${answered}/5` : sources === 0 ? "Add resume" : "") : "";
 
   return (
     <ConfirmProvider>
@@ -148,7 +147,7 @@ export function Shell({ children }: { children: React.ReactNode }) {
         className="mob-only"
         style={{ position: "fixed", left: 0, right: 0, bottom: 0, zIndex: 9, background: "#1D1A0F", gridTemplateColumns: "repeat(3,1fr)", padding: "6px 6px calc(6px + env(safe-area-inset-bottom))", borderTop: "1px solid rgba(255,255,255,.08)" }}
       >
-        <div className="mob-grid" style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)" }}>
+        <div className="mob-grid" style={{ display: "grid", gridTemplateColumns: `repeat(${PAGES.length},1fr)` }}>
           {PAGES.map(({ href, mob, Icon }) => {
             const active = path.startsWith(href);
             return (

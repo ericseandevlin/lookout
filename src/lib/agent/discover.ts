@@ -2,9 +2,10 @@ import "server-only";
 import { and, eq, inArray } from "drizzle-orm";
 import { z } from "zod";
 import { db, schema } from "@/lib/db";
-import { kinds, parseMoney } from "@/lib/kinds";
+import { parseMoney } from "@/lib/kinds";
 import { fetchPage, FetchError, pageToText } from "@/lib/ai/fetchPage";
-import type { RunReport, RunTally } from "@/lib/db/schema";
+import type { RunReport, RunTally, SearchProfile } from "@/lib/db/schema";
+import { ensureSearchProfile, loadRawInputs, renderSearchProfile } from "./searchProfile";
 import { buildTips, emptyTally } from "./report";
 import { completeJSON, emptyUsage, type Usage } from "@/lib/ai/llm";
 import { assertBudget, finishRun, progress, startRun } from "@/lib/ai/runs";
@@ -33,6 +34,10 @@ type Context = {
   linkedin: string;
   /** Text read from the user's other links (portfolio, site, writing). */
   links: { url: string; text: string }[];
+  /** The saved search profile; when present it stands in for the raw materials. */
+  searchProfile: SearchProfile | null;
+  /** Recent "Not a fit" calls, so searches stop suggesting the same kind of role. */
+  rejected: string[];
   floor: number | null;
   knownUrls: string[];
   answers: Record<string, string | string[]>;
@@ -40,37 +45,40 @@ type Context = {
 };
 
 export async function loadContext(userId: string): Promise<Context> {
-  const [p] = await db.select().from(schema.profiles).where(eq(schema.profiles.userId, userId));
-  const mats = await db.select().from(schema.materials).where(eq(schema.materials.userId, userId));
-  const resume = mats.find((m) => m.kind === "resume");
-  const li = mats.find((m) => m.kind === "linkedin");
-  const known = await db
-    .select({ url: schema.opportunities.sourceUrl })
+  const raw = await loadRawInputs(userId);
+  const rows = await db
+    .select({ url: schema.opportunities.sourceUrl, title: schema.opportunities.title, company: schema.opportunities.company, feedback: schema.userOpportunities.feedback })
     .from(schema.userOpportunities)
     .innerJoin(schema.opportunities, eq(schema.opportunities.id, schema.userOpportunities.opportunityId))
     .where(eq(schema.userOpportunities.userId, userId));
-  const answers = p?.answers ?? {};
+  const rejected = rows
+    .filter((r) => r.feedback)
+    .sort((a, b) => (b.feedback!.at > a.feedback!.at ? 1 : -1))
+    .slice(0, 12)
+    .map((r) => `${r.title} at ${r.company}: ${r.feedback!.reason}`);
   return {
     userId,
-    brief: kinds[p?.kind ?? "job"].brief(answers),
-    // Use the resume text even when the AI summary step never ran.
-    resume: [resume?.extracted?.summary, (resume?.extracted?.text ?? "").slice(0, 6000)].filter(Boolean).join("\n\n"),
-    linkedin: (li?.extracted?.text ?? "").slice(0, 5000),
-    links: mats
-      .filter((m) => m.kind === "link" && m.url && m.extracted?.text)
-      .slice(0, 4)
-      .map((m) => ({ url: m.url!, text: m.extracted!.text!.slice(0, 1500) })),
-    floor: parseMoney(answers.floor),
-    knownUrls: known.map((k) => k.url).filter((u): u is string => !!u),
-    answers,
-    hasResume: !!resume?.extracted?.text || !!li?.extracted?.text,
+    brief: raw.brief,
+    resume: raw.resume,
+    linkedin: raw.linkedin,
+    links: raw.links,
+    searchProfile: raw.stored?.searchProfile ?? null,
+    rejected,
+    floor: parseMoney(raw.answers.floor),
+    knownUrls: rows.map((k) => k.url).filter((u): u is string => !!u),
+    answers: raw.answers,
+    hasResume: raw.sources.resume || raw.sources.linkedin,
   };
 }
 
 const profileBlock = (c: Context) =>
-  `<profile>\n${c.brief}\n</profile>\n<resume>\n${c.resume || "(no resume uploaded)"}\n</resume>` +
-  (c.linkedin ? `\n<linkedin_profile>\n${c.linkedin}\n</linkedin_profile>` : "") +
-  (c.links.length ? `\n<their_links>\n${c.links.map((l) => `${l.url}\n${l.text}`).join("\n---\n")}\n</their_links>` : "");
+  `<profile>\n${c.brief}\n</profile>\n` +
+  (c.searchProfile
+    ? `<search_profile>\n${renderSearchProfile(c.searchProfile)}\n</search_profile>`
+    : `<resume>\n${c.resume || "(no resume uploaded)"}\n</resume>` +
+      (c.linkedin ? `\n<linkedin_profile>\n${c.linkedin}\n</linkedin_profile>` : "") +
+      (c.links.length ? `\n<their_links>\n${c.links.map((l) => `${l.url}\n${l.text}`).join("\n---\n")}\n</their_links>` : "")) +
+  (c.rejected.length ? `\n<marked_not_a_fit>\nThey said these roles were not a fit. Avoid similar ones.\n${c.rejected.join("\n")}\n</marked_not_a_fit>` : "");
 
 const today = () => new Date().toISOString().slice(0, 10);
 
@@ -328,8 +336,11 @@ export async function discover(userId: string, trigger: "scheduled" | "manual" =
   const usage = emptyUsage();
   try {
     const report: Report = (pct, step) => progress(run.id, pct, step);
-    await report(3, "Reading your profile and resume");
+    await report(3, "Reading your profile and materials");
     const ctx = await loadContext(userId);
+    const sp = await ensureSearchProfile(userId, usage);
+    if (sp.rebuilt) await report(5, "Updated your search profile from your latest changes");
+    ctx.searchProfile = sp.profile;
     await report(6, "Planning searches");
     const queries = await makeQueries(ctx, usage);
     const hits = await gatherHits(ctx, queries, usage, report);
