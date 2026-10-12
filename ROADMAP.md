@@ -4,6 +4,24 @@ Lookout is a personal search agent. You tell it what you want, it searches the w
 
 Work items live as GitHub issues, labeled by area (`feature`, `security`, `hardening`, `accessibility`, `code-quality`, `marketing`) and by milestone.
 
+## Goals
+
+Lookout is a side project, and part of the point is that it's fun to build. The goals are sized for that. Measured in Admin > Metrics (#36).
+
+**Beta, through January 10, 2027 (90 days)**
+- 5 people active every week (Eric, Paul, Jeff, plus two more), counting email clicks as active
+- At least 1 find acted on per active person per week (opened the posting, pinned, applied, or clicked from email)
+- At least 1 interview that came from a Lookout find
+- Week-4 retention of 60% or better
+- Cost under $1 per active person per month
+- Zero data incidents
+
+**Portfolio:** a public write-up and demo by the end of the beta. It's concrete proof of the AI-native design technologist story for LinkedIn and Eric's own job search.
+
+**Decision gate on January 10:** if retention and action rate hit their goals, open a waitlist and start marketing. If not, fix finds quality first. Don't market a guess.
+
+**After the gate (Traction's Bullseye):** brainstorm all 19 channels, pick 3 cheap tests (Eric's LinkedIn audience, referrals from testers, one community or newsletter where job seekers already are), run each for 2 to 4 weeks against waitlist signups, then double down on the one that works.
+
 ## Done: proof of concept (jobs)
 
 - [x] Board, drawer, profile, materials, settings, mobile, from the design handoff
@@ -22,9 +40,12 @@ Work items live as GitHub issues, labeled by area (`feature`, `security`, `harde
 ## Next: beta
 
 - [ ] Paul and Jeff onboarded; review their first two weeks of finds with them
-- [ ] One-question beta surveys: a note from Eric, shown once on sign-in every few days, answers in Admin
+- [ ] One-question beta surveys: a note from Eric, shown once on sign-in every few days, answers in Admin (#5, #37)
+- [ ] Measurement: email opens and clicks (#34), first-party product events (#35), metrics dashboard against the goals above (#36)
 - [ ] Reviews: code quality, security (OWASP-style), accessibility (WCAG 2.2 AA); findings filed as issues
-- [ ] Ticket agent: a schedule that checks whether an agent is working the issue queue, and if not, finds where work stopped and picks up the next issue (works on branches, opens PRs, never deploys on its own)
+- [x] Staging at staging.lookout.ericdevlin.co
+- [ ] Ticket worker on Vellum (VPS, open models) with Claude as advisor via a `needs-claude` label (#33, #4)
+- [ ] Review extension for Firefox: approve features on staging without reading code (#32)
 - [ ] Auto-apply (beta, off by default, per-user switch): port the Notion pipeline flow (prep packet, review, green light, submit) into Lookout
 - [ ] Networking: the sweep also finds events, meetups and talks near the user that match their field and interests, on a separate "Events" list
 
@@ -37,6 +58,8 @@ The RFP request is the test of whether the engine is really type-agnostic.
 - [ ] UI copy, columns and stages driven by the kind config
 - [ ] Deadline-aware sorting and a "due soon" digest section
 - [ ] More kinds (candidates below)
+
+**Which kinds first, and why.** The engine is strongest where a rich profile changes what counts as a match, new options keep appearing, and people hate digging. After RFPs (a real person is asking), the best next kinds are **grants and fellowships** and **speaking slots and calls for papers**: both reward context the same way jobs do, both have deadlines that make "due soon" valuable, and both are tedious to hunt. Rentals is a close third (Leonor's search already proves the need).
 
 Candidate kinds, roughly by fit with the engine (rich personal context + a recurring sweep + triage):
 

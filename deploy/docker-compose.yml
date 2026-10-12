@@ -1,6 +1,7 @@
-# Runs on the VPS in /opt/lookout. Caddy (Plane's proxy container) terminates TLS
-# and proxies to 172.17.0.1:3200. Postgres is not exposed outside the compose network.
-name: lookout
+# Runs on the VPS: production in /opt/lookout (port 3200), staging in /opt/lookout-staging
+# (port 3201). COMPOSE_PROJECT, LOOKOUT_IMAGE and APP_PORT come from each directory's .env.
+# Caddy (Plane's proxy container) terminates TLS. Postgres is not exposed outside the compose network.
+name: ${COMPOSE_PROJECT:-lookout}
 services:
   db:
     image: postgres:17-alpine
@@ -30,7 +31,7 @@ services:
       - no-new-privileges:true
 
   app:
-    image: lookout:latest
+    image: ${LOOKOUT_IMAGE:-lookout:latest}
     restart: unless-stopped
     env_file: .env
     depends_on:
@@ -41,7 +42,7 @@ services:
     volumes:
       - ./data:/data
     ports:
-      - "172.17.0.1:3200:3000"
+      - "172.17.0.1:${APP_PORT:-3200}:3000"
     mem_limit: 512m
     read_only: true
     tmpfs:
