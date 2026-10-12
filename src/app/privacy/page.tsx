@@ -34,7 +34,7 @@ export default function Privacy() {
 
           <H>Services it uses</H>
           <ul>
-            <li><b>An AI model.</b> To build your search profile and score postings, Lookout sends your profile answers and the text of your resume, LinkedIn PDF and links to an AI model through OpenRouter. The company running that model handles it under its own terms. Lookout doesn&apos;t train any models on your data.</li>
+            <li><b>An AI model.</b> To build your search profile and score postings, Lookout sends your profile answers and the text of your resume, LinkedIn PDF and links to an AI model through OpenRouter. Lookout tells OpenRouter to use only hosts that don&apos;t keep your data or train on it, and to try US hosts first. Lookout doesn&apos;t train any models on your data either.</li>
             <li><b>Web search.</b> Lookout runs its own search engine relay. The queries it sends are job titles, places and keywords, never your name, email or resume.</li>
             <li><b>Email.</b> Sign-in links and invites go out through Resend.</li>
             <li><b>Hosting and backups.</b> The app and its database run on a private server. A backup is taken every night, encrypted, and kept for up to 60 days in Amazon S3.</li>

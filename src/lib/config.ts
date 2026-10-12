@@ -21,6 +21,11 @@ export const AiConfigSchema = z.object({
   priceOut: z.number().min(0).max(1000),
   /** Some providers reject json_schema; fall back to plain JSON mode */
   jsonMode: z.enum(["schema", "object"]),
+  /**
+   * OpenRouter only. "strict" routes to hosts that keep nothing and don't train on prompts
+   * (zero data retention), trying US hosts first. Resumes go through here, so strict is the default.
+   */
+  privacy: z.enum(["strict", "standard"]).default("strict"),
 });
 export type AiConfig = z.infer<typeof AiConfigSchema>;
 
@@ -51,6 +56,7 @@ function defaults() {
       priceIn: Number(process.env.AI_PRICE_IN || "0.5"),
       priceOut: Number(process.env.AI_PRICE_OUT || "1.5"),
       jsonMode: (process.env.AI_JSON_MODE === "object" ? "object" : "schema") as AiConfig["jsonMode"],
+      privacy: "strict" as AiConfig["privacy"],
     } satisfies AiConfig,
     search: {
       provider: (process.env.SEARCH_PROVIDER as SearchConfig["provider"]) || "searxng",

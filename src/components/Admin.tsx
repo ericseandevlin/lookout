@@ -25,7 +25,7 @@ type Overview = {
 
 type Config = {
   agent: { tokenSet: boolean; lastSeen: string | null };
-  ai: { provider: "openai" | "anthropic" | "agent"; baseUrl: string; model: string; apiKey: string; apiKeyHint: string; priceIn: number; priceOut: number; jsonMode: "schema" | "object" };
+  ai: { provider: "openai" | "anthropic" | "agent"; baseUrl: string; model: string; apiKey: string; apiKeyHint: string; priceIn: number; priceOut: number; jsonMode: "schema" | "object"; privacy: "strict" | "standard" };
   search: { provider: "searxng" | "brave" | "none"; searxngUrl: string; braveKey: string; braveKeyHint: string; pricePerQuery: number };
   access: { signupMode: "open" | "invite"; dailyBudgetUsd: number; userDailyBudgetUsd: number };
 };
@@ -511,6 +511,11 @@ export function AdminAi() {
             <NumberField key={`in-${picked}`} label="Input" value={ai.priceIn} onChange={(v) => setAi({ priceIn: v }, TYPING)} />
             <NumberField key={`out-${picked}`} label="Output" value={ai.priceOut} onChange={(v) => setAi({ priceOut: v }, TYPING)} />
           </div>
+        </Row>
+      )}
+      {catalog === "openrouter" && (
+        <Row title="Data privacy" help="Resumes and profiles go to whichever company hosts the model. Strict uses only hosts that keep nothing and don't train on it, US hosts first. Standard allows any host and may be cheaper.">
+          <Seg opts={[["Strict (recommended)", "strict"], ["Standard", "standard"]]} cur={ai.privacy ?? "strict"} pick={(v) => setAi({ privacy: v as Config["ai"]["privacy"] })} />
         </Row>
       )}
       {ai.provider === "openai" && (catalog === "openrouter" ? (

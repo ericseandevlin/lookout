@@ -13,7 +13,7 @@ import { z } from "zod";
 import { completeJSON, emptyUsage } from "./llm";
 import type { AiConfig } from "@/lib/config";
 
-const cfg: AiConfig = { provider: "openai", baseUrl: "https://llm.example/v1", model: "m", apiKey: "k", priceIn: 1, priceOut: 2, jsonMode: "schema" };
+const cfg: AiConfig = { provider: "openai", baseUrl: "https://llm.example/v1", model: "m", apiKey: "k", priceIn: 1, priceOut: 2, jsonMode: "schema", privacy: "strict" };
 const reply = (content: string, status = 200) =>
   new Response(status === 200 ? JSON.stringify({ choices: [{ message: { content } }], usage: { prompt_tokens: 1000, completion_tokens: 500 } }) : "unsupported response_format", { status });
 
@@ -30,6 +30,26 @@ describe("completeJSON (OpenAI-compatible)", () => {
     expect(body.response_format.type).toBe("json_schema");
     expect(f.mock.calls[0][1].headers.authorization).toBe("Bearer k");
     expect(usage.usd).toBeCloseTo((1000 * 1 + 500 * 2) / 1e6);
+  });
+
+  it("sends zero-retention routing to OpenRouter only, unless privacy is standard", async () => {
+    const f = vi.fn().mockImplementation(async () => reply('{"ok":true}'));
+    vi.stubGlobal("fetch", f);
+    const or = { ...cfg, baseUrl: "https://openrouter.ai/api/v1" };
+    await completeJSON({ name: "t", schema, system: "s", user: "u", usage: emptyUsage(), cfg: or });
+    await completeJSON({ name: "t", schema, system: "s", user: "u", usage: emptyUsage(), cfg });
+    await completeJSON({ name: "t", schema, system: "s", user: "u", usage: emptyUsage(), cfg: { ...or, privacy: "standard" } });
+    const bodies = f.mock.calls.map((c) => JSON.parse(c[1].body));
+    expect(bodies[0].provider).toMatchObject({ data_collection: "deny", zdr: true });
+    expect(bodies[1].provider).toBeUndefined();
+    expect(bodies[2].provider).toBeUndefined();
+  });
+
+  it("explains when no zero-retention host serves the model", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response("No endpoints found matching your data policy", { status: 404 })));
+    await expect(
+      completeJSON({ name: "t", schema, system: "s", user: "u", usage: emptyUsage(), cfg: { ...cfg, baseUrl: "https://openrouter.ai/api/v1" } }),
+    ).rejects.toThrow(/zero-retention/);
   });
 
   it("falls back to plain JSON mode when the provider rejects json_schema", async () => {

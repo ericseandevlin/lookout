@@ -38,6 +38,10 @@ type JsonReq<T extends z.ZodType> = {
 };
 
 /** One structured call to whichever model is configured. Validates with zod and retries once on bad JSON. */
+/** OpenRouter routing for user data: zero-retention, no-training hosts only, US hosts first. */
+const PRIVATE_ROUTING = { data_collection: "deny", zdr: true, order: ["deepinfra", "together", "fireworks"], allow_fallbacks: true };
+const strictRouting = (cfg: { baseUrl: string; privacy?: string }) => /openrouter\.ai/.test(cfg.baseUrl) && cfg.privacy !== "standard";
+
 export async function completeJSON<T extends z.ZodType>(req: JsonReq<T>): Promise<z.infer<T>> {
   const cfg = req.cfg ?? (await getAiConfig());
   if (cfg.provider === "agent") throw new AiConfigError("Searches run through the external agent, not a model API.");
@@ -93,11 +97,15 @@ async function openaiJSON<T extends z.ZodType>(req: JsonReq<T>, cfg: AiConfig) {
           mode === "schema"
             ? { type: "json_schema", json_schema: { name: req.name, schema: jsonSchema, strict: false } }
             : { type: "json_object" },
+        ...(strictRouting(cfg) && { provider: PRIVATE_ROUTING }),
       }),
       signal: AbortSignal.timeout(180_000),
     });
     if (!res.ok) {
       const body = (await res.text()).slice(0, 400);
+      if (strictRouting(cfg) && /no endpoints|no allowed providers/i.test(body)) {
+        throw new AiConfigError("No zero-retention host serves this model on OpenRouter. Pick another model, or switch Data privacy to Standard in Admin > AI settings.");
+      }
       // Providers without json_schema support say so with a 400/422; drop to plain JSON mode once.
       if ((res.status === 400 || res.status === 422) && mode === "schema") {
         mode = "object";
