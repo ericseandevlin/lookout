@@ -235,6 +235,7 @@ export function Finds() {
                   return (
                     <div key={label} role="columnheader" style={{ display: "flex", alignItems: "center", gap: 8 }}>
                       <button
+                        className="no-tint"
                         onClick={() => key && (setSortDir(sortKey === key && sortDir === "desc" ? "asc" : "desc"), setSortKey(key))}
                         style={{ display: "flex", alignItems: "center", gap: 5, border: 0, background: "transparent", padding: 0, fontSize: 14, fontWeight: 600, letterSpacing: ".08em", textTransform: "uppercase", color: on ? "#1D1A0F" : "#6B6358", cursor: key ? "pointer" : "default", textAlign: "left" }}
                       >
