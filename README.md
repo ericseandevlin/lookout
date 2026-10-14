@@ -78,6 +78,7 @@ AI and search settings can live in env or be set in Admin > AI settings (the dat
 | `DAILY_BUDGET_USD`, `USER_DAILY_BUDGET_USD` | Rolling 24h spend caps (also editable in Admin) |
 | `APP_TZ` | Timezone for run days (default `America/New_York`) |
 | `SCHEDULER` | `off` disables scheduled runs |
+| `FEATURE_AUTO_APPLY` | `on` shows auto-apply to admins (staging only until released) |
 | `DATA_DIR` | Where uploads are stored |
 | `EMAIL_DEV_LOG` | `1` prints emails to the log instead of sending |
 

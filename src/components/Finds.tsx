@@ -635,6 +635,9 @@ const Label = ({ children, style }: { children: React.ReactNode; style?: React.C
   <div style={{ fontSize: 14, letterSpacing: ".1em", textTransform: "uppercase", color: "#1D1A0F", fontWeight: 700, ...style }}>{children}</div>
 );
 
+const NOTES_IDLE_MS = 6000;
+const DRAWER_MS = 220;
+
 const NOT_A_FIT = ["Wrong level", "Wrong kind of role", "Wrong industry", "Location", "Pay", "Not that company", "Just not interested"];
 
 function Drawer({ f, close, toggle, setStage }: { f: Find; close: () => void; toggle: (f: Find, k: "pinned" | "archived") => void; setStage: (f: Find, s: Stage) => void }) {
@@ -651,35 +654,64 @@ function Drawer({ f, close, toggle, setStage }: { f: Find; close: () => void; to
     }
   };
   const [notes, setNotes] = useState(f.notes);
-  const [saved, setSaved] = useState(false);
+  const [noteState, setNoteState] = useState<"idle" | "saving" | "saved">("idle");
   const [copied, setCopied] = useState(false);
   const [asking, setAsking] = useState(false);
+  const [leaving, setLeaving] = useState(false);
   const timers = useRef<{ save?: ReturnType<typeof setTimeout>; hide?: ReturnType<typeof setTimeout>; copy?: ReturnType<typeof setTimeout> }>({});
   const closeBtn = useRef<HTMLButtonElement>(null);
+  // Notes stay local while typing; they save after a long pause or when the drawer closes, so typing never stalls.
+  const pending = useRef<string | null>(null);
+
+  const flushNotes = useCallback(async () => {
+    clearTimeout(timers.current.save);
+    const v = pending.current;
+    if (v === null) return;
+    pending.current = null;
+    setNoteState("saving");
+    await patchFind(f.id, { notes: v });
+    setNoteState("saved");
+    clearTimeout(timers.current.hide);
+    timers.current.hide = setTimeout(() => setNoteState("idle"), 2000);
+  }, [f.id, patchFind]);
+
+  const animatedClose = useCallback(() => {
+    flushNotes();
+    setLeaving(true);
+    const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    setTimeout(close, reduce ? 0 : DRAWER_MS);
+  }, [close, flushNotes]);
 
   useEffect(() => {
     closeBtn.current?.focus();
-    const onKey = (e: KeyboardEvent) => e.key === "Escape" && close();
+    const onKey = (e: KeyboardEvent) => e.key === "Escape" && animatedClose();
+    // Leaving the page with unsaved notes: send them with keepalive so the request outlives the tab.
+    const onHide = () => {
+      if (pending.current === null) return;
+      fetch(`/api/finds/${f.id}`, { method: "PATCH", keepalive: true, headers: { "Content-Type": "application/json" }, body: JSON.stringify({ notes: pending.current }) });
+      pending.current = null;
+    };
     window.addEventListener("keydown", onKey);
+    window.addEventListener("pagehide", onHide);
     const t = timers.current;
     return () => {
       window.removeEventListener("keydown", onKey);
-      clearTimeout(t.save);
+      window.removeEventListener("pagehide", onHide);
       clearTimeout(t.hide);
       clearTimeout(t.copy);
+      if (pending.current !== null) {
+        clearTimeout(t.save);
+        patchFind(f.id, { notes: pending.current });
+        pending.current = null;
+      }
     };
-  }, [close]);
+  }, [animatedClose, f.id, patchFind]);
 
   const onNotes = (v: string) => {
     setNotes(v);
-    setSaved(false);
+    pending.current = v;
     clearTimeout(timers.current.save);
-    clearTimeout(timers.current.hide);
-    timers.current.save = setTimeout(async () => {
-      await patchFind(f.id, { notes: v });
-      setSaved(true);
-      timers.current.hide = setTimeout(() => setSaved(false), 2000);
-    }, 700);
+    timers.current.save = setTimeout(flushNotes, NOTES_IDLE_MS);
   };
   const copy = () => {
     const url = location.href.split("#")[0] + "#" + slugOf(f);
@@ -695,12 +727,12 @@ function Drawer({ f, close, toggle, setStage }: { f: Find; close: () => void; to
 
   return (
     <>
-      <div onClick={close} style={{ position: "fixed", inset: 0, background: "rgba(29,26,15,.28)", zIndex: 20 }} />
-      <aside role="dialog" aria-modal="true" aria-label={`${f.role} at ${f.company}`} style={{ position: "fixed", top: 0, right: 0, bottom: 0, width: 440, maxWidth: "100vw", background: "#fff", zIndex: 21, display: "flex", flexDirection: "column", boxShadow: "-12px 0 40px rgba(29,26,15,.18)" }}>
+      <div onClick={animatedClose} className={leaving ? "drawer-scrim out" : "drawer-scrim"} style={{ position: "fixed", inset: 0, background: "rgba(29,26,15,.28)", zIndex: 20 }} />
+      <aside role="dialog" aria-modal="true" aria-label={`${f.role} at ${f.company}`} className={leaving ? "drawer-panel out" : "drawer-panel"} style={{ position: "fixed", top: 0, right: 0, bottom: 0, width: 440, maxWidth: "100vw", background: "#fff", zIndex: 21, display: "flex", flexDirection: "column", boxShadow: "-12px 0 40px rgba(29,26,15,.18)" }}>
         <div style={{ background: "#1D1A0F", color: "#fff", padding: "24px 26px 22px" }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12 }}>
             <div style={{ fontSize: 14, color: "#F8A865", fontWeight: 600 }}>{f.company}</div>
-            <button ref={closeBtn} onClick={close} aria-label="Close" style={{ border: 0, background: "rgba(255,255,255,.1)", color: "#fff", width: 30, height: 30, borderRadius: "50%", cursor: "pointer", fontSize: 16, lineHeight: 1 }}>×</button>
+            <button ref={closeBtn} onClick={animatedClose} aria-label="Close" style={{ border: 0, background: "rgba(255,255,255,.1)", color: "#fff", width: 30, height: 30, borderRadius: "50%", cursor: "pointer", fontSize: 16, lineHeight: 1 }}>×</button>
           </div>
           <div style={{ fontSize: 23, fontWeight: 700, letterSpacing: "-0.01em", marginTop: 6, textWrap: "pretty" }}>{f.role}</div>
           <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 14, flexWrap: "wrap" }}>
@@ -766,9 +798,14 @@ function Drawer({ f, close, toggle, setStage }: { f: Find; close: () => void; to
           <div style={{ display: "flex", flexDirection: "column", flex: 1 }}>
             <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 10, marginBottom: 8 }}>
               <Label>Notes</Label>
-              <div aria-live="polite" style={{ fontSize: 14, color: "#6B6358", opacity: saved ? 1 : 0, transition: "opacity .3s" }}>Saved</div>
+              <div style={{ fontSize: 14, color: "#6B6358" }}>Saves when you pause or close</div>
             </div>
-            <textarea value={notes} onChange={(e) => onNotes(e.target.value)} placeholder="Contacts, follow-ups, interview prep..." aria-label="Notes" className="f-brick" style={{ flex: 1, minHeight: 160, resize: "vertical", border: "1.5px solid #E6E0D8", borderRadius: 10, padding: "12px 14px", fontSize: 14, lineHeight: 1.5, outline: "none", color: "#1D1A0F" }} />
+            <div style={{ position: "relative", flex: 1, display: "flex" }}>
+              <textarea value={notes} onChange={(e) => onNotes(e.target.value)} onBlur={flushNotes} placeholder="Contacts, follow-ups, interview prep..." aria-label="Notes" className="f-brick" style={{ flex: 1, minHeight: 160, resize: "vertical", border: "1.5px solid #E6E0D8", borderRadius: 10, padding: "12px 14px 34px", fontSize: 14, lineHeight: 1.5, outline: "none", color: "#1D1A0F", cursor: noteState === "saving" ? "progress" : undefined }} />
+              <div aria-live="polite" style={{ position: "absolute", right: 10, bottom: 10, padding: "3px 10px", borderRadius: 999, fontSize: 14, fontWeight: 600, background: noteState === "saved" ? "#E8F1E6" : "#F4F1EC", color: noteState === "saved" ? "#2F5A2A" : "#3B362C", opacity: noteState === "idle" ? 0 : 1, transition: "opacity .25s", pointerEvents: "none" }}>
+                {noteState === "saving" ? "Saving…" : noteState === "saved" ? "Saved" : ""}
+              </div>
+            </div>
           </div>
         </div>
         {state.user.autoApply && !f.archived && (

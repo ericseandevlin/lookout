@@ -6,7 +6,8 @@ import type { SessionUser } from "@/lib/auth/session";
 import { isAdmin } from "@/lib/users";
 
 /** Auto-apply is a beta. For now only admins see it, so Eric can build it on his own account first. */
-export const canUseAutoApply = (user: SessionUser) => isAdmin(user);
+// Staging-only until Eric releases it: off unless FEATURE_AUTO_APPLY=on in the server's .env.
+export const canUseAutoApply = (user: SessionUser) => process.env.FEATURE_AUTO_APPLY === "on" && isAdmin(user);
 
 export const DEFAULT_AUTO_APPLY: AutoApplySettings = { enabled: false, threshold: 5, dailyCap: 3 };
 

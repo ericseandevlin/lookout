@@ -133,3 +133,16 @@ a[style*="border-radius"]:active { box-shadow: inset 0 0 0 999px rgb(128 120 108
 
 /* Tips on the board link to profile fields; leave room above the one you land on. */
 [id^="q-"] { scroll-margin-top: 140px; }
+
+/* Find drawer: slides in from the right, out the same way; the scrim fades. */
+@keyframes drawer-in { from { transform: translateX(100%); } to { transform: none; } }
+@keyframes drawer-out { from { transform: none; } to { transform: translateX(100%); } }
+@keyframes scrim-in { from { opacity: 0; } to { opacity: 1; } }
+@keyframes scrim-out { from { opacity: 1; } to { opacity: 0; } }
+.drawer-panel { animation: drawer-in 0.26s cubic-bezier(0.2, 0.8, 0.2, 1); }
+.drawer-panel.out { animation: drawer-out 0.22s cubic-bezier(0.4, 0, 1, 1) forwards; }
+.drawer-scrim { animation: scrim-in 0.26s ease; }
+.drawer-scrim.out { animation: scrim-out 0.22s ease forwards; }
+@media (prefers-reduced-motion: reduce) {
+  .drawer-panel, .drawer-panel.out, .drawer-scrim, .drawer-scrim.out { animation: none; }
+}
