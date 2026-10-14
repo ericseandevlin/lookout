@@ -28,10 +28,10 @@ export async function sendDigest(userId: string) {
     `<table width="100%" cellpadding="0" cellspacing="0">${items
       .map(
         ({ o, uo, comp }) => `<tr><td style="padding:12px 0;border-top:1px solid #EEEAE4">
-<div style="font-size:12px;font-weight:700;color:#99220F">MATCH ${uo.score}/5</div>
+<div style="font-size:14px;font-weight:700;color:#99220F">MATCH ${uo.score}/5</div>
 <div style="font-size:15px;font-weight:600;margin-top:2px">${escapeHtml(o.title)}</div>
-<div style="font-size:13.5px;color:#6B6358">${escapeHtml(o.company)} · ${escapeHtml(o.location)}</div>
-<div style="font-size:13.5px;color:${o.compMax ? "#99220F" : "#A89F92"};margin-top:2px">${comp}</div></td></tr>`,
+<div style="font-size:14px;color:#6B6358">${escapeHtml(o.company)} · ${escapeHtml(o.location)}</div>
+<div style="font-size:14px;color:${o.compMax ? "#99220F" : "#A89F92"};margin-top:2px">${comp}</div></td></tr>`,
       )
       .join("")}</table>
 <a href="${env.appUrl}/finds" style="display:inline-block;margin-top:20px;background:#99220F;color:#fff;text-decoration:none;font-weight:600;font-size:14.5px;padding:13px 24px;border-radius:12px">Open your board</a>`,

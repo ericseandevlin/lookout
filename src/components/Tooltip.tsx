@@ -53,7 +53,7 @@ export function TooltipLayer() {
       style={{
         position: "fixed", left: tip.x, top: tip.y, transform: tip.tf, zIndex: 50, pointerEvents: "none",
         background: tip.dark ? "#fff" : "#1D1A0F", color: tip.dark ? "#1D1A0F" : "#fff",
-        fontSize: 12.5, fontWeight: 600, lineHeight: 1.35, padding: "7px 11px", borderRadius: 8, maxWidth: 260,
+        fontSize: 14, fontWeight: 600, lineHeight: 1.35, padding: "7px 11px", borderRadius: 8, maxWidth: 260,
         boxShadow: "0 6px 18px rgba(29,26,15,.22)", textWrap: "pretty",
       }}
     >

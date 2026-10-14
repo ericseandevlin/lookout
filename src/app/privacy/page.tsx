@@ -11,9 +11,9 @@ export default function Privacy() {
           <Link href="/" className="wordmark" style={{ color: "#fff", textDecoration: "none" }}>Lookout</Link>
         </div>
         <div style={{ padding: "28px 26px 34px", fontSize: 15, lineHeight: 1.6, color: "#3B362C" }}>
-          <div style={{ fontSize: 12, fontWeight: 700, letterSpacing: ".14em", textTransform: "uppercase", color: "#99220F" }}>Privacy</div>
+          <div style={{ fontSize: 14, fontWeight: 700, letterSpacing: ".14em", textTransform: "uppercase", color: "#99220F" }}>Privacy</div>
           <h1 style={{ margin: "8px 0 4px", fontSize: 30, fontWeight: 700, letterSpacing: "-0.02em", color: "#1D1A0F" }}>What Lookout keeps, and who sees it</h1>
-          <p style={{ color: "#8A8175", fontSize: 13.5, margin: 0 }}>Last updated October 11, 2026</p>
+          <p style={{ color: "#6B6358", fontSize: 14, margin: 0 }}>Last updated October 11, 2026</p>
 
           <H>The short version</H>
           <p>Lookout is a small, invite-only tool run by Eric Devlin. It keeps what you give it so it can search for you. It doesn&apos;t sell your data, show ads or use tracking cookies. You can export your board and profile, or delete everything, from Settings.</p>

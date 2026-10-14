@@ -74,7 +74,7 @@ export function Shell({ children }: { children: React.ReactNode }) {
               >
                 <span style={{ position: "relative", width: 18, height: 18, flex: "none", display: "flex", alignItems: "center", justifyContent: "center" }}>
                   {isBoard && closed && newCount > 0 && (
-                    <span style={{ position: "absolute", top: -7, right: -10, minWidth: 16, height: 16, padding: "0 4px", borderRadius: 999, background: "#427D33", color: "#fff", fontSize: 10, fontWeight: 700, lineHeight: 1, display: "flex", alignItems: "center", justifyContent: "center", boxShadow: "0 0 0 2px #1D1A0F" }}>
+                    <span style={{ position: "absolute", top: -7, right: -10, minWidth: 16, height: 16, padding: "0 4px", borderRadius: 999, background: "#427D33", color: "#fff", fontSize: 14, fontWeight: 700, lineHeight: 1, display: "flex", alignItems: "center", justifyContent: "center", boxShadow: "0 0 0 2px #1D1A0F" }}>
                       {newCount}
                     </span>
                   )}
@@ -84,11 +84,11 @@ export function Shell({ children }: { children: React.ReactNode }) {
                   <>
                     <span style={{ flex: 1 }}>{label}</span>
                     {isBoard && newCount > 0 && (
-                      <span style={{ minWidth: 18, height: 18, padding: "0 5px", borderRadius: 999, background: "#427D33", color: "#fff", fontSize: 11, fontWeight: 700, lineHeight: 1, display: "flex", alignItems: "center", justifyContent: "center", fontVariantNumeric: "tabular-nums" }}>
+                      <span style={{ minWidth: 18, height: 18, padding: "0 5px", borderRadius: 999, background: "#427D33", color: "#fff", fontSize: 14, fontWeight: 700, lineHeight: 1, display: "flex", alignItems: "center", justifyContent: "center", fontVariantNumeric: "tabular-nums" }}>
                         {newCount}
                       </span>
                     )}
-                    <span style={{ fontSize: 12, fontWeight: 600, color: "#A89F92" }}>{meta(href)}</span>
+                    <span style={{ fontSize: 14, fontWeight: 600, color: "#A89F92" }}>{meta(href)}</span>
                   </>
                 )}
               </Link>
@@ -123,7 +123,7 @@ export function Shell({ children }: { children: React.ReactNode }) {
           >
             <Avatar initials={initials} />
             {!closed && (
-              <div style={{ minWidth: 0, flex: 1, whiteSpace: "nowrap", fontSize: 13.5, fontWeight: 600, overflow: "hidden", textOverflow: "ellipsis" }}>
+              <div style={{ minWidth: 0, flex: 1, whiteSpace: "nowrap", fontSize: 14, fontWeight: 600, overflow: "hidden", textOverflow: "ellipsis" }}>
                 {name || "Add your name"}
               </div>
             )}
@@ -154,11 +154,11 @@ export function Shell({ children }: { children: React.ReactNode }) {
               <Link
                 key={href}
                 href={href}
-                style={{ position: "relative", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 4, minHeight: 52, borderRadius: 10, color: active ? "#F8A865" : "#A89F92", fontSize: 11.5, fontWeight: 600, textDecoration: "none" }}
+                style={{ position: "relative", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 4, minHeight: 52, borderRadius: 10, color: active ? "#F8A865" : "#A89F92", fontSize: 14, fontWeight: 600, textDecoration: "none" }}
               >
                 <span style={{ position: "relative", width: 22, height: 22, display: "flex", alignItems: "center", justifyContent: "center" }}>
                   {href === "/finds" && newCount > 0 && (
-                    <span style={{ position: "absolute", top: -6, right: -11, minWidth: 17, height: 17, padding: "0 4px", borderRadius: 999, background: "#427D33", color: "#fff", fontSize: 10.5, fontWeight: 700, lineHeight: 1, display: "flex", alignItems: "center", justifyContent: "center", boxShadow: "0 0 0 2px #1D1A0F" }}>
+                    <span style={{ position: "absolute", top: -6, right: -11, minWidth: 17, height: 17, padding: "0 4px", borderRadius: 999, background: "#427D33", color: "#fff", fontSize: 14, fontWeight: 700, lineHeight: 1, display: "flex", alignItems: "center", justifyContent: "center", boxShadow: "0 0 0 2px #1D1A0F" }}>
                       {newCount}
                     </span>
                   )}
@@ -172,7 +172,7 @@ export function Shell({ children }: { children: React.ReactNode }) {
       </nav>
 
       {error && (
-        <div role="alert" style={{ position: "fixed", left: "50%", bottom: 92, transform: "translateX(-50%)", zIndex: 60, background: "#1D1A0F", color: "#fff", fontSize: 13.5, fontWeight: 600, padding: "11px 16px", borderRadius: 12, boxShadow: "0 8px 28px rgba(29,26,15,.25)", maxWidth: "calc(100vw - 32px)" }}>
+        <div role="alert" style={{ position: "fixed", left: "50%", bottom: 92, transform: "translateX(-50%)", zIndex: 60, background: "#1D1A0F", color: "#fff", fontSize: 14, fontWeight: 600, padding: "11px 16px", borderRadius: 12, boxShadow: "0 8px 28px rgba(29,26,15,.25)", maxWidth: "calc(100vw - 32px)" }}>
           {error}
         </div>
       )}
@@ -187,7 +187,7 @@ export function Avatar({ initials, ring }: { initials: string; ring?: boolean })
     <span
       style={{
         width: 34, height: 34, borderRadius: "50%", background: "#99220F", color: "#fff", display: "flex", alignItems: "center", justifyContent: "center",
-        fontSize: 13, fontWeight: 600, flex: "none", boxShadow: ring ? "0 0 0 2px #1D1A0F, 0 0 0 4px #F8A865" : "none",
+        fontSize: 14, fontWeight: 600, flex: "none", boxShadow: ring ? "0 0 0 2px #1D1A0F, 0 0 0 4px #F8A865" : "none",
       }}
     >
       {initials}

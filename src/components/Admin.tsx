@@ -35,8 +35,8 @@ const when = (iso: string | null) =>
   iso ? new Date(iso).toLocaleString("en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" }) : "Never";
 const input: React.CSSProperties = { width: "100%", maxWidth: 420, height: 42, border: "1.5px solid #E6E0D8", background: "#fff", borderRadius: 10, padding: "0 13px", fontSize: 14, outline: "none", color: "#1D1A0F" };
 const card: React.CSSProperties = { background: "#fff", borderRadius: 16, padding: "16px 18px" };
-const th: React.CSSProperties = { fontSize: 11.5, fontWeight: 600, letterSpacing: ".08em", textTransform: "uppercase", color: "#8A8175", textAlign: "left", padding: "12px 14px", borderBottom: "1px solid #EEEAE4", whiteSpace: "nowrap" };
-const td: React.CSSProperties = { fontSize: 13.5, padding: "12px 14px", borderBottom: "1px solid #F2EEE8", verticalAlign: "top" };
+const th: React.CSSProperties = { fontSize: 14, fontWeight: 600, letterSpacing: ".08em", textTransform: "uppercase", color: "#6B6358", textAlign: "left", padding: "12px 14px", borderBottom: "1px solid #EEEAE4", whiteSpace: "nowrap" };
+const td: React.CSSProperties = { fontSize: 14, padding: "12px 14px", borderBottom: "1px solid #F2EEE8", verticalAlign: "top" };
 
 function Tabs() {
   const path = usePathname();
@@ -46,7 +46,7 @@ function Tabs() {
       {tabs.map(([href, label]) => {
         const on = path === href;
         return (
-          <Link key={href} href={href} style={{ display: "flex", alignItems: "center", height: 34, padding: "0 15px", borderRadius: 999, border: `1.5px solid ${on ? "#99220F" : "#E0D9CF"}`, background: on ? "#99220F" : "#fff", color: on ? "#fff" : "#1D1A0F", fontSize: 13.5, fontWeight: 600, textDecoration: "none" }}>
+          <Link key={href} href={href} style={{ display: "flex", alignItems: "center", height: 34, padding: "0 15px", borderRadius: 999, border: `1.5px solid ${on ? "#99220F" : "#E0D9CF"}`, background: on ? "#99220F" : "#fff", color: on ? "#fff" : "#1D1A0F", fontSize: 14, fontWeight: 600, textDecoration: "none" }}>
             {label}
           </Link>
         );
@@ -57,7 +57,7 @@ function Tabs() {
 
 function Msg({ text, ok }: { text: string | null; ok?: boolean }) {
   if (!text) return null;
-  return <div aria-live="polite" style={{ fontSize: 13, color: ok ? "#35662A" : "#99220F", lineHeight: 1.45 }}>{text}</div>;
+  return <div aria-live="polite" style={{ fontSize: 14, color: ok ? "#35662A" : "#99220F", lineHeight: 1.45 }}>{text}</div>;
 }
 
 // --- People ---------------------------------------------------------------------
@@ -123,7 +123,7 @@ export function AdminPeople() {
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(160px,1fr))", gap: 12, marginTop: 14 }}>
             {[["People", String(data.totals.users)], ["Spend, 24 hours", usd(data.totals.usdDay)], ["Spend, 7 days", usd(data.totals.usdWeek)], ["Spend, 30 days", usd(data.totals.usdMonth)]].map(([k, v]) => (
               <div key={k} style={card}>
-                <div style={{ fontSize: 12, fontWeight: 600, letterSpacing: ".06em", textTransform: "uppercase", color: "#8A8175" }}>{k}</div>
+                <div style={{ fontSize: 14, fontWeight: 600, letterSpacing: ".06em", textTransform: "uppercase", color: "#6B6358" }}>{k}</div>
                 <div style={{ fontSize: 27, fontWeight: 700, letterSpacing: "-0.02em", marginTop: 6, fontVariantNumeric: "tabular-nums" }}>{v}</div>
               </div>
             ))}
@@ -148,15 +148,15 @@ export function AdminPeople() {
                 {data.invites.filter((i) => !i.accepted).map((i) => (
                   <div key={i.email} style={{ display: "flex", flexDirection: "column", gap: 8, background: "#fff", border: "1.5px solid #E6E0D8", borderRadius: 10, padding: "8px 8px 8px 12px" }}>
                     <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                      <span style={{ flex: 1, minWidth: 0, fontSize: 13.5, overflow: "hidden", textOverflow: "ellipsis" }}>{i.email}</span>
-                      <span style={{ fontSize: 12, color: "#8A8175" }}>{when(i.createdAt)}</span>
-                      <button onClick={() => resend(i.email)} style={{ ...btn("outline"), height: 30, padding: "0 10px", fontSize: 12.5 }}>{data.emailEnabled ? "Resend" : "New link"}</button>
-                      <button onClick={() => revoke(i.email)} className="h-danger" style={{ ...btn("danger"), height: 30, padding: "0 10px", fontSize: 12.5 }}>Revoke</button>
+                      <span style={{ flex: 1, minWidth: 0, fontSize: 14, overflow: "hidden", textOverflow: "ellipsis" }}>{i.email}</span>
+                      <span style={{ fontSize: 14, color: "#6B6358" }}>{when(i.createdAt)}</span>
+                      <button onClick={() => resend(i.email)} style={{ ...btn("outline"), height: 30, padding: "0 10px", fontSize: 14 }}>{data.emailEnabled ? "Resend" : "New link"}</button>
+                      <button onClick={() => revoke(i.email)} className="h-danger" style={{ ...btn("danger"), height: 30, padding: "0 10px", fontSize: 14 }}>Revoke</button>
                     </div>
                     {resent[i.email] && (
-                      <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap", fontSize: 12.5 }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap", fontSize: 14 }}>
                         <span style={{ color: "#35662A", fontWeight: 600 }}>{resent[i.email].emailed ? "Sent again with a fresh 7-day link." : "New link ready."}</span>
-                        <button onClick={() => copyResent(i.email)} style={{ ...btn("text"), height: 26, fontSize: 12.5 }}>{resent[i.email].copied ? "Copied" : "Copy link to send yourself"}</button>
+                        <button onClick={() => copyResent(i.email)} style={{ ...btn("text"), height: 26, fontSize: 14 }}>{resent[i.email].copied ? "Copied" : "Copy link to send yourself"}</button>
                       </div>
                     )}
                   </div>
@@ -176,7 +176,7 @@ export function AdminPeople() {
                   <tr key={u.id}>
                     <td style={td}>
                       <div style={{ fontWeight: 600 }}>{u.name || "No name yet"}</div>
-                      <div style={{ color: "#6B6358", fontSize: 12.5 }}>{u.email}</div>
+                      <div style={{ color: "#6B6358", fontSize: 14 }}>{u.email}</div>
                     </td>
                     <td style={td}>{when(u.createdAt)}</td>
                     <td style={td}>{when(u.lastLoginAt)}</td>
@@ -184,13 +184,13 @@ export function AdminPeople() {
                     <td style={{ ...td, fontVariantNumeric: "tabular-nums" }}>{u.runs30}</td>
                     <td style={{ ...td, fontVariantNumeric: "tabular-nums" }}>{usd(u.usd30)}</td>
                     <td style={td}>
-                      <span style={{ fontSize: 12, fontWeight: 600, padding: "3px 8px", borderRadius: 6, background: u.disabled ? "#FBEDEA" : u.isAdmin ? "#FDE7D3" : "#F4F1EC", color: u.disabled ? "#99220F" : u.isAdmin ? "#7A3A10" : "#6B6358" }}>
+                      <span style={{ fontSize: 14, fontWeight: 600, padding: "3px 8px", borderRadius: 6, background: u.disabled ? "#FBEDEA" : u.isAdmin ? "#FDE7D3" : "#F4F1EC", color: u.disabled ? "#99220F" : u.isAdmin ? "#7A3A10" : "#6B6358" }}>
                         {u.disabled ? "Disabled" : u.isAdmin ? "Admin" : "Member"}
                       </span>
                     </td>
                     <td style={{ ...td, whiteSpace: "nowrap", textAlign: "right" }}>
-                      <button onClick={() => patchUser(u.id, { isAdmin: !u.isAdmin })} style={{ ...btn("outline"), height: 30, padding: "0 10px", fontSize: 12.5, marginRight: 6 }}>{u.isAdmin ? "Remove admin" : "Make admin"}</button>
-                      <button onClick={async () => (u.disabled || (await ask({ eyebrow: "Disable account", title: `Disable ${u.email}?`, body: "They're signed out everywhere and can't sign back in until you enable them. Their board and data stay.", confirmLabel: "Disable", danger: true }))) && patchUser(u.id, { disabled: !u.disabled })} className="h-danger" style={{ ...btn("danger"), height: 30, padding: "0 10px", fontSize: 12.5 }}>{u.disabled ? "Enable" : "Disable"}</button>
+                      <button onClick={() => patchUser(u.id, { isAdmin: !u.isAdmin })} style={{ ...btn("outline"), height: 30, padding: "0 10px", fontSize: 14, marginRight: 6 }}>{u.isAdmin ? "Remove admin" : "Make admin"}</button>
+                      <button onClick={async () => (u.disabled || (await ask({ eyebrow: "Disable account", title: `Disable ${u.email}?`, body: "They're signed out everywhere and can't sign back in until you enable them. Their board and data stay.", confirmLabel: "Disable", danger: true }))) && patchUser(u.id, { disabled: !u.disabled })} className="h-danger" style={{ ...btn("danger"), height: 30, padding: "0 10px", fontSize: 14 }}>{u.disabled ? "Enable" : "Disable"}</button>
                     </td>
                   </tr>
                 ))}
@@ -206,7 +206,7 @@ export function AdminPeople() {
               </thead>
               <tbody>
                 {data.runs.length === 0 && (
-                  <tr><td style={{ ...td, color: "#8A8175" }} colSpan={7}>No searches yet.</td></tr>
+                  <tr><td style={{ ...td, color: "#6B6358" }} colSpan={7}>No searches yet.</td></tr>
                 )}
                 {data.runs.map((r) => (
                   <tr key={r.id}>
@@ -217,7 +217,7 @@ export function AdminPeople() {
                       <span data-tip={r.error ?? undefined} style={{ fontWeight: 600, color: r.status === "failed" ? "#99220F" : r.status === "running" ? "#7A3A10" : "#35662A" }}>
                         {r.status === "failed" ? "Failed" : r.status === "running" ? "Running" : "Done"}
                       </span>
-                      {r.error && <div style={{ fontSize: 12, color: "#8A8175", maxWidth: 320, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{r.error}</div>}
+                      {r.error && <div style={{ fontSize: 14, color: "#6B6358", maxWidth: 320, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{r.error}</div>}
                     </td>
                     <td style={{ ...td, fontVariantNumeric: "tabular-nums" }}>{r.found} / {r.added}</td>
                     <td style={{ ...td, fontVariantNumeric: "tabular-nums" }}>{r.searches}</td>
@@ -241,7 +241,7 @@ function MoneyInput({ label, value, onSave }: { label: string; value: number; on
     else setV(String(value));
   };
   return (
-    <label style={{ display: "flex", flexDirection: "column", gap: 6, fontSize: 12, fontWeight: 600, letterSpacing: ".06em", textTransform: "uppercase", color: "#8A8175" }}>
+    <label style={{ display: "flex", flexDirection: "column", gap: 6, fontSize: 14, fontWeight: 600, letterSpacing: ".06em", textTransform: "uppercase", color: "#6B6358" }}>
       {label}
       <input inputMode="decimal" value={v} onChange={(e) => setV(e.target.value)} onBlur={commit} onKeyDown={(e) => e.key === "Enter" && commit()} className="f-brick" style={{ ...input, width: 140, textTransform: "none", letterSpacing: 0, fontWeight: 500 }} />
     </label>
@@ -273,18 +273,18 @@ function Invite({ emailEnabled, onDone }: { emailEnabled: boolean; onDone: () =>
           <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} onKeyDown={(e) => e.key === "Enter" && create()} placeholder="their@email.com" aria-label="Email to invite" className="f-brick" style={{ ...input, flex: 1, minWidth: 0 }} />
           <button onClick={create} style={btn("solid")}>Invite</button>
         </div>
-        <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13, color: emailEnabled ? "#1D1A0F" : "#A89F92" }}>
+        <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 14, color: emailEnabled ? "#1D1A0F" : "#A89F92" }}>
           <input type="checkbox" checked={send && emailEnabled} disabled={!emailEnabled} onChange={(e) => setSend(e.target.checked)} />
           {emailEnabled ? "Also email them the link" : "Email isn't set up yet, so copy the link and send it yourself"}
         </label>
         <Msg text={err} />
         {res && (
           <div style={{ display: "flex", flexDirection: "column", gap: 8, padding: 12, borderRadius: 10, background: "#fff", border: "1.5px solid #E6E0D8" }}>
-            <span style={{ fontSize: 12.5, color: "#6B6358" }}>
+            <span style={{ fontSize: 14, color: "#6B6358" }}>
               {res.emailed ? "Emailed to " : "Sign-in link for "}
               <strong style={{ color: "#1D1A0F" }}>{res.email}</strong>
             </span>
-            <code style={{ fontSize: 12, wordBreak: "break-all" }}>{res.link}</code>
+            <code style={{ fontSize: 14, wordBreak: "break-all" }}>{res.link}</code>
             <button onClick={() => navigator.clipboard?.writeText(res.link).then(() => setCopied(true)).catch(() => {})} style={{ ...btn("outline"), alignSelf: "flex-start", height: 34 }}>{copied ? "Copied" : "Copy link"}</button>
           </div>
         )}
@@ -311,7 +311,7 @@ const CATALOG_NAME: Record<Catalog, string> = { openrouter: "OpenRouter", openco
 
 function Fixed({ children, empty }: { children: React.ReactNode; empty?: boolean }) {
   return (
-    <div style={{ ...input, display: "flex", alignItems: "center", background: "#F6F2EC", borderColor: "#EEEAE4", color: empty ? "#8A8175" : "#1D1A0F", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{children}</div>
+    <div style={{ ...input, display: "flex", alignItems: "center", background: "#F6F2EC", borderColor: "#EEEAE4", color: empty ? "#6B6358" : "#1D1A0F", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{children}</div>
   );
 }
 
@@ -437,7 +437,7 @@ export function AdminAi() {
       </Row>
       {ai.provider === "agent" && (
         <Row title="Claude agent" help="Searches, link adds and resume reads are queued here. A poller on your Mac checks the queue every 2 minutes and has Claude Code do the work on your Claude plan, then sends results back. Nothing runs while your Mac is asleep.">
-          <div style={{ display: "flex", flexDirection: "column", gap: 6, fontSize: 13.5 }}>
+          <div style={{ display: "flex", flexDirection: "column", gap: 6, fontSize: 14 }}>
             <span style={{ fontWeight: 600, color: cfg.agent.tokenSet ? "#35662A" : "#99220F" }}>{cfg.agent.tokenSet ? "Agent token is set on the server" : "No AGENT_TOKEN on the server yet"}</span>
             <span style={{ color: "#6B6358" }}>{cfg.agent.lastSeen ? `Agent last checked in ${when(cfg.agent.lastSeen)}` : "The agent hasn't checked in yet"}</span>
           </div>
@@ -450,7 +450,7 @@ export function AdminAi() {
               {[...PRESETS, null].map((p) => {
                 const on = p ? preset === p : !preset;
                 return (
-                  <button key={p?.label ?? "custom"} onClick={() => choosePreset(p)} style={{ height: 30, padding: "0 11px", borderRadius: 999, border: `1.5px solid ${on ? "#1D1A0F" : "#E0D9CF"}`, background: on ? "#1D1A0F" : "#fff", color: on ? "#fff" : "#1D1A0F", fontSize: 12.5, fontWeight: 600, cursor: "pointer" }}>{p?.label ?? "Custom"}</button>
+                  <button key={p?.label ?? "custom"} onClick={() => choosePreset(p)} style={{ height: 30, padding: "0 11px", borderRadius: 999, border: `1.5px solid ${on ? "#1D1A0F" : "#E0D9CF"}`, background: on ? "#1D1A0F" : "#fff", color: on ? "#fff" : "#1D1A0F", fontSize: 14, fontWeight: 600, cursor: "pointer" }}>{p?.label ?? "Custom"}</button>
                 );
               })}
             </div>
@@ -617,7 +617,7 @@ function SecretField({ label, hint, value, onChange, action }: { label: string; 
 function NumberField({ label, value, onChange }: { label: string; value: number; onChange: (v: number) => void }) {
   const [v, setV] = useState(String(value));
   return (
-    <label style={{ display: "flex", flexDirection: "column", gap: 6, fontSize: 12, fontWeight: 600, letterSpacing: ".06em", textTransform: "uppercase", color: "#8A8175" }}>
+    <label style={{ display: "flex", flexDirection: "column", gap: 6, fontSize: 14, fontWeight: 600, letterSpacing: ".06em", textTransform: "uppercase", color: "#6B6358" }}>
       {label}
       <input
         inputMode="decimal"
@@ -655,34 +655,34 @@ function ModelPicker({ source, current, onPick }: { source: Catalog; current: st
   const price = (n: number | null) => (n === null ? "" : n === 0 ? "free" : `$${n < 1 ? n.toFixed(2) : n.toFixed(n < 10 ? 2 : 0)}`);
   return (
     <div style={{ maxWidth: 520 }}>
-      <button onClick={toggle} style={{ ...btn("outline"), height: 34, padding: "0 12px", fontSize: 13 }}>{open ? `Hide ${CATALOG_NAME[source]} models` : current ? "Change model" : `Browse ${CATALOG_NAME[source]} models`}</button>
+      <button onClick={toggle} style={{ ...btn("outline"), height: 34, padding: "0 12px", fontSize: 14 }}>{open ? `Hide ${CATALOG_NAME[source]} models` : current ? "Change model" : `Browse ${CATALOG_NAME[source]} models`}</button>
       {open && (
         <div style={{ marginTop: 8, background: "#fff", border: "1.5px solid #E6E0D8", borderRadius: 12, overflow: "hidden" }}>
           <div style={{ display: "flex", gap: 10, alignItems: "center", padding: 10, borderBottom: "1px solid #EEEAE4", flexWrap: "wrap" }}>
             <input autoFocus value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search, e.g. qwen, deepseek, llama" aria-label="Search models" className="f-brick" style={{ ...input, height: 36, flex: 1, minWidth: 180 }} />
             {priced && (
-              <label style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12.5, color: "#6B6358" }}>
+              <label style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 14, color: "#6B6358" }}>
                 <input type="checkbox" checked={onlyStructured} onChange={(e) => setOnlyStructured(e.target.checked)} />
                 Structured output only
               </label>
             )}
           </div>
           {err && <div style={{ padding: 12 }}><Msg text={err} /></div>}
-          {!models && !err && <div style={{ padding: 12, fontSize: 13, color: "#8A8175" }}>Loading models…</div>}
+          {!models && !err && <div style={{ padding: 12, fontSize: 14, color: "#6B6358" }}>Loading models…</div>}
           {models && (
             <div style={{ maxHeight: 320, overflowY: "auto" }}>
-              <div style={{ display: "grid", gridTemplateColumns: "minmax(0,1fr) 70px 70px", gap: 8, padding: "8px 12px", fontSize: 11, fontWeight: 600, letterSpacing: ".06em", textTransform: "uppercase", color: "#8A8175", position: "sticky", top: 0, background: "#fff", borderBottom: "1px solid #EEEAE4" }}>
+              <div style={{ display: "grid", gridTemplateColumns: "minmax(0,1fr) 70px 70px", gap: 8, padding: "8px 12px", fontSize: 14, fontWeight: 600, letterSpacing: ".06em", textTransform: "uppercase", color: "#6B6358", position: "sticky", top: 0, background: "#fff", borderBottom: "1px solid #EEEAE4" }}>
                 <span>{priced ? "Model · cheapest first" : "Model"}</span><span style={{ textAlign: "right" }}>{priced && "In /1M"}</span><span style={{ textAlign: "right" }}>{priced && "Out /1M"}</span>
               </div>
-              {list.length === 0 && <div style={{ padding: 12, fontSize: 13, color: "#8A8175" }}>No models match.</div>}
+              {list.length === 0 && <div style={{ padding: 12, fontSize: 14, color: "#6B6358" }}>No models match.</div>}
               {list.map((m) => (
                 <button key={m.id} className="h-menu" onClick={() => { onPick(m); setOpen(false); }} style={{ display: "grid", gridTemplateColumns: "minmax(0,1fr) 70px 70px", gap: 8, width: "100%", padding: "9px 12px", border: 0, borderBottom: "1px solid #F2EEE8", background: m.id === current ? "#F6F2EC" : "#fff", cursor: "pointer", textAlign: "left", alignItems: "center" }}>
                   <span style={{ minWidth: 0 }}>
-                    <span style={{ display: "block", fontSize: 13.5, fontWeight: 600, color: "#1D1A0F", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{m.name}</span>
-                    <span style={{ display: "block", fontSize: 12, color: "#8A8175", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{m.context ? `${m.id} · ${Math.round(m.context / 1000)}K context` : m.id}</span>
+                    <span style={{ display: "block", fontSize: 14, fontWeight: 600, color: "#1D1A0F", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{m.name}</span>
+                    <span style={{ display: "block", fontSize: 14, color: "#6B6358", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{m.context ? `${m.id} · ${Math.round(m.context / 1000)}K context` : m.id}</span>
                   </span>
-                  <span style={{ fontSize: 13, textAlign: "right", fontVariantNumeric: "tabular-nums" }}>{price(m.priceIn)}</span>
-                  <span style={{ fontSize: 13, textAlign: "right", fontVariantNumeric: "tabular-nums" }}>{price(m.priceOut)}</span>
+                  <span style={{ fontSize: 14, textAlign: "right", fontVariantNumeric: "tabular-nums" }}>{price(m.priceIn)}</span>
+                  <span style={{ fontSize: 14, textAlign: "right", fontVariantNumeric: "tabular-nums" }}>{price(m.priceOut)}</span>
                 </button>
               ))}
             </div>
@@ -712,7 +712,7 @@ function Requests({ requests, emailEnabled, onDone }: { requests: Overview["requ
   if (!pending.length && !approved.length) {
     return (
       <Row title="Access requests" help="People who asked to join from the sign-in page.">
-        <span style={{ fontSize: 13.5, color: "#8A8175" }}>No requests waiting.</span>
+        <span style={{ fontSize: 14, color: "#6B6358" }}>No requests waiting.</span>
       </Row>
     );
   }
@@ -722,11 +722,11 @@ function Requests({ requests, emailEnabled, onDone }: { requests: Overview["requ
         <Msg text={err} />
         {approved.map((email) => (
           <div key={email} style={{ display: "flex", flexDirection: "column", gap: 8, padding: 12, borderRadius: 10, background: "#fff", border: "1.5px solid #E6E0D8" }}>
-            <span style={{ fontSize: 13, color: "#35662A", fontWeight: 600 }}>{links[email].emailed ? `Approved and emailed ${email}` : `Approved ${email}. Send them this link:`}</span>
+            <span style={{ fontSize: 14, color: "#35662A", fontWeight: 600 }}>{links[email].emailed ? `Approved and emailed ${email}` : `Approved ${email}. Send them this link:`}</span>
             {!links[email].emailed && (
               <>
-                <code style={{ fontSize: 12, wordBreak: "break-all" }}>{links[email].link}</code>
-                <button onClick={() => navigator.clipboard?.writeText(links[email].link).then(() => setCopied(email)).catch(() => {})} style={{ ...btn("outline"), alignSelf: "flex-start", height: 32, fontSize: 12.5 }}>{copied === email ? "Copied" : "Copy link"}</button>
+                <code style={{ fontSize: 14, wordBreak: "break-all" }}>{links[email].link}</code>
+                <button onClick={() => navigator.clipboard?.writeText(links[email].link).then(() => setCopied(email)).catch(() => {})} style={{ ...btn("outline"), alignSelf: "flex-start", height: 32, fontSize: 14 }}>{copied === email ? "Copied" : "Copy link"}</button>
               </>
             )}
           </div>
@@ -734,11 +734,11 @@ function Requests({ requests, emailEnabled, onDone }: { requests: Overview["requ
         {pending.map((r) => (
           <div key={r.email} style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 10px 10px 12px", borderRadius: 10, background: "#fff", border: "1.5px solid #E6E0D8", flexWrap: "wrap" }}>
             <div style={{ flex: 1, minWidth: 180 }}>
-              <div style={{ fontSize: 13.5, fontWeight: 600, overflow: "hidden", textOverflow: "ellipsis" }}>{r.email}</div>
-              <div style={{ fontSize: 12.5, color: "#6B6358" }}>{r.nextMove ?? "No answer"} · {when(r.createdAt)}</div>
+              <div style={{ fontSize: 14, fontWeight: 600, overflow: "hidden", textOverflow: "ellipsis" }}>{r.email}</div>
+              <div style={{ fontSize: 14, color: "#6B6358" }}>{r.nextMove ?? "No answer"} · {when(r.createdAt)}</div>
             </div>
-            <button onClick={() => decide(r.email, "decline")} className="h-danger" style={{ ...btn("danger"), height: 32, padding: "0 12px", fontSize: 12.5 }}>Decline</button>
-            <button onClick={() => decide(r.email, "approve")} style={{ ...btn("solid"), height: 32, padding: "0 12px", fontSize: 12.5 }}>Approve</button>
+            <button onClick={() => decide(r.email, "decline")} className="h-danger" style={{ ...btn("danger"), height: 32, padding: "0 12px", fontSize: 14 }}>Decline</button>
+            <button onClick={() => decide(r.email, "approve")} style={{ ...btn("solid"), height: 32, padding: "0 12px", fontSize: 14 }}>Approve</button>
           </div>
         ))}
       </div>

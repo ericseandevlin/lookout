@@ -66,10 +66,10 @@ export function SearchProfileView() {
           <div style={{ height: 4, borderRadius: 999, background: "#F4F1EC", overflow: "hidden" }}>
             <div className="scan-bar" style={{ height: "100%", width: "40%", background: "#F8A865", borderRadius: 999 }} />
           </div>
-          <div style={{ fontSize: 12.5, color: "#8A8175" }}>This takes a few seconds the first time, and after you change something.</div>
+          <div style={{ fontSize: 14, color: "#6B6358" }}>This takes a few seconds the first time, and after you change something.</div>
         </div>
       )}
-      {err && <div role="alert" style={{ fontSize: 13.5, color: "#99220F" }}>{err}</div>}
+      {err && <div role="alert" style={{ fontSize: 14, color: "#99220F" }}>{err}</div>}
 
       {data && !p && (
         <div style={{ ...card, fontSize: 14, lineHeight: 1.5, color: "#3B362C" }}>
@@ -86,14 +86,14 @@ export function SearchProfileView() {
 
       {data && p && (
         <>
-          <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap", fontSize: 13, color: "#6B6358" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap", fontSize: 14, color: "#6B6358" }}>
             <span>
               Built {when} from {sourceLine(data.sources)}.
               {data.stale && " Your changes since then will be picked up on the next search."}
               {data.error && ` ${data.error}.`}
             </span>
             {data.canBuild && (
-              <button onClick={rebuild} disabled={busy} style={{ ...btn("text"), height: 28, fontSize: 13 }}>{busy ? "Rebuilding…" : "Rebuild"}</button>
+              <button onClick={rebuild} disabled={busy} style={{ ...btn("text"), height: 28, fontSize: 14 }}>{busy ? "Rebuilding…" : "Rebuild"}</button>
             )}
           </div>
 
@@ -102,7 +102,7 @@ export function SearchProfileView() {
 
             <Part title="Searches for" edit={["/profile#q-q1", "Edit your next role"]}>
               <Chips items={p.targetTitles} strong />
-              <div style={{ fontSize: 13.5, color: "#6B6358", marginTop: 8 }}>Level: {p.seniority}</div>
+              <div style={{ fontSize: 14, color: "#6B6358", marginTop: 8 }}>Level: {p.seniority}</div>
             </Part>
             {p.industries.length > 0 && (
               <Part title="Industries" edit={["/profile#q-q1", "Edit your next role"]}>
@@ -146,9 +146,9 @@ function Part({ title, edit, children }: { title: string; edit?: [string, string
   return (
     <section style={{ display: "flex", flexDirection: "column", gap: 8 }}>
       <div style={{ display: "flex", alignItems: "baseline", gap: 10 }}>
-        <h2 style={{ margin: 0, fontSize: 12, fontWeight: 700, letterSpacing: ".12em", textTransform: "uppercase", color: "#8A8175" }}>{title}</h2>
+        <h2 style={{ margin: 0, fontSize: 14, fontWeight: 700, letterSpacing: ".12em", textTransform: "uppercase", color: "#6B6358" }}>{title}</h2>
         {edit && (
-          <Link href={edit[0]} style={{ marginLeft: "auto", fontSize: 12.5, fontWeight: 600, color: "#99220F", textDecoration: "none", whiteSpace: "nowrap" }}>{edit[1]} →</Link>
+          <Link href={edit[0]} style={{ marginLeft: "auto", fontSize: 14, fontWeight: 600, color: "#99220F", textDecoration: "none", whiteSpace: "nowrap" }}>{edit[1]} →</Link>
         )}
       </div>
       {children}
@@ -160,7 +160,7 @@ function Chips({ items, strong, muted }: { items: string[]; strong?: boolean; mu
   return (
     <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
       {items.map((t) => (
-        <span key={t} style={{ padding: "5px 11px", borderRadius: 999, fontSize: 13, fontWeight: strong ? 600 : 500, background: strong ? "#1D1A0F" : muted ? "#F4F1EC" : "#FDE7D3", color: strong ? "#fff" : muted ? "#3B362C" : "#7A3A10" }}>{t}</span>
+        <span key={t} style={{ padding: "5px 11px", borderRadius: 999, fontSize: 14, fontWeight: strong ? 600 : 500, background: strong ? "#1D1A0F" : muted ? "#F4F1EC" : "#FDE7D3", color: strong ? "#fff" : muted ? "#3B362C" : "#7A3A10" }}>{t}</span>
       ))}
     </div>
   );

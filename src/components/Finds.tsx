@@ -130,9 +130,9 @@ export function Finds() {
           <div style={{ flex: 1, minWidth: 260 }}>
             <h1 style={{ margin: 0, fontSize: 27, fontWeight: 700, letterSpacing: "-0.02em", lineHeight: "32px" }}>Finds</h1>
             <div style={{ display: "flex", alignItems: "baseline", gap: 8, flexWrap: "wrap", marginTop: 4 }}>
-              <span className={state.running ? "pulse" : undefined} style={{ fontSize: 13.5, color: "#6B6358" }}>{sub}</span>
+              <span className={state.running ? "pulse" : undefined} style={{ fontSize: 14, color: "#6B6358" }}>{sub}</span>
               {!state.running && state.lastReport && (
-                <button onClick={() => setShowReport((v) => !v)} aria-expanded={showReport} style={{ border: 0, background: "transparent", padding: 0, fontSize: 13.5, fontWeight: 600, color: "#99220F", cursor: "pointer", textDecoration: "underline", textUnderlineOffset: 3 }}>
+                <button onClick={() => setShowReport((v) => !v)} aria-expanded={showReport} style={{ border: 0, background: "transparent", padding: 0, fontSize: 14, fontWeight: 600, color: "#99220F", cursor: "pointer", textDecoration: "underline", textUnderlineOffset: 3 }}>
                   {showReport ? "Hide search report" : "See search report"}
                 </button>
               )}
@@ -146,7 +146,7 @@ export function Finds() {
                 onChange={(e) => setQ(e.target.value)}
                 placeholder="Search company, role, notes..."
                 aria-label="Search finds"
-                style={{ flex: 1, minWidth: 0, background: "transparent", border: 0, outline: "none", color: "#1D1A0F", fontSize: 13.5 }}
+                style={{ flex: 1, minWidth: 0, background: "transparent", border: 0, outline: "none", color: "#1D1A0F", fontSize: 14 }}
               />
             </div>
             <SearchNowButton />
@@ -166,7 +166,7 @@ export function Finds() {
             {(["all", "new", "archived"] as Filter[]).map((k) => {
               const c = chip(filter === k);
               return (
-                <button key={k} onClick={() => { setFilter(k); setFitMenu(false); }} style={{ display: "flex", alignItems: "center", gap: 7, height: 34, padding: "0 15px", borderRadius: 999, border: `1.5px solid ${c.border}`, background: c.bg, color: c.ink, fontSize: 13.5, fontWeight: 600, cursor: "pointer" }}>
+                <button key={k} onClick={() => { setFilter(k); setFitMenu(false); }} style={{ display: "flex", alignItems: "center", gap: 7, height: 34, padding: "0 15px", borderRadius: 999, border: `1.5px solid ${c.border}`, background: c.bg, color: c.ink, fontSize: 14, fontWeight: 600, cursor: "pointer" }}>
                   {k === "all" ? "All" : k === "new" ? "New" : "Archived"}
                   <span style={{ opacity: 0.65, fontWeight: 500 }}>{tally[k]}</span>
                 </button>
@@ -177,7 +177,7 @@ export function Finds() {
               {(() => {
                 const c = chip(!!fit);
                 return (
-                  <button onClick={() => { setFitMenu((v) => !v); setStageMenu(null); }} aria-expanded={fitMenu} style={{ display: "flex", alignItems: "center", gap: 7, height: 34, padding: "0 15px", borderRadius: 999, border: `1.5px solid ${c.border}`, background: c.bg, color: c.ink, fontSize: 13.5, fontWeight: 600, cursor: "pointer" }}>
+                  <button onClick={() => { setFitMenu((v) => !v); setStageMenu(null); }} aria-expanded={fitMenu} style={{ display: "flex", alignItems: "center", gap: 7, height: 34, padding: "0 15px", borderRadius: 999, border: `1.5px solid ${c.border}`, background: c.bg, color: c.ink, fontSize: 14, fontWeight: 600, cursor: "pointer" }}>
                     {fit ? `Match · ${fit === 5 ? "5" : fit + "+"}` : "Match · Any"}
                     <ChevronDown />
                   </button>
@@ -186,15 +186,15 @@ export function Finds() {
               {fitMenu && (
                 <Menu style={{ top: 40, left: 0, minWidth: 150 }}>
                   {([["Any match", 0], ["5 only", 5], ["4 and up", 4], ["3 and up", 3]] as const).map(([label, k]) => (
-                    <button key={k} className="h-menu" onClick={() => { setFit(k); setFitMenu(false); }} style={{ display: "flex", justifyContent: "space-between", padding: "9px 12px", border: 0, borderRadius: 8, background: fit === k ? "#F6F2EC" : "transparent", fontSize: 13.5, fontWeight: 500, color: "#1D1A0F", cursor: "pointer", textAlign: "left" }}>
+                    <button key={k} className="h-menu" onClick={() => { setFit(k); setFitMenu(false); }} style={{ display: "flex", justifyContent: "space-between", padding: "9px 12px", border: 0, borderRadius: 8, background: fit === k ? "#F6F2EC" : "transparent", fontSize: 14, fontWeight: 500, color: "#1D1A0F", cursor: "pointer", textAlign: "left" }}>
                       {label}
-                      <span style={{ color: "#8A8175" }}>{fitCount(k)}</span>
+                      <span style={{ color: "#6B6358" }}>{fitCount(k)}</span>
                     </button>
                   ))}
                 </Menu>
               )}
             </div>
-            <div className="wide-only" style={{ marginLeft: "auto", fontSize: 13, color: "#8A8175" }}>Click a row for details · click a stage to change it</div>
+            <div className="wide-only" style={{ marginLeft: "auto", fontSize: 14, color: "#6B6358" }}>Click a row for details · click a stage to change it</div>
           </div>
 
           {/* Mobile toolbar */}
@@ -204,7 +204,7 @@ export function Finds() {
                 {(["all", "new", "archived"] as Filter[]).map((k) => {
                   const s = seg(filter === k);
                   return (
-                    <button key={k} onClick={() => setFilter(k)} style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 6, height: 36, border: 0, borderRadius: 9, background: s.bg, color: s.ink, boxShadow: s.shadow, fontSize: 13.5, fontWeight: 600, cursor: "pointer" }}>
+                    <button key={k} onClick={() => setFilter(k)} style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 6, height: 36, border: 0, borderRadius: 9, background: s.bg, color: s.ink, boxShadow: s.shadow, fontSize: 14, fontWeight: 600, cursor: "pointer" }}>
                       {k === "all" ? "All" : k === "new" ? "New" : "Archived"}
                       <span style={{ opacity: 0.6, fontWeight: 500 }}>{tally[k]}</span>
                     </button>
@@ -212,14 +212,14 @@ export function Finds() {
                 })}
               </div>
               <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                <div style={{ flex: 1, minWidth: 0, fontSize: 13, color: "#8A8175", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                <div style={{ flex: 1, minWidth: 0, fontSize: 14, color: "#6B6358", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
                   {rows.length} shown · Sorted by {sortLabel} {arrow}
                 </div>
-                <button onClick={() => setSheetOpen(true)} style={{ display: "flex", alignItems: "center", gap: 8, height: 40, padding: "0 14px", borderRadius: 999, border: `1.5px solid ${filterCount ? "#1D1A0F" : "#E0D9CF"}`, background: filterCount ? "#FBF8F4" : "#fff", color: "#1D1A0F", fontSize: 13.5, fontWeight: 600, cursor: "pointer", flex: "none" }}>
+                <button onClick={() => setSheetOpen(true)} style={{ display: "flex", alignItems: "center", gap: 8, height: 40, padding: "0 14px", borderRadius: 999, border: `1.5px solid ${filterCount ? "#1D1A0F" : "#E0D9CF"}`, background: filterCount ? "#FBF8F4" : "#fff", color: "#1D1A0F", fontSize: 14, fontWeight: 600, cursor: "pointer", flex: "none" }}>
                   <SlidersIcon />
                   Filter &amp; sort
                   {filterCount > 0 && (
-                    <span style={{ minWidth: 20, height: 20, padding: "0 6px", borderRadius: 999, background: "#99220F", color: "#fff", fontSize: 11.5, fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center" }}>{filterCount}</span>
+                    <span style={{ minWidth: 20, height: 20, padding: "0 6px", borderRadius: 999, background: "#99220F", color: "#fff", fontSize: 14, fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center" }}>{filterCount}</span>
                   )}
                 </button>
               </div>
@@ -236,7 +236,7 @@ export function Finds() {
                     <div key={label} role="columnheader" style={{ display: "flex", alignItems: "center", gap: 8 }}>
                       <button
                         onClick={() => key && (setSortDir(sortKey === key && sortDir === "desc" ? "asc" : "desc"), setSortKey(key))}
-                        style={{ display: "flex", alignItems: "center", gap: 5, border: 0, background: "transparent", padding: 0, fontSize: 11.5, fontWeight: 600, letterSpacing: ".08em", textTransform: "uppercase", color: on ? "#1D1A0F" : "#8A8175", cursor: key ? "pointer" : "default", textAlign: "left" }}
+                        style={{ display: "flex", alignItems: "center", gap: 5, border: 0, background: "transparent", padding: 0, fontSize: 14, fontWeight: 600, letterSpacing: ".08em", textTransform: "uppercase", color: on ? "#1D1A0F" : "#6B6358", cursor: key ? "pointer" : "default", textAlign: "left" }}
                       >
                         {label}
                         <span style={{ color: on ? "#99220F" : "#CFC6B9", marginRight: 16 }}>{key ? (on ? arrow : "↕") : ""}</span>
@@ -263,22 +263,22 @@ export function Finds() {
                       <IconBtn tip={f.pinned ? "Unpin" : "Pin"} onClick={() => toggle(f, "pinned")} style={{ border: `1px solid ${f.pinned ? "#1D1A0F" : "#E6E0D8"}`, background: f.pinned ? "#1D1A0F" : "#fff", color: f.pinned ? "#F8A865" : "#8A8175" }}>
                         <PinIcon size={14} />
                       </IconBtn>
-                      <IconBtn tip={f.archived ? "Restore" : "Archive"} onClick={() => toggle(f, "archived")} style={{ border: "1px solid #E6E0D8", background: "#fff", color: "#8A8175" }}>
+                      <IconBtn tip={f.archived ? "Restore" : "Archive"} onClick={() => toggle(f, "archived")} style={{ border: "1px solid #E6E0D8", background: "#fff", color: "#6B6358" }}>
                         <ArchiveIcon size={14} />
                       </IconBtn>
                     </div>
                     <div style={{ paddingLeft: 13, width: 60 }}>
-                      <div style={{ width: 30, height: 30, borderRadius: "50%", background: sc.bg, color: sc.ink, border: `1.5px solid ${sc.border}`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 13.5, fontWeight: 700 }}>{f.score}</div>
+                      <div style={{ width: 30, height: 30, borderRadius: "50%", background: sc.bg, color: sc.ink, border: `1.5px solid ${sc.border}`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 14, fontWeight: 700 }}>{f.score}</div>
                     </div>
                     <div style={{ fontSize: 14.5, fontWeight: 600, paddingRight: 16 }}>{f.company}</div>
                     <div style={{ fontSize: 14, paddingRight: 16, textWrap: "pretty" }}>{f.role}</div>
                     <div style={{ fontSize: 14, fontWeight: f.comp ? 600 : 400, color: f.comp ? "#99220F" : "#A89F92", fontVariantNumeric: "tabular-nums" }}>{compText(f)}</div>
-                    <div style={{ fontSize: 13.5, color: "#8A8175", fontStyle: f.postedAt ? "normal" : "italic" }}>{postedText(f)}</div>
+                    <div style={{ fontSize: 14, color: "#6B6358", fontStyle: f.postedAt ? "normal" : "italic" }}>{postedText(f)}</div>
                     <div style={{ position: "relative", paddingRight: 16 }}>
                       <button
                         data-tip="Change stage"
                         onClick={(e) => { e.stopPropagation(); setStageMenu(stageMenu === f.id ? null : f.id); setFitMenu(false); }}
-                        style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "4px 10px", borderRadius: 999, fontSize: 12, fontWeight: 600, border: `1.5px solid ${st.bg}`, background: st.bg, color: st.ink, cursor: "pointer" }}
+                        style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "4px 10px", borderRadius: 999, fontSize: 14, fontWeight: 600, border: `1.5px solid ${st.bg}`, background: st.bg, color: st.ink, cursor: "pointer" }}
                       >
                         {f.stage}
                         <ChevronDown />
@@ -287,7 +287,7 @@ export function Finds() {
                         <StageMenu current={f.stage} style={{ [menuUp ? "bottom" : "top"]: 32, left: 0, minWidth: 150 }} onPick={(s) => { setStage(f, s); setStageMenu(null); }} />
                       )}
                     </div>
-                    <div style={{ fontSize: 13.5, color: "#6B6358", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} data-tip={f.location}>{f.location}</div>
+                    <div style={{ fontSize: 14, color: "#6B6358", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} data-tip={f.location}>{f.location}</div>
                   </div>
                 );
               })}
@@ -304,7 +304,7 @@ export function Finds() {
               return (
                 <div key={f.id} className="lk-in" onClick={() => open(f.id)} style={{ animationDelay: `${Math.min(i, 14) * 28}ms`, position: "relative", display: "flex", gap: 12, alignItems: "flex-start", padding: "12px 12px 12px 20px", borderBottom: "1px solid #F2EEE8", background: f.pinned ? "#FFFBF6" : "#fff", cursor: "pointer" }}>
                   {isNew(f) && <span aria-label="New" style={{ position: "absolute", left: 7, top: 22, width: 8, height: 8, borderRadius: "50%", background: "#427D33" }} />}
-                  <div style={{ width: 28, height: 28, borderRadius: "50%", background: sc.bg, color: sc.ink, border: `1.5px solid ${sc.border}`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 13, fontWeight: 700, flex: "none", marginTop: 1 }}>{f.score}</div>
+                  <div style={{ width: 28, height: 28, borderRadius: "50%", background: sc.bg, color: sc.ink, border: `1.5px solid ${sc.border}`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 14, fontWeight: 700, flex: "none", marginTop: 1 }}>{f.score}</div>
                   <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: 3 }}>
                     <div style={{ display: "flex", alignItems: "flex-start", gap: 8 }}>
                       <div style={{ flex: 1, minWidth: 0 }}>
@@ -312,14 +312,14 @@ export function Finds() {
                           <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{f.company}</span>
                           {f.pinned && <PinIcon size={13} stroke="#99220F" sw={2} style={{ flex: "none" }} />}
                         </div>
-                        <div style={{ fontSize: 13.5, lineHeight: 1.35, color: "#3A3428", marginTop: 1, display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>{f.role}</div>
+                        <div style={{ fontSize: 14, lineHeight: 1.35, color: "#3A3428", marginTop: 1, display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>{f.role}</div>
                       </div>
-                      <span style={{ flex: "none", fontSize: 12, color: "#8A8175", fontStyle: f.postedAt ? "normal" : "italic", whiteSpace: "nowrap", marginTop: 2 }}>{postedText(f)}</span>
+                      <span style={{ flex: "none", fontSize: 14, color: "#6B6358", fontStyle: f.postedAt ? "normal" : "italic", whiteSpace: "nowrap", marginTop: 2 }}>{postedText(f)}</span>
                     </div>
                     <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, marginTop: 2 }}>
-                      <span style={{ minWidth: 0, fontSize: 12.5, fontWeight: f.comp ? 600 : 400, color: f.comp ? "#99220F" : "#A89F92", fontVariantNumeric: "tabular-nums", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{compText(f)}</span>
+                      <span style={{ minWidth: 0, fontSize: 14, fontWeight: f.comp ? 600 : 400, color: f.comp ? "#99220F" : "#A89F92", fontVariantNumeric: "tabular-nums", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{compText(f)}</span>
                       <div style={{ position: "relative", flex: "none" }}>
-                        <button onClick={(e) => { e.stopPropagation(); setStageMenu(stageMenu === f.id ? null : f.id); }} style={{ display: "inline-flex", alignItems: "center", gap: 4, height: 26, padding: "0 8px 0 10px", borderRadius: 999, fontSize: 11.5, fontWeight: 600, border: `1.5px solid ${st.bg}`, background: st.bg, color: st.ink, cursor: "pointer", whiteSpace: "nowrap" }}>
+                        <button onClick={(e) => { e.stopPropagation(); setStageMenu(stageMenu === f.id ? null : f.id); }} style={{ display: "inline-flex", alignItems: "center", gap: 4, height: 26, padding: "0 8px 0 10px", borderRadius: 999, fontSize: 14, fontWeight: 600, border: `1.5px solid ${st.bg}`, background: st.bg, color: st.ink, cursor: "pointer", whiteSpace: "nowrap" }}>
                           {f.stage}
                           <ChevronDown size={11} />
                         </button>
@@ -356,7 +356,7 @@ export function Finds() {
 
 function Empty({ hasAny, running }: { hasAny: boolean; running: boolean }) {
   return (
-    <div style={{ padding: "48px 22px", textAlign: "center", color: "#8A8175", fontSize: 14 }}>
+    <div style={{ padding: "48px 22px", textAlign: "center", color: "#6B6358", fontSize: 14 }}>
       {hasAny ? "No roles match this view." : running ? "Searching now. New finds will show up here." : "No finds yet. Lookout starts searching once your profile and resume are in."}
     </div>
   );
@@ -440,7 +440,7 @@ function SetupPanel({ answered, sources }: { answered: number; sources: number }
   return (
     <div className="setup board-sec lk-in" style={{ background: "#1D1A0F", color: "#fff", display: "flex", flexDirection: "column" }}>
       <div>
-        <div style={{ fontSize: 12, fontWeight: 700, letterSpacing: ".14em", textTransform: "uppercase", color: "#F8A865" }}>Getting started</div>
+        <div style={{ fontSize: 14, fontWeight: 700, letterSpacing: ".14em", textTransform: "uppercase", color: "#F8A865" }}>Getting started</div>
         <div className="setup-title" style={{ fontWeight: 700, letterSpacing: "-0.01em", marginTop: 6, textWrap: "pretty" }}>Tell Lookout what you&apos;re looking for</div>
         <div style={{ fontSize: 14, lineHeight: 1.5, color: "#C9C1B5", marginTop: 6, maxWidth: 620, textWrap: "pretty" }}>
           Lookout searches for new roles every week and scores each one against your profile. The more it knows about you, the better the matches on this board.
@@ -452,14 +452,14 @@ function SetupPanel({ answered, sources }: { answered: number; sources: number }
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10 }}>
               <div style={{ display: "flex", alignItems: "baseline", gap: 10 }}>
                 <div style={{ fontSize: 30, fontWeight: 700, lineHeight: 1, letterSpacing: "-0.02em", color: "#F8A865" }}>{t.n}</div>
-                {t.done && <span style={{ fontSize: 11.5, fontWeight: 700, letterSpacing: ".12em", color: "#F8A865" }}>COMPLETE</span>}
+                {t.done && <span style={{ fontSize: 14, fontWeight: 700, letterSpacing: ".12em", color: "#F8A865" }}>COMPLETE</span>}
               </div>
-              {t.done ? <CheckIcon stroke="#F8A865" /> : <div style={{ fontSize: 12, fontWeight: 600, color: "#A89F92" }}>{t.status}</div>}
+              {t.done ? <CheckIcon stroke="#F8A865" /> : <div style={{ fontSize: 14, fontWeight: 600, color: "#A89F92" }}>{t.status}</div>}
             </div>
             <div style={{ fontSize: 15.5, fontWeight: 600 }}>{t.title}</div>
-            <div style={{ fontSize: 13.5, lineHeight: 1.5, color: "#C9C1B5", textWrap: "pretty", flex: 1 }}>{t.body}</div>
+            <div style={{ fontSize: 14, lineHeight: 1.5, color: "#C9C1B5", textWrap: "pretty", flex: 1 }}>{t.body}</div>
             {t.href && (
-              <Link href={t.href} style={{ alignSelf: "flex-start", height: 34, padding: "0 14px", borderRadius: 999, background: t.done ? "rgba(255,255,255,.1)" : "#F8A865", color: t.done ? "#fff" : "#1D1A0F", fontSize: 13, fontWeight: 600, marginTop: 4, display: "inline-flex", alignItems: "center", textDecoration: "none" }}>
+              <Link href={t.href} style={{ alignSelf: "flex-start", height: 34, padding: "0 14px", borderRadius: 999, background: t.done ? "rgba(255,255,255,.1)" : "#F8A865", color: t.done ? "#fff" : "#1D1A0F", fontSize: 14, fontWeight: 600, marginTop: 4, display: "inline-flex", alignItems: "center", textDecoration: "none" }}>
                 {t.btn}
               </Link>
             )}
@@ -491,7 +491,7 @@ function SearchNowButton() {
       data-tip={running ? "A search is running" : "Look for new roles now"}
       aria-label="Search now"
       className="board-search"
-      style={{ width: "auto", flex: "none", display: "flex", alignItems: "center", gap: 6, padding: "0 14px", borderRadius: 999, border: "1.5px solid #1D1A0F", background: "#fff", color: "#1D1A0F", fontSize: 13.5, fontWeight: 600, cursor: running || busy ? "default" : "pointer", opacity: running || busy ? 0.5 : 1 }}
+      style={{ width: "auto", flex: "none", display: "flex", alignItems: "center", gap: 6, padding: "0 14px", borderRadius: 999, border: "1.5px solid #1D1A0F", background: "#fff", color: "#1D1A0F", fontSize: 14, fontWeight: 600, cursor: running || busy ? "default" : "pointer", opacity: running || busy ? 0.5 : 1 }}
     >
       <span aria-hidden style={{ fontSize: 15, lineHeight: 1 }}>↻</span>
       <span className="desk-only">{running ? "Searching…" : "Search now"}</span>
@@ -526,7 +526,7 @@ function AddLink({ open, setOpen }: { open: boolean; setOpen: (v: boolean) => vo
         data-tip="Add a posting by link"
         aria-label="Add a posting by link"
         className="board-search"
-        style={{ width: "auto", display: "flex", alignItems: "center", gap: 6, padding: "0 14px", borderRadius: 999, border: 0, background: "#1D1A0F", color: "#fff", fontSize: 13.5, fontWeight: 600, cursor: state.running ? "default" : "pointer", opacity: state.running ? 0.5 : 1 }}
+        style={{ width: "auto", display: "flex", alignItems: "center", gap: 6, padding: "0 14px", borderRadius: 999, border: 0, background: "#1D1A0F", color: "#fff", fontSize: 14, fontWeight: 600, cursor: state.running ? "default" : "pointer", opacity: state.running ? 0.5 : 1 }}
       >
         <PlusIcon />
         <span className="desk-only">Add</span>
@@ -536,7 +536,7 @@ function AddLink({ open, setOpen }: { open: boolean; setOpen: (v: boolean) => vo
           <div onClick={() => setOpen(false)} style={{ position: "fixed", inset: 0, zIndex: 5 }} />
           <div style={{ position: "absolute", right: 0, top: 46, zIndex: 6, width: 340, maxWidth: "calc(100vw - 32px)", background: "#fff", borderRadius: 12, boxShadow: "0 8px 28px rgba(29,26,15,.18)", padding: 14, display: "flex", flexDirection: "column", gap: 10 }}>
             <div style={{ fontSize: 14.5, fontWeight: 600 }}>Add a posting</div>
-            <div style={{ fontSize: 13, color: "#8A8175", lineHeight: 1.45 }}>Paste a link. Lookout reads it, scores it against your profile and adds it to the board.</div>
+            <div style={{ fontSize: 14, color: "#6B6358", lineHeight: 1.45 }}>Paste a link. Lookout reads it, scores it against your profile and adds it to the board.</div>
             <div style={{ display: "flex", gap: 6 }}>
               <input
                 autoFocus
@@ -546,13 +546,13 @@ function AddLink({ open, setOpen }: { open: boolean; setOpen: (v: boolean) => vo
                 placeholder="https://..."
                 aria-label="Posting link"
                 className="f-brick"
-                style={{ flex: 1, minWidth: 0, height: 40, borderRadius: 10, border: "1.5px solid #E6E0D8", padding: "0 12px", fontSize: 13.5, outline: "none" }}
+                style={{ flex: 1, minWidth: 0, height: 40, borderRadius: 10, border: "1.5px solid #E6E0D8", padding: "0 12px", fontSize: 14, outline: "none" }}
               />
-              <button onClick={submit} disabled={busy} style={{ height: 40, padding: "0 14px", borderRadius: 10, border: 0, background: "#99220F", color: "#fff", fontSize: 13, fontWeight: 600, cursor: "pointer" }}>
+              <button onClick={submit} disabled={busy} style={{ height: 40, padding: "0 14px", borderRadius: 10, border: 0, background: "#99220F", color: "#fff", fontSize: 14, fontWeight: 600, cursor: "pointer" }}>
                 {busy ? "Adding…" : "Add"}
               </button>
             </div>
-            {msg && <div style={{ fontSize: 12.5, color: "#99220F" }}>{msg}</div>}
+            {msg && <div style={{ fontSize: 14, color: "#99220F" }}>{msg}</div>}
           </div>
         </>
       )}
@@ -585,7 +585,7 @@ function FilterSheet(p: {
               return (
                 <button key={k} onClick={() => p.setFit(k)} style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 1, height: 52, borderRadius: 12, border: `1.5px solid ${c.border}`, background: c.bg, color: c.ink, cursor: "pointer" }}>
                   <span style={{ fontSize: 14, fontWeight: 600 }}>{label}</span>
-                  <span style={{ fontSize: 11.5, opacity: 0.7 }}>{p.fitCount(k)}</span>
+                  <span style={{ fontSize: 14, opacity: 0.7 }}>{p.fitCount(k)}</span>
                 </button>
               );
             })}
@@ -594,7 +594,7 @@ function FilterSheet(p: {
         <button onClick={() => p.setCompOnly(!p.compOnly)} role="switch" aria-checked={p.compOnly} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, minHeight: 48, padding: 0, border: 0, background: "transparent", cursor: "pointer", textAlign: "left" }}>
           <span style={{ display: "flex", flexDirection: "column", gap: 2 }}>
             <span style={{ fontSize: 14.5, fontWeight: 600, color: "#1D1A0F" }}>Only roles with comp posted</span>
-            <span style={{ fontSize: 12.5, color: "#8A8175" }}>Hides listings with no pay range</span>
+            <span style={{ fontSize: 14, color: "#6B6358" }}>Hides listings with no pay range</span>
           </span>
           <span style={{ width: 44, height: 26, borderRadius: 999, background: p.compOnly ? "#99220F" : "#D8D0C4", display: "flex", justifyContent: p.compOnly ? "flex-end" : "flex-start", padding: 3, flex: "none" }}>
             <span style={{ width: 20, height: 20, borderRadius: "50%", background: "#fff", boxShadow: "0 1px 3px rgba(29,26,15,.25)" }} />
@@ -606,7 +606,7 @@ function FilterSheet(p: {
             {SORTS.map(([k, label]) => {
               const c = chip(k === p.sortKey);
               return (
-                <button key={k} onClick={() => p.setSortKey(k)} style={{ height: 38, padding: "0 15px", borderRadius: 999, border: `1.5px solid ${c.border}`, background: c.bg, color: c.ink, fontSize: 13.5, fontWeight: 600, cursor: "pointer" }}>{label}</button>
+                <button key={k} onClick={() => p.setSortKey(k)} style={{ height: 38, padding: "0 15px", borderRadius: 999, border: `1.5px solid ${c.border}`, background: c.bg, color: c.ink, fontSize: 14, fontWeight: 600, cursor: "pointer" }}>{label}</button>
               );
             })}
           </div>
@@ -614,7 +614,7 @@ function FilterSheet(p: {
             {([["desc", "↓ Descending"], ["asc", "↑ Ascending"]] as const).map(([d, label]) => {
               const s = seg(p.sortDir === d);
               return (
-                <button key={d} onClick={() => p.setSortDir(d)} style={{ height: 38, border: 0, borderRadius: 9, background: s.bg, color: s.ink, boxShadow: s.shadow, fontSize: 13.5, fontWeight: 600, cursor: "pointer" }}>{label}</button>
+                <button key={d} onClick={() => p.setSortDir(d)} style={{ height: 38, border: 0, borderRadius: 9, background: s.bg, color: s.ink, boxShadow: s.shadow, fontSize: 14, fontWeight: 600, cursor: "pointer" }}>{label}</button>
               );
             })}
           </div>
@@ -626,11 +626,11 @@ function FilterSheet(p: {
 }
 
 const SheetLabel = ({ children }: { children: React.ReactNode }) => (
-  <div style={{ fontSize: 12, fontWeight: 700, letterSpacing: ".1em", textTransform: "uppercase", color: "#1D1A0F" }}>{children}</div>
+  <div style={{ fontSize: 14, fontWeight: 700, letterSpacing: ".1em", textTransform: "uppercase", color: "#1D1A0F" }}>{children}</div>
 );
 
 const Label = ({ children, style }: { children: React.ReactNode; style?: React.CSSProperties }) => (
-  <div style={{ fontSize: 12, letterSpacing: ".1em", textTransform: "uppercase", color: "#1D1A0F", fontWeight: 700, ...style }}>{children}</div>
+  <div style={{ fontSize: 14, letterSpacing: ".1em", textTransform: "uppercase", color: "#1D1A0F", fontWeight: 700, ...style }}>{children}</div>
 );
 
 const NOT_A_FIT = ["Wrong level", "Wrong kind of role", "Wrong industry", "Location", "Pay", "Not that company", "Just not interested"];
@@ -686,17 +686,17 @@ function Drawer({ f, close, toggle, setStage }: { f: Find; close: () => void; to
       <aside role="dialog" aria-modal="true" aria-label={`${f.role} at ${f.company}`} style={{ position: "fixed", top: 0, right: 0, bottom: 0, width: 440, maxWidth: "100vw", background: "#fff", zIndex: 21, display: "flex", flexDirection: "column", boxShadow: "-12px 0 40px rgba(29,26,15,.18)" }}>
         <div style={{ background: "#1D1A0F", color: "#fff", padding: "24px 26px 22px" }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12 }}>
-            <div style={{ fontSize: 13, color: "#F8A865", fontWeight: 600 }}>{f.company}</div>
+            <div style={{ fontSize: 14, color: "#F8A865", fontWeight: 600 }}>{f.company}</div>
             <button ref={closeBtn} onClick={close} aria-label="Close" style={{ border: 0, background: "rgba(255,255,255,.1)", color: "#fff", width: 30, height: 30, borderRadius: "50%", cursor: "pointer", fontSize: 16, lineHeight: 1 }}>×</button>
           </div>
           <div style={{ fontSize: 23, fontWeight: 700, letterSpacing: "-0.01em", marginTop: 6, textWrap: "pretty" }}>{f.role}</div>
           <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 14, flexWrap: "wrap" }}>
-            <span style={{ padding: "4px 10px", borderRadius: 6, fontSize: 12, fontWeight: 600, background: "#F8A865", color: "#1D1A0F" }}>Match {f.score}/5</span>
+            <span style={{ padding: "4px 10px", borderRadius: 6, fontSize: 14, fontWeight: 600, background: "#F8A865", color: "#1D1A0F" }}>Match {f.score}/5</span>
             <div style={{ marginLeft: "auto", display: "flex", gap: 6, alignItems: "center" }}>
               <button onClick={() => toggle(f, "pinned")} data-tip={f.pinned ? "Unpin" : "Pin"} aria-label={f.pinned ? "Unpin" : "Pin"} style={{ width: 30, height: 30, border: 0, borderRadius: "50%", background: f.pinned ? "#F8A865" : "rgba(255,255,255,.1)", color: f.pinned ? "#1D1A0F" : "#fff", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", padding: 0 }}>
                 <PinIcon size={14} sw={2} />
               </button>
-              <button onClick={copy} style={{ height: 30, padding: "0 12px", border: 0, borderRadius: 999, background: "rgba(255,255,255,.1)", color: "#fff", fontSize: 12.5, fontWeight: 600, cursor: "pointer", display: "flex", alignItems: "center", gap: 6 }}>
+              <button onClick={copy} style={{ height: 30, padding: "0 12px", border: 0, borderRadius: 999, background: "rgba(255,255,255,.1)", color: "#fff", fontSize: 14, fontWeight: 600, cursor: "pointer", display: "flex", alignItems: "center", gap: 6 }}>
                 <LinkIcon />
                 {copied ? "Copied" : "Copy link"}
               </button>
@@ -743,7 +743,7 @@ function Drawer({ f, close, toggle, setStage }: { f: Find; close: () => void; to
               {STAGES.map((s) => {
                 const on = f.stage === s, ss = STAGE_STYLE[s];
                 return (
-                  <button key={s} onClick={() => setStage(f, s)} aria-pressed={on} style={{ height: 36, borderRadius: 9, border: `1.5px solid ${on ? ss.bg : "#E6E0D8"}`, background: on ? ss.bg : "#fff", color: on ? ss.ink : "#6B6358", fontSize: 12.5, fontWeight: 600, cursor: "pointer", padding: "0 4px" }}>
+                  <button key={s} onClick={() => setStage(f, s)} aria-pressed={on} style={{ height: 36, borderRadius: 9, border: `1.5px solid ${on ? ss.bg : "#E6E0D8"}`, background: on ? ss.bg : "#fff", color: on ? ss.ink : "#6B6358", fontSize: 14, fontWeight: 600, cursor: "pointer", padding: "0 4px" }}>
                     {s}
                   </button>
                 );
@@ -753,17 +753,17 @@ function Drawer({ f, close, toggle, setStage }: { f: Find; close: () => void; to
           <div style={{ display: "flex", flexDirection: "column", flex: 1 }}>
             <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 10, marginBottom: 8 }}>
               <Label>Notes</Label>
-              <div aria-live="polite" style={{ fontSize: 12, color: "#8A8175", opacity: saved ? 1 : 0, transition: "opacity .3s" }}>Saved</div>
+              <div aria-live="polite" style={{ fontSize: 14, color: "#6B6358", opacity: saved ? 1 : 0, transition: "opacity .3s" }}>Saved</div>
             </div>
             <textarea value={notes} onChange={(e) => onNotes(e.target.value)} placeholder="Contacts, follow-ups, interview prep..." aria-label="Notes" className="f-brick" style={{ flex: 1, minHeight: 160, resize: "vertical", border: "1.5px solid #E6E0D8", borderRadius: 10, padding: "12px 14px", fontSize: 14, lineHeight: 1.5, outline: "none", color: "#1D1A0F" }} />
           </div>
         </div>
         {asking && !f.archived && (
           <div style={{ padding: "14px 26px 0", borderTop: "1px solid #EEEAE4", display: "flex", flexDirection: "column", gap: 8 }}>
-            <div style={{ fontSize: 13.5, fontWeight: 600 }}>What&apos;s off about it? Lookout uses this on your next searches.</div>
+            <div style={{ fontSize: 14, fontWeight: 600 }}>What&apos;s off about it? Lookout uses this on your next searches.</div>
             <div role="group" aria-label="Why it's not a fit" style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
               {NOT_A_FIT.map((r) => (
-                <button key={r} onClick={() => { patchFind(f.id, { archived: true, feedback: r === "Just not interested" ? null : r }); setAsking(false); }} style={{ height: 32, padding: "0 12px", borderRadius: 999, border: "1.5px solid #E0D9CF", background: "#fff", color: "#1D1A0F", fontSize: 13, fontWeight: 600, cursor: "pointer" }}>{r}</button>
+                <button key={r} onClick={() => { patchFind(f.id, { archived: true, feedback: r === "Just not interested" ? null : r }); setAsking(false); }} style={{ height: 32, padding: "0 12px", borderRadius: 999, border: "1.5px solid #E0D9CF", background: "#fff", color: "#1D1A0F", fontSize: 14, fontWeight: 600, cursor: "pointer" }}>{r}</button>
               ))}
             </div>
           </div>

@@ -4,10 +4,10 @@ import { useState } from "react";
 import { SALARY_RANGES, WORK_MODES } from "@/lib/onboarding";
 import { AuthCard, Eyebrow, h1, p, primary } from "./Login";
 
-const label: React.CSSProperties = { fontSize: 12, fontWeight: 600, letterSpacing: ".06em", textTransform: "uppercase", color: "#8A8175" };
+const label: React.CSSProperties = { fontSize: 14, fontWeight: 600, letterSpacing: ".06em", textTransform: "uppercase", color: "#6B6358" };
 const chip = (on: boolean): React.CSSProperties => ({
   minHeight: 40, padding: "0 14px", borderRadius: 999, border: `1.5px solid ${on ? "#1D1A0F" : "#E0D9CF"}`,
-  background: on ? "#1D1A0F" : "#fff", color: on ? "#fff" : "#1D1A0F", fontSize: 13.5, fontWeight: 600, cursor: "pointer",
+  background: on ? "#1D1A0F" : "#fff", color: on ? "#fff" : "#1D1A0F", fontSize: 14, fontWeight: 600, cursor: "pointer",
 });
 
 /** First sign-in: name plus two quick picks that pre-fill profile questions 2 and 3. */
@@ -49,7 +49,7 @@ export function Welcome({ initialName }: { initialName: string }) {
               <button type="button" key={r.key} aria-pressed={salary === r.key} onClick={() => setSalary(salary === r.key ? null : r.key)} style={chip(salary === r.key)}>{r.label}</button>
             ))}
           </div>
-          <div style={{ fontSize: 12.5, color: "#8A8175" }}>Roles below the low end get marked down, not hidden.</div>
+          <div style={{ fontSize: 14, color: "#6B6358" }}>Roles below the low end get marked down, not hidden.</div>
         </fieldset>
         <fieldset style={{ border: 0, padding: 0, margin: 0, display: "flex", flexDirection: "column", gap: 8 }}>
           <legend style={{ ...label, marginBottom: 8 }}>How you want to work</legend>
@@ -60,7 +60,7 @@ export function Welcome({ initialName }: { initialName: string }) {
           </div>
         </fieldset>
         <button type="submit" disabled={busy || !name.trim()} style={{ ...primary, opacity: name.trim() ? 1 : 0.6 }}>{busy ? "Saving…" : "Continue to your profile"}</button>
-        {err && <div role="alert" style={{ fontSize: 13, color: "#99220F" }}>{err}</div>}
+        {err && <div role="alert" style={{ fontSize: 14, color: "#99220F" }}>{err}</div>}
       </form>
     </AuthCard>
   );

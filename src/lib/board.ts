@@ -8,8 +8,8 @@ export const STAGE_STYLE: Record<Stage, { bg: string; ink: string }> = {
   Interview: { bg: "#F9DDD7", ink: "#99220F" },
   Offer: { bg: "#E6EDD9", ink: "#35662A" },
   Closed: { bg: "#EEEAE4", ink: "#6B6358" },
-  Ghosted: { bg: "#EEEAE4", ink: "#8A8175" },
-  "Not selected": { bg: "#EEEAE4", ink: "#8A8175" },
+  Ghosted: { bg: "#EEEAE4", ink: "#5E574D" },
+  "Not selected": { bg: "#EEEAE4", ink: "#5E574D" },
 };
 
 export const DAYS: Record<string, string> = {

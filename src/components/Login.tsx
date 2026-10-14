@@ -17,7 +17,7 @@ export function Login({ emailEnabled, inviteOnly }: { emailEnabled: boolean; inv
 }
 
 const field: React.CSSProperties = { height: 46, border: "1.5px solid #E6E0D8", background: "#fff", borderRadius: 10, padding: "0 14px", fontSize: 15, outline: "none", color: "#1D1A0F" };
-const label: React.CSSProperties = { fontSize: 12, fontWeight: 600, letterSpacing: ".06em", textTransform: "uppercase", color: "#8A8175" };
+const label: React.CSSProperties = { fontSize: 14, fontWeight: 600, letterSpacing: ".06em", textTransform: "uppercase", color: "#6B6358" };
 const linkBtn: React.CSSProperties = { border: 0, background: "transparent", padding: 0, color: "#99220F", fontWeight: 600, fontSize: "inherit", cursor: "pointer", textDecoration: "underline", textUnderlineOffset: 3 };
 
 function SignIn({ emailEnabled, inviteOnly, onRequest }: { emailEnabled: boolean; inviteOnly: boolean; onRequest: () => void }) {
@@ -60,12 +60,12 @@ function SignIn({ emailEnabled, inviteOnly, onRequest }: { emailEnabled: boolean
           <label htmlFor="email" style={label}>Email</label>
           <input id="email" type="email" required autoComplete="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@example.com" className="f-brick" style={field} />
           <button type="submit" disabled={state === "sending"} style={primary}>{state === "sending" ? "Sending…" : "Email me a sign-in link"}</button>
-          {state === "error" && <div role="alert" style={{ fontSize: 13, color: "#99220F" }}>{msg}</div>}
+          {state === "error" && <div role="alert" style={{ fontSize: 14, color: "#99220F" }}>{msg}</div>}
         </form>
       ) : (
-        <p style={{ ...p, marginTop: 20, fontSize: 13.5 }}>Sign-in emails aren&apos;t on yet. If you were invited, open the sign-in link you were sent.</p>
+        <p style={{ ...p, marginTop: 20, fontSize: 14 }}>Sign-in emails aren&apos;t on yet. If you were invited, open the sign-in link you were sent.</p>
       )}
-      <div style={{ fontSize: 13.5, color: "#6B6358", lineHeight: 1.5, marginTop: 18 }}>
+      <div style={{ fontSize: 14, color: "#6B6358", lineHeight: 1.5, marginTop: 18 }}>
         {inviteOnly ? (
           <>New here? Lookout is invite only for now. <button onClick={onRequest} style={linkBtn}>Request access</button></>
         ) : (
@@ -134,9 +134,9 @@ function RequestAccess({ emailEnabled, onSignIn }: { emailEnabled: boolean; onSi
           })}
         </fieldset>
         <button type="submit" disabled={state === "sending"} style={primary}>{state === "sending" ? "Sending…" : "Request access"}</button>
-        {state === "error" && <div role="alert" style={{ fontSize: 13, color: "#99220F" }}>{msg}</div>}
+        {state === "error" && <div role="alert" style={{ fontSize: 14, color: "#99220F" }}>{msg}</div>}
       </form>
-      <div style={{ fontSize: 13.5, color: "#6B6358", marginTop: 18 }}>
+      <div style={{ fontSize: 14, color: "#6B6358", marginTop: 18 }}>
         Already have an account? <button onClick={onSignIn} style={linkBtn}>Sign in</button>
       </div>
     </>
@@ -152,15 +152,15 @@ export function AuthCard({ children }: { children: React.ReactNode }) {
         </div>
         <div style={{ padding: "28px 26px 30px" }}>{children}</div>
       </div>
-      <a href="/privacy" style={{ marginTop: 16, fontSize: 12.5, color: "#8A8175" }}>Privacy</a>
+      <a href="/privacy" style={{ marginTop: 16, fontSize: 14, color: "#6B6358" }}>Privacy</a>
     </div>
   );
 }
 
 export const Eyebrow = ({ children }: { children: React.ReactNode }) => (
-  <div style={{ fontSize: 12, fontWeight: 700, letterSpacing: ".14em", textTransform: "uppercase", color: "#99220F" }}>{children}</div>
+  <div style={{ fontSize: 14, fontWeight: 700, letterSpacing: ".14em", textTransform: "uppercase", color: "#99220F" }}>{children}</div>
 );
 export const h1: React.CSSProperties = { margin: "8px 0 0", fontSize: 27, fontWeight: 700, letterSpacing: "-0.02em", lineHeight: 1.15 };
 export const p: React.CSSProperties = { margin: "10px 0 0", fontSize: 14.5, lineHeight: 1.5, color: "#6B6358", textWrap: "pretty" };
 export const primary: React.CSSProperties = { height: 46, borderRadius: 12, border: 0, background: "#99220F", color: "#fff", fontSize: 14.5, fontWeight: 600, cursor: "pointer" };
-const ghost: React.CSSProperties = { height: 40, padding: "0 16px", borderRadius: 10, border: "1.5px solid #1D1A0F", background: "#fff", color: "#1D1A0F", fontSize: 13.5, fontWeight: 600, cursor: "pointer" };
+const ghost: React.CSSProperties = { height: 40, padding: "0 16px", borderRadius: 10, border: "1.5px solid #1D1A0F", background: "#fff", color: "#1D1A0F", fontSize: 14, fontWeight: 600, cursor: "pointer" };

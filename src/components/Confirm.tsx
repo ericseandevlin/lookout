@@ -39,7 +39,7 @@ function Dialog({ p, close }: { p: Pending; close: (ok: boolean) => void }) {
       <div role="alertdialog" aria-modal="true" aria-labelledby="confirm-title" style={{ position: "fixed", top: "50%", left: "50%", transform: "translate(-50%,-50%)", width: 440, maxWidth: "calc(100vw - 32px)", background: "#EFEEEC", borderRadius: 16, overflow: "hidden", zIndex: 41, boxShadow: "0 24px 60px rgba(29,26,15,.3)" }}>
         <div style={{ background: "#1D1A0F", color: "#fff", padding: "22px 24px 20px", display: "flex", alignItems: "flex-start", gap: 12 }}>
           <div style={{ flex: 1, minWidth: 0 }}>
-            {p.eyebrow && <div style={{ fontSize: 12, fontWeight: 700, letterSpacing: ".14em", textTransform: "uppercase", color: "#F8A865" }}>{p.eyebrow}</div>}
+            {p.eyebrow && <div style={{ fontSize: 14, fontWeight: 700, letterSpacing: ".14em", textTransform: "uppercase", color: "#F8A865" }}>{p.eyebrow}</div>}
             <div id="confirm-title" style={{ fontSize: 21, fontWeight: 700, letterSpacing: "-0.01em", marginTop: p.eyebrow ? 6 : 0, textWrap: "pretty", overflowWrap: "anywhere" }}>{p.title}</div>
           </div>
           <button onClick={() => close(false)} aria-label="Close" style={{ border: 0, background: "rgba(255,255,255,.1)", color: "#fff", width: 30, height: 30, borderRadius: "50%", cursor: "pointer", fontSize: 16, lineHeight: 1, flex: "none" }}>×</button>
