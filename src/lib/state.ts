@@ -9,6 +9,7 @@ import type { AppState, Find, Resume, RunInfo } from "@/lib/types";
 export function toFind(
   o: typeof schema.opportunities.$inferSelect,
   u: typeof schema.userOpportunities.$inferSelect,
+  a?: typeof schema.applications.$inferSelect | null,
 ): Find {
   return {
     id: o.id,
@@ -26,6 +27,7 @@ export function toFind(
     archived: u.archived,
     notes: u.notes,
     feedback: u.feedback?.reason ?? null,
+    application: a ? { id: a.id, status: a.status, queuedBy: a.queuedBy } : null,
     seen: !!u.seenAt,
     addedAt: u.addedAt.toISOString(),
   };
@@ -36,9 +38,13 @@ export async function getFinds(userId: string) {
     .select()
     .from(schema.userOpportunities)
     .innerJoin(schema.opportunities, eq(schema.opportunities.id, schema.userOpportunities.opportunityId))
+    .leftJoin(
+      schema.applications,
+      and(eq(schema.applications.opportunityId, schema.userOpportunities.opportunityId), eq(schema.applications.userId, userId)),
+    )
     .where(eq(schema.userOpportunities.userId, userId))
     .orderBy(desc(schema.userOpportunities.addedAt));
-  return rows.map((r) => toFind(r.opportunities, r.user_opportunities));
+  return rows.map((r) => toFind(r.opportunities, r.user_opportunities, r.applications));
 }
 
 export function toResume(m: typeof schema.materials.$inferSelect | undefined): Resume | null {

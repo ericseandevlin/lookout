@@ -10,6 +10,7 @@ import { ArchiveIcon, ArrowUpRight, CheckIcon, ChevronDown, LinkIcon, PinIcon, P
 import { useCounts } from "./Shell";
 import { LastReport, SearchPanel } from "./SearchPanel";
 import { api, useStore } from "./store";
+import { applicationLabel } from "@/lib/applyLabels";
 
 type SortKey = "score" | "company" | "role" | "comp" | "listed" | "stage" | "location";
 type Filter = "all" | "new" | "archived";
@@ -257,7 +258,7 @@ export function Finds() {
                     role="row"
                     className="h-row lk-in"
                     onClick={() => open(f.id)}
-                    style={{ animationDelay: `${Math.min(i, 14) * 28}ms`, display: "grid", gridTemplateColumns: GRID, alignItems: "center", padding: `${dense ? 9 : 16}px 22px`, borderBottom: "1px solid #F2EEE8", cursor: "pointer", background: f.pinned ? "#FFFBF6" : "#fff" }}
+                    style={{ animationDelay: `${Math.min(i, 14) * 28}ms`, position: "relative", zIndex: stageMenu === f.id ? 6 : undefined, display: "grid", gridTemplateColumns: GRID, alignItems: "center", padding: `${dense ? 9 : 16}px 22px`, borderBottom: "1px solid #F2EEE8", cursor: "pointer", background: f.pinned ? "#FFFBF6" : "#fff" }}
                   >
                     <div style={{ display: "flex", gap: 6, alignItems: "center", position: "relative" }}>
                       {isNew(f) && <span data-tip="New this week" style={{ position: "absolute", left: -15, top: "50%", marginTop: -4, width: 8, height: 8, borderRadius: "50%", background: "#427D33" }} />}
@@ -279,7 +280,7 @@ export function Finds() {
                       <button
                         data-tip="Change stage"
                         onClick={(e) => { e.stopPropagation(); setStageMenu(stageMenu === f.id ? null : f.id); setFitMenu(false); }}
-                        style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "4px 10px", borderRadius: 999, fontSize: 14, fontWeight: 600, border: `1.5px solid ${st.bg}`, background: st.bg, color: st.ink, cursor: "pointer" }}
+                        style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "4px 10px", borderRadius: 999, fontSize: 14, fontWeight: 600, border: "1.5px solid rgba(29,26,15,.14)", background: st.bg, color: st.ink, cursor: "pointer" }}
                       >
                         {f.stage}
                         <ChevronDown />
@@ -303,7 +304,7 @@ export function Finds() {
               const sc = scoreStyle(f.score);
               const menuUp = rows.length > 4 && i >= rows.length - 3;
               return (
-                <div key={f.id} className="lk-in" onClick={() => open(f.id)} style={{ animationDelay: `${Math.min(i, 14) * 28}ms`, position: "relative", display: "flex", gap: 12, alignItems: "flex-start", padding: "12px 12px 12px 20px", borderBottom: "1px solid #F2EEE8", background: f.pinned ? "#FFFBF6" : "#fff", cursor: "pointer" }}>
+                <div key={f.id} className="lk-in" onClick={() => open(f.id)} style={{ animationDelay: `${Math.min(i, 14) * 28}ms`, position: "relative", zIndex: stageMenu === f.id ? 6 : undefined, display: "flex", gap: 12, alignItems: "flex-start", padding: "12px 12px 12px 20px", borderBottom: "1px solid #F2EEE8", background: f.pinned ? "#FFFBF6" : "#fff", cursor: "pointer" }}>
                   {isNew(f) && <span aria-label="New" style={{ position: "absolute", left: 7, top: 22, width: 8, height: 8, borderRadius: "50%", background: "#427D33" }} />}
                   <div style={{ width: 28, height: 28, borderRadius: "50%", background: sc.bg, color: sc.ink, border: `1.5px solid ${sc.border}`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 14, fontWeight: 700, flex: "none", marginTop: 1 }}>{f.score}</div>
                   <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: 3 }}>
@@ -320,7 +321,7 @@ export function Finds() {
                     <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, marginTop: 2 }}>
                       <span style={{ minWidth: 0, fontSize: 14, fontWeight: f.comp ? 600 : 400, color: f.comp ? "#99220F" : "#A89F92", fontVariantNumeric: "tabular-nums", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{compText(f)}</span>
                       <div style={{ position: "relative", flex: "none" }}>
-                        <button onClick={(e) => { e.stopPropagation(); setStageMenu(stageMenu === f.id ? null : f.id); }} style={{ display: "inline-flex", alignItems: "center", gap: 4, height: 26, padding: "0 8px 0 10px", borderRadius: 999, fontSize: 14, fontWeight: 600, border: `1.5px solid ${st.bg}`, background: st.bg, color: st.ink, cursor: "pointer", whiteSpace: "nowrap" }}>
+                        <button onClick={(e) => { e.stopPropagation(); setStageMenu(stageMenu === f.id ? null : f.id); }} style={{ display: "inline-flex", alignItems: "center", gap: 4, height: 26, padding: "0 8px 0 10px", borderRadius: 999, fontSize: 14, fontWeight: 600, border: "1.5px solid rgba(29,26,15,.14)", background: st.bg, color: st.ink, cursor: "pointer", whiteSpace: "nowrap" }}>
                           {f.stage}
                           <ChevronDown size={11} />
                         </button>
@@ -637,13 +638,14 @@ const Label = ({ children, style }: { children: React.ReactNode; style?: React.C
 const NOT_A_FIT = ["Wrong level", "Wrong kind of role", "Wrong industry", "Location", "Pay", "Not that company", "Just not interested"];
 
 function Drawer({ f, close, toggle, setStage }: { f: Find; close: () => void; toggle: (f: Find, k: "pinned" | "archived") => void; setStage: (f: Find, s: Stage) => void }) {
-  const { patchFind, state } = useStore();
+  const { patchFind, state, refresh } = useStore();
   const [applyMsg, setApplyMsg] = useState<string | null>(null);
   const applyWithLookout = async () => {
     setApplyMsg("Queuing…");
     try {
       await api("/api/apply", { method: "POST", json: { findId: f.id } });
-      setApplyMsg("queued");
+      await refresh();
+      setApplyMsg(null);
     } catch (e) {
       setApplyMsg(e instanceof Error ? e.message : "Couldn't queue it");
     }
@@ -771,10 +773,16 @@ function Drawer({ f, close, toggle, setStage }: { f: Find; close: () => void; to
         </div>
         {state.user.autoApply && !f.archived && (
           <div style={{ padding: "14px 26px 0", borderTop: "1px solid #EEEAE4", display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
-            {applyMsg === "queued" ? (
-              <span style={{ fontSize: 14 }}>
-                Queued for auto-apply. <Link href="/apply">See it on Auto-apply →</Link>
-              </span>
+            {f.application ? (
+              (() => {
+                const st = applicationLabel(f.application.status, f.application.queuedBy);
+                return (
+                  <>
+                    <span style={{ padding: "5px 11px", borderRadius: 999, fontSize: 14, fontWeight: 600, background: st.bg, color: st.ink }}>{st.label}</span>
+                    <Link href={`/apply#app-${f.application.id}`} style={{ fontSize: 14, fontWeight: 600 }}>View application →</Link>
+                  </>
+                );
+              })()
             ) : (
               <>
                 <button onClick={applyWithLookout} disabled={applyMsg === "Queuing…"} style={{ height: 38, padding: "0 14px", borderRadius: 10, border: "1.5px solid #1D1A0F", background: "#fff", fontSize: 14, fontWeight: 600, color: "#1D1A0F", cursor: "pointer" }}>

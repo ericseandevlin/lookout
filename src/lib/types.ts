@@ -1,5 +1,5 @@
 // Shapes shared by the API and the client.
-import type { Density, Freq, RunReport, SetupMode, Stage } from "@/lib/db/schema";
+import type { ApplicationStatus, Density, Freq, RunReport, SetupMode, Stage } from "@/lib/db/schema";
 
 export type { Density, Freq, SetupMode, Stage };
 
@@ -20,6 +20,8 @@ export type Find = {
   notes: string;
   /** "Not a fit" reason the user gave, if any. */
   feedback: string | null;
+  /** Auto-apply status for this role, when it's been queued. */
+  application: { id: string; status: ApplicationStatus; queuedBy: "user" | "auto" } | null;
   seen: boolean;
   addedAt: string;
 };
