@@ -74,7 +74,11 @@ export const settings = pgTable("settings", {
   setupMode: text("setup_mode").$type<SetupMode>().notNull().default("Until complete"),
   newDays: integer("new_days").notNull().default(7),
   railClosed: boolean("rail_closed").notNull().default(false),
+  /** Auto-apply beta: off by default. Threshold = lowest match score queued automatically; cap = per day. */
+  autoApply: jsonb("auto_apply").$type<AutoApplySettings>().notNull().default({ enabled: false, threshold: 5, dailyCap: 3 }),
 });
+
+export type AutoApplySettings = { enabled: boolean; threshold: 4 | 5; dailyCap: number };
 
 /** Answers to the opportunity type's profile questions. Keys come from the kind config. */
 export type ProfileAnswers = Record<string, string | string[]>;
@@ -245,3 +249,85 @@ export const accessRequests = pgTable("access_requests", {
   decidedAt: timestamp("decided_at", { withTimezone: true }),
   decidedBy: uuid("decided_by").references(() => users.id, { onDelete: "set null" }),
 });
+
+// --- Auto-apply (beta). Spec: docs/auto-apply.md ---------------------------------
+
+export const APPLICATION_STATUSES = ["queued", "scanning", "drafting", "needs_review", "approved", "submitting", "submitted", "manual", "failed", "canceled"] as const;
+export type ApplicationStatus = (typeof APPLICATION_STATUSES)[number];
+
+/** One application to one find. Nothing is submitted until every required item has an approved version. */
+export const applications = pgTable(
+  "applications",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    opportunityId: uuid("opportunity_id")
+      .notNull()
+      .references(() => opportunities.id, { onDelete: "cascade" }),
+    status: text("status").$type<ApplicationStatus>().notNull().default("queued"),
+    /** How it was queued: the user clicked, or the auto-apply switch picked it. */
+    queuedBy: text("queued_by").$type<"user" | "auto">().notNull().default("user"),
+    /** Detected applicant tracking system, e.g. greenhouse, lever, ashby, workday. */
+    ats: text("ats"),
+    /** How it can be submitted: api, browser, or manual. */
+    route: text("route").$type<"api" | "browser" | "manual">(),
+    note: text("note"),
+    createdAt: createdAt(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+    submittedAt: timestamp("submitted_at", { withTimezone: true }),
+    /** What came back after submitting: confirmation text, page URL or email subject. */
+    confirmation: jsonb("confirmation").$type<Record<string, unknown>>(),
+  },
+  (t) => [uniqueIndex("applications_user_opp_idx").on(t.userId, t.opportunityId), index("applications_user_status_idx").on(t.userId, t.status)],
+);
+
+export const APPLICATION_ITEM_KINDS = ["resume", "cover_letter", "answer", "portfolio", "outreach", "field"] as const;
+export type ApplicationItemKind = (typeof APPLICATION_ITEM_KINDS)[number];
+
+/** Something the application asks for (or an outreach draft), each with its own versions. */
+export const applicationItems = pgTable("application_items", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  applicationId: uuid("application_id")
+    .notNull()
+    .references(() => applications.id, { onDelete: "cascade" }),
+  kind: text("kind").$type<ApplicationItemKind>().notNull(),
+  /** The question or field label as the application words it. */
+  prompt: text("prompt").notNull(),
+  required: boolean("required").notNull().default(false),
+  position: integer("position").notNull().default(0),
+  approvedVersionId: uuid("approved_version_id"),
+});
+
+/** Every draft and edit, kept with a note about who changed what and why. */
+export const itemVersions = pgTable(
+  "item_versions",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    itemId: uuid("item_id")
+      .notNull()
+      .references(() => applicationItems.id, { onDelete: "cascade" }),
+    version: integer("version").notNull(),
+    content: text("content").notNull().default(""),
+    fileKey: text("file_key"),
+    note: text("note").notNull().default(""),
+    author: text("author").$type<"user" | "ai">().notNull(),
+    /** Where the facts in this draft came from (resume line, profile answer, posting). */
+    sources: jsonb("sources").$type<string[]>().notNull().default([]),
+    createdAt: createdAt(),
+  },
+  (t) => [uniqueIndex("item_versions_item_version_idx").on(t.itemId, t.version)],
+);
+
+/** The chat-to-edit thread for one application. */
+export const applicationMessages = pgTable("application_messages", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  applicationId: uuid("application_id")
+    .notNull()
+    .references(() => applications.id, { onDelete: "cascade" }),
+  role: text("role").$type<"user" | "assistant">().notNull(),
+  content: text("content").notNull(),
+  createdAt: createdAt(),
+});
+

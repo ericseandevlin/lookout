@@ -9,7 +9,7 @@ import type { Find, Stage } from "@/lib/types";
 import { ArchiveIcon, ArrowUpRight, CheckIcon, ChevronDown, LinkIcon, PinIcon, PlusIcon, SearchIcon, SlidersIcon, XIcon } from "./icons";
 import { useCounts } from "./Shell";
 import { LastReport, SearchPanel } from "./SearchPanel";
-import { useStore } from "./store";
+import { api, useStore } from "./store";
 
 type SortKey = "score" | "company" | "role" | "comp" | "listed" | "stage" | "location";
 type Filter = "all" | "new" | "archived";
@@ -637,7 +637,17 @@ const Label = ({ children, style }: { children: React.ReactNode; style?: React.C
 const NOT_A_FIT = ["Wrong level", "Wrong kind of role", "Wrong industry", "Location", "Pay", "Not that company", "Just not interested"];
 
 function Drawer({ f, close, toggle, setStage }: { f: Find; close: () => void; toggle: (f: Find, k: "pinned" | "archived") => void; setStage: (f: Find, s: Stage) => void }) {
-  const { patchFind } = useStore();
+  const { patchFind, state } = useStore();
+  const [applyMsg, setApplyMsg] = useState<string | null>(null);
+  const applyWithLookout = async () => {
+    setApplyMsg("Queuing…");
+    try {
+      await api("/api/apply", { method: "POST", json: { findId: f.id } });
+      setApplyMsg("queued");
+    } catch (e) {
+      setApplyMsg(e instanceof Error ? e.message : "Couldn't queue it");
+    }
+  };
   const [notes, setNotes] = useState(f.notes);
   const [saved, setSaved] = useState(false);
   const [copied, setCopied] = useState(false);
@@ -759,6 +769,22 @@ function Drawer({ f, close, toggle, setStage }: { f: Find; close: () => void; to
             <textarea value={notes} onChange={(e) => onNotes(e.target.value)} placeholder="Contacts, follow-ups, interview prep..." aria-label="Notes" className="f-brick" style={{ flex: 1, minHeight: 160, resize: "vertical", border: "1.5px solid #E6E0D8", borderRadius: 10, padding: "12px 14px", fontSize: 14, lineHeight: 1.5, outline: "none", color: "#1D1A0F" }} />
           </div>
         </div>
+        {state.user.autoApply && !f.archived && (
+          <div style={{ padding: "14px 26px 0", borderTop: "1px solid #EEEAE4", display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
+            {applyMsg === "queued" ? (
+              <span style={{ fontSize: 14 }}>
+                Queued for auto-apply. <Link href="/apply">See it on Auto-apply →</Link>
+              </span>
+            ) : (
+              <>
+                <button onClick={applyWithLookout} disabled={applyMsg === "Queuing…"} style={{ height: 38, padding: "0 14px", borderRadius: 10, border: "1.5px solid #1D1A0F", background: "#fff", fontSize: 14, fontWeight: 600, color: "#1D1A0F", cursor: "pointer" }}>
+                  {applyMsg === "Queuing…" ? "Queuing…" : "Apply with Lookout"}
+                </button>
+                <span style={{ fontSize: 14, color: applyMsg ? "#99220F" : "#6B6358" }}>{applyMsg ?? "Beta. Drafts everything for your review first."}</span>
+              </>
+            )}
+          </div>
+        )}
         {asking && !f.archived && (
           <div style={{ padding: "14px 26px 0", borderTop: "1px solid #EEEAE4", display: "flex", flexDirection: "column", gap: 8 }}>
             <div style={{ fontSize: 14, fontWeight: 600 }}>What&apos;s off about it? Lookout uses this on your next searches.</div>

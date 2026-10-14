@@ -5,7 +5,7 @@ import { usePathname } from "next/navigation";
 import { answeredCount, job } from "@/lib/kinds";
 import { initialsOf, isNewFind } from "@/lib/board";
 import type { AppState } from "@/lib/types";
-import { BoardIcon, ListIcon, PanelIcon, ShieldIcon } from "./icons";
+import { BoardIcon, FileIcon, ListIcon, PanelIcon, ShieldIcon } from "./icons";
 import { useStore } from "./store";
 import { TooltipLayer } from "./Tooltip";
 import { ConfirmProvider } from "./Confirm";
@@ -18,10 +18,12 @@ export function useCounts(s: AppState) {
   return { answered, sources, newCount };
 }
 
-const PAGES = [
+const BASE_PAGES = [
   { href: "/finds", label: "Finds", mob: "Finds", Icon: BoardIcon },
   { href: "/profile", label: "Search profile", mob: "Profile", Icon: ListIcon },
 ] as const;
+// Beta pages appear only for people who have the beta.
+const APPLY_PAGE = { href: "/apply", label: "Auto-apply", mob: "Apply", Icon: FileIcon } as const;
 
 export function Shell({ children }: { children: React.ReactNode }) {
   const { state, putSettings, error } = useStore();
@@ -31,6 +33,7 @@ export function Shell({ children }: { children: React.ReactNode }) {
   const name = state.user.name.trim();
   const initials = initialsOf(name || state.user.email);
   const onSettings = path.startsWith("/settings");
+  const PAGES = state.user.autoApply ? [...BASE_PAGES, APPLY_PAGE] : BASE_PAGES;
   const meta = (href: string) =>
     href === "/profile" ? (answered < 5 ? `${answered}/5` : sources === 0 ? "Add resume" : "") : "";
 
@@ -145,7 +148,7 @@ export function Shell({ children }: { children: React.ReactNode }) {
 
       <nav
         className="mob-only"
-        style={{ position: "fixed", left: 0, right: 0, bottom: 0, zIndex: 9, background: "#1D1A0F", gridTemplateColumns: "repeat(3,1fr)", padding: "6px 6px calc(6px + env(safe-area-inset-bottom))", borderTop: "1px solid rgba(255,255,255,.08)" }}
+        style={{ position: "fixed", left: 0, right: 0, bottom: 0, zIndex: 9, background: "#1D1A0F", padding: "6px 6px calc(6px + env(safe-area-inset-bottom))", borderTop: "1px solid rgba(255,255,255,.08)" }}
       >
         <div className="mob-grid" style={{ display: "grid", gridTemplateColumns: `repeat(${PAGES.length},1fr)` }}>
           {PAGES.map(({ href, mob, Icon }) => {

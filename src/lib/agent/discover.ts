@@ -7,6 +7,7 @@ import { fetchPage, FetchError, pageToText } from "@/lib/ai/fetchPage";
 import type { RunReport, RunTally, SearchProfile } from "@/lib/db/schema";
 import { ensureSearchProfile, loadRawInputs, renderSearchProfile } from "./searchProfile";
 import { buildTips, emptyTally } from "./report";
+import { autoQueue } from "@/lib/apply";
 import { completeJSON, emptyUsage, type Usage } from "@/lib/ai/llm";
 import { assertBudget, finishRun, progress, startRun } from "@/lib/ai/runs";
 import { webSearch, type SearchHit } from "@/lib/ai/search";
@@ -244,9 +245,10 @@ async function scorePages(ctx: Context, pages: Page[], usage: Usage, report?: Re
 
 // --- save ----------------------------------------------------------------------
 
-export async function save(ctx: Context, finds: ScoredT[], via: "agent" | "manual"): Promise<RunTally> {
+export async function save(ctx: Context, finds: ScoredT[], via: "agent" | "manual"): Promise<RunTally & { newFinds: { id: string; score: number }[] }> {
   const known = new Set(ctx.knownUrls.map(normUrl));
   const t = emptyTally();
+  const newFinds: { id: string; score: number }[] = [];
   for (const f of finds) {
     if (!f.is_open_job_posting || !f.company || !f.title) {
       t.notPostings++;
@@ -309,11 +311,14 @@ export async function save(ctx: Context, finds: ScoredT[], via: "agent" | "manua
       })
       .onConflictDoNothing()
       .returning();
-    if (inserted.length) t.added++;
+    if (inserted.length) {
+      t.added++;
+      newFinds.push({ id: opp.id, score: ruled.score });
+    }
     else t.known++;
     known.add(normUrl(f.url));
   }
-  return t;
+  return { ...t, newFinds };
 }
 
 /** The funnel, queries and tips shown after a search. */
@@ -350,8 +355,9 @@ export async function discover(userId: string, trigger: "scheduled" | "manual" =
     await report(75, `Read ${pages.length} postings`);
     const scored = await scorePages(ctx, pages, usage, report);
     await report(97, "Saving new finds");
-    const tally = await save(ctx, scored, "agent");
+    const { newFinds, ...tally } = await save(ctx, scored, "agent");
     const { added, postings: found } = tally;
+    await autoQueue(userId, newFinds).catch((e) => console.error("[auto-apply] queue failed", e));
     await progress(run.id, 100, added ? `Added ${added} new ${added === 1 ? "find" : "finds"}` : found ? "No new finds this time. Everything matching is already on your board" : "No matching open roles this time");
     const summary = makeReport(ctx, { queries, results: hits.length, picked: picks.length, read: pages.length, tally });
     await finishRun(run.id, usage, { found, added, report: summary });

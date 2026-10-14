@@ -41,7 +41,7 @@ export type Settings = {
 export type Answers = Record<string, string | string[]>;
 
 export type AppState = {
-  user: { name: string; email: string; isAdmin: boolean };
+  user: { name: string; email: string; isAdmin: boolean; autoApply: boolean };
   settings: Settings;
   profile: { answers: Answers; auto: Record<string, string>; savedAt: string | null };
   materials: { resume: Resume | null; linkedin: { handle: string; linked: boolean; pdf: { name: string; uploadedAt: string } | null }; links: Link[] };
