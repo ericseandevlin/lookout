@@ -47,7 +47,7 @@ button:focus-visible, a:focus-visible, label:focus-within { outline: 2px solid v
 /* Every interactive element gets a clear background change on hover, color only, no movement.
    Inline styles own each element's background, so the tint is painted as an inset shadow on top:
    a neutral gray that darkens light fills and lightens dark ones, so it reads on every button.
-   .no-tint opts out (bare text controls like sortable column titles, where the cursor is enough). */
+   .no-tint opts out (bare text controls like sortable column titles, where the text just darkens). */
 button, a, summary, select, [role="button"], [class*="h-"], label:has(> input[type="file"]), .f-brick {
   transition: background-color 0.16s ease, border-color 0.16s ease, color 0.16s ease, box-shadow 0.16s ease, text-decoration-color 0.16s ease;
 }
@@ -58,6 +58,7 @@ button, a, summary, select, [role="button"], [class*="h-"], label:has(> input[ty
   label:has(> input[type="file"]:not(:disabled)):hover {
     box-shadow: inset 0 0 0 999px rgb(128 120 108 / 0.22) !important;
   }
+  .no-tint:not(:disabled):hover { color: var(--ink) !important; }
   .f-brick:hover:not(:focus) { box-shadow: inset 0 0 0 999px rgb(128 120 108 / 0.07); border-color: #cfc6b9 !important; }
   a:not([style*="border-radius"]):hover { text-decoration: underline !important; text-underline-offset: 3px; }
 }
