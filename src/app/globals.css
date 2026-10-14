@@ -44,28 +44,24 @@ button:focus-visible, a:focus-visible, label:focus-within { outline: 2px solid v
 .h-link:hover { color: var(--brick) !important; text-decoration: underline !important; }
 .f-brick:focus { border-color: var(--brick) !important; background: #fff; }
 
-/* Every interactive element eases into its hover state. Inline styles own the colors, so hover
-   adds a lift, a soft shadow and a touch of brightness that read on light and dark fills alike. */
+/* Every interactive element gets a clear background change on hover, color only, no movement.
+   Inline styles own each element's background, so the tint is painted as an inset shadow on top:
+   a neutral gray that darkens light fills and lightens dark ones, so it reads on every button. */
 button, a, summary, select, [role="button"], [class*="h-"], label:has(> input[type="file"]), .f-brick {
-  transition: background-color 0.16s ease, border-color 0.16s ease, color 0.16s ease, box-shadow 0.18s ease,
-    transform 0.16s cubic-bezier(0.2, 0.7, 0.2, 1), filter 0.16s ease, opacity 0.16s ease, text-decoration-color 0.16s ease;
+  transition: background-color 0.16s ease, border-color 0.16s ease, color 0.16s ease, box-shadow 0.16s ease, text-decoration-color 0.16s ease;
 }
 @media (hover: hover) {
-  button[style*="border-radius"]:not(:disabled):hover,
+  button:not(:disabled):hover,
   a[style*="border-radius"]:hover,
-  label:has(> input[type="file"]:not(:disabled))[style*="border-radius"]:hover {
-    transform: translateY(-1px);
-    box-shadow: 0 3px 10px rgba(29, 26, 15, 0.1);
-    filter: brightness(1.05);
+  summary:hover,
+  label:has(> input[type="file"]:not(:disabled)):hover {
+    box-shadow: inset 0 0 0 999px rgb(128 120 108 / 0.22) !important;
   }
-  summary:hover { color: var(--ink); }
-  .f-brick:hover:not(:focus) { border-color: #cfc6b9 !important; }
+  .f-brick:hover:not(:focus) { box-shadow: inset 0 0 0 999px rgb(128 120 108 / 0.07); border-color: #cfc6b9 !important; }
+  a:not([style*="border-radius"]):hover { text-decoration: underline !important; text-underline-offset: 3px; }
 }
-button[style*="border-radius"]:not(:disabled):active,
-a[style*="border-radius"]:active { transform: translateY(0) scale(0.98); box-shadow: none; transition-duration: 0.06s; }
-@media (prefers-reduced-motion: reduce) {
-  button, a, label { transform: none !important; }
-}
+button:not(:disabled):active,
+a[style*="border-radius"]:active { box-shadow: inset 0 0 0 999px rgb(128 120 108 / 0.34) !important; transition-duration: 0.05s; }
 
 /* Breakpoints from the design: mobile < 760px, hint >= 1280px */
 .mob-only { display: none !important; }
