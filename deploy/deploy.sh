@@ -34,3 +34,7 @@ $SSH "cd $dir && docker compose up -d && docker image prune -f >/dev/null"
 echo "Deployed $tag at $sha. Health:"
 sleep 8
 $SSH "curl -fsS http://172.17.0.1:$port/api/health"
+# Release notes for the weekly meeting (Quill reads these): what is on staging and not yet on prod.
+git fetch -q origin main prod
+echo "$sha $(date -u +%FT%TZ)" | $SSH "cat > $dir/DEPLOYED"
+git log --no-merges --date=short --format='%h %ad %s' origin/prod..origin/main | $SSH "cat > /opt/lookout-staging/PENDING.txt"
