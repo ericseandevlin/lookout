@@ -82,6 +82,14 @@ AI and search settings can live in env or be set in Admin > AI settings (the dat
 | `DATA_DIR` | Where uploads are stored |
 | `EMAIL_DEV_LOG` | `1` prints emails to the log instead of sending |
 
+## How we work
+
+- Every change starts as a GitHub issue. Branch from `main` as `feat/<issue>-<slug>` or `fix/<issue>-<slug>` (chores: `chore/...`).
+- Every commit message names its issue, e.g. `Drawer: previous/next on the edge (#48)`. One branch per issue; don't mix work.
+- Open a PR into `main`. Merging deploys to staging; review happens on staging, not in the PR.
+- `prod` moves only at the weekly release meeting, by fast-forward to an approved `main` commit.
+- Hooks enforce this (run once per clone: `git config core.hooksPath .githooks`): no commits directly on `main` or `prod`, no commit without an issue number.
+
 ## Deploy
 
 Three environments, promoted in order: **dev** is your machine (`npm run dev`, feature branches), **staging** is branch `main` (`deploy/deploy.sh staging`), **production** is branch `prod` (`deploy/deploy.sh`). Changes reach production only after review on staging at the weekly release meeting: `git checkout prod && git merge --ff-only <approved commit> && git push`, then deploy. The script refuses to deploy from the wrong branch, with uncommitted changes, or with unpushed commits, and labels each image with its commit.
