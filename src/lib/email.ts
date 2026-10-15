@@ -13,7 +13,7 @@ export async function sendMail(mail: Mail) {
     return;
   }
   transport ??= nodemailer.createTransport(env.smtpUrl);
-  await transport.sendMail({ from: env.mailFrom, ...mail });
+  await transport.sendMail({ from: env.mailFrom, ...(env.mailReplyTo && { replyTo: env.mailReplyTo }), ...mail });
 }
 
 export const escapeHtml = (s: string) =>
