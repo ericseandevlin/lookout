@@ -111,6 +111,8 @@ export type SearchProfile = {
   pay: string;
   avoid: string[];
   searchTerms: string[];
+  /** Feedback pulled from their notes on finds: where Lookout read them wrong. Other notes are ignored. */
+  corrections?: string[];
 };
 
 export type MaterialKind = "resume" | "linkedin" | "link";
