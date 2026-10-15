@@ -311,10 +311,10 @@ export function Finds() {
                     <div style={{ display: "flex", gap: 6, alignItems: "center", position: "relative" }}>
                       {isNew(f) && <span data-tip="New this week" style={{ position: "absolute", left: -15, top: "50%", marginTop: -4, width: 8, height: 8, borderRadius: "50%", background: "#427D33" }} />}
                       <IconBtn tip={f.pinned ? "Unpin" : "Pin"} onClick={() => toggle(f, "pinned")} pressed={f.pinned} style={iconState(f.pinned)}>
-                        <PinIcon size={14} />
+                        <PinIcon size={15} sw={f.pinned ? 2.4 : 1.8} />
                       </IconBtn>
-                      <IconBtn tip={f.archived ? "Restore" : "Archive"} onClick={() => toggle(f, "archived")} pressed={f.archived} style={iconState(f.archived, "#6B6358")}>
-                        <ArchiveIcon size={14} />
+                      <IconBtn tip={f.archived ? "Restore" : "Archive"} onClick={() => toggle(f, "archived")} pressed={f.archived} style={iconState(f.archived)}>
+                        <ArchiveIcon size={15} sw={f.archived ? 2.4 : 1.8} />
                       </IconBtn>
                     </div>
                     <div style={{ paddingLeft: 13, width: 60 }}>
@@ -701,9 +701,10 @@ const Label = ({ children, style }: { children: React.ReactNode; style?: React.C
 );
 
 const NOTES_IDLE_MS = 6000;
-// Row pin/archive buttons: active is the same orange as the drawer's pin, with an ink icon you can actually see.
-const iconState = (on: boolean, idle = "#8A8175"): React.CSSProperties =>
-  on ? { border: "1px solid #E8914A", background: "#F8A865", color: "#1D1A0F" } : { border: "1px solid #E6E0D8", background: "#fff", color: idle };
+// Row pin/archive buttons stay quiet so the match score is the loudest thing in the row: no box until hover,
+// and active is a brick-red icon rather than a fill.
+const iconState = (on: boolean): React.CSSProperties =>
+  on ? { border: "1px solid transparent", background: "transparent", color: "#99220F" } : { border: "1px solid transparent", background: "transparent", color: "#A89F92" };
 const DRAWER_MS = 220;
 
 const NOT_A_FIT = ["Wrong level", "Wrong kind of role", "Wrong industry", "Location", "Pay", "Not that company", "Just not interested"];
