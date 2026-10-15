@@ -74,7 +74,8 @@ AI and search settings can live in env or be set in Admin > AI settings (the dat
 | `SEARCH_PROVIDER`, `SEARXNG_URL`, `BRAVE_API_KEY`, `SEARCH_PRICE` | Web search |
 | `SIGNUP_MODE` | `invite` (default) or `open` |
 | `ADMIN_EMAILS`, `ALLOWED_EMAILS` | Comma lists; admins can always sign in |
-| `SMTP_URL`, `MAIL_FROM` | Outgoing email, e.g. `smtps://resend:KEY@smtp.resend.com:465` |
+| `SMTP_URL`, `MAIL_FROM` | Outgoing email, e.g. `smtps://resend:KEY@smtp.resend.com:465`. The From address only sends |
+| `MAIL_REPLY_TO` | Where replies go (default: the first `ADMIN_EMAILS` address) |
 | `DAILY_BUDGET_USD`, `USER_DAILY_BUDGET_USD` | Rolling 24h spend caps (also editable in Admin) |
 | `APP_TZ` | Timezone for run days (default `America/New_York`) |
 | `SCHEDULER` | `off` disables scheduled runs |
