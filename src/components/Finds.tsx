@@ -137,7 +137,12 @@ export function Finds() {
     setStageMenu(null);
     setFitMenu(false);
   };
-  const setStage = (f: Find, s: Stage) => patchFind(f.id, { stage: s });
+  // "Nope" is a stage and a dismissal in one: it archives the find.
+  const setStage = (f: Find, s: Stage) => {
+    if (s !== "Nope") return patchFind(f.id, { stage: s });
+    patchFind(f.id, { stage: s, archived: true });
+    if (openId === f.id) open(null);
+  };
   const toggle = (f: Find, k: "pinned" | "archived") => {
     patchFind(f.id, { [k]: !f[k] });
     if (k === "archived" && openId === f.id) open(null);
@@ -435,6 +440,7 @@ function StageMenu({ current, onPick, style, mobile }: { current: Stage; onPick:
           <button
             role="menuitem"
             className="h-menu"
+            data-tip={s === "Nope" ? "Archives it" : undefined}
             onClick={(e) => { e.stopPropagation(); onPick(s); }}
             style={{ display: "flex", alignItems: "center", gap: 9, padding: mobile ? "0 10px" : "8px 10px", minHeight: mobile ? 40 : undefined, border: 0, borderRadius: 8, background: s === current ? "#F6F2EC" : "transparent", fontSize: mobile ? 14 : 13, fontWeight: 500, color: "#1D1A0F", cursor: "pointer", textAlign: "left", whiteSpace: "nowrap" }}
           >
@@ -864,7 +870,7 @@ function Drawer({ f, close, toggle, setStage, enter, nav }: { f: Find; close: ()
               {STAGES.map((s) => {
                 const on = f.stage === s, ss = STAGE_STYLE[s];
                 return (
-                  <button key={s} onClick={() => setStage(f, s)} aria-pressed={on} style={{ height: 36, borderRadius: 9, border: `1.5px solid ${on ? ss.bg : "#E6E0D8"}`, background: on ? ss.bg : "#fff", color: on ? ss.ink : "#6B6358", fontSize: 14, fontWeight: 600, cursor: "pointer", padding: "0 4px" }}>
+                  <button key={s} onClick={() => setStage(f, s)} aria-pressed={on} data-tip={s === "Nope" ? "Archives it" : undefined} style={{ height: 36, borderRadius: 9, border: `1.5px solid ${on ? ss.bg : "#E6E0D8"}`, background: on ? ss.bg : "#fff", color: on ? ss.ink : "#6B6358", fontSize: 14, fontWeight: 600, cursor: "pointer", padding: "0 4px" }}>
                     {s}
                   </button>
                 );
