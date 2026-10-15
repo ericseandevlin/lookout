@@ -16,7 +16,7 @@ import { getAiConfig } from "@/lib/config";
  */
 
 // Bump to rebuild everyone's profile after a prompt change.
-const VERSION = 1;
+const VERSION = 2;
 
 export type RawInputs = {
   answers: Record<string, string | string[]>;
@@ -24,16 +24,16 @@ export type RawInputs = {
   resume: string;
   linkedin: string;
   links: { url: string; text: string }[];
-  /** What they wrote in the notes on their finds: corrections and context the search should honor. */
+  /** Their notes on finds, each with the bullets it sits under. Only feedback gets used (see the corrections field). */
   notes: string[];
   sources: { answers: number; resume: boolean; linkedin: boolean; links: number; notes: number };
   hash: string;
 };
 
-/** Their notes on finds, for prompts. A note that corrects how Lookout reads them outranks the resume and earlier scoring. */
-export const notesBlock = (notes: string[]) =>
+/** Their notes on finds, for the profile build only. Most notes are private jottings; the model keeps only feedback about Lookout. */
+const notesBlock = (notes: string[]) =>
   notes.length
-    ? `\n<their_notes_on_finds>\nThings they wrote on past finds. Treat any correction about their background, domain or preferences as fact, even where it contradicts the resume or an earlier score; drop reasoning that conflicts with it.\n${notes.join("\n")}\n</their_notes_on_finds>`
+    ? `\n<their_notes_on_finds>\n${notes.join("\n---\n")}\n</their_notes_on_finds>`
     : "";
 
 export async function loadRawInputs(userId: string): Promise<RawInputs & { stored: typeof schema.profiles.$inferSelect | undefined }> {
@@ -51,13 +51,23 @@ export async function loadRawInputs(userId: string): Promise<RawInputs & { store
     .slice(0, 4)
     .map((m) => ({ url: m.url!, text: m.extracted!.text!.slice(0, 1500) }));
   const noted = await db
-    .select({ title: schema.opportunities.title, company: schema.opportunities.company, notes: schema.userOpportunities.notes })
+    .select({
+      title: schema.opportunities.title,
+      company: schema.opportunities.company,
+      notes: schema.userOpportunities.notes,
+      ok: schema.userOpportunities.reasonsMatch,
+      gap: schema.userOpportunities.reasonsGap,
+    })
     .from(schema.userOpportunities)
     .innerJoin(schema.opportunities, eq(schema.opportunities.id, schema.userOpportunities.opportunityId))
     .where(and(eq(schema.userOpportunities.userId, userId), ne(schema.userOpportunities.notes, "")))
     .orderBy(desc(schema.userOpportunities.addedAt))
     .limit(15);
-  const notes = noted.map((n) => `On "${n.title}" at ${n.company}: ${n.notes.trim().slice(0, 400)}`);
+  // Each note travels with the bullets Lookout showed on that find, so the model can tell when a note is correcting one.
+  const notes = noted.map(
+    (n) =>
+      `Find: "${n.title}" at ${n.company}\nLookout said: ${[...n.ok.map((r) => "+ " + r), ...n.gap.map((r) => "- " + r)].join(" | ") || "(no bullets)"}\nTheir note: ${n.notes.trim().slice(0, 400)}`,
+  );
   const brief = kind.brief(answers);
   const hash = createHash("sha1").update(JSON.stringify([VERSION, brief, resumeText, linkedin, links, notes])).digest("hex");
   const answered = Object.values(answers).filter((v) => (Array.isArray(v) ? v.length : String(v ?? "").trim())).length;
@@ -85,6 +95,11 @@ const Shape = z.object({
   pay: z.string().describe("Pay floor and target in plain words, or 'Not given'"),
   avoid: z.array(z.string()).describe("Things to rule out: their stated dealbreakers plus clear mismatches"),
   searchTerms: z.array(z.string()).describe("4 to 10 keywords that should appear in good postings"),
+  corrections: z
+    .array(z.string())
+    .describe(
+      "From their notes on finds, only feedback about how Lookout reads them or what it shows: a bullet that's wrong, a wrong assumption about their background, more or less of something. Write each as a plain fact about them, e.g. 'Has 5 years in banking and commercial digital; banking is not new to them'. Ignore notes that are their own thoughts on a job, to-dos, contacts or anything else. Empty if none.",
+    ),
 });
 
 /** Render for prompts. */
@@ -100,6 +115,7 @@ export function renderSearchProfile(s: SearchProfile) {
     `Pay: ${s.pay}`,
     `Avoid: ${s.avoid.join("; ") || "nothing stated"}`,
     `Search terms: ${s.searchTerms.join(", ")}`,
+    ...(s.corrections?.length ? [`Corrections from them (these override anything above or in earlier scores): ${s.corrections.join("; ")}`] : []),
   ].join("\n");
 }
 
@@ -127,7 +143,7 @@ export async function ensureSearchProfile(userId: string, usage: Usage, opts: { 
       usage,
       maxTokens: 1500,
       system:
-        "You turn a job seeker's answers and background into a compact search profile. Their own answers outrank anything inferred from the resume. Only use facts given; never invent employers, numbers or credentials.",
+        "You turn a job seeker's answers and background into a compact search profile. Their own answers outrank anything inferred from the resume. Only use facts given; never invent employers, numbers or credentials. Their notes on finds are mostly private jottings; use a note only when it is feedback about how Lookout read them, and then let it override the resume and the rest of the profile.",
       user: `<answers>\n${raw.brief}\n</answers>\n<resume>\n${raw.resume || "(none)"}\n</resume>` +
         (raw.linkedin ? `\n<linkedin_profile>\n${raw.linkedin}\n</linkedin_profile>` : "") +
         (raw.links.length ? `\n<their_links>\n${raw.links.map((l) => `${l.url}\n${l.text}`).join("\n---\n")}\n</their_links>` : "") +
@@ -141,6 +157,7 @@ export async function ensureSearchProfile(userId: string, usage: Usage, opts: { 
       proof: out.proof.slice(0, 4),
       avoid: out.avoid.slice(0, 8),
       searchTerms: out.searchTerms.slice(0, 10),
+      corrections: out.corrections.slice(0, 8),
     };
     const at = new Date();
     if (stored) {
