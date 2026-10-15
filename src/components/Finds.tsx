@@ -662,7 +662,6 @@ const Label = ({ children, style }: { children: React.ReactNode; style?: React.C
 );
 
 const NOTES_IDLE_MS = 6000;
-const navBtn = (off: boolean): React.CSSProperties => ({ border: 0, background: "rgba(255,255,255,.1)", color: "#fff", width: 30, height: 30, borderRadius: "50%", cursor: off ? "default" : "pointer", fontSize: 18, lineHeight: 1, opacity: off ? 0.35 : 1, padding: 0 });
 const DRAWER_MS = 220;
 
 const NOT_A_FIT = ["Wrong level", "Wrong kind of role", "Wrong industry", "Location", "Pay", "Not that company", "Just not interested"];
@@ -768,18 +767,18 @@ function Drawer({ f, close, toggle, setStage, enter, nav }: { f: Find; close: ()
     <>
       <div onClick={animatedClose} className={leaving ? "drawer-scrim out" : enter ? "drawer-scrim" : undefined} style={{ position: "fixed", inset: 0, background: "rgba(29,26,15,.28)", zIndex: 20 }} />
       <aside role="dialog" aria-modal="true" aria-label={`${f.role} at ${f.company}`} className={leaving ? "drawer-panel out" : enter ? "drawer-panel" : undefined} style={{ position: "fixed", top: 0, right: 0, bottom: 0, width: 440, maxWidth: "100vw", background: "#fff", zIndex: 21, display: "flex", flexDirection: "column", boxShadow: "-12px 0 40px rgba(29,26,15,.18)" }}>
+        {nav.index >= 0 && nav.total > 1 && (
+          <div className="drawer-nav" role="group" aria-label="Move between finds">
+            <button onClick={nav.prev} disabled={!nav.prev} aria-label="Previous find" data-tip="Previous (←)" className="drawer-nav-btn">‹</button>
+            <span aria-live="polite" className="drawer-nav-count">{nav.index + 1}/{nav.total}</span>
+            <button onClick={nav.next} disabled={!nav.next} aria-label="Next find" data-tip="Next (→)" className="drawer-nav-btn">›</button>
+          </div>
+        )}
         <div style={{ background: "#1D1A0F", color: "#fff", padding: "24px 26px 22px" }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12 }}>
             <div style={{ fontSize: 14, color: "#F8A865", fontWeight: 600 }}>{f.company}</div>
             <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-              {nav.index >= 0 && nav.total > 1 && (
-                <>
-                  <button onClick={nav.prev} disabled={!nav.prev} aria-label="Previous find" data-tip="Previous (←)" style={navBtn(!nav.prev)}>‹</button>
-                  <span aria-live="polite" style={{ fontSize: 14, color: "rgba(255,255,255,.75)", minWidth: 52, textAlign: "center", fontVariantNumeric: "tabular-nums" }}>{nav.index + 1} of {nav.total}</span>
-                  <button onClick={nav.next} disabled={!nav.next} aria-label="Next find" data-tip="Next (→)" style={navBtn(!nav.next)}>›</button>
-                </>
-              )}
-              <button ref={closeBtn} onClick={animatedClose} aria-label="Close" style={{ border: 0, background: "rgba(255,255,255,.1)", color: "#fff", width: 30, height: 30, borderRadius: "50%", cursor: "pointer", fontSize: 16, lineHeight: 1, marginLeft: 4 }}>×</button>
+              <button ref={closeBtn} onClick={animatedClose} aria-label="Close" style={{ border: 0, background: "rgba(255,255,255,.1)", color: "#fff", width: 30, height: 30, borderRadius: "50%", cursor: "pointer", fontSize: 16, lineHeight: 1 }}>×</button>
             </div>
           </div>
           <div style={{ fontSize: 23, fontWeight: 700, letterSpacing: "-0.01em", marginTop: 6, textWrap: "pretty" }}>{f.role}</div>
