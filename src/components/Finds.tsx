@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import {
   compText, DAYS, isNewFind, postedDays, postedText, scoreStyle, shortDate, slugOf, STAGE_STYLE, STAGES,
 } from "@/lib/board";
@@ -46,6 +47,31 @@ export function Finds() {
   const [compOnly, setCompOnly] = useState(false);
   const [fitMenu, setFitMenu] = useState(false);
   const [stageMenu, setStageMenu] = useState<string | null>(null);
+  // The stage menu renders in a top layer, placed from its button, so the board's scroll container can't clip it.
+  const [menuAt, setMenuAt] = useState<React.CSSProperties>({});
+  const toggleStageMenu = (e: React.MouseEvent<HTMLElement>, id: string, align: "left" | "right") => {
+    e.stopPropagation();
+    if (stageMenu === id) return setStageMenu(null);
+    const r = e.currentTarget.getBoundingClientRect();
+    const below = window.innerHeight - r.bottom;
+    const up = below < 340 && r.top > below;
+    setMenuAt({
+      ...(up ? { bottom: window.innerHeight - r.top + 6 } : { top: r.bottom + 6 }),
+      ...(align === "left" ? { left: r.left } : { right: window.innerWidth - r.right }),
+    });
+    setStageMenu(id);
+    setFitMenu(false);
+  };
+  useEffect(() => {
+    if (!stageMenu) return;
+    const close = () => setStageMenu(null);
+    window.addEventListener("scroll", close, true);
+    window.addEventListener("resize", close);
+    return () => {
+      window.removeEventListener("scroll", close, true);
+      window.removeEventListener("resize", close);
+    };
+  }, [stageMenu]);
   const [sheetOpen, setSheetOpen] = useState(false);
   const [openId, setOpenId] = useState<string | null>(null);
   const [addOpen, setAddOpen] = useState(false);
@@ -266,7 +292,6 @@ export function Finds() {
               {rows.map((f, i) => {
                 const st = STAGE_STYLE[f.stage];
                 const sc = scoreStyle(f.score);
-                const menuUp = rows.length > 4 && i >= rows.length - 3;
                 return (
                   <div
                     key={f.id}
@@ -294,14 +319,14 @@ export function Finds() {
                     <div style={{ position: "relative", paddingRight: 16 }}>
                       <button
                         data-tip="Change stage"
-                        onClick={(e) => { e.stopPropagation(); setStageMenu(stageMenu === f.id ? null : f.id); setFitMenu(false); }}
+                        onClick={(e) => toggleStageMenu(e, f.id, "left")}
                         style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "4px 10px", borderRadius: 999, fontSize: 14, fontWeight: 600, border: "1.5px solid rgba(29,26,15,.14)", background: st.bg, color: st.ink, cursor: "pointer" }}
                       >
                         {f.stage}
                         <ChevronDown />
                       </button>
                       {stageMenu === f.id && (
-                        <StageMenu current={f.stage} style={{ [menuUp ? "bottom" : "top"]: 32, left: 0, minWidth: 150 }} onPick={(s) => { setStage(f, s); setStageMenu(null); }} />
+                        <StageMenu current={f.stage} style={{ ...menuAt, minWidth: 150 }} onPick={(s) => { setStage(f, s); setStageMenu(null); }} />
                       )}
                     </div>
                     <div style={{ fontSize: 14, color: "#6B6358", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} data-tip={f.location}>{f.location}</div>
@@ -317,7 +342,6 @@ export function Finds() {
             {rows.map((f, i) => {
               const st = STAGE_STYLE[f.stage];
               const sc = scoreStyle(f.score);
-              const menuUp = rows.length > 4 && i >= rows.length - 3;
               return (
                 <div key={f.id} className="lk-in" onClick={() => open(f.id)} style={{ animationDelay: `${Math.min(i, 14) * 28}ms`, position: "relative", zIndex: stageMenu === f.id ? 6 : undefined, display: "flex", gap: 12, alignItems: "flex-start", padding: "12px 12px 12px 20px", borderBottom: "1px solid #F2EEE8", background: f.pinned ? "#FFFBF6" : "#fff", cursor: "pointer" }}>
                   {isNew(f) && <span aria-label="New" style={{ position: "absolute", left: 7, top: 22, width: 8, height: 8, borderRadius: "50%", background: "#427D33" }} />}
@@ -336,12 +360,12 @@ export function Finds() {
                     <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, marginTop: 2 }}>
                       <span style={{ minWidth: 0, fontSize: 14, fontWeight: f.comp ? 600 : 400, color: f.comp ? "#99220F" : "#A89F92", fontVariantNumeric: "tabular-nums", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{compText(f)}</span>
                       <div style={{ position: "relative", flex: "none" }}>
-                        <button onClick={(e) => { e.stopPropagation(); setStageMenu(stageMenu === f.id ? null : f.id); }} style={{ display: "inline-flex", alignItems: "center", gap: 4, height: 26, padding: "0 8px 0 10px", borderRadius: 999, fontSize: 14, fontWeight: 600, border: "1.5px solid rgba(29,26,15,.14)", background: st.bg, color: st.ink, cursor: "pointer", whiteSpace: "nowrap" }}>
+                        <button onClick={(e) => toggleStageMenu(e, f.id, "right")} style={{ display: "inline-flex", alignItems: "center", gap: 4, height: 26, padding: "0 8px 0 10px", borderRadius: 999, fontSize: 14, fontWeight: 600, border: "1.5px solid rgba(29,26,15,.14)", background: st.bg, color: st.ink, cursor: "pointer", whiteSpace: "nowrap" }}>
                           {f.stage}
                           <ChevronDown size={11} />
                         </button>
                         {stageMenu === f.id && (
-                          <StageMenu mobile current={f.stage} style={{ [menuUp ? "bottom" : "top"]: 36, right: 0, minWidth: 170 }} onPick={(s) => { setStage(f, s); setStageMenu(null); }} />
+                          <StageMenu mobile current={f.stage} style={{ ...menuAt, minWidth: 170 }} onPick={(s) => { setStage(f, s); setStageMenu(null); }} />
                         )}
                       </div>
                     </div>
@@ -403,8 +427,8 @@ function Menu({ style, children, onClick }: { style: React.CSSProperties; childr
 }
 
 function StageMenu({ current, onPick, style, mobile }: { current: Stage; onPick: (s: Stage) => void; style: React.CSSProperties; mobile?: boolean }) {
-  return (
-    <Menu style={style} onClick={(e) => e.stopPropagation()}>
+  return createPortal(
+    <Menu style={{ position: "fixed", zIndex: 40, ...style }} onClick={(e) => e.stopPropagation()}>
       {STAGES.map((s, i) => (
         <div key={s} style={{ display: "contents" }}>
           {i === 4 && <div style={{ height: 1, background: "#EEEAE4", margin: "4px 6px" }} />}
@@ -419,7 +443,8 @@ function StageMenu({ current, onPick, style, mobile }: { current: Stage; onPick:
           </button>
         </div>
       ))}
-    </Menu>
+    </Menu>,
+    document.body,
   );
 }
 
