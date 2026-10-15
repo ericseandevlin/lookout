@@ -307,10 +307,10 @@ export function Finds() {
                   >
                     <div style={{ display: "flex", gap: 6, alignItems: "center", position: "relative" }}>
                       {isNew(f) && <span data-tip="New this week" style={{ position: "absolute", left: -15, top: "50%", marginTop: -4, width: 8, height: 8, borderRadius: "50%", background: "#427D33" }} />}
-                      <IconBtn tip={f.pinned ? "Unpin" : "Pin"} onClick={() => toggle(f, "pinned")} style={{ border: `1px solid ${f.pinned ? "#1D1A0F" : "#E6E0D8"}`, background: f.pinned ? "#1D1A0F" : "#fff", color: f.pinned ? "#F8A865" : "#8A8175" }}>
+                      <IconBtn tip={f.pinned ? "Unpin" : "Pin"} onClick={() => toggle(f, "pinned")} pressed={f.pinned} style={iconState(f.pinned)}>
                         <PinIcon size={14} />
                       </IconBtn>
-                      <IconBtn tip={f.archived ? "Restore" : "Archive"} onClick={() => toggle(f, "archived")} style={{ border: "1px solid #E6E0D8", background: "#fff", color: "#6B6358" }}>
+                      <IconBtn tip={f.archived ? "Restore" : "Archive"} onClick={() => toggle(f, "archived")} pressed={f.archived} style={iconState(f.archived, "#6B6358")}>
                         <ArchiveIcon size={14} />
                       </IconBtn>
                     </div>
@@ -454,11 +454,12 @@ function StageMenu({ current, onPick, style, mobile }: { current: Stage; onPick:
   );
 }
 
-function IconBtn({ tip, onClick, style, children }: { tip: string; onClick: () => void; style: React.CSSProperties; children: React.ReactNode }) {
+function IconBtn({ tip, onClick, style, pressed, children }: { tip: string; onClick: () => void; style: React.CSSProperties; pressed?: boolean; children: React.ReactNode }) {
   return (
     <button
       data-tip={tip}
       aria-label={tip}
+      aria-pressed={pressed}
       onClick={(e) => { e.stopPropagation(); onClick(); }}
       style={{ width: 30, height: 30, borderRadius: 8, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", padding: 0, ...style }}
     >
@@ -697,6 +698,9 @@ const Label = ({ children, style }: { children: React.ReactNode; style?: React.C
 );
 
 const NOTES_IDLE_MS = 6000;
+// Row pin/archive buttons: active is the same orange as the drawer's pin, with an ink icon you can actually see.
+const iconState = (on: boolean, idle = "#8A8175"): React.CSSProperties =>
+  on ? { border: "1px solid #E8914A", background: "#F8A865", color: "#1D1A0F" } : { border: "1px solid #E6E0D8", background: "#fff", color: idle };
 const DRAWER_MS = 220;
 
 const NOT_A_FIT = ["Wrong level", "Wrong kind of role", "Wrong industry", "Location", "Pay", "Not that company", "Just not interested"];
