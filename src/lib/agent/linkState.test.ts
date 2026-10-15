@@ -14,6 +14,9 @@ describe("classifyPage", () => {
     expect(classifyPage(200, "Sorry, the position has been filled.").state).toBe("gone");
     expect(classifyPage(200, "Job not found").state).toBe("gone");
   });
+  it("closed wording beats a stray maintenance mention", () => {
+    expect(classifyPage(200, "We're sorry, but it looks like this job may be no longer available or does not exist. Site maintenance notice").state).toBe("gone");
+  });
   it("never closes on maintenance, blocks or server errors", () => {
     expect(classifyPage(200, "jobs.example.com site is currently down for maintenance.").state).toBe("unknown");
     expect(classifyPage(503, "").state).toBe("unknown");
