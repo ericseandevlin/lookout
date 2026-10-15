@@ -3,6 +3,7 @@ import { lookup } from "node:dns";
 import { isIP } from "node:net";
 // undici's own fetch: Node 22's built-in fetch rejects an Agent from a newer undici.
 import { Agent, fetch } from "undici";
+import { findPay, payLine } from "./pay";
 
 /**
  * Fetch a public web page safely. Users paste arbitrary links, so this must
@@ -116,7 +117,9 @@ export function pageToText(html: string, maxChars = 9000) {
     .replace(/[ \t]+/g, " ")
     .replace(/\n\s*\n+/g, "\n")
     .trim();
-  return [title && `TITLE: ${title}`, ld.length && `STRUCTURED DATA:\n${ld.join("\n")}`, `TEXT:\n${text}`]
+  // Pay goes right under the title: ATS pages often list it last, where the length cap would cut it off.
+  const pay = findPay(html, text);
+  return [title && `TITLE: ${title}`, pay && payLine(pay), ld.length && `STRUCTURED DATA:\n${ld.join("\n")}`, `TEXT:\n${text}`]
     .filter(Boolean)
     .join("\n\n")
     .slice(0, maxChars);
