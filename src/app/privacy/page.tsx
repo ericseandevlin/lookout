@@ -30,7 +30,7 @@ export default function Privacy() {
           </ul>
 
           <H>Who sees it</H>
-          <p>You. Eric, as the admin, sees the list of accounts with emails, sign-in dates, counts of finds and search costs, and he can reach the database itself, so treat what you upload as something he could read. No one else gets access.</p>
+          <p>You. Eric, as the admin, sees the list of accounts with emails, sign-in dates, counts of finds and search costs. He can also open a read-only view of your board to help when something looks off (each view is logged), and he can reach the database itself, so treat what you upload as something he could read. No one else gets access.</p>
 
           <H>Services it uses</H>
           <ul>

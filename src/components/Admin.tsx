@@ -189,6 +189,7 @@ export function AdminPeople() {
                       </span>
                     </td>
                     <td style={{ ...td, whiteSpace: "nowrap", textAlign: "right" }}>
+                      <a href={`/view/${u.id}`} style={{ ...btn("outline"), height: 30, padding: "0 10px", fontSize: 14, marginRight: 6, display: "inline-flex", alignItems: "center", textDecoration: "none" }}>View board</a>
                       <button onClick={() => patchUser(u.id, { isAdmin: !u.isAdmin })} style={{ ...btn("outline"), height: 30, padding: "0 10px", fontSize: 14, marginRight: 6 }}>{u.isAdmin ? "Remove admin" : "Make admin"}</button>
                       <button onClick={async () => (u.disabled || (await ask({ eyebrow: "Disable account", title: `Disable ${u.email}?`, body: "They're signed out everywhere and can't sign back in until you enable them. Their board and data stay.", confirmLabel: "Disable", danger: true }))) && patchUser(u.id, { disabled: !u.disabled })} className="h-danger" style={{ ...btn("danger"), height: 30, padding: "0 10px", fontSize: 14 }}>{u.disabled ? "Enable" : "Disable"}</button>
                     </td>

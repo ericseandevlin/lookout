@@ -161,8 +161,12 @@ export function Finds() {
                 style={{ flex: 1, minWidth: 0, background: "transparent", border: 0, outline: "none", color: "#1D1A0F", fontSize: 14 }}
               />
             </div>
-            <SearchNowButton />
-            <AddLink open={addOpen} setOpen={setAddOpen} />
+            {!store.readOnly && (
+              <>
+                <SearchNowButton />
+                <AddLink open={addOpen} setOpen={setAddOpen} />
+              </>
+            )}
           </div>
         </div>
       </div>
@@ -669,7 +673,7 @@ const NOT_A_FIT = ["Wrong level", "Wrong kind of role", "Wrong industry", "Locat
 type DrawerNav = { index: number; total: number; prev?: () => void; next?: () => void };
 
 function Drawer({ f, close, toggle, setStage, enter, nav }: { f: Find; close: () => void; toggle: (f: Find, k: "pinned" | "archived") => void; setStage: (f: Find, s: Stage) => void; enter: boolean; nav: DrawerNav }) {
-  const { patchFind, state, refresh } = useStore();
+  const { patchFind, state, refresh, readOnly } = useStore();
   const [applyMsg, setApplyMsg] = useState<string | null>(null);
   const applyWithLookout = async () => {
     setApplyMsg("Queuing…");
@@ -848,7 +852,7 @@ function Drawer({ f, close, toggle, setStage, enter, nav }: { f: Find; close: ()
               <div style={{ fontSize: 14, color: "#6B6358" }}>Saves when you pause or close</div>
             </div>
             <div style={{ position: "relative", flex: 1, display: "flex" }}>
-              <textarea value={notes} onChange={(e) => onNotes(e.target.value)} onBlur={flushNotes} placeholder="Contacts, follow-ups, interview prep..." aria-label="Notes" className="f-brick" style={{ flex: 1, minHeight: 160, resize: "vertical", border: "1.5px solid #E6E0D8", borderRadius: 10, padding: "12px 14px 34px", fontSize: 14, lineHeight: 1.5, outline: "none", color: "#1D1A0F", cursor: noteState === "saving" ? "progress" : undefined }} />
+              <textarea value={notes} readOnly={readOnly} onChange={(e) => onNotes(e.target.value)} onBlur={flushNotes} placeholder="Contacts, follow-ups, interview prep..." aria-label="Notes" className="f-brick" style={{ flex: 1, minHeight: 160, resize: "vertical", border: "1.5px solid #E6E0D8", borderRadius: 10, padding: "12px 14px 34px", fontSize: 14, lineHeight: 1.5, outline: "none", color: "#1D1A0F", cursor: noteState === "saving" ? "progress" : undefined }} />
               <div aria-live="polite" style={{ position: "absolute", right: 10, bottom: 10, padding: "3px 10px", borderRadius: 999, fontSize: 14, fontWeight: 600, background: noteState === "saved" ? "#E8F1E6" : "#F4F1EC", color: noteState === "saved" ? "#2F5A2A" : "#3B362C", opacity: noteState === "idle" ? 0 : 1, transition: "opacity .25s", pointerEvents: "none" }}>
                 {noteState === "saving" ? "Saving…" : noteState === "saved" ? "Saved" : ""}
               </div>
