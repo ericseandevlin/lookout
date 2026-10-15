@@ -33,6 +33,10 @@ export const env = {
   get mailFrom() {
     return process.env.MAIL_FROM || "Lookout <lookout@localhost>";
   },
+  /** Where replies go. The From address only sends, so without this, replies are lost. Defaults to the first admin. */
+  get mailReplyTo() {
+    return process.env.MAIL_REPLY_TO || list(process.env.ADMIN_EMAILS)[0] || "";
+  },
   /** Print magic links to stdout when no SMTP is configured. Dev only. */
   get logEmails() {
     return process.env.EMAIL_DEV_LOG === "1";
