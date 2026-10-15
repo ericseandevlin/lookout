@@ -5,7 +5,7 @@ import { db, schema } from "@/lib/db";
 import { parseMoney } from "@/lib/kinds";
 import { fetchPage, FetchError, pageToText } from "@/lib/ai/fetchPage";
 import type { RunReport, RunTally, SearchProfile } from "@/lib/db/schema";
-import { ensureSearchProfile, loadRawInputs, renderSearchProfile } from "./searchProfile";
+import { ensureSearchProfile, loadRawInputs, notesBlock, renderSearchProfile } from "./searchProfile";
 import { buildTips, emptyTally } from "./report";
 import { autoQueue } from "@/lib/apply";
 import { completeJSON, emptyUsage, type Usage } from "@/lib/ai/llm";
@@ -37,6 +37,8 @@ type Context = {
   links: { url: string; text: string }[];
   /** The saved search profile; when present it stands in for the raw materials. */
   searchProfile: SearchProfile | null;
+  /** Their notes on finds; corrections here outrank the profile. */
+  notes: string[];
   /** Recent "Not a fit" calls, so searches stop suggesting the same kind of role. */
   rejected: string[];
   floor: number | null;
@@ -64,6 +66,7 @@ export async function loadContext(userId: string): Promise<Context> {
     linkedin: raw.linkedin,
     links: raw.links,
     searchProfile: raw.stored?.searchProfile ?? null,
+    notes: raw.notes,
     rejected,
     floor: parseMoney(raw.answers.floor),
     knownUrls: rows.map((k) => k.url).filter((u): u is string => !!u),
@@ -79,6 +82,7 @@ const profileBlock = (c: Context) =>
     : `<resume>\n${c.resume || "(no resume uploaded)"}\n</resume>` +
       (c.linkedin ? `\n<linkedin_profile>\n${c.linkedin}\n</linkedin_profile>` : "") +
       (c.links.length ? `\n<their_links>\n${c.links.map((l) => `${l.url}\n${l.text}`).join("\n---\n")}\n</their_links>` : "")) +
+  notesBlock(c.notes) +
   (c.rejected.length ? `\n<marked_not_a_fit>\nThey said these roles were not a fit. Avoid similar ones.\n${c.rejected.join("\n")}\n</marked_not_a_fit>` : "");
 
 const today = () => new Date().toISOString().slice(0, 10);

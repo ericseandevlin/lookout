@@ -10,7 +10,7 @@ import { api } from "./store";
 type Data = {
   profile: SearchProfile | null;
   builtAt: string | null;
-  sources: { answers: number; resume: boolean; linkedin: boolean; links: number };
+  sources: { answers: number; resume: boolean; linkedin: boolean; links: number; notes: number };
   stale: boolean;
   canBuild: boolean;
   error: string | null;
@@ -22,6 +22,7 @@ const sourceLine = (s: Data["sources"]) => {
     s.resume && "your resume",
     s.linkedin && "your LinkedIn PDF",
     s.links && `${s.links} ${s.links === 1 ? "link" : "links"}`,
+    s.notes && `your notes on ${s.notes} ${s.notes === 1 ? "find" : "finds"}`,
   ].filter(Boolean) as string[];
   return parts.length > 1 ? `${parts.slice(0, -1).join(", ")} and ${parts.at(-1)}` : (parts[0] ?? "nothing yet");
 };

@@ -1,6 +1,6 @@
 import "server-only";
 import { createHash } from "node:crypto";
-import { eq } from "drizzle-orm";
+import { and, desc, eq, ne } from "drizzle-orm";
 import { z } from "zod";
 import { db, schema } from "@/lib/db";
 import type { SearchProfile } from "@/lib/db/schema";
@@ -24,9 +24,17 @@ export type RawInputs = {
   resume: string;
   linkedin: string;
   links: { url: string; text: string }[];
-  sources: { answers: number; resume: boolean; linkedin: boolean; links: number };
+  /** What they wrote in the notes on their finds: corrections and context the search should honor. */
+  notes: string[];
+  sources: { answers: number; resume: boolean; linkedin: boolean; links: number; notes: number };
   hash: string;
 };
+
+/** Their notes on finds, for prompts. A note that corrects how Lookout reads them outranks the resume and earlier scoring. */
+export const notesBlock = (notes: string[]) =>
+  notes.length
+    ? `\n<their_notes_on_finds>\nThings they wrote on past finds. Treat any correction about their background, domain or preferences as fact, even where it contradicts the resume or an earlier score; drop reasoning that conflicts with it.\n${notes.join("\n")}\n</their_notes_on_finds>`
+    : "";
 
 export async function loadRawInputs(userId: string): Promise<RawInputs & { stored: typeof schema.profiles.$inferSelect | undefined }> {
   const [p] = await db.select().from(schema.profiles).where(eq(schema.profiles.userId, userId));
@@ -42,8 +50,16 @@ export async function loadRawInputs(userId: string): Promise<RawInputs & { store
     .filter((m) => m.kind === "link" && m.url && m.extracted?.text)
     .slice(0, 4)
     .map((m) => ({ url: m.url!, text: m.extracted!.text!.slice(0, 1500) }));
+  const noted = await db
+    .select({ title: schema.opportunities.title, company: schema.opportunities.company, notes: schema.userOpportunities.notes })
+    .from(schema.userOpportunities)
+    .innerJoin(schema.opportunities, eq(schema.opportunities.id, schema.userOpportunities.opportunityId))
+    .where(and(eq(schema.userOpportunities.userId, userId), ne(schema.userOpportunities.notes, "")))
+    .orderBy(desc(schema.userOpportunities.addedAt))
+    .limit(15);
+  const notes = noted.map((n) => `On "${n.title}" at ${n.company}: ${n.notes.trim().slice(0, 400)}`);
   const brief = kind.brief(answers);
-  const hash = createHash("sha1").update(JSON.stringify([VERSION, brief, resumeText, linkedin, links])).digest("hex");
+  const hash = createHash("sha1").update(JSON.stringify([VERSION, brief, resumeText, linkedin, links, notes])).digest("hex");
   const answered = Object.values(answers).filter((v) => (Array.isArray(v) ? v.length : String(v ?? "").trim())).length;
   return {
     answers,
@@ -51,7 +67,8 @@ export async function loadRawInputs(userId: string): Promise<RawInputs & { store
     resume: resumeText,
     linkedin,
     links,
-    sources: { answers: answered, resume: !!resumeText, linkedin: !!linkedin, links: links.length },
+    notes,
+    sources: { answers: answered, resume: !!resumeText, linkedin: !!linkedin, links: links.length, notes: notes.length },
     hash,
     stored: p,
   };
@@ -113,7 +130,8 @@ export async function ensureSearchProfile(userId: string, usage: Usage, opts: { 
         "You turn a job seeker's answers and background into a compact search profile. Their own answers outrank anything inferred from the resume. Only use facts given; never invent employers, numbers or credentials.",
       user: `<answers>\n${raw.brief}\n</answers>\n<resume>\n${raw.resume || "(none)"}\n</resume>` +
         (raw.linkedin ? `\n<linkedin_profile>\n${raw.linkedin}\n</linkedin_profile>` : "") +
-        (raw.links.length ? `\n<their_links>\n${raw.links.map((l) => `${l.url}\n${l.text}`).join("\n---\n")}\n</their_links>` : ""),
+        (raw.links.length ? `\n<their_links>\n${raw.links.map((l) => `${l.url}\n${l.text}`).join("\n---\n")}\n</their_links>` : "") +
+        notesBlock(raw.notes),
     });
     const profile: SearchProfile = {
       ...out,

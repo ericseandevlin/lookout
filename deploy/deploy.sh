@@ -1,7 +1,9 @@
 #!/usr/bin/env bash
 # Build the image for the VPS (linux/amd64), ship it over SSH, restart the stack.
-# Usage: deploy/deploy.sh            production (lookout.ericdevlin.co, /opt/lookout, port 3200)
-#        deploy/deploy.sh staging    staging (staging.lookout.ericdevlin.co, /opt/lookout-staging, port 3201)
+# Usage: deploy/deploy.sh            production (lookout.ericdevlin.co, /opt/lookout, port 3200), from branch `prod`
+#        deploy/deploy.sh staging    staging (staging.lookout.ericdevlin.co, /opt/lookout-staging, port 3201), from branch `main`
+# Flow: local dev (npm run dev, feature branches) -> main -> staging -> reviewed at the weekly release meeting ->
+# fast-forward `prod` to the approved commit -> production. Each deploy builds exactly a pushed, clean commit.
 set -euo pipefail
 SSH="${LOOKOUT_SSH:-ssh -i $HOME/.ssh/hermes_vps root@2.25.107.193}"
 cd "$(dirname "$0")/.."
@@ -10,7 +12,14 @@ if [ "${1:-production}" = "staging" ]; then
 else
   dir="${LOOKOUT_DIR:-/opt/lookout}"; tag=lookout:latest; port=3200
 fi
-docker buildx build --platform linux/amd64 -t "$tag" --load .
+want=$([ "$tag" = "lookout:latest" ] && echo prod || echo main)
+branch=$(git rev-parse --abbrev-ref HEAD)
+[ "$branch" = "$want" ] || { echo "Refusing: $tag deploys from branch '$want', you're on '$branch'." >&2; exit 1; }
+[ -z "$(git status --porcelain)" ] || { echo "Refusing: uncommitted changes. Commit or stash first." >&2; exit 1; }
+git fetch -q origin "$want"
+[ "$(git rev-parse HEAD)" = "$(git rev-parse "origin/$want")" ] || { echo "Refusing: $want isn't pushed (or is behind origin)." >&2; exit 1; }
+sha=$(git rev-parse --short HEAD)
+docker buildx build --platform linux/amd64 -t "$tag" --label "co.ericdevlin.commit=$sha" --load .
 docker save "$tag" | gzip | $SSH 'gunzip | docker load'
 $SSH "mkdir -p $dir/searxng"
 cat deploy/docker-compose.yml | $SSH "cat > $dir/docker-compose.yml"
@@ -22,6 +31,6 @@ if [ "$tag" = "lookout:latest" ]; then
   $SSH "(crontab -l 2>/dev/null | grep -v 'lookout/backup.sh'; echo '15 7 * * * $dir/backup.sh >> $dir/backups.log 2>&1') | crontab -"
 fi
 $SSH "cd $dir && docker compose up -d && docker image prune -f >/dev/null"
-echo "Deployed $tag. Health:"
+echo "Deployed $tag at $sha. Health:"
 sleep 8
 $SSH "curl -fsS http://172.17.0.1:$port/api/health"

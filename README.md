@@ -84,6 +84,9 @@ AI and search settings can live in env or be set in Admin > AI settings (the dat
 
 ## Deploy
 
+Three environments, promoted in order: **dev** is your machine (`npm run dev`, feature branches), **staging** is branch `main` (`deploy/deploy.sh staging`), **production** is branch `prod` (`deploy/deploy.sh`). Changes reach production only after review on staging at the weekly release meeting: `git checkout prod && git merge --ff-only <approved commit> && git push`, then deploy. The script refuses to deploy from the wrong branch, with uncommitted changes, or with unpushed commits, and labels each image with its commit.
+
+
 `deploy/deploy.sh` builds a `linux/amd64` image, ships it over SSH (`hermes_vps` key), copies the Compose file, SearXNG settings and backup script, installs the backup cron, restarts the stack in `/opt/lookout`, and checks `/api/health`. The server needs `/opt/lookout/.env` (from `deploy/env.example`, mode 600) and `/opt/lookout/secrets/db_password`. The app listens on `172.17.0.1:3200`; Caddy in Plane's proxy container (`/root/Caddyfile.proper`) serves both domains. DNS for ericdevlin.co is Route 53.
 
 Sign someone in without email (on the server): `docker compose exec app node scripts/login-link.mjs someone@example.com`.

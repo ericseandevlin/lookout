@@ -74,11 +74,14 @@ export function Finds() {
 
   const fitCount = (m: number) => base.filter((f) => f.score >= m).length;
 
+  // True while stepping between finds with previous/next, so the drawer doesn't replay its slide-in.
+  const [switching, setSwitching] = useState(false);
   // Deep links: #company-role-slug opens the drawer.
   const open = useCallback(
     (id: string | null) => {
       const f = finds.find((x) => x.id === id);
       history.replaceState(null, "", location.pathname + location.search + (f ? "#" + slugOf(f) : ""));
+      if (!id) setSwitching(false);
       setOpenId(id);
       setFitMenu(false);
       if (f && !f.seen) patchFind(f.id, { seen: true });
@@ -118,6 +121,14 @@ export function Finds() {
   const arrow = sortDir === "asc" ? "↑" : "↓";
   const filterCount = (fit ? 1 : 0) + (compOnly ? 1 : 0);
   const openFind = finds.find((f) => f.id === openId) ?? null;
+  // Previous/next walk the board in its current filter and sort order; the drawer swaps in place without re-animating.
+  const openIndex = openFind ? rows.findIndex((f) => f.id === openFind.id) : -1;
+  const step = (d: number) => {
+    const to = rows[openIndex + d];
+    if (!to) return;
+    setSwitching(true);
+    open(to.id);
+  };
   const dense = settings.density === "Compact";
 
   const sub = state.running
@@ -351,7 +362,22 @@ export function Finds() {
         />
       )}
 
-      {openFind && <Drawer key={openFind.id} f={openFind} close={() => open(null)} toggle={toggle} setStage={setStage} />}
+      {openFind && (
+        <Drawer
+          key={openFind.id}
+          f={openFind}
+          close={() => open(null)}
+          toggle={toggle}
+          setStage={setStage}
+          enter={!switching}
+          nav={{
+            index: openIndex,
+            total: rows.length,
+            prev: openIndex > 0 ? () => step(-1) : undefined,
+            next: openIndex >= 0 && openIndex < rows.length - 1 ? () => step(1) : undefined,
+          }}
+        />
+      )}
     </>
   );
 }
@@ -636,11 +662,14 @@ const Label = ({ children, style }: { children: React.ReactNode; style?: React.C
 );
 
 const NOTES_IDLE_MS = 6000;
+const navBtn = (off: boolean): React.CSSProperties => ({ border: 0, background: "rgba(255,255,255,.1)", color: "#fff", width: 30, height: 30, borderRadius: "50%", cursor: off ? "default" : "pointer", fontSize: 18, lineHeight: 1, opacity: off ? 0.35 : 1, padding: 0 });
 const DRAWER_MS = 220;
 
 const NOT_A_FIT = ["Wrong level", "Wrong kind of role", "Wrong industry", "Location", "Pay", "Not that company", "Just not interested"];
 
-function Drawer({ f, close, toggle, setStage }: { f: Find; close: () => void; toggle: (f: Find, k: "pinned" | "archived") => void; setStage: (f: Find, s: Stage) => void }) {
+type DrawerNav = { index: number; total: number; prev?: () => void; next?: () => void };
+
+function Drawer({ f, close, toggle, setStage, enter, nav }: { f: Find; close: () => void; toggle: (f: Find, k: "pinned" | "archived") => void; setStage: (f: Find, s: Stage) => void; enter: boolean; nav: DrawerNav }) {
   const { patchFind, state, refresh } = useStore();
   const [applyMsg, setApplyMsg] = useState<string | null>(null);
   const applyWithLookout = async () => {
@@ -662,6 +691,10 @@ function Drawer({ f, close, toggle, setStage }: { f: Find; close: () => void; to
   const closeBtn = useRef<HTMLButtonElement>(null);
   // Notes stay local while typing; they save after a long pause or when the drawer closes, so typing never stalls.
   const pending = useRef<string | null>(null);
+  const navRef = useRef(nav);
+  useEffect(() => {
+    navRef.current = nav;
+  });
 
   const flushNotes = useCallback(async () => {
     clearTimeout(timers.current.save);
@@ -684,7 +717,13 @@ function Drawer({ f, close, toggle, setStage }: { f: Find; close: () => void; to
 
   useEffect(() => {
     closeBtn.current?.focus();
-    const onKey = (e: KeyboardEvent) => e.key === "Escape" && animatedClose();
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") return animatedClose();
+      const typing = (e.target as HTMLElement | null)?.closest("input, textarea, select, [contenteditable]");
+      if (typing || e.metaKey || e.ctrlKey || e.altKey) return;
+      if (e.key === "ArrowLeft" || e.key === "k") navRef.current.prev?.();
+      if (e.key === "ArrowRight" || e.key === "j") navRef.current.next?.();
+    };
     // Leaving the page with unsaved notes: send them with keepalive so the request outlives the tab.
     const onHide = () => {
       if (pending.current === null) return;
@@ -727,12 +766,21 @@ function Drawer({ f, close, toggle, setStage }: { f: Find; close: () => void; to
 
   return (
     <>
-      <div onClick={animatedClose} className={leaving ? "drawer-scrim out" : "drawer-scrim"} style={{ position: "fixed", inset: 0, background: "rgba(29,26,15,.28)", zIndex: 20 }} />
-      <aside role="dialog" aria-modal="true" aria-label={`${f.role} at ${f.company}`} className={leaving ? "drawer-panel out" : "drawer-panel"} style={{ position: "fixed", top: 0, right: 0, bottom: 0, width: 440, maxWidth: "100vw", background: "#fff", zIndex: 21, display: "flex", flexDirection: "column", boxShadow: "-12px 0 40px rgba(29,26,15,.18)" }}>
+      <div onClick={animatedClose} className={leaving ? "drawer-scrim out" : enter ? "drawer-scrim" : undefined} style={{ position: "fixed", inset: 0, background: "rgba(29,26,15,.28)", zIndex: 20 }} />
+      <aside role="dialog" aria-modal="true" aria-label={`${f.role} at ${f.company}`} className={leaving ? "drawer-panel out" : enter ? "drawer-panel" : undefined} style={{ position: "fixed", top: 0, right: 0, bottom: 0, width: 440, maxWidth: "100vw", background: "#fff", zIndex: 21, display: "flex", flexDirection: "column", boxShadow: "-12px 0 40px rgba(29,26,15,.18)" }}>
         <div style={{ background: "#1D1A0F", color: "#fff", padding: "24px 26px 22px" }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12 }}>
             <div style={{ fontSize: 14, color: "#F8A865", fontWeight: 600 }}>{f.company}</div>
-            <button ref={closeBtn} onClick={animatedClose} aria-label="Close" style={{ border: 0, background: "rgba(255,255,255,.1)", color: "#fff", width: 30, height: 30, borderRadius: "50%", cursor: "pointer", fontSize: 16, lineHeight: 1 }}>×</button>
+            <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+              {nav.index >= 0 && nav.total > 1 && (
+                <>
+                  <button onClick={nav.prev} disabled={!nav.prev} aria-label="Previous find" data-tip="Previous (←)" style={navBtn(!nav.prev)}>‹</button>
+                  <span aria-live="polite" style={{ fontSize: 14, color: "rgba(255,255,255,.75)", minWidth: 52, textAlign: "center", fontVariantNumeric: "tabular-nums" }}>{nav.index + 1} of {nav.total}</span>
+                  <button onClick={nav.next} disabled={!nav.next} aria-label="Next find" data-tip="Next (→)" style={navBtn(!nav.next)}>›</button>
+                </>
+              )}
+              <button ref={closeBtn} onClick={animatedClose} aria-label="Close" style={{ border: 0, background: "rgba(255,255,255,.1)", color: "#fff", width: 30, height: 30, borderRadius: "50%", cursor: "pointer", fontSize: 16, lineHeight: 1, marginLeft: 4 }}>×</button>
+            </div>
           </div>
           <div style={{ fontSize: 23, fontWeight: 700, letterSpacing: "-0.01em", marginTop: 6, textWrap: "pretty" }}>{f.role}</div>
           <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 14, flexWrap: "wrap" }}>
