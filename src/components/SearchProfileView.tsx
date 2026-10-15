@@ -131,6 +131,11 @@ export function SearchProfileView() {
                 <Chips items={p.avoid} muted />
               </Part>
             )}
+            {(p.corrections?.length ?? 0) > 0 && (
+              <Part title="What you've corrected" edit={["/finds", "From your notes"]}>
+                <List items={p.corrections!} />
+              </Part>
+            )}
             <Part title="Words it looks for in postings">
               <Chips items={p.searchTerms} muted />
             </Part>
