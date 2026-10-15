@@ -49,6 +49,8 @@ export function Finds() {
   const [stageMenu, setStageMenu] = useState<string | null>(null);
   // The stage menu renders in a top layer, placed from its button, so the board's scroll container can't clip it.
   const [menuAt, setMenuAt] = useState<React.CSSProperties>({});
+  // Desktop rows and phone cards both exist in the DOM; only the one that was clicked shows its menu.
+  const [menuSurface, setMenuSurface] = useState<"desk" | "mob">("desk");
   const toggleStageMenu = (e: React.MouseEvent<HTMLElement>, id: string, align: "left" | "right") => {
     e.stopPropagation();
     if (stageMenu === id) return setStageMenu(null);
@@ -59,6 +61,7 @@ export function Finds() {
       ...(up ? { bottom: window.innerHeight - r.top + 6 } : { top: r.bottom + 6 }),
       ...(align === "left" ? { left: r.left } : { right: window.innerWidth - r.right }),
     });
+    setMenuSurface(align === "left" ? "desk" : "mob");
     setStageMenu(id);
     setFitMenu(false);
   };
@@ -330,7 +333,7 @@ export function Finds() {
                         {f.stage}
                         <ChevronDown />
                       </button>
-                      {stageMenu === f.id && (
+                      {stageMenu === f.id && menuSurface === "desk" && (
                         <StageMenu current={f.stage} style={{ ...menuAt, minWidth: 150 }} onPick={(s) => { setStage(f, s); setStageMenu(null); }} />
                       )}
                     </div>
@@ -369,7 +372,7 @@ export function Finds() {
                           {f.stage}
                           <ChevronDown size={11} />
                         </button>
-                        {stageMenu === f.id && (
+                        {stageMenu === f.id && menuSurface === "mob" && (
                           <StageMenu mobile current={f.stage} style={{ ...menuAt, minWidth: 170 }} onPick={(s) => { setStage(f, s); setStageMenu(null); }} />
                         )}
                       </div>
