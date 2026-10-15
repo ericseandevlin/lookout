@@ -849,7 +849,7 @@ function Drawer({ f, close, toggle, setStage, enter, nav }: { f: Find; close: ()
           <div style={{ display: "flex", flexDirection: "column", flex: 1 }}>
             <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 10, marginBottom: 8 }}>
               <Label>Notes</Label>
-              <div style={{ fontSize: 14, color: "#6B6358" }}>Saves when you pause or close</div>
+              <div style={{ fontSize: 14, color: "#6B6358" }}>{readOnly ? "View only" : "Saves when you pause or close"}</div>
             </div>
             <div style={{ position: "relative", flex: 1, display: "flex" }}>
               <textarea value={notes} readOnly={readOnly} onChange={(e) => onNotes(e.target.value)} onBlur={flushNotes} placeholder="Contacts, follow-ups, interview prep..." aria-label="Notes" className="f-brick" style={{ flex: 1, minHeight: 160, resize: "vertical", border: "1.5px solid #E6E0D8", borderRadius: 10, padding: "12px 14px 34px", fontSize: 14, lineHeight: 1.5, outline: "none", color: "#1D1A0F", cursor: noteState === "saving" ? "progress" : undefined }} />
