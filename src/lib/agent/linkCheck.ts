@@ -10,7 +10,18 @@ type LinkCheck = { checkedAt: string; state: LinkState; reason: string; goneSinc
 const CONFIRM_MS = 20 * 3600_000; // gone on two checks at least this far apart before anything closes
 const ACTIVE = ["Applied", "Interview", "Offer"];
 
+// Some careers sites answer inconsistently (one server in maintenance, the next with the real page), so an
+// inconclusive answer is retried a few times before it counts as unknown.
 async function check(url: string): Promise<{ state: LinkState; reason: string }> {
+  let last = await checkOnce(url);
+  for (let i = 1; i < 3 && last.state === "unknown"; i++) {
+    await new Promise((r) => setTimeout(r, 1200));
+    last = await checkOnce(url);
+  }
+  return last;
+}
+
+async function checkOnce(url: string): Promise<{ state: LinkState; reason: string }> {
   try {
     const { url: finalUrl, html } = await fetchPage(url);
     return classifyPage(200, pageToText(html, 4000), finalUrl);
