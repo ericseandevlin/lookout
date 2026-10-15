@@ -188,6 +188,7 @@ function Report({ r }: { r: RunReport }) {
     t.belowFloor && `${t.belowFloor} under your pay floor`,
     t.offLocation && `${t.offLocation} off on location`,
   ].filter(Boolean) as string[];
+  const closedNote = t.closed ? `${t.closed} ${t.closed === 1 ? "posting on your board was" : "postings on your board were"} taken down, so ${t.closed === 1 ? "it's" : "they're"} now Closed and archived.` : "";
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 12, marginTop: 8 }}>
       <ol aria-label="What this search did" style={{ listStyle: "none", margin: 0, padding: 0, display: "flex", flexWrap: "wrap", alignItems: "baseline", gap: "6px 0" }}>
@@ -200,6 +201,7 @@ function Report({ r }: { r: RunReport }) {
         ))}
       </ol>
       {outs.length > 0 && <div style={{ fontSize: 14, color: "#A89F92" }}>Of the job posts: {outs.join(" · ")}. Pay and location only mark a role down; it still goes on your board.</div>}
+      {closedNote && <div style={{ fontSize: 14, color: "#A89F92" }}>{closedNote}</div>}
       {r.tips.length > 0 && (
         <ul style={{ listStyle: "none", margin: 0, padding: 0, display: "flex", flexDirection: "column", gap: 8 }}>
           {r.tips.map((tip) => (
