@@ -38,3 +38,5 @@ $SSH "curl -fsS http://172.17.0.1:$port/api/health"
 git fetch -q origin main prod
 echo "$sha $(date -u +%FT%TZ)" | $SSH "cat > $dir/DEPLOYED"
 git log --no-merges --date=short --format='%h %ad %s' origin/prod..origin/main | $SSH "cat > /opt/lookout-staging/PENDING.txt"
+# Issue numbers already shipped (hotfixes included, whatever their hash): the Leantime sync marks these Done.
+git log --format='%s' origin/prod | grep -oE '\(#[0-9]+\)' | tr -d '(#)' | sort -un | $SSH "cat > /opt/lookout-staging/RELEASED.txt"
