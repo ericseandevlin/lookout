@@ -7,7 +7,6 @@ import { classifyPage, type LinkState } from "./linkState";
 /** Stored on opportunities.attributes so every person's board shares one check per posting. */
 type LinkCheck = { checkedAt: string; state: LinkState; reason: string; goneSince?: string };
 
-const RECHECK_MS = 12 * 3600_000; // one check per posting per 12 hours, however many boards it's on
 const CONFIRM_MS = 20 * 3600_000; // gone on two checks at least this far apart before anything closes
 const ACTIVE = ["Applied", "Interview", "Offer"];
 
@@ -38,18 +37,16 @@ export async function closeGonePostings(userId: string, now = new Date()): Promi
   const worker = async () => {
     for (let r = queue.shift(); r; r = queue.shift()) {
       const prev = (r.o.attributes?.linkCheck ?? null) as LinkCheck | null;
-      let lc = prev;
-      if (!prev || now.getTime() - Date.parse(prev.checkedAt) > RECHECK_MS) {
-        const { state, reason } = await check(r.o.sourceUrl!);
-        // goneSince starts at the first gone result and survives "unknown" (a maintenance page proves nothing); an open result clears it.
-        const goneSince = state === "gone" ? (prev?.goneSince ?? now.toISOString()) : state === "open" ? undefined : prev?.goneSince;
-        lc = { checkedAt: now.toISOString(), state, reason, ...(goneSince && { goneSince }) };
-        await db
-          .update(schema.opportunities)
-          .set({ attributes: { ...(r.o.attributes ?? {}), linkCheck: lc } })
-          .where(eq(schema.opportunities.id, r.o.id));
-      }
-      if (lc?.state === "gone" && lc.goneSince && now.getTime() - Date.parse(lc.goneSince) >= CONFIRM_MS) {
+      // Checked on every search run.
+      const { state, reason } = await check(r.o.sourceUrl!);
+      // goneSince starts at the first gone result and survives "unknown" (a maintenance page proves nothing); an open result clears it.
+      const goneSince = state === "gone" ? (prev?.goneSince ?? now.toISOString()) : state === "open" ? undefined : prev?.goneSince;
+      const lc: LinkCheck = { checkedAt: now.toISOString(), state, reason, ...(goneSince && { goneSince }) };
+      await db
+        .update(schema.opportunities)
+        .set({ attributes: { ...(r.o.attributes ?? {}), linkCheck: lc } })
+        .where(eq(schema.opportunities.id, r.o.id));
+      if (lc.state === "gone" && lc.goneSince && now.getTime() - Date.parse(lc.goneSince) >= CONFIRM_MS) {
         const day = lc.goneSince.slice(0, 10);
         const line = `Closed: the posting was gone (${lc.reason}) as of ${day}. Lookout archived it.`;
         await db
