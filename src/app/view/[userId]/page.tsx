@@ -26,7 +26,7 @@ export default async function Page({ params }: { params: Promise<{ userId: strin
   const who = person.name || person.email;
   return (
     <StoreProvider initial={viewState} readOnly>
-      <div role="status" style={{ position: "sticky", top: 0, zIndex: 30, display: "flex", alignItems: "center", gap: 12, padding: "10px 20px", background: "#1D1A0F", color: "#fff", fontSize: 14 }}>
+      <div role="status" style={{ position: "sticky", top: 0, zIndex: 19, display: "flex", alignItems: "center", gap: 12, padding: "10px 20px", background: "#1D1A0F", color: "#fff", fontSize: 14 }}>
         <span style={{ padding: "2px 8px", borderRadius: 6, background: "#F8A865", color: "#1D1A0F", fontWeight: 700 }}>View only</span>
         <span>
           You&apos;re looking at <b>{who}</b>&apos;s board as they see it. Nothing you do here changes it.
