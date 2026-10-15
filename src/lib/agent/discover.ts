@@ -4,6 +4,7 @@ import { z } from "zod";
 import { db, schema } from "@/lib/db";
 import { parseMoney } from "@/lib/kinds";
 import { fetchPage, FetchError, pageToText } from "@/lib/ai/fetchPage";
+import { findPay, type Pay } from "@/lib/ai/pay";
 import type { RunReport, RunTally, SearchProfile } from "@/lib/db/schema";
 import { ensureSearchProfile, loadRawInputs, renderSearchProfile } from "./searchProfile";
 import { buildTips, emptyTally } from "./report";
@@ -157,7 +158,7 @@ async function pickHits(ctx: Context, hits: SearchHit[], usage: Usage) {
 
 // --- 4. fetch ------------------------------------------------------------------
 
-type Page = { url: string; text: string };
+type Page = { url: string; text: string; pay: Pay | null };
 
 const host = (u: string) => {
   try {
@@ -178,7 +179,7 @@ async function fetchAll(urls: string[], report?: Report): Promise<Page[]> {
       try {
         const { url, html } = await fetchPage(u);
         const text = pageToText(html, 7000);
-        if (text.length > 300) out.push({ url, text });
+        if (text.length > 300) out.push({ url, text, pay: findPay(html) });
       } catch (e) {
         // Dead, blocked or non-HTML pages are skipped, but logged so a broken reader shows up.
         console.warn(`[fetch] ${host(u)}: ${e instanceof Error ? (e.cause instanceof Error ? e.cause.message : e.message) : e}`);
@@ -234,7 +235,8 @@ async function scorePages(ctx: Context, pages: Page[], usage: Usage, report?: Re
       });
       for (const f of res.finds) {
         const page = batch[f.index];
-        if (page) out.push({ ...f, url: page.url });
+        // The model sometimes misses pay even when it's on the page; the deterministic read fills the gap.
+        if (page) out.push({ ...f, url: page.url, ...(f.comp_min == null && f.comp_max == null && page.pay && page.pay.currency === "USD" && { comp_min: page.pay.min, comp_max: page.pay.max }) });
       }
     } catch (e) {
       console.error("[discover] scoring batch failed", e);
@@ -384,7 +386,7 @@ export async function addByUrl(userId: string, url: string) {
     let page: Page;
     try {
       const { url: finalUrl, html } = await fetchPage(url);
-      page = { url: finalUrl, text: pageToText(html, 12000) };
+      page = { url: finalUrl, text: pageToText(html, 12000), pay: findPay(html) };
     } catch (e) {
       throw new Error(e instanceof FetchError ? e.message : "Couldn't load that page");
     }
