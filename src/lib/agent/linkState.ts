@@ -20,8 +20,8 @@ export function classifyPage(status: number, text: string, finalUrl = ""): { sta
   if (/[?&]error=true\b/.test(finalUrl)) return { state: "gone", reason: "the job board says it's closed" };
   if (status !== 200) return { state: "unknown", reason: `page answered ${status}` };
   const head = text.slice(0, 2500);
+  // Closed wording wins: real "job not available" pages often mention maintenance or sign-in somewhere too.
+  if (CLOSED.some((r) => r.test(head))) return { state: "gone", reason: "page says it's closed" };
   if (NOT_A_VERDICT.some((r) => r.test(head))) return { state: "unknown", reason: "site unavailable or blocked" };
-  const hit = CLOSED.find((r) => r.test(head));
-  if (hit) return { state: "gone", reason: "page says it's closed" };
   return { state: "open", reason: "posting is up" };
 }
