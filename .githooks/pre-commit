@@ -1,0 +1,6 @@
+#!/usr/bin/env bash
+# No direct commits to the environment branches. Work on feat/<n>-slug or fix/<n>-slug and merge with a PR.
+branch=$(git rev-parse --abbrev-ref HEAD)
+case "$branch" in
+  main|prod) echo "pre-commit: '$branch' is an environment branch. Use: git switch -c feat/<ticket>-<slug>" >&2; exit 1 ;;
+esac
