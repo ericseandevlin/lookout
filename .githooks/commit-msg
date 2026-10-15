@@ -1,0 +1,7 @@
+#!/usr/bin/env bash
+# Every commit names its ticket: "#123" anywhere in the message (GitHub issue number).
+msg=$(grep -v '^#' "$1")
+if ! grep -qE '#[0-9]+' <<<"$msg"; then
+  echo "commit-msg: add the ticket number, e.g. 'Fix drawer focus (#48)'. Merge and revert commits are exempt." >&2
+  grep -qE '^(Merge|Revert) ' <<<"$msg" || exit 1
+fi
