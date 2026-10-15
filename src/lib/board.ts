@@ -1,6 +1,6 @@
 import type { Find, Stage } from "@/lib/types";
 
-export const STAGES: Stage[] = ["Not applied", "Applied", "Interview", "Offer", "Closed", "Ghosted", "Not selected"];
+export const STAGES: Stage[] = ["Not applied", "Applied", "Interview", "Offer", "Closed", "Ghosted", "Not selected", "Nope"];
 export const ACTIVE_STAGES: Stage[] = ["Applied", "Interview", "Offer"];
 export const STAGE_STYLE: Record<Stage, { bg: string; ink: string }> = {
   "Not applied": { bg: "#F4F1EC", ink: "#1D1A0F" },
@@ -10,6 +10,7 @@ export const STAGE_STYLE: Record<Stage, { bg: string; ink: string }> = {
   Closed: { bg: "#EEEAE4", ink: "#6B6358" },
   Ghosted: { bg: "#EEEAE4", ink: "#5E574D" },
   "Not selected": { bg: "#EEEAE4", ink: "#5E574D" },
+  Nope: { bg: "#EEEAE4", ink: "#5E574D" },
 };
 
 export const DAYS: Record<string, string> = {
