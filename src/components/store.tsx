@@ -19,7 +19,7 @@ export async function api<T = unknown>(path: string, init?: RequestInit & { json
   return data as T;
 }
 
-type Store = ReturnType<typeof useStoreValue>;
+type Store = ReturnType<typeof useStoreValue> & { readOnly: boolean };
 const Ctx = createContext<Store | null>(null);
 
 export const useStore = () => {
@@ -226,7 +226,25 @@ function useStoreValue(initial: AppState) {
   };
 }
 
-export function StoreProvider({ initial, children }: { initial: AppState; children: React.ReactNode }) {
-  const value = useStoreValue(initial);
+/** readOnly: an admin viewing someone else's board. Every change is refused locally; nothing is sent or reloaded. */
+export function StoreProvider({ initial, readOnly = false, children }: { initial: AppState; readOnly?: boolean; children: React.ReactNode }) {
+  const live = useStoreValue(initial);
+  const value = useMemo(() => {
+    if (!readOnly) return { ...live, readOnly: false };
+    const refuse = async () => live.fail(new Error("View only: changes aren't saved here."));
+    return {
+      ...live,
+      readOnly: true,
+      refresh: async () => live.state,
+      patchFind: refuse,
+      putSettings: refuse,
+      setName: refuse,
+      editAnswers: () => void refuse(),
+      saveProfile: refuse,
+      addFindByUrl: refuse,
+      searchNow: refuse,
+      materials: Object.fromEntries(Object.keys(live.materials).map((k) => [k, refuse])) as unknown as typeof live.materials,
+    };
+  }, [live, readOnly]);
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
 }
