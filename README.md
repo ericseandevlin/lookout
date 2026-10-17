@@ -2,7 +2,7 @@
 
 A personal search agent. Each person answers five questions and adds their resume, LinkedIn PDF and links. On their schedule, Lookout searches the web, reads the postings, scores each one against their profile, and puts the matches on a board ("Finds"). There they pin, archive, take notes, move roles through stages, and mark things "Not a fit" so later searches learn.
 
-Jobs are the first opportunity type. Type-specific pieces live in `src/lib/kinds` so other types (RFPs next) can reuse the engine. See [ROADMAP.md](ROADMAP.md). Live at https://lookout.ericdevlin.co (alias: paulfinds.pauljustinscott.com). Invite only.
+Jobs are the first opportunity type. Type-specific pieces live in `src/lib/kinds` so other types (RFPs next) can reuse the engine. See [ROADMAP.md](ROADMAP.md) for what's next and [CHANGELOG.md](CHANGELOG.md) for every release. Live at https://lookout.ericdevlin.co (alias: paulfinds.pauljustinscott.com). Invite only.
 
 ## Stack
 
@@ -89,6 +89,7 @@ AI and search settings can live in env or be set in Admin > AI settings (the dat
 - Every commit message names its issue, e.g. `Drawer: previous/next on the edge (#48)`. One branch per issue; don't mix work.
 - Open a PR into `main`. Merging deploys to staging; review happens on staging, not in the PR.
 - `prod` moves only at the weekly release meeting, by fast-forward to an approved `main` commit.
+- Every release gets a version (`vX.Y.Z`, Semantic Versioning: minor for features, patch for fixes and hotfixes), a section in [CHANGELOG.md](CHANGELOG.md), a git tag and a GitHub Release with the same notes. Unreleased work collects under "Unreleased".
 - Hooks enforce this (run once per clone: `git config core.hooksPath .githooks`): no commits directly on `main` or `prod`, no commit without an issue number.
 
 ## Deploy
