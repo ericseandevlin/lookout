@@ -1,11 +1,12 @@
 import { z } from "zod";
 import { authed, body, HttpError, json } from "@/lib/api";
-import { kick } from "@/lib/application/run";
+import { kick, resumeFor } from "@/lib/application/run";
 import { canUseAutoApply, getAutoApplySettings, listApplications, queueApplication, saveAutoApplySettings } from "@/lib/apply";
 
 /** Auto-apply beta: settings and the application queue. */
 export const GET = authed(async (_req, { user }) => {
   if (!canUseAutoApply(user)) throw new HttpError(404, "Not found");
+  await resumeFor(user.id);
   return json({ settings: await getAutoApplySettings(user.id), applications: await listApplications(user.id) });
 });
 
@@ -17,6 +18,7 @@ const Settings = z.object({
 
 export const PATCH = authed(async (req, { user }) => {
   if (!canUseAutoApply(user)) throw new HttpError(404, "Not found");
+  await resumeFor(user.id);
   return json({ settings: await saveAutoApplySettings(user.id, await body(req, Settings)) });
 });
 
