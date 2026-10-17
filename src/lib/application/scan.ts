@@ -28,9 +28,12 @@ export type ScanResult = {
   items: ScannedItem[];
   /** Voluntary EEO questions exist. Lookout never answers these; the user does, by hand. */
   hasEeo: boolean;
+  /** The full job description when the form source has one (Greenhouse does); company pages often don't. */
+  postingHtml?: string;
 };
 
 export type AtsRef =
+  /** board is "" for a company page that embeds Greenhouse (?gh_jid=); the runner finds it on the page. */
   | { ats: "greenhouse"; board: string; id: string }
   | { ats: "lever"; site: string; id: string }
   | { ats: "ashby"; org: string; id: string }
@@ -53,10 +56,7 @@ export function detectAts(raw: string): AtsRef {
     if (board && id && /^\d+$/.test(id)) return { ats: "greenhouse", board, id };
   }
   const ghJid = u.searchParams.get("gh_jid");
-  if (ghJid && /^\d+$/.test(ghJid)) {
-    // Company career pages that embed Greenhouse: the board name is usually the first host label we can't know, so read the page.
-    return { ats: "other" };
-  }
+  if (ghJid && /^\d+$/.test(ghJid)) return { ats: "greenhouse", board: "", id: ghJid };
   if (host === "jobs.lever.co" && parts.length >= 2) return { ats: "lever", site: parts[0], id: parts[1] };
   if (host === "jobs.ashbyhq.com" && parts.length >= 2) return { ats: "ashby", org: decodeURIComponent(parts[0]), id: parts[1] };
   if (/myworkdayjobs\.com$|myworkday\.com$/.test(host)) return { ats: "workday" };
@@ -66,10 +66,23 @@ export function detectAts(raw: string): AtsRef {
 
 /** The page a person applies on, for the checklist's "Open the application" link. */
 export function applyUrlFor(ref: AtsRef, postingUrl: string) {
-  if (ref.ats === "greenhouse") return `https://job-boards.greenhouse.io/${ref.board}/jobs/${ref.id}`;
+  // Embedded boards are filled on the company's own page.
+  if (ref.ats === "greenhouse") return ref.board ? `https://job-boards.greenhouse.io/${ref.board}/jobs/${ref.id}` : postingUrl;
   if (ref.ats === "lever") return `https://jobs.lever.co/${ref.site}/${ref.id}/apply`;
   if (ref.ats === "ashby") return `https://jobs.ashbyhq.com/${encodeURIComponent(ref.org)}/${ref.id}/application`;
   return postingUrl;
+}
+
+/** The Greenhouse board a company page embeds, from its embed script or API calls. */
+export function boardFromHtml(html: string): string | null {
+  return html.match(/greenhouse\.io\/(?:embed\/job_board(?:\/js)?\?for=|embed\/job_app\?for=|v1\/boards\/)([A-Za-z0-9_-]+)/)?.[1] ?? null;
+}
+
+/** Board names worth trying when the page doesn't say: careers.acme.com -> acme. */
+export function boardGuesses(host: string): string[] {
+  const labels = host.toLowerCase().replace(/^www\./, "").split(".");
+  const name = labels.length >= 2 ? labels[labels.length - 2] : labels[0];
+  return [...new Set([name, name.replace(/-/g, "")])].filter(Boolean);
 }
 
 const RESUME = /^(resume|cv|resume\s*\/\s*cv|résumé)\b/i;
@@ -89,6 +102,7 @@ export function kindFor(label: string, fieldType: string): ApplicationItemKind {
 // --- Greenhouse: boards-api.greenhouse.io/v1/boards/{board}/jobs/{id}?questions=true
 
 const GhJob = z.object({
+  content: z.string().optional(),
   questions: z
     .array(
       z.object({
