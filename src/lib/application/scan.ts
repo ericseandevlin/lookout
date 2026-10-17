@@ -103,6 +103,9 @@ export function kindFor(label: string, fieldType: string): ApplicationItemKind {
 
 const GhJob = z.object({
   content: z.string().optional(),
+  title: z.string().optional(),
+  location: z.object({ name: z.string().nullable().optional() }).nullable().optional(),
+  pay_input_ranges: z.array(z.object({ min_cents: z.number().nullable().optional(), max_cents: z.number().nullable().optional(), currency_type: z.string().nullable().optional(), title: z.string().nullable().optional() })).nullable().optional(),
   questions: z
     .array(
       z.object({

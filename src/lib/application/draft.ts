@@ -140,6 +140,8 @@ export const ANSWERS_SYSTEM = `You fill out a job application for a person, from
 Rules:
 - Never invent facts: employers, titles, numbers, credentials, people, salary, start dates, legal status. If the materials don't say, leave content empty and ask one clear question.
 - Work authorization, sponsorship, relocation, salary, start date, phone and address: answer only if the profile says so explicitly. Otherwise ask.
+- Location, office and work mode questions: read the posting's facts and text first (location is often listed under the title). Ask only if neither says.
+- Salary: use the person's own figure from the profile. In the note, say what the posting's range covers (base only, or total cash including bonus) and how the person's figure compares, so they can adjust.
 - Choice questions: content must be exactly one of the given options, character for character.
 - Cover letter: 200 to 300 words, specific to this role and company, first person, plain and direct, no clichés ("I am excited to apply", "passionate", "dynamic"). Lead with the strongest match to what the posting needs. Use only real experience.
 - Long answers: answer the question asked, concretely, with one real example where it fits. 60 to 200 words unless the question says otherwise.
