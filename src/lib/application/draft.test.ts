@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { checkAnswer, fillField, hasKeyword, keywordReport, newNumbers, resumeNote, type DraftInputs } from "./draft";
+import { toPlainText, checkAnswer, fillField, hasKeyword, keywordReport, newNumbers, resumeNote, type DraftInputs } from "./draft";
 
 const inp: DraftInputs = {
   name: "Maya Ortiz Reyes",
@@ -77,5 +77,11 @@ describe("checkAnswer", () => {
   it("asks when the model left it blank or skipped it", () => {
     expect(checkAnswer(sel, undefined).question).toMatch(/sponsorship/);
     expect(checkAnswer({ ...sel, options: null }, { index: 3, content: "", sources: [], question: "", note: "" }).question).toMatch(/sponsorship/);
+  });
+});
+
+describe("toPlainText", () => {
+  it("drops markdown marks and keeps bullets", () => {
+    expect(toPlainText("# Maya Ortiz\n## Experience\n- Led **design systems**\n* Shipped *fast*\n\n\n\nEnd")).toBe("Maya Ortiz\nExperience\n• Led design systems\n• Shipped fast\n\nEnd");
   });
 });
