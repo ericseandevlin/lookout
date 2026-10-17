@@ -13,8 +13,9 @@ RUN npm run build
 
 FROM node:22-alpine AS run
 WORKDIR /app
-ENV NODE_ENV=production NEXT_TELEMETRY_DISABLED=1 PORT=3000 HOSTNAME=0.0.0.0 DATA_DIR=/data MIGRATIONS_DIR=/app/drizzle
-RUN addgroup -S app && adduser -S app -G app && mkdir -p /data && chown app:app /data
+ENV NODE_ENV=production NEXT_TELEMETRY_DISABLED=1 CHROMIUM_PATH=/usr/bin/chromium-browser PORT=3000 HOSTNAME=0.0.0.0 DATA_DIR=/data MIGRATIONS_DIR=/app/drizzle
+# Chromium for the auto-apply browser worker (fills application forms headless).
+RUN apk add --no-cache chromium ttf-freefont && addgroup -S app && adduser -S app -G app && mkdir -p /data && chown app:app /data
 COPY --from=build --chown=app:app /app/.next/standalone ./
 COPY --from=build --chown=app:app /app/.next/static ./.next/static
 COPY --from=build --chown=app:app /app/public ./public
