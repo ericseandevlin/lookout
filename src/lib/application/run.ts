@@ -9,7 +9,7 @@ import { fetchPage, pageToText } from "@/lib/ai/fetchPage";
 import { kinds } from "@/lib/kinds";
 import { humanize } from "./resumeLayout";
 import { match, savedBlock } from "./saved";
-import { stripBoilerplate } from "./posting";
+import { findTraps, removeTraps, stripBoilerplate, stripHidden, trapWordsIn } from "./posting";
 import {
   ANSWERS_SYSTEM,
   AnswersDraft,
@@ -89,7 +89,8 @@ export async function scanPosting(postingUrl: string, usage: Usage): Promise<Sca
     name: "apply-scan",
     schema: PageItems,
     system: PAGE_SYSTEM,
-    user: `Apply page: ${applyUrl}\n\n<page>\n${pageToText(html, 14000)}\n</page>`,
+    // Hidden text is for scrapers only; the model reads what a person sees (#116).
+    user: `Apply page: ${applyUrl}\n\n<page>\n${pageToText(stripHidden(html).html, 14000)}\n</page>`,
     maxTokens: 4000,
     usage,
   });
@@ -157,15 +158,25 @@ async function loadInputs(userId: string, opp: typeof schema.opportunities.$infe
   if (!resume) throw new Error("Add your resume on your profile first. Lookout drafts from it.");
   const li = mats.find((m) => m.kind === "linkedin");
   let text = opp.description;
-  if (postingHtml) text = pageToText(postingHtml, 12000);
-  else
+  let hidden: string[] = [];
+  let html = postingHtml;
+  if (!html)
     try {
-      text = pageToText((await fetchPage(opp.sourceUrl!)).html, 12000);
+      html = (await fetchPage(opp.sourceUrl!)).html;
     } catch {
       // Keep the stored description; a posting that won't load still has its summary.
     }
+  if (html) {
+    // Text a person can't see is only there for scrapers; it never reaches a draft (#116).
+    const v = stripHidden(html);
+    hidden = v.hidden;
+    text = pageToText(v.html, 12000);
+  }
   // Company notices (fraud warnings, EEO, privacy) aren't the job; keep them out of every draft (#114).
   text = stripBoilerplate(text);
+  // Instructions planted for applicants or AI ("include the word X") are cut and shown to the user instead (#116).
+  const cleaned = removeTraps(text, hidden);
+  text = cleaned.text;
   // Facts the description often leaves to the page around it.
   const pay = opp.compMin || opp.compMax ? `${[opp.compMin, opp.compMax].filter(Boolean).map((n) => `$${n!.toLocaleString("en-US")}`).join(" – ")} ${opp.currency}` : "";
   const facts = [`Role: ${opp.title}`, `Company: ${opp.company}`, opp.location && `Location: ${opp.location}`, opp.workMode && `Work mode: ${opp.workMode}`, pay && `Pay range on file: ${pay}`].filter(Boolean).join("\n");
@@ -179,6 +190,7 @@ async function loadInputs(userId: string, opp: typeof schema.opportunities.$infe
     saved: profile?.applyAnswers ?? [],
     resume: resume.slice(0, 20000),
     posting: { company: opp.company, title: opp.title, text },
+    traps: cleaned.traps,
   };
 }
 
@@ -192,13 +204,18 @@ async function draftAll(id: string, userId: string, opp: typeof schema.opportuni
   const resumeItem = items.find((i) => i.kind === "resume");
   if (resumeItem) {
     const d = await completeJSON({ name: "apply-resume", schema: ResumeDraft, system: RESUME_SYSTEM, user: resumePrompt(inp), maxTokens: 8000, usage });
-    keywords = keywordReport(inp.resume, d.resume, d);
+    keywords = keywordReport(inp.resume, d.resume, d, inp.posting.text);
     out.set(resumeItem.id, { content: humanize(d.resume.trim()), note: resumeNote(keywords, d, newNumbers(inp.resume, d.resume)), sources: ["master resume", "posting"], question: null });
   }
 
   const rest: (DraftItem & { id: string })[] = [];
   for (const [index, it] of items.entries()) {
     if (it.kind === "resume") continue;
+    // A form question aimed at automated tools goes to the person, never the model (#116).
+    if (findTraps(it.prompt).length) {
+      out.set(it.id, { content: "", note: "This question looks planted to catch automated applications, so Lookout left it to you.", sources: [], question: `Answer this one yourself: "${it.prompt.slice(0, 200)}"` });
+      continue;
+    }
     const savedHit = match(inp.saved ?? [], it.prompt, it.options);
     const fact = (it.kind === "field" ? fillField(it.prompt, inp) : null) ?? (savedHit ? { content: savedHit, note: "From your saved answers. Edit them on your profile.", sources: ["saved answer"], question: null } : null);
     if (fact) out.set(it.id, fact);
@@ -214,6 +231,16 @@ async function draftAll(id: string, userId: string, opp: typeof schema.opportuni
     }
   }
 
+  // Last check: a trap word in any draft (and not in the person's own materials) sends it back to them.
+  for (const [itemId, d] of out) {
+    const hits = trapWordsIn(d.content, inp.traps ?? [], `${inp.resume}\n${inp.brief}`);
+    if (hits.length) {
+      d.note = `${d.note} Contains ${hits.map((h) => `"${h}"`).join(", ")} from an instruction planted in the posting.`.trim();
+      d.question = `This draft includes ${hits.map((h) => `"${h}"`).join(", ")}, which the posting planted to catch automated applications. Remove it unless you mean to include it.`;
+      out.set(itemId, d);
+    }
+  }
+
   await db.transaction(async (tx) => {
     for (const it of items) {
       const d = out.get(it.id);
@@ -225,7 +252,7 @@ async function draftAll(id: string, userId: string, opp: typeof schema.opportuni
       await tx.update(schema.applicationItems).set({ question: d.question, approvedVersionId: auto ? v.id : null }).where(eq(schema.applicationItems.id, it.id));
     }
   });
-  return { keywords, postingText: inp.posting.text };
+  return { keywords, postingText: inp.posting.text, traps: inp.traps ?? [] };
 }
 
 /** Re-queue work a restart interrupted, then return what's waiting. One user, or everyone. */

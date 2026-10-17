@@ -306,6 +306,8 @@ export type ApplicationReport = {
   usd?: number;
   /** Last browser fill: a test run or a real submit, what it filled and why it stopped. */
   fill?: { mode: "test" | "submit"; at: string; log: { prompt: string; ok: boolean; how: string }[]; missing: string[]; stopped?: string; confirmation?: string; finalUrl?: string };
+  /** Instructions planted in the posting to catch automated applications; cut from drafts, shown to the user (#116). */
+  traps?: { text: string; words: string[]; hidden: boolean }[];
   /** The posting text the drafts were written from (shown beside them on the review screen). */
   postingText?: string;
   /** Posting keywords and whether the master resume (before) and the ATS draft (after) carry them. */
