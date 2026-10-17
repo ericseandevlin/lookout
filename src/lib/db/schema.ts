@@ -100,9 +100,14 @@ export const profiles = pgTable("profiles", {
   searchProfileHash: text("search_profile_hash"),
   /** Answers to questions most applications ask (work authorization, ZIP...), reused on the next one. Editable on the profile. */
   applyAnswers: jsonb("apply_answers").$type<SavedAnswer[]>().notNull().default([]),
+  /** Skills the person says they have, with the experience behind them (#121). Editable on the profile. */
+  skillNotes: jsonb("skill_notes").$type<SkillNote[]>().notNull().default([]),
 });
 
 export type SavedAnswer = { key: string; question: string; answer: string; updatedAt: string };
+
+/** Experience the person added for a skill (#121): a role, project or result their resume doesn't show. Counts as a fact in every draft. */
+export type SkillNote = { skill: string; story: string; updatedAt: string };
 
 export type SearchProfile = {
   summary: string;
@@ -310,8 +315,10 @@ export type ApplicationReport = {
   traps?: { text: string; words: string[]; hidden: boolean }[];
   /** The posting text the drafts were written from (shown beside them on the review screen). */
   postingText?: string;
+  /** The user's keyword picks for this resume (#121): terms to work in, terms to leave out. */
+  keywordChoices?: { include: string[]; exclude: string[] };
   /** Posting keywords and whether the master resume (before) and the ATS draft (after) carry them. */
-  keywords?: { term: string; before: boolean; after: boolean; where?: string }[];
+  keywords?: { term: string; before: boolean; after: boolean; where?: string; choice?: "include" | "exclude" }[];
 };
 
 export const APPLICATION_ITEM_KINDS = ["resume", "cover_letter", "answer", "portfolio", "outreach", "field"] as const;

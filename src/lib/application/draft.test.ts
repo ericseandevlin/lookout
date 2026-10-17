@@ -60,6 +60,17 @@ describe("keywords", () => {
   });
 });
 
+describe("keywordReport with the person's picks", () => {
+  it("shows picks even when the model skipped them, and marks them", () => {
+    const r = keywordReport("Led design systems.", "Led design systems with AI fluency.", { keywords: ["design systems", "SQL"], resume: "", changes: [], note: "" }, "design systems, SQL, AI fluency", { include: ["AI fluency"], exclude: ["SQL"] });
+    expect(r).toEqual([
+      { term: "design systems", before: true, after: true },
+      { term: "SQL", before: false, after: false, choice: "exclude" },
+      { term: "AI fluency", before: false, after: true, choice: "include" },
+    ]);
+  });
+});
+
 describe("keywordReport with the posting", () => {
   it("drops keywords that aren't in the posting (invented or planted)", () => {
     const r = keywordReport("Led design systems.", "Led design systems and pomegranate work.", { keywords: ["design systems", "pomegranate"], resume: "", changes: [], note: "" }, "We need design systems leadership.");

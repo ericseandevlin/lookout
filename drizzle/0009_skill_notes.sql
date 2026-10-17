@@ -1,0 +1,1 @@
+ALTER TABLE "profiles" ADD COLUMN "skill_notes" jsonb DEFAULT '[]'::jsonb NOT NULL;
