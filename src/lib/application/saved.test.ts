@@ -9,6 +9,7 @@ describe("saved answers", () => {
     expect(isCommon("What is your desired base salary?", "$220,000")).toBe(false);
     expect(isCommon("Why do you want to work here?", "Because")).toBe(false);
     expect(isCommon("Zip / Postal", "")).toBe(false);
+    expect(isCommon("This role is to be based out of the location listed in the job description. Are you able to commute?", "Yes")).toBe(false);
   });
 
   it("matches the same question worded with different punctuation", () => {

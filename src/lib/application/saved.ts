@@ -6,8 +6,9 @@ import type { SavedAnswer } from "@/lib/db/schema";
  */
 
 const COMMON =
-  /authori[sz]ed to work|work authori[sz]ation|legally (authorized|eligible)|sponsor|visa|zip|postal|state of residence|^state$|city|address|phone|mobile|country|relocat|notice period|start date|earliest.*start|when can you start|commut|in.?office|hybrid|remote|previously (worked|employed)|ever (been )?employed by|criminal|background check|drug|18 years|age of|security clearance|how did you hear|referr|pronoun|preferred name/i;
-const NEVER = /salary|compensation|pay|expected|why|describe|tell us|cover letter|portfolio|years of/i;
+  /authori[sz]ed to work|work authori[sz]ation|legally (authorized|eligible)|sponsor|visa|zip|postal|state of residence|^state$|city|address|phone|mobile|country|relocat|notice period|start date|earliest.*start|when can you start|previously (worked|employed)|ever (been )?employed by|criminal|background check|drug|18 years|age of|security clearance|how did you hear|referr|pronoun|preferred name/i;
+// Never kept: salary and essays change per role; commute and office questions depend on where each job is.
+const NEVER = /salary|compensation|pay|expected|why|describe|tell us|cover letter|portfolio|years of|commut|in.?office|hybrid|remote|location (listed|of the)|this (role|position|location)/i;
 
 export const answerKey = (q: string) =>
   q
