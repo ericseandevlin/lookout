@@ -19,6 +19,8 @@ type Item = {
   options: string[] | null;
   question: string | null;
   approvedVersionId: string | null;
+  /** EEO only: the answer matched from the person's profile (with consent), never stored on the application. */
+  eeoAnswer?: string | null;
   versions: Version[];
 };
 type Detail = {
@@ -35,6 +37,7 @@ type Detail = {
   url: string | null;
   posting: string;
   autoSubmit: boolean;
+  eeoConsent: boolean;
   items: Item[];
 };
 
@@ -187,7 +190,7 @@ export function ApplicationReview({ id }: { id: string }) {
                 </ul>
               </section>
             )}
-            {d.report.hasEeo && !locked && <div style={{ ...card, ...muted }}>This form also has voluntary EEO questions (gender, race, veteran and disability status). Lookout never answers those. Fill them in yourself when you submit, or skip them.</div>}
+            {d.items.some((i) => i.kind === "eeo") && !locked && <EeoSection d={d} act={act} />}
 
             {SECTIONS.map((s) => {
               const list = d.items.filter((i) => s.kinds.includes(i.kind));
@@ -547,6 +550,42 @@ function ItemCard({ appId, item, locked, act }: { appId: string; item: Item; loc
   );
 }
 
+/** Voluntary EEO questions (#122): filled only from the person's own answers, with their permission. */
+function EeoSection({ d, act }: { d: Detail; act: Act }) {
+  const qs = d.items.filter((i) => i.kind === "eeo");
+  if (!d.eeoConsent)
+    return (
+      <div style={{ ...card, ...muted }}>
+        This form has {qs.length} voluntary EEO question{qs.length === 1 ? "" : "s"} (gender, race, veteran and disability status). Lookout leaves them blank. To have Lookout answer them from your own answers, set them up in <Link href="/profile/application">Profile › Application answers</Link>.
+      </div>
+    );
+  return (
+    <section aria-labelledby="eeo" style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+      <h2 id="eeo" style={{ margin: "6px 0 0", fontSize: 18, fontWeight: 700 }}>Voluntary questions (EEO)</h2>
+      <div style={{ ...muted, marginTop: -4 }}>From your answers on your profile. Never shared with an AI. Change one here and Lookout remembers it for this wording.</div>
+      <div style={{ ...card, display: "flex", flexDirection: "column", gap: 14 }}>
+        {qs.map((q) => (
+          <div key={q.id} style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+            <label htmlFor={`eeo-${q.id}`} style={{ fontSize: 15, fontWeight: 600 }}>{q.prompt}</label>
+            <select
+              id={`eeo-${q.id}`}
+              value={q.eeoAnswer ?? ""}
+              onChange={(e) => act(q.id, { action: "edit", content: e.target.value, note: "" }, "Saved for this wording.")}
+              style={{ height: 40, borderRadius: 10, border: "1.5px solid #E0D9CF", padding: "0 10px", fontSize: 15, maxWidth: 520 }}
+            >
+              <option value="">Leave blank</option>
+              {(q.options ?? []).map((o) => (
+                <option key={o}>{o}</option>
+              ))}
+            </select>
+            <div style={muted}>{q.eeoAnswer ? "✓ Will be filled" : "Blank. Lookout couldn't match your answer to this wording; pick one or leave it blank."}</div>
+          </div>
+        ))}
+      </div>
+    </section>
+  );
+}
+
 function SendForMe({ d, busy, onFill }: { d: Detail; busy: boolean; onFill: (mode: "test" | "submit") => void }) {
   const f = d.report.fill;
   const [stamp] = useState(() => Date.now());
@@ -647,6 +686,20 @@ function Checklist({ d, onDone }: { d: Detail; onDone: () => void }) {
           </li>
         ))}
       </ol>
+      {!locked && d.eeoConsent && d.items.some((i) => i.kind === "eeo" && i.eeoAnswer) && (
+        <div style={{ fontSize: 14 }}>
+          <div style={{ fontWeight: 600, marginBottom: 4 }}>Voluntary EEO (pick these in the form)</div>
+          <ul style={{ margin: 0, paddingLeft: 18, color: "#3B362C" }}>
+            {d.items
+              .filter((i) => i.kind === "eeo" && i.eeoAnswer)
+              .map((i) => (
+                <li key={i.id}>
+                  {i.prompt}: {i.eeoAnswer}
+                </li>
+              ))}
+          </ul>
+        </div>
+      )}
       {!locked && (
         <button onClick={onDone} style={{ ...btn("outline"), alignSelf: "flex-start" }}>
           I submitted it

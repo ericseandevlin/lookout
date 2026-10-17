@@ -7,6 +7,8 @@ import { env } from "@/lib/env";
 import { draftToDocx } from "./docx";
 import { planFill, type FillStep } from "./fillPlan";
 import { letterHeaderFrom } from "./resumeLayout";
+import { resolve } from "./eeo";
+import { loadEeo } from "./eeoStore";
 
 /**
  * Auto-apply step 5, browser half (#42): fill the real form with the approved versions in headless
@@ -52,6 +54,15 @@ export async function runFill(appId: string, mode: "test" | "submit"): Promise<F
   const { a, items, versions, user, opp } = await loadPacket(appId);
   const report: FillReport = { mode, at: new Date().toISOString(), log: [], missing: [] };
   const steps = planFill(items, versions);
+  // Voluntary EEO questions: from the encrypted profile, only with consent, matched in code (#122).
+  if (items.some((i) => i.kind === "eeo")) {
+    const { consent, profile } = await loadEeo(a.userId);
+    if (consent)
+      for (const i of items.filter((x) => x.kind === "eeo")) {
+        const answer = resolve(profile, i.prompt, i.options);
+        if (answer) steps.push({ prompt: i.prompt, required: false, itemKind: "eeo", kind: "choice", content: answer });
+      }
+  }
   await files(appId, steps, user?.name || "Resume", opp?.company ?? "");
   const url = a.report.applyUrl;
   if (!url) throw new Error("No application page to open");
@@ -74,7 +85,7 @@ export async function runFill(appId: string, mode: "test" | "submit"): Promise<F
 
     for (const s of steps) {
       const r = await fillOne(page, s);
-      report.log.push({ prompt: s.prompt, ok: r.ok, how: r.how });
+      report.log.push({ prompt: s.prompt, ok: r.ok, how: s.itemKind === "eeo" ? (r.ok ? "filled from your EEO answers" : "couldn't fill") : r.how });
       if (!r.ok && s.required) report.missing.push(s.prompt);
     }
     const dir = shotDir(appId);

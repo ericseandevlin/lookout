@@ -134,8 +134,9 @@ export function parseGreenhouse(json: unknown): Omit<ScanResult, "ats" | "route"
     items.push({ kind: kindFor(q.label, fieldType), prompt: q.label.trim(), required: !!q.required, fieldType, ...(options.length ? { options } : {}) });
   }
   for (const q of job.location_questions ?? []) if (visible(q.fields)) items.push({ kind: "field", prompt: q.label.trim(), required: !!q.required, fieldType: "text" });
-  const eeo = job.demographic_questions;
-  const hasEeo = (Array.isArray(job.compliance) && job.compliance.length > 0) || (!!eeo && (!Array.isArray(eeo) || eeo.length > 0));
+  const eeoItems = greenhouseEeo(job.demographic_questions, job.compliance);
+  items.push(...eeoItems);
+  const hasEeo = eeoItems.length > 0;
   // Greenhouse escapes the description HTML once more, and keeps location and pay outside it.
   const pay = (job.pay_input_ranges ?? [])
     .filter((r) => r.min_cents || r.max_cents)
@@ -147,6 +148,27 @@ export function parseGreenhouse(json: unknown): Omit<ScanResult, "ats" | "route"
 
 const EEO = /eeo|equal employment|demographic|voluntary|self.?identif/i;
 const EEO_FIELD = /^(gender|race|ethnicity|veteran status|disability status|sexual orientation|pronouns?)\b/i;
+
+/**
+ * Greenhouse's two EEO formats: demographic_questions (custom wording, answer_options) and compliance
+ * blocks (standard EEOC fields). Both become voluntary "eeo" items, filled only from the person's
+ * consented profile answers, never by a model (#122).
+ */
+export function greenhouseEeo(demographic: unknown, compliance: unknown): ScannedItem[] {
+  const out: ScannedItem[] = [];
+  const d = demographic as { questions?: { label?: string; type?: string; answer_options?: { label?: string }[] }[] } | null;
+  for (const q of d?.questions ?? []) {
+    const options = (q.answer_options ?? []).map((o) => o.label ?? "").filter(Boolean);
+    if (q.label && options.length) out.push({ kind: "eeo", prompt: q.label.trim(), required: false, fieldType: /multi_select/.test(q.type ?? "") ? "multiselect" : "select", options });
+  }
+  for (const block of (Array.isArray(compliance) ? compliance : []) as { questions?: { label?: string; fields?: { values?: { label?: string }[] }[] }[] }[]) {
+    for (const q of block.questions ?? []) {
+      const options = (q.fields ?? []).flatMap((f) => (f.values ?? []).map((v) => v.label ?? "")).filter(Boolean);
+      if (q.label && options.length) out.push({ kind: "eeo", prompt: q.label.replace(/([a-z])([A-Z])/g, "$1 $2").trim(), required: false, fieldType: "select", options });
+    }
+  }
+  return out;
+}
 
 // --- Ashby: the same form its own apply page loads (jobs.ashbyhq.com/api/non-user-graphql, op ApiJobPosting)
 
@@ -183,15 +205,14 @@ export function parseAshby(json: unknown): Omit<ScanResult, "ats" | "route" | "a
   const items: ScannedItem[] = [];
   let hasEeo = false;
   for (const s of res.data.jobPosting.applicationForm.sections) {
-    if (EEO.test(s.title ?? "")) {
-      hasEeo = true;
-      continue;
-    }
+    const eeoSection = EEO.test(s.title ?? "");
     for (const e of s.fieldEntries) {
       const f = e.field;
       if (!f?.title) continue;
-      if (EEO_FIELD.test(f.title)) {
+      if (eeoSection || EEO_FIELD.test(f.title)) {
         hasEeo = true;
+        const options = (f.selectableValues ?? []).map((v) => v.label);
+        if (options.length) items.push({ kind: "eeo", prompt: f.title.trim(), required: false, fieldType: f.type === "MultiValueSelect" ? "multiselect" : "select", options });
         continue;
       }
       const fieldType = ASHBY_TYPES[f.type ?? ""] ?? "text";

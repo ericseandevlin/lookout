@@ -102,6 +102,10 @@ export const profiles = pgTable("profiles", {
   applyAnswers: jsonb("apply_answers").$type<SavedAnswer[]>().notNull().default([]),
   /** Skills the person says they have, with the experience behind them (#121). Editable on the profile. */
   skillNotes: jsonb("skill_notes").$type<SkillNote[]>().notNull().default([]),
+  /** Voluntary EEO answers (#122), AES-GCM encrypted JSON (EeoProfile). Never sent to an AI model. */
+  eeo: text("eeo"),
+  /** The person allowed Lookout to fill EEO questions from those answers. Off by default. */
+  eeoConsent: boolean("eeo_consent").notNull().default(false),
 });
 
 export type SavedAnswer = { key: string; question: string; answer: string; updatedAt: string };
@@ -321,7 +325,7 @@ export type ApplicationReport = {
   keywords?: { term: string; before: boolean; after: boolean; where?: string; choice?: "include" | "exclude" }[];
 };
 
-export const APPLICATION_ITEM_KINDS = ["resume", "cover_letter", "answer", "portfolio", "outreach", "field"] as const;
+export const APPLICATION_ITEM_KINDS = ["resume", "cover_letter", "answer", "portfolio", "outreach", "field", "eeo"] as const;
 export type ApplicationItemKind = (typeof APPLICATION_ITEM_KINDS)[number];
 
 /** Something the application asks for (or an outreach draft), each with its own versions. */

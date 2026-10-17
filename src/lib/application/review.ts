@@ -10,6 +10,9 @@ import { newNumbers } from "./draft";
 import { humanize } from "./resumeLayout";
 import { isCommon, upsert } from "./saved";
 import { notesBlock } from "./skills";
+import { resolve } from "./eeo";
+import { loadEeo, saveEeo } from "./eeoStore";
+import { answerKey } from "./saved";
 import { canAutoSubmit } from "./submit";
 
 /**
@@ -50,7 +53,10 @@ export async function getApplicationDetail(userId: string, id: string) {
         )
         .orderBy(desc(schema.itemVersions.version))
     : [];
+  // EEO answers are matched here from the encrypted profile, only with consent; they're never stored on the application (#122).
+  const eeo = items.some((i) => i.kind === "eeo") ? await loadEeo(userId) : null;
   return {
+    eeoConsent: !!eeo?.consent,
     id: a.id,
     findId: a.opportunityId,
     status: a.status,
@@ -73,6 +79,7 @@ export async function getApplicationDetail(userId: string, id: string) {
       options: i.options,
       question: i.question,
       approvedVersionId: i.approvedVersionId,
+      eeoAnswer: i.kind === "eeo" && eeo?.consent ? resolve(eeo.profile, i.prompt, i.options) : null,
       versions: versions
         .filter((v) => v.itemId === i.id)
         .map((v) => ({ id: v.id, version: v.version, content: v.content, note: v.note, author: v.author, sources: v.sources, createdAt: v.createdAt.toISOString() })),
@@ -117,6 +124,15 @@ export async function editItem(userId: string, appId: string, itemId: string, co
   assertEditable(a.status);
   const it = await ownItem(appId, itemId);
   if (it.options?.length && content && !it.options.includes(content)) throw new HttpError(400, `Pick one of: ${it.options.join(", ")}`);
+  if (it.kind === "eeo") {
+    // Remembered for this exact wording, in the encrypted profile only.
+    const { consent, profile } = await loadEeo(userId);
+    if (!consent) throw new HttpError(409, "Turn on EEO answers on your profile first.");
+    if (content) profile.exact[answerKey(it.prompt)] = content;
+    else delete profile.exact[answerKey(it.prompt)];
+    await saveEeo(userId, { profile });
+    return a.status;
+  }
   const v = await insertVersion(itemId, { content, note: note.trim() || "Edited by you.", author: "user", sources: ["you"] });
   // Basic fields stay approved when you change them; there's nothing to review in a ZIP code.
   if (it.kind === "field" && content.trim()) await db.update(schema.applicationItems).set({ approvedVersionId: v.id }).where(eq(schema.applicationItems.id, itemId));
@@ -156,6 +172,7 @@ export async function reviseItem(userId: string, appId: string, itemId: string, 
   const a = await ownApplication(userId, appId);
   assertEditable(a.status);
   const it = await ownItem(appId, itemId);
+  if (it.kind === "eeo") throw new HttpError(400, "Lookout never sends EEO answers to an AI. Pick your answer from the list.");
   await assertBudget(userId);
   const [cur] = await db.select().from(schema.itemVersions).where(eq(schema.itemVersions.itemId, itemId)).orderBy(desc(schema.itemVersions.version)).limit(1);
   const [o] = await db.select().from(schema.opportunities).where(eq(schema.opportunities.id, a.opportunityId));
