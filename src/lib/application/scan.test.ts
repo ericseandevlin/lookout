@@ -87,7 +87,7 @@ describe("parseGreenhouse", () => {
     expect(r.items.map((i) => i.prompt)).not.toContain("Latitude");
     expect(r.items[3].options).toEqual(["Yes", "No"]);
     expect(r.items[4].prompt).toBe('If "YES", what is the basis of your current employment authorization?');
-    expect(r.hasEeo).toBe(true);
+    expect(r.hasEeo).toBe(false);
   });
 });
 
@@ -121,6 +121,7 @@ describe("parseAshby", () => {
       ["answer", "Additional information", "textarea"],
       ["answer", "Are you authorized to work in the US?", "select"],
     ]);
+    expect(r.items.find((i) => i.kind === "eeo")).toBeUndefined();
     expect(r.items[3].options).toEqual(["Yes", "No"]);
     expect(r.hasEeo).toBe(true);
   });
@@ -151,5 +152,20 @@ describe("fromPage and withBasics", () => {
   it("routes the big three to the browser worker and the rest to a checklist", () => {
     expect(routeFor("greenhouse")).toBe("browser");
     expect(routeFor("workday")).toBe("manual");
+  });
+});
+
+import { greenhouseEeo } from "./scan";
+
+describe("greenhouseEeo", () => {
+  it("turns both Greenhouse EEO formats into voluntary eeo items", () => {
+    const items = greenhouseEeo(
+      { questions: [{ label: "Gender", type: "multi_value_single_select", answer_options: [{ label: "Female" }, { label: "Male" }, { label: "Decline to self-identify" }] }] },
+      [{ type: "eeoc", questions: [{ label: "VeteranStatus", fields: [{ values: [{ label: "I am not a protected veteran" }, { label: "I don't wish to answer" }] }] }] }],
+    );
+    expect(items.map((i) => [i.kind, i.prompt, i.required, i.options?.length])).toEqual([
+      ["eeo", "Gender", false, 3],
+      ["eeo", "Veteran Status", false, 2],
+    ]);
   });
 });

@@ -254,7 +254,8 @@ async function draftAll(id: string, userId: string, opp: typeof schema.opportuni
 
   const rest: (DraftItem & { id: string })[] = [];
   for (const [index, it] of items.entries()) {
-    if (it.kind === "resume") continue;
+    // EEO answers come only from the person's consented profile, filled in code; never drafted (#122).
+    if (it.kind === "resume" || it.kind === "eeo") continue;
     // A form question aimed at automated tools goes to the person, never the model (#116).
     if (findTraps(it.prompt).length) {
       out.set(it.id, { content: "", note: "This question looks planted to catch automated applications, so Lookout left it to you.", sources: [], question: `Answer this one yourself: "${it.prompt.slice(0, 200)}"` });

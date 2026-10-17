@@ -5,6 +5,8 @@ import type { SavedAnswer, SkillNote } from "@/lib/db/schema";
 import { PageHead, ProfileTabs } from "./Profile";
 import { btn } from "./Settings";
 import { api } from "./store";
+import { EEO_CATEGORIES, EEO_CHOICES, type EeoCategory } from "@/lib/application/eeo";
+import { useConfirm } from "./Confirm";
 
 /** /profile/application: the answers auto-apply reuses on every form (#108). */
 export function SavedAnswers() {
@@ -49,6 +51,7 @@ export function SavedAnswers() {
         </ul>
       )}
       <ExperienceNotes />
+      <EeoAnswers />
     </div>
   );
 }
@@ -125,5 +128,73 @@ function Row({ s, save }: { s: SavedAnswer; save: (q: string, a: string) => Prom
       </div>
       <div style={{ fontSize: 14, color: "#6B6358" }}>Last changed {new Date(s.updatedAt).toLocaleDateString()}</div>
     </li>
+  );
+}
+
+type EeoState = { consent: boolean; answers: Partial<Record<EeoCategory, string>>; saved: number };
+
+/** Voluntary self-identification (#122): opt-in, encrypted, never shared with an AI, deletable. */
+function EeoAnswers() {
+  const ask = useConfirm();
+  const [st, setSt] = useState<EeoState | null>(null);
+  const [err, setErr] = useState<string | null>(null);
+  const [said, setSaid] = useState("");
+  useEffect(() => {
+    api<EeoState>("/api/profile/eeo")
+      .then(setSt)
+      .catch((e) => setErr(e instanceof Error ? e.message : "Couldn't load"));
+  }, []);
+  const put = async (patch: { consent?: boolean; answers?: Partial<Record<EeoCategory, string>> }, msg: string) => {
+    setErr(null);
+    try {
+      setSt(await api<EeoState>("/api/profile/eeo", { method: "PUT", json: patch }));
+      setSaid(msg);
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : "Couldn't save");
+    }
+  };
+  const wipe = async () => {
+    const ok = await ask({ eyebrow: "EEO answers", title: "Delete all your EEO answers?", body: "Lookout forgets every answer and stops filling these questions. You can set them again any time.", confirmLabel: "Delete them", danger: true });
+    if (!ok) return;
+    try {
+      setSt(await api<EeoState>("/api/profile/eeo", { method: "DELETE" }));
+      setSaid("Deleted.");
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : "Couldn't delete");
+    }
+  };
+  return (
+    <section aria-labelledby="eeo-h" style={{ display: "flex", flexDirection: "column", gap: 10, marginTop: 18 }}>
+      <h2 id="eeo-h" style={{ margin: 0, fontSize: 20, fontWeight: 700 }}>Voluntary self-identification (EEO)</h2>
+      <p style={{ margin: 0, fontSize: 14, lineHeight: 1.55, color: "#6B6358" }}>
+        Many applications ask optional questions about gender, race, veteran and disability status. If you want, Lookout can answer them the same way every time. Your answers are encrypted, matched to each form in code, and never shared with an AI. Leave any blank, or pick &ldquo;Decline to self-identify&rdquo;.
+      </p>
+      <div aria-live="polite" style={{ fontSize: 14, color: "#6B6358", minHeight: 20 }}>{said}</div>
+      {err && <div role="alert" style={{ fontSize: 14, color: "#99220F" }}>{err}</div>}
+      {st && (
+        <div style={{ padding: 18, borderRadius: 14, background: "#fff", border: "1.5px solid #E6E0D8", display: "flex", flexDirection: "column", gap: 14 }}>
+          <label style={{ display: "flex", gap: 10, alignItems: "flex-start", fontSize: 15, fontWeight: 600, cursor: "pointer" }}>
+            <input type="checkbox" checked={st.consent} onChange={(e) => put({ consent: e.target.checked }, e.target.checked ? "Lookout will fill EEO questions with these answers." : "Lookout will leave EEO questions blank.")} style={{ width: 20, height: 20, marginTop: 1 }} />
+            <span>
+              Let Lookout fill EEO questions with these answers
+              <span style={{ display: "block", fontSize: 14, fontWeight: 400, color: "#6B6358" }}>Off: Lookout leaves every EEO question blank for you to answer, or skip, yourself.</span>
+            </span>
+          </label>
+          {EEO_CATEGORIES.map((c) => (
+            <div key={c} style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+              <label htmlFor={`eeo-p-${c}`} style={{ fontSize: 15, fontWeight: 600 }}>{EEO_CHOICES[c].label}</label>
+              <select id={`eeo-p-${c}`} value={st.answers[c] ?? ""} onChange={(e) => put({ answers: { [c]: e.target.value } }, `Saved ${EEO_CHOICES[c].label.toLowerCase()}.`)} style={{ height: 40, borderRadius: 10, border: "1.5px solid #E0D9CF", padding: "0 10px", fontSize: 15, maxWidth: 420 }}>
+                <option value="">Leave blank</option>
+                {EEO_CHOICES[c].choices.map((o) => (
+                  <option key={o}>{o}</option>
+                ))}
+              </select>
+            </div>
+          ))}
+          {st.saved > 0 && <div style={{ fontSize: 14, color: "#6B6358" }}>Plus {st.saved} answer{st.saved === 1 ? "" : "s"} you picked for specific form wordings.</div>}
+          <button onClick={wipe} style={{ ...btn("danger"), alignSelf: "flex-start" }}>Delete all EEO answers</button>
+        </div>
+      )}
+    </section>
   );
 }
