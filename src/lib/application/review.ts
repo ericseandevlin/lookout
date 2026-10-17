@@ -9,6 +9,7 @@ import { HttpError } from "@/lib/api";
 import { newNumbers } from "./draft";
 import { humanize } from "./resumeLayout";
 import { isCommon, upsert } from "./saved";
+import { notesBlock } from "./skills";
 import { canAutoSubmit } from "./submit";
 
 /**
@@ -159,7 +160,9 @@ export async function reviseItem(userId: string, appId: string, itemId: string, 
   const [cur] = await db.select().from(schema.itemVersions).where(eq(schema.itemVersions.itemId, itemId)).orderBy(desc(schema.itemVersions.version)).limit(1);
   const [o] = await db.select().from(schema.opportunities).where(eq(schema.opportunities.id, a.opportunityId));
   const [resume] = await db.select().from(schema.materials).where(and(eq(schema.materials.userId, userId), eq(schema.materials.kind, "resume")));
-  const master = resume?.extracted?.text ?? "";
+  const [prof] = await db.select({ notes: schema.profiles.skillNotes }).from(schema.profiles).where(eq(schema.profiles.userId, userId));
+  // Experience notes count as facts, same as the resume (#121).
+  const master = (resume?.extracted?.text ?? "") + notesBlock(prof?.notes ?? []);
   const usage = emptyUsage();
   const r = await completeJSON({
     name: "apply-revise",

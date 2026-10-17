@@ -196,7 +196,7 @@ export function ApplicationReview({ id }: { id: string }) {
                 <section key={s.title} aria-labelledby={`sec-${s.title}`} style={{ display: "flex", flexDirection: "column", gap: 10 }}>
                   <h2 id={`sec-${s.title}`} style={{ margin: "6px 0 0", fontSize: 18, fontWeight: 700 }}>{s.title}</h2>
                   {s.help && !locked && <div style={{ ...muted, marginTop: -4 }}>{s.help}</div>}
-                  {s.title === "Resume" && d.report.keywords && <KeywordReport k={d.report.keywords} />}
+                  {s.title === "Resume" && d.report.keywords && <KeywordReport d={d} reload={load} locked={locked} />}
                   {list.map((i) => (
                     <ItemCard key={i.id} appId={d.id} item={i} locked={locked} act={act} />
                   ))}
@@ -253,27 +253,125 @@ function DocPreview({ md }: { md: string }) {
   );
 }
 
-function KeywordReport({ k }: { k: NonNullable<ApplicationReport["keywords"]> }) {
+function KeywordReport({ d, reload, locked }: { d: Detail; reload: () => Promise<unknown>; locked: boolean }) {
+  const k = d.report.keywords ?? [];
+  const choices = d.report.keywordChoices ?? { include: [], exclude: [] };
+  const resume = d.items.find((i) => i.kind === "resume");
+  const [open, setOpen] = useState<string | null>(null);
+  const [story, setStory] = useState("");
+  const [busy, setBusy] = useState<string | null>(null);
+  const [err, setErr] = useState<string | null>(null);
+  const picked = (t: string) => (choices.include.some((x) => x.toLowerCase() === t.toLowerCase()) ? "include" : choices.exclude.some((x) => x.toLowerCase() === t.toLowerCase()) ? "exclude" : null);
+  const inDraft = (x: (typeof k)[number]) => (x.after && picked(x.term) !== "exclude") || picked(x.term) === "include";
+  // Picks made since the resume was last written.
+  const pending = [...choices.include.map((t) => [t, "include"]), ...choices.exclude.map((t) => [t, "exclude"])].filter(([t, c]) => k.find((x) => x.term.toLowerCase() === t.toLowerCase())?.choice !== c).length;
   const before = k.filter((x) => x.before).length;
   const after = k.filter((x) => x.after).length;
+
+  const pick = async (term: string, action: "include" | "exclude" | "reset", withStory?: string) => {
+    setBusy(term);
+    setErr(null);
+    try {
+      await api(`/api/apply/${d.id}/keywords`, { method: "POST", json: { term, action, ...(withStory !== undefined ? { story: withStory } : {}) } });
+      await reload();
+      setOpen(null);
+      setStory("");
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : "Couldn't save");
+    }
+    setBusy(null);
+  };
+  const update = async () => {
+    if (!resume) return;
+    setBusy("__update");
+    setErr(null);
+    try {
+      await api(`/api/apply/${d.id}/items/${resume.id}`, { method: "POST", json: { action: "redraft" } });
+      await reload();
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : "Couldn't update");
+    }
+    setBusy(null);
+  };
+  const cur = k.find((x) => x.term === open);
+
   return (
     <div style={{ ...card, display: "flex", flexDirection: "column", gap: 10 }}>
       <div style={{ fontSize: 15, fontWeight: 700 }}>
         Keyword match {before}/{k.length} → {after}/{k.length}
       </div>
-      <div style={muted}>Terms from the posting that applicant tracking systems screen for. Green: in the draft. Struck through: not in your experience, so Lookout left it out.</div>
+      <div style={muted}>
+        Terms from the posting that applicant tracking systems screen for. Green: in this resume. Struck through: not in your experience as Lookout knows it. {locked ? "" : "Click any keyword to change it, or to tell Lookout about experience your resume leaves out."}
+      </div>
       <ul style={{ listStyle: "none", margin: 0, padding: 0, display: "flex", flexWrap: "wrap", gap: 6 }}>
-        {k.map((x) => (
-          <li
-            key={x.term}
-            title={x.where ? `Added in ${x.where}` : x.before ? "Already in your resume" : "Not added"}
-            style={{ padding: "4px 10px", borderRadius: 999, fontSize: 14, background: x.after ? "#E3EFDD" : "#F4F1EC", color: x.after ? "#35662A" : "#6B6358", textDecoration: x.after ? "none" : "line-through" }}
-          >
-            {x.term}
-            {x.after && !x.before ? " +" : ""}
-          </li>
-        ))}
+        {k.map((x) => {
+          const on = inDraft(x);
+          const c = picked(x.term);
+          return (
+            <li key={x.term}>
+              <button
+                disabled={locked}
+                onClick={() => {
+                  setOpen(open === x.term ? null : x.term);
+                  setStory("");
+                }}
+                aria-expanded={open === x.term}
+                title={x.where ? `Added in ${x.where}` : x.before ? "Already in your resume" : "Not in your experience as Lookout knows it"}
+                style={{ padding: "4px 10px", borderRadius: 999, fontSize: 14, cursor: locked ? "default" : "pointer", border: c ? `1.5px dashed ${c === "include" ? "#35662A" : "#99220F"}` : "1.5px solid transparent", background: on ? "#E3EFDD" : "#F4F1EC", color: on ? "#35662A" : "#6B6358", textDecoration: on ? "none" : "line-through" }}
+              >
+                {x.term}
+                {c === "include" ? " · added by you" : c === "exclude" ? " · left out" : x.after && !x.before ? " +" : ""}
+              </button>
+            </li>
+          );
+        })}
       </ul>
+      {cur && !locked && (
+        <div style={{ padding: 14, borderRadius: 12, background: "#FAF8F5", border: "1px solid #E6E0D8", display: "flex", flexDirection: "column", gap: 8 }}>
+          {picked(cur.term) ? (
+            <>
+              <div style={{ fontSize: 14 }}>You {picked(cur.term) === "include" ? "added" : "left out"} “{cur.term}”.</div>
+              <button onClick={() => pick(cur.term, "reset")} disabled={!!busy} style={{ ...btn("outline"), alignSelf: "flex-start" }}>
+                Undo
+              </button>
+            </>
+          ) : cur.after ? (
+            <>
+              <div style={{ fontSize: 14 }}>“{cur.term}” is in this resume{cur.where ? ` (${cur.where})` : ""}.</div>
+              <button onClick={() => pick(cur.term, "exclude")} disabled={!!busy} style={{ ...btn("outline"), alignSelf: "flex-start" }}>
+                Leave it out
+              </button>
+            </>
+          ) : (
+            <>
+              <label htmlFor="kw-story" style={{ fontSize: 15, fontWeight: 600 }}>
+                Do you have experience with “{cur.term}”?
+              </label>
+              <div style={muted}>Tell Lookout where: a role, a project, a result, something your resume leaves out. It goes into your experience notes and is used for this resume and future applications. You can edit it on your profile.</div>
+              <textarea id="kw-story" value={story} onChange={(e) => setStory(e.target.value)} rows={3} maxLength={1500} placeholder="e.g. I use Claude and Claude Code daily; I built a multi-agent setup that writes and ships code for my side project." style={{ borderRadius: 10, border: "1.5px solid #E0D9CF", padding: 10, fontSize: 15, fontFamily: "inherit", resize: "vertical" }} />
+              <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                <button onClick={() => pick(cur.term, "include", story)} disabled={!!busy || !story.trim()} style={btn("solid")}>
+                  Add it with this
+                </button>
+                <button onClick={() => pick(cur.term, "include", "")} disabled={!!busy} style={btn("text")}>
+                  Add it without details
+                </button>
+              </div>
+            </>
+          )}
+        </div>
+      )}
+      {pending > 0 && !locked && (
+        <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
+          <span style={{ fontSize: 14, fontWeight: 600 }}>
+            You changed {pending} keyword{pending === 1 ? "" : "s"}.
+          </span>
+          <button onClick={update} disabled={!!busy} style={btn("solid")}>
+            {busy === "__update" ? "Rewriting the resume…" : "Update the resume"}
+          </button>
+        </div>
+      )}
+      {err && <div role="alert" style={{ fontSize: 14, color: "#99220F" }}>{err}</div>}
     </div>
   );
 }

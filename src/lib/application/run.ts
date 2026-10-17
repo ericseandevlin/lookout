@@ -9,6 +9,7 @@ import { fetchPage, pageToText } from "@/lib/ai/fetchPage";
 import { kinds } from "@/lib/kinds";
 import { humanize } from "./resumeLayout";
 import { match, savedBlock } from "./saved";
+import { notesBlock, type KeywordChoices } from "./skills";
 import { findTraps, removeTraps, stripBoilerplate, stripHidden, trapWordsIn } from "./posting";
 import {
   ANSWERS_SYSTEM,
@@ -186,7 +187,8 @@ async function loadInputs(userId: string, opp: typeof schema.opportunities.$infe
     email: user?.email ?? "",
     linkedinUrl: li?.url ? linkedinUrl(li.url) : null,
     links: mats.filter((m) => m.kind === "link" && m.url).map((m) => ({ url: m.url!, text: m.extracted?.text ?? "" })),
-    brief: (kinds[profile?.kind ?? "job"]?.brief(profile?.answers ?? {}) ?? "") + savedBlock(profile?.applyAnswers ?? []),
+    brief: (kinds[profile?.kind ?? "job"]?.brief(profile?.answers ?? {}) ?? "") + savedBlock(profile?.applyAnswers ?? []) + notesBlock(profile?.skillNotes ?? []),
+    notes: notesBlock(profile?.skillNotes ?? []),
     saved: profile?.applyAnswers ?? [],
     resume: resume.slice(0, 20000),
     posting: { company: opp.company, title: opp.title, text },
@@ -195,10 +197,11 @@ async function loadInputs(userId: string, opp: typeof schema.opportunities.$infe
 }
 
 /** The ATS resume and its keyword report, from the person's master resume and the cleaned posting. */
-async function draftResume(inp: DraftInputs, usage: Usage) {
-  const d = await completeJSON({ name: "apply-resume", schema: ResumeDraft, system: RESUME_SYSTEM, user: resumePrompt(inp), maxTokens: 8000, usage });
-  const keywords = keywordReport(inp.resume, d.resume, d, inp.posting.text);
-  const draft: Drafted = { content: humanize(d.resume.trim()), note: resumeNote(keywords, d, newNumbers(inp.resume, d.resume)), sources: ["master resume", "posting"], question: null };
+async function draftResume(inp: DraftInputs, usage: Usage, choices?: KeywordChoices) {
+  const d = await completeJSON({ name: "apply-resume", schema: ResumeDraft, system: RESUME_SYSTEM, user: resumePrompt(inp, choices), maxTokens: 8000, usage });
+  const keywords = keywordReport(inp.resume, d.resume, d, inp.posting.text, choices);
+  const facts = `${inp.resume}\n${inp.notes ?? ""}`;
+  const draft: Drafted = { content: humanize(d.resume.trim()), note: resumeNote(keywords, d, newNumbers(facts, d.resume)), sources: ["master resume", ...(inp.notes ? ["your experience notes"] : []), "posting"], question: null };
   const hits = trapWordsIn(draft.content, inp.traps ?? [], `${inp.resume}\n${inp.brief}`);
   if (hits.length) draft.question = `This draft includes ${hits.map((h) => `"${h}"`).join(", ")}, which the posting planted to catch automated applications. Remove it unless you mean to include it.`;
   return { draft, keywords };
@@ -222,7 +225,7 @@ export async function redraftResume(appId: string) {
     // The posting page still works without the ATS's full description.
   }
   const inp = await loadInputs(a.userId, opp, postingHtml);
-  const { draft, keywords } = await draftResume(inp, usage);
+  const { draft, keywords } = await draftResume(inp, usage, a.report.keywordChoices);
   await db.transaction(async (tx) => {
     const [{ n }] = await tx.select({ n: max(schema.itemVersions.version) }).from(schema.itemVersions).where(eq(schema.itemVersions.itemId, item.id));
     await tx.insert(schema.itemVersions).values({ itemId: item.id, version: (n ?? 0) + 1, content: draft.content, note: `Redrafted from the posting. ${draft.note}`, author: "ai", sources: draft.sources });
