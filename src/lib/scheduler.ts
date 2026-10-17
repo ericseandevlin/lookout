@@ -9,6 +9,7 @@ import { SearchConfigError } from "@/lib/ai/search";
 import { discover, isRunning } from "@/lib/agent/discover";
 import { sendDigest } from "@/lib/digest";
 import { getAiConfig } from "@/lib/config";
+import { sweepApplications } from "@/lib/application/run";
 
 const TICK_MS = 10 * 60_000;
 const RUN_HOUR = 7; // local time
@@ -95,6 +96,8 @@ async function tick() {
       .update(schema.runs)
       .set({ status: "failed", error: "The search agent never picked this up", finishedAt: new Date() })
       .where(and(eq(schema.runs.status, "queued"), lt(schema.runs.startedAt, new Date(Date.now() - 24 * 3600_000))));
+    // Auto-apply work left queued or interrupted (normally it starts the moment it's queued).
+    await sweepApplications().catch((e) => console.error("[scheduler] apply sweep", e));
     for (const userId of await dueUsers()) {
       try {
         const { added } = await discover(userId, "scheduled");
