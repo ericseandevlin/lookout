@@ -87,7 +87,7 @@ AI and search settings can live in env or be set in Admin > AI settings (the dat
 
 - Every change starts as a GitHub issue. Branch from `main` as `feat/<issue>-<slug>` or `fix/<issue>-<slug>` (chores: `chore/...`).
 - Every commit message names its issue, e.g. `Drawer: previous/next on the edge (#48)`. One branch per issue; don't mix work.
-- Open a PR into `main`. Merging deploys to staging; review happens on staging, not in the PR.
+- Open a PR into `main`. CI runs on every PR: typecheck, lint, tests, a dependency audit (high severity), Semgrep and a gitleaks secret scan (`.github/workflows/ci.yml`). Merge only when it's green. Dependabot opens weekly update PRs. Merging deploys to staging; review happens on staging, not in the PR.
 - `prod` moves only at the weekly release meeting, by fast-forward to an approved `main` commit.
 - Every release gets a version (`vX.Y.Z`, Semantic Versioning: minor for features, patch for fixes and hotfixes), a section in [CHANGELOG.md](CHANGELOG.md), a git tag and a GitHub Release with the same notes. Unreleased work collects under "Unreleased".
 - Hooks enforce this (run once per clone: `git config core.hooksPath .githooks`): no commits directly on `main` or `prod`, no commit without an issue number.

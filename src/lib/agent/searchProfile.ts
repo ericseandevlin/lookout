@@ -69,6 +69,7 @@ export async function loadRawInputs(userId: string): Promise<RawInputs & { store
       `Find: "${n.title}" at ${n.company}\nLookout said: ${[...n.ok.map((r) => "+ " + r), ...n.gap.map((r) => "- " + r)].join(" | ") || "(no bullets)"}\nTheir note: ${n.notes.trim().slice(0, 400)}`,
   );
   const brief = kind.brief(answers);
+  // nosemgrep: javascript.lang.security.audit.node-sha1.node_sha1 -- SHA-1 here only detects changed inputs, not security
   const hash = createHash("sha1").update(JSON.stringify([VERSION, brief, resumeText, linkedin, links, notes])).digest("hex");
   const answered = Object.values(answers).filter((v) => (Array.isArray(v) ? v.length : String(v ?? "").trim())).length;
   return {
