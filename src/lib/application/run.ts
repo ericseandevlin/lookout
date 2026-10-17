@@ -23,7 +23,7 @@ import {
   type DraftItem,
   type Drafted,
 } from "./draft";
-import { ASHBY_QUERY, PAGE_SYSTEM, PageItems, applyUrlFor, detectAts, fromPage, parseAshby, parseGreenhouse, routeFor, withBasics, type ScanResult } from "./scan";
+import { ASHBY_QUERY, PAGE_SYSTEM, PageItems, applyUrlFor, boardFromHtml, boardGuesses, detectAts, fromPage, parseAshby, parseGreenhouse, routeFor, withBasics, type ScanResult } from "./scan";
 
 /**
  * The auto-apply pipeline for one application: queued -> scanning -> (drafting) -> needs_review.
@@ -33,6 +33,20 @@ import { ASHBY_QUERY, PAGE_SYSTEM, PageItems, applyUrlFor, detectAts, fromPage, 
 async function ghJob(board: string, id: string) {
   const { html } = await fetchPage(`https://boards-api.greenhouse.io/v1/boards/${encodeURIComponent(board)}/jobs/${id}?questions=true`);
   return JSON.parse(html) as unknown;
+}
+
+/** A company page with ?gh_jid=: find its board on the page, else try the obvious names. */
+async function ghEmbedOrJob(board: string, id: string, postingUrl: string) {
+  if (board) return ghJob(board, id);
+  const found = boardFromHtml((await fetchPage(postingUrl)).html);
+  for (const b of found ? [found] : boardGuesses(new URL(postingUrl).hostname)) {
+    try {
+      return await ghJob(b, id);
+    } catch {
+      // try the next guess
+    }
+  }
+  throw new Error("Couldn't find this company's Greenhouse board");
 }
 
 async function ashbyForm(org: string, id: string) {
@@ -53,7 +67,7 @@ export async function scanPosting(postingUrl: string, usage: Usage): Promise<Sca
   const applyUrl = applyUrlFor(ref, postingUrl);
   const route = routeFor(ref.ats);
   try {
-    if (ref.ats === "greenhouse") return { ats: ref.ats, route, applyUrl, source: "form", ...parseGreenhouse(await ghJob(ref.board, ref.id)) };
+    if (ref.ats === "greenhouse") return { ats: ref.ats, route, applyUrl, source: "form", ...parseGreenhouse(await ghEmbedOrJob(ref.board, ref.id, postingUrl)) };
     if (ref.ats === "ashby") return { ats: ref.ats, route, applyUrl, source: "form", ...parseAshby(await ashbyForm(ref.org, ref.id)) };
   } catch (e) {
     // A closed posting is final; anything else (API change, outage) falls back to reading the page.
@@ -113,7 +127,7 @@ export async function processApplication(id: string) {
     await setStatus(id, "drafting", report);
 
     await assertBudget(app.userId);
-    report.keywords = await draftAll(id, app.userId, opp, usage);
+    report.keywords = await draftAll(id, app.userId, opp, usage, scan.postingHtml);
     report.draftedAt = new Date().toISOString();
     report.usd = (report.usd ?? 0) + usage.usd;
     await setStatus(id, "needs_review", report);
@@ -126,7 +140,7 @@ export async function processApplication(id: string) {
 }
 
 /** Everything the drafts may draw on. The posting is re-read in full; the stored description is a summary. */
-async function loadInputs(userId: string, opp: typeof schema.opportunities.$inferSelect): Promise<DraftInputs> {
+async function loadInputs(userId: string, opp: typeof schema.opportunities.$inferSelect, postingHtml?: string): Promise<DraftInputs> {
   const [user] = await db.select().from(schema.users).where(eq(schema.users.id, userId));
   const [profile] = await db.select().from(schema.profiles).where(eq(schema.profiles.userId, userId));
   const mats = await db.select().from(schema.materials).where(eq(schema.materials.userId, userId));
@@ -134,11 +148,13 @@ async function loadInputs(userId: string, opp: typeof schema.opportunities.$infe
   if (!resume) throw new Error("Add your resume on your profile first. Lookout drafts from it.");
   const li = mats.find((m) => m.kind === "linkedin");
   let text = opp.description;
-  try {
-    text = pageToText((await fetchPage(opp.sourceUrl!)).html, 12000);
-  } catch {
-    // Keep the stored description; a posting that won't load still has its summary.
-  }
+  if (postingHtml) text = pageToText(postingHtml, 12000);
+  else
+    try {
+      text = pageToText((await fetchPage(opp.sourceUrl!)).html, 12000);
+    } catch {
+      // Keep the stored description; a posting that won't load still has its summary.
+    }
   return {
     name: user?.name ?? "",
     email: user?.email ?? "",
@@ -151,8 +167,8 @@ async function loadInputs(userId: string, opp: typeof schema.opportunities.$infe
 }
 
 /** Draft version 1 of every item. Returns the resume's keyword report. */
-async function draftAll(id: string, userId: string, opp: typeof schema.opportunities.$inferSelect, usage: Usage) {
-  const inp = await loadInputs(userId, opp);
+async function draftAll(id: string, userId: string, opp: typeof schema.opportunities.$inferSelect, usage: Usage, postingHtml?: string) {
+  const inp = await loadInputs(userId, opp, postingHtml);
   const items = await db.select().from(schema.applicationItems).where(eq(schema.applicationItems.applicationId, id)).orderBy(schema.applicationItems.position);
   const out = new Map<string, Drafted>();
   let keywords: ReturnType<typeof keywordReport> | undefined;

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { applyUrlFor, detectAts, fromPage, kindFor, parseAshby, parseGreenhouse, routeFor, withBasics } from "./scan";
+import { applyUrlFor, boardFromHtml, boardGuesses, detectAts, fromPage, kindFor, parseAshby, parseGreenhouse, routeFor, withBasics } from "./scan";
 
 describe("detectAts", () => {
   it("reads Greenhouse, Lever and Ashby URLs", () => {
@@ -8,6 +8,17 @@ describe("detectAts", () => {
     expect(detectAts("https://boards.greenhouse.io/embed/job_app?for=via&token=8796174002")).toEqual({ ats: "greenhouse", board: "via", id: "8796174002" });
     expect(detectAts("https://jobs.lever.co/acme/1b2c3d4e-0000-4000-8000-000000000000")).toMatchObject({ ats: "lever", site: "acme" });
     expect(detectAts("https://jobs.ashbyhq.com/Citizen/ec0690d5-be5e-4e8b-be78-d832f166b242")).toEqual({ ats: "ashby", org: "Citizen", id: "ec0690d5-be5e-4e8b-be78-d832f166b242" });
+  });
+
+  it("spots company pages that embed Greenhouse", () => {
+    expect(detectAts("https://www.redventures.com/careers/positions/open?gh_jid=8008090")).toEqual({ ats: "greenhouse", board: "", id: "8008090" });
+    expect(applyUrlFor(detectAts("https://www.redventures.com/careers/positions/open?gh_jid=8008090"), "https://www.redventures.com/careers/positions/open?gh_jid=8008090")).toBe(
+      "https://www.redventures.com/careers/positions/open?gh_jid=8008090",
+    );
+    expect(boardFromHtml(`<script src="https://boards.greenhouse.io/embed/job_board/js?for=redventures"></script>`)).toBe("redventures");
+    expect(boardFromHtml(`fetch("https://boards-api.greenhouse.io/v1/boards/acme_co/jobs")`)).toBe("acme_co");
+    expect(boardFromHtml("<p>no board</p>")).toBeNull();
+    expect(boardGuesses("careers.red-ventures.com")).toEqual(["red-ventures", "redventures"]);
   });
 
   it("names Workday and SmartRecruiters, and falls back to other", () => {
