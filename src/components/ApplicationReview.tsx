@@ -7,7 +7,7 @@ import { applicationLabel } from "@/lib/applyLabels";
 import { btn } from "./Settings";
 import { useConfirm } from "./Confirm";
 import { api } from "./store";
-import { toPlainText } from "@/lib/application/draft";
+import { parseDraft, toPlain as toPlainText } from "@/lib/application/resumeLayout";
 
 type Version = { id: string; version: number; content: string; note: string; author: "user" | "ai"; sources: string[]; createdAt: string };
 type Item = {
@@ -182,7 +182,7 @@ export function ApplicationReview({ id }: { id: string }) {
                   <h2 id={`sec-${s.title}`} style={{ margin: "6px 0 0", fontSize: 18, fontWeight: 700 }}>{s.title}</h2>
                   {s.title === "Resume" && d.report.keywords && <KeywordReport k={d.report.keywords} />}
                   {list.map((i) => (
-                    <ItemCard key={i.id} item={i} locked={locked} act={act} />
+                    <ItemCard key={i.id} appId={d.id} item={i} locked={locked} act={act} />
                   ))}
                 </section>
               );
@@ -202,6 +202,36 @@ export function ApplicationReview({ id }: { id: string }) {
             <div style={{ fontSize: 14, lineHeight: 1.55, color: "#3B362C", whiteSpace: "pre-wrap" }}>{d.posting || "No description saved for this role."}</div>
           </aside>
         </div>
+      )}
+    </div>
+  );
+}
+
+/** The resume or letter as the recruiter sees it: same layout as the .docx Lookout uploads. */
+function DocPreview({ md }: { md: string }) {
+  const blocks = parseDraft(md);
+  return (
+    <div style={{ background: "#fff", border: "1px solid #E0D9CF", borderRadius: 6, boxShadow: "0 2px 10px rgba(29,26,15,.08)", padding: "36px 44px", fontFamily: "Calibri, Carlito, 'Segoe UI', Arial, sans-serif", color: "#1F1F1F", fontSize: 13.5, lineHeight: 1.45, maxHeight: 640, overflow: "auto" }}>
+      {blocks.map((b, i) =>
+        b.t === "name" ? (
+          <div key={i} style={{ fontSize: 26, fontWeight: 700, marginBottom: 4 }}>{b.text}</div>
+        ) : b.t === "contact" ? (
+          <div key={i} style={{ fontSize: 12.5, color: "#555" }}>{b.text}</div>
+        ) : b.t === "section" ? (
+          <div key={i} style={{ fontSize: 13.5, fontWeight: 700, letterSpacing: ".06em", textTransform: "uppercase", borderBottom: "1px solid #999", padding: "0 0 2px", margin: "16px 0 6px" }}>{b.text}</div>
+        ) : b.t === "role" ? (
+          <div key={i} style={{ display: "flex", gap: 12, justifyContent: "space-between", fontWeight: 700, margin: "10px 0 2px" }}>
+            <span>{b.text}</span>
+            {b.right && <span style={{ fontWeight: 400, color: "#555", whiteSpace: "nowrap" }}>{b.right}</span>}
+          </div>
+        ) : b.t === "bullet" ? (
+          <div key={i} style={{ display: "grid", gridTemplateColumns: "14px 1fr", margin: "1px 0" }}>
+            <span aria-hidden>•</span>
+            <span>{b.text}</span>
+          </div>
+        ) : (
+          <p key={i} style={{ margin: "0 0 8px" }}>{b.text}</p>
+        ),
       )}
     </div>
   );
@@ -265,7 +295,7 @@ function QuestionRow({ item, onSave }: { item: Item; onSave: (content: string) =
 
 type Act = (itemId: string, payload: Record<string, unknown>, done: string) => Promise<boolean>;
 
-function ItemCard({ item, locked, act }: { item: Item; locked: boolean; act: Act }) {
+function ItemCard({ appId, item, locked, act }: { appId: string; item: Item; locked: boolean; act: Act }) {
   const latest = item.versions[0];
   const [pick, setPick] = useState<string | null>(null);
   const shown = item.versions.find((v) => v.id === pick) ?? item.versions.find((v) => v.id === item.approvedVersionId) ?? latest;
@@ -282,7 +312,9 @@ function ItemCard({ item, locked, act }: { item: Item; locked: boolean; act: Act
 
   const isApproved = !!shown && shown.id === item.approvedVersionId;
   const dirty = text !== (shown?.content ?? "");
-  const long = item.kind === "resume" || item.kind === "cover_letter" || (item.fieldType === "textarea" && item.kind !== "field");
+  const doc = item.kind === "resume" || item.kind === "cover_letter";
+  const [editing, setEditing] = useState(false);
+  const long = doc || (item.fieldType === "textarea" && item.kind !== "field");
   const run = async (kind: NonNullable<typeof busy>, payload: Record<string, unknown>, done: string) => {
     setBusy(kind);
     const ok = await act(item.id, payload, done);
@@ -301,7 +333,9 @@ function ItemCard({ item, locked, act }: { item: Item; locked: boolean; act: Act
         {isApproved && <span style={{ fontSize: 14, fontWeight: 600, color: "#35662A" }}>✓ Approved v{shown.version}</span>}
       </div>
 
-      {item.options?.length && !locked ? (
+      {doc && !editing ? (
+        <DocPreview md={text} />
+      ) : item.options?.length && !locked ? (
         <select id={`it-${item.id}`} value={text} onChange={(e) => setText(e.target.value)} style={{ height: 40, borderRadius: 10, border: "1.5px solid #E0D9CF", padding: "0 10px", fontSize: 15, maxWidth: 420 }}>
           <option value="">Choose…</option>
           {item.options.map((o) => (
@@ -331,6 +365,16 @@ function ItemCard({ item, locked, act }: { item: Item; locked: boolean; act: Act
       {!locked && (
         <>
           <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
+            {doc && (
+              <button onClick={() => setEditing((e) => !e)} aria-pressed={editing} style={btn("outline")}>
+                {editing ? "Preview" : "Edit text"}
+              </button>
+            )}
+            {doc && !dirty && (
+              <a href={`/api/apply/${appId}/items/${item.id}/docx`} style={{ ...btn("text"), display: "inline-flex", alignItems: "center" }}>
+                Download .docx
+              </a>
+            )}
             {item.versions.length > 1 && (
               <select aria-label="Version" value={shown?.id} onChange={(e) => setPick(e.target.value)} style={{ height: 38, borderRadius: 10, border: "1.5px solid #E0D9CF", padding: "0 8px", fontSize: 14 }}>
                 {item.versions.map((v) => (
@@ -471,7 +515,7 @@ function Checklist({ d, onDone }: { d: Detail; onDone: () => void }) {
               </button>
               {(r.kind === "resume" || r.kind === "cover_letter") && !locked && (
                 <>
-                  <a href={`/api/apply/${d.id}/items/${r.key}/docx`} download style={{ ...btn("solid"), height: 32, display: "inline-flex", alignItems: "center", textDecoration: "none" }}>
+                  <a href={`/api/apply/${d.id}/items/${r.key}/docx`} title="The file Lookout uploads" download style={{ ...btn("solid"), height: 32, display: "inline-flex", alignItems: "center", textDecoration: "none" }}>
                     Download .docx
                   </a>
                   <button onClick={() => download(r.prompt, r.content)} style={{ ...btn("outline"), height: 32 }}>
