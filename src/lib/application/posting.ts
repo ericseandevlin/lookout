@@ -78,10 +78,13 @@ export function findTraps(text: string, hidden = false): Trap[] {
 /** Hidden text is always a trap candidate; visible text only where it instructs. Returns the cleaned text too. */
 export function removeTraps(visibleText: string, hiddenTexts: string[]) {
   const visible = findTraps(visibleText, false);
-  // Hidden tracking tags (#LI-Remote, white on white) are routine; drop them without a warning.
-  const hidden = hiddenTexts.filter((h) => !/^(#[\w-]+\s*)+$/.test(h.trim())).flatMap((h) => {
+  // Hidden text never reaches the model either way. Report it only when it instructs (or quotes words to
+  // insert); menu labels and tracking tags ("Open Menu", "#LI-Remote") are routine and dropped quietly.
+  const hidden = hiddenTexts.flatMap((h) => {
     const found = findTraps(h, true);
-    return found.length ? found : [{ text: h.slice(0, 300), words: quoted(h), hidden: true }];
+    if (found.length) return found;
+    const words = quoted(h);
+    return words.length ? [{ text: h.slice(0, 300), words, hidden: true }] : [];
   });
   let text = visibleText;
   for (const t of visible) text = text.split(t.text).join(" ");
