@@ -22,7 +22,12 @@ type App = {
   ats: string | null;
   createdAt: string;
   submittedAt: string | null;
+  items: number;
+  error: string | null;
 };
+
+const ATS_NAME: Record<string, string> = { greenhouse: "Greenhouse", lever: "Lever", ashby: "Ashby", workday: "Workday", smartrecruiters: "SmartRecruiters", other: "company site" };
+const WORKING: ApplicationStatus[] = ["queued", "scanning", "drafting", "submitting"];
 
 const STEPS = [
   ["Reads the application", "Every field, upload, essay and portfolio ask, and which system runs it."],
@@ -65,6 +70,25 @@ export function ApplyPage() {
       })
       .catch((e) => setErr(e instanceof Error ? e.message : "Couldn't load"));
   }, []);
+
+  // While Lookout works on something, refresh the list so status changes show up on their own.
+  const busy = !!apps?.some((a) => WORKING.includes(a.status));
+  useEffect(() => {
+    if (!busy) return;
+    const t = setInterval(() => {
+      api<{ applications: App[] }>("/api/apply").then((r) => setApps(r.applications)).catch(() => {});
+    }, 4000);
+    return () => clearInterval(t);
+  }, [busy]);
+
+  const retry = async (a: App) => {
+    try {
+      await api("/api/apply", { method: "POST", json: { findId: a.findId } });
+      setApps((xs) => (xs ?? []).map((x) => (x.id === a.id ? { ...x, status: "queued", error: null } : x)));
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : "Couldn't retry");
+    }
+  };
 
   const save = async (patch: Partial<AutoApplySettings>) => {
     if (!settings) return;
@@ -145,9 +169,18 @@ export function ApplyPage() {
                         <div style={{ fontSize: 14, color: "#6B6358" }}>
                           {a.company}
                           {a.score ? ` · match ${a.score}/5` : ""}
+                          {a.items > 0 ? ` · ${a.items} things to fill${a.ats ? ` on ${ATS_NAME[a.ats] ?? a.ats}` : ""}` : ""}
                         </div>
+                        {a.error && (
+                          <div role="alert" style={{ fontSize: 14, color: "#99220F", marginTop: 4 }}>
+                            {a.error}
+                          </div>
+                        )}
                       </div>
                       <span style={{ padding: "5px 11px", borderRadius: 999, fontSize: 14, fontWeight: 600, background: st.bg, color: st.ink }}>{st.label}</span>
+                      {a.status === "failed" && (
+                        <button onClick={() => retry(a)} style={{ ...btn("outline"), height: 34, fontSize: 14 }}>Try again</button>
+                      )}
                       {a.status !== "submitted" && a.status !== "submitting" && (
                         <button onClick={() => cancel(a)} style={{ ...btn("text"), height: 34, fontSize: 14 }}>Cancel</button>
                       )}
@@ -161,7 +194,7 @@ export function ApplyPage() {
 
       {apps && apps.length > 0 && (
         <p style={{ margin: "4px 0 0", fontSize: 14, color: "#6B6358" }}>
-          Being built in stages: today it queues. Reading applications, drafting, review and sending are next.{" "}
+          Being built in stages: today it queues and reads each application. Drafting, review and sending are next.{" "}
           <button onClick={() => setPanel(true)} style={{ ...btn("text"), height: "auto", padding: 0, fontSize: 14 }}>How it works</button>
         </p>
       )}

@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { authed, body, HttpError, json } from "@/lib/api";
+import { kick } from "@/lib/application/run";
 import { canUseAutoApply, getAutoApplySettings, listApplications, queueApplication, saveAutoApplySettings } from "@/lib/apply";
 
 /** Auto-apply beta: settings and the application queue. */
@@ -25,5 +26,6 @@ export const POST = authed(async (req, { user }) => {
   const { findId } = await body(req, z.object({ findId: z.string().uuid() }));
   const row = await queueApplication(user.id, findId, "user");
   if (!row) throw new HttpError(404, "That role isn't on your board");
+  if (row.status === "queued") kick(row.id);
   return json({ id: row.id, status: row.status });
 });

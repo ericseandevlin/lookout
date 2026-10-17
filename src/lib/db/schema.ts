@@ -281,9 +281,26 @@ export const applications = pgTable(
     submittedAt: timestamp("submitted_at", { withTimezone: true }),
     /** What came back after submitting: confirmation text, page URL or email subject. */
     confirmation: jsonb("confirmation").$type<Record<string, unknown>>(),
+    /** How the application was read and drafted: where the form came from, keyword report, last error. */
+    report: jsonb("report").$type<ApplicationReport>().notNull().default({}),
   },
   (t) => [uniqueIndex("applications_user_opp_idx").on(t.userId, t.opportunityId), index("applications_user_status_idx").on(t.userId, t.status)],
 );
+
+export type ApplicationReport = {
+  /** "form": the ATS's published form. "page": read from the apply page by the model. */
+  source?: "form" | "page";
+  applyUrl?: string;
+  /** The form has voluntary EEO questions. Lookout never answers those; the user does. */
+  hasEeo?: boolean;
+  /** No form found: how the posting says to apply. */
+  howToApply?: string;
+  scannedAt?: string;
+  draftedAt?: string;
+  error?: string;
+  /** AI spend for this application, in USD. */
+  usd?: number;
+};
 
 export const APPLICATION_ITEM_KINDS = ["resume", "cover_letter", "answer", "portfolio", "outreach", "field"] as const;
 export type ApplicationItemKind = (typeof APPLICATION_ITEM_KINDS)[number];
@@ -300,6 +317,12 @@ export const applicationItems = pgTable("application_items", {
   required: boolean("required").notNull().default(false),
   position: integer("position").notNull().default(0),
   approvedVersionId: uuid("approved_version_id"),
+  /** The form's field type (text, textarea, file, select, multiselect, checkbox). */
+  fieldType: text("field_type"),
+  /** Allowed answers for choice questions, as the form words them. */
+  options: jsonb("options").$type<string[]>(),
+  /** What Lookout needs from the user before it can answer this one. Empty once answered. */
+  question: text("question"),
 });
 
 /** Every draft and edit, kept with a note about who changed what and why. */

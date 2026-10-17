@@ -50,6 +50,13 @@
       "when": 1791941567120,
       "tag": "0006_auto_apply",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1792266522112,
+      "tag": "0007_application_scan",
+      "breakpoints": true
     }
   ]
 }
