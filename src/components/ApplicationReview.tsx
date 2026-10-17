@@ -7,6 +7,7 @@ import { applicationLabel } from "@/lib/applyLabels";
 import { btn } from "./Settings";
 import { useConfirm } from "./Confirm";
 import { api } from "./store";
+import { toPlainText } from "@/lib/application/draft";
 
 type Version = { id: string; version: number; content: string; note: string; author: "user" | "ai"; sources: string[]; createdAt: string };
 type Item = {
@@ -370,7 +371,7 @@ function Checklist({ d, onDone }: { d: Detail; onDone: () => void }) {
     setTimeout(() => setCopied((c) => (c === key ? null : c)), 1500);
   };
   const download = (prompt: string, text: string) => {
-    const url = URL.createObjectURL(new Blob([text], { type: "text/plain" }));
+    const url = URL.createObjectURL(new Blob([toPlainText(text)], { type: "text/plain" }));
     const a = document.createElement("a");
     a.href = url;
     a.download = `${d.company} - ${prompt}.txt`.replace(/[\\/:*?"<>|]/g, "-");
@@ -397,7 +398,7 @@ function Checklist({ d, onDone }: { d: Detail; onDone: () => void }) {
           <li key={r.key} style={{ fontSize: 14 }}>
             <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
               <span style={{ flex: "1 1 200px", fontWeight: 600 }}>{r.prompt}</span>
-              <button onClick={() => copy(r.key, r.content)} style={{ ...btn("outline"), height: 32 }}>
+              <button onClick={() => copy(r.key, r.kind === "resume" || r.kind === "cover_letter" ? toPlainText(r.content) : r.content)} style={{ ...btn("outline"), height: 32 }}>
                 {copied === r.key ? "Copied" : "Copy"}
               </button>
               {(r.kind === "resume" || r.kind === "cover_letter") && (
