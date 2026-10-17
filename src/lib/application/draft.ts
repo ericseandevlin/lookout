@@ -23,6 +23,14 @@ export type Drafted = { content: string; note: string; sources: string[]; questi
 
 // --- Facts we never need a model for.
 
+/** Profiles may hold a bare handle or a URL without https; forms want the full URL. */
+export function linkedinUrl(v: string) {
+  const t = v.trim().replace(/\/+$/, "");
+  if (/^https?:\/\//i.test(t)) return t;
+  if (/linkedin\.com\//i.test(t)) return `https://${t.replace(/^\/+/, "")}`;
+  return `https://www.linkedin.com/in/${t.replace(/^@/, "")}`;
+}
+
 /** Name, email and profile links come straight from the account. Returns null when the model should handle it. */
 export function fillField(prompt: string, inp: DraftInputs): Drafted | null {
   const p = prompt.toLowerCase();
@@ -33,7 +41,7 @@ export function fillField(prompt: string, inp: DraftInputs): Drafted | null {
   if (/^last name/.test(p)) return rest.length ? fact(rest.join(" "), "account name") : null;
   if (/^(full )?name$/.test(p.trim())) return inp.name.trim() ? fact(inp.name.trim(), "account name") : null;
   if (/^e-?mail/.test(p)) return fact(inp.email, "account email");
-  if (/linkedin/.test(p) && inp.linkedinUrl) return fact(inp.linkedinUrl, "LinkedIn on your profile");
+  if (/linkedin/.test(p) && inp.linkedinUrl) return fact(linkedinUrl(inp.linkedinUrl), "LinkedIn on your profile");
   return null;
 }
 

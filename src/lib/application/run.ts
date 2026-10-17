@@ -15,6 +15,7 @@ import {
   answersPrompt,
   checkAnswer,
   fillField,
+  linkedinUrl,
   keywordReport,
   newNumbers,
   resumeNote,
@@ -127,7 +128,7 @@ export async function processApplication(id: string) {
     await setStatus(id, "drafting", report);
 
     await assertBudget(app.userId);
-    report.keywords = await draftAll(id, app.userId, opp, usage, scan.postingHtml);
+    Object.assign(report, await draftAll(id, app.userId, opp, usage, scan.postingHtml));
     report.draftedAt = new Date().toISOString();
     report.usd = (report.usd ?? 0) + usage.usd;
     await setStatus(id, "needs_review", report);
@@ -158,7 +159,7 @@ async function loadInputs(userId: string, opp: typeof schema.opportunities.$infe
   return {
     name: user?.name ?? "",
     email: user?.email ?? "",
-    linkedinUrl: li?.url ?? null,
+    linkedinUrl: li?.url ? linkedinUrl(li.url) : null,
     links: mats.filter((m) => m.kind === "link" && m.url).map((m) => ({ url: m.url!, text: m.extracted?.text ?? "" })),
     brief: kinds[profile?.kind ?? "job"]?.brief(profile?.answers ?? {}) ?? "",
     resume: resume.slice(0, 20000),
@@ -166,7 +167,7 @@ async function loadInputs(userId: string, opp: typeof schema.opportunities.$infe
   };
 }
 
-/** Draft version 1 of every item. Returns the resume's keyword report. */
+/** Draft version 1 of every item. Returns the resume's keyword report and the posting text it drafted from. */
 async function draftAll(id: string, userId: string, opp: typeof schema.opportunities.$inferSelect, usage: Usage, postingHtml?: string) {
   const inp = await loadInputs(userId, opp, postingHtml);
   const items = await db.select().from(schema.applicationItems).where(eq(schema.applicationItems.applicationId, id)).orderBy(schema.applicationItems.position);
@@ -202,7 +203,7 @@ async function draftAll(id: string, userId: string, opp: typeof schema.opportuni
       await tx.update(schema.applicationItems).set({ question: d.question, approvedVersionId: null }).where(eq(schema.applicationItems.id, it.id));
     }
   });
-  return keywords;
+  return { keywords, postingText: inp.posting.text };
 }
 
 /** Re-queue work a restart interrupted, then return what's waiting. One user, or everyone. */
