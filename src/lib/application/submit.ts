@@ -55,7 +55,12 @@ export async function runFill(appId: string, mode: "test" | "submit"): Promise<F
   if (!url) throw new Error("No application page to open");
 
   const { chromium } = await import("playwright-core");
-  const browser = await chromium.launch({ executablePath: CHROMIUM, args: ["--no-sandbox", "--disable-dev-shm-usage"] });
+  // The app container is read-only except /tmp; Chromium writes its profile, config and crash files under HOME.
+  const browser = await chromium.launch({
+    executablePath: CHROMIUM,
+    args: ["--no-sandbox", "--disable-dev-shm-usage"],
+    env: { ...process.env, HOME: "/tmp", XDG_CONFIG_HOME: "/tmp/.config", XDG_CACHE_HOME: "/tmp/.cache" },
+  });
   try {
     const page = await (await browser.newContext({ viewport: { width: 1280, height: 1000 }, locale: "en-US" })).newPage();
     page.setDefaultTimeout(8000);
