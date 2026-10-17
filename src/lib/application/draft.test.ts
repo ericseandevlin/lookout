@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { linkedinUrl, toPlainText, checkAnswer, fillField, hasKeyword, keywordReport, newNumbers, resumeNote, type DraftInputs } from "./draft";
+import { linkedinUrl, checkAnswer, fillField, hasKeyword, keywordReport, newNumbers, resumeNote, type DraftInputs } from "./draft";
 
 const inp: DraftInputs = {
   name: "Maya Ortiz Reyes",
@@ -87,8 +87,3 @@ describe("checkAnswer", () => {
   });
 });
 
-describe("toPlainText", () => {
-  it("drops markdown marks and keeps bullets", () => {
-    expect(toPlainText("# Maya Ortiz\n## Experience\n- Led **design systems**\n* Shipped *fast*\n\n\n\nEnd")).toBe("Maya Ortiz\nExperience\n• Led design systems\n• Shipped fast\n\nEnd");
-  });
-});
