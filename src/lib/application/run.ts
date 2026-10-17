@@ -161,6 +161,10 @@ async function loadInputs(userId: string, opp: typeof schema.opportunities.$infe
     } catch {
       // Keep the stored description; a posting that won't load still has its summary.
     }
+  // Facts the description often leaves to the page around it.
+  const pay = opp.compMin || opp.compMax ? `${[opp.compMin, opp.compMax].filter(Boolean).map((n) => `$${n!.toLocaleString("en-US")}`).join(" – ")} ${opp.currency}` : "";
+  const facts = [`Role: ${opp.title}`, `Company: ${opp.company}`, opp.location && `Location: ${opp.location}`, opp.workMode && `Work mode: ${opp.workMode}`, pay && `Pay range on file: ${pay}`].filter(Boolean).join("\n");
+  text = `${facts}\n\n${text}`;
   return {
     name: user?.name ?? "",
     email: user?.email ?? "",
