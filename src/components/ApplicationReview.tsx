@@ -386,6 +386,11 @@ function ItemCard({ appId, item, locked, act }: { appId: string; item: Item; loc
                 {editing ? "Preview" : "Edit text"}
               </button>
             )}
+            {item.kind === "resume" && !dirty && (
+              <button onClick={() => run("revise", { action: "redraft" }, "Lookout wrote a fresh resume from the posting.")} disabled={!!busy} style={btn("text")}>
+                {busy === "revise" ? "Working…" : "Redraft from the posting"}
+              </button>
+            )}
             {doc && !dirty && (
               <a href={`/api/apply/${appId}/items/${item.id}/docx`} style={{ ...btn("text"), display: "inline-flex", alignItems: "center" }}>
                 Download .docx
