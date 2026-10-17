@@ -154,7 +154,7 @@ export async function reviseItem(userId: string, appId: string, itemId: string, 
     name: "apply-revise",
     schema: Revision,
     system: REVISE_SYSTEM,
-    user: `Posting: ${o?.title} at ${o?.company}\n<posting>\n${(o?.description ?? "").slice(0, 6000)}\n</posting>\n\n<resume>\n${master.slice(0, 12000)}\n</resume>\n\nApplication item: ${it.prompt}${it.options?.length ? `\nOptions: ${it.options.join(" | ")}` : ""}\n<current>\n${cur?.content ?? ""}\n</current>\n\nApplicant's instruction: ${instruction}`,
+    user: `Posting: ${o?.title} at ${o?.company}\n<posting>\n${(a.report.postingText || o?.description || "").slice(0, 8000)}\n</posting>\n\n<resume>\n${master.slice(0, 12000)}\n</resume>\n\nApplication item: ${it.prompt}${it.options?.length ? `\nOptions: ${it.options.join(" | ")}` : ""}\n<current>\n${cur?.content ?? ""}\n</current>\n\nApplicant's instruction: ${instruction}`,
     maxTokens: 8000,
     usage,
   });
