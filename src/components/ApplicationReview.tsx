@@ -291,7 +291,7 @@ function QuestionRow({ item, onSave }: { item: Item; onSave: (content: string) =
       <label htmlFor={`q-${item.id}`} style={{ fontSize: 15, fontWeight: 600 }}>
         {item.question}
       </label>
-      <div style={muted}>For: {item.prompt}</div>
+      {!item.question?.toLowerCase().includes(item.prompt.toLowerCase().slice(0, 40)) && <div style={muted}>For: {item.prompt}</div>}
       {item.options?.length ? (
         <select id={`q-${item.id}`} value={v} onChange={(e) => setV(e.target.value)} style={{ height: 40, borderRadius: 10, border: "1.5px solid #E0D9CF", padding: "0 10px", fontSize: 15, maxWidth: 420 }}>
           <option value="">Choose…</option>

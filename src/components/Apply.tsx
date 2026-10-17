@@ -112,7 +112,7 @@ export function ApplyPage() {
   };
 
   const on = !!settings?.enabled;
-  const summary = !settings ? "" : on ? `Queues ${settings.threshold === 5 ? "5s" : "4s and 5s"} automatically, up to ${settings.dailyCap} a day` : "Only roles you queue yourself";
+  const summary = !settings ? "" : on ? `Queues ${settings.threshold === 5 ? "level 5 matches" : "level 4 and 5 matches"} automatically, up to ${settings.dailyCap} a day` : "Only roles you queue yourself";
 
   return (
     <div className="page-pad lk-page" style={{ display: "flex", flexDirection: "column", gap: 16, maxWidth: 820 }}>
@@ -262,7 +262,7 @@ function SettingsPanel({ settings, save, close }: { settings: AutoApplySettings;
           <fieldset disabled={!on} style={{ border: 0, padding: 0, margin: 0, display: "flex", flexDirection: "column", gap: 18, opacity: on ? 1 : 0.5 }}>
             <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
               <div style={{ fontSize: 15, fontWeight: 600 }}>Which matches</div>
-              <Seg opts={[["Only 5s", 5], ["4 and up", 4]]} cur={settings.threshold} pick={(v) => save({ threshold: v as 4 | 5 })} />
+              <Seg opts={[["Level 5 only", 5], ["Levels 4 and 5", 4]]} cur={settings.threshold} pick={(v) => save({ threshold: v as 4 | 5 })} />
             </div>
             <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
               <div style={{ fontSize: 15, fontWeight: 600 }}>How many a day</div>
