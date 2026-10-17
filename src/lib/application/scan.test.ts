@@ -55,7 +55,11 @@ describe("parseGreenhouse", () => {
       { label: "Will you now or in the future require sponsorship to work in the US?", required: true, fields: [{ type: "multi_value_single_select", values: [{ label: "Yes" }, { label: "No" }] }] },
       { label: "If \"YES\", what is the basis of your current employment authorization? ", required: false, fields: [{ type: "textarea" }] },
     ],
-    location_questions: [],
+    location_questions: [
+      { label: "Longitude", required: true, fields: [{ type: "input_hidden" }] },
+      { label: "Latitude", required: true, fields: [{ type: "input_hidden" }] },
+      { label: "Location", required: true, fields: [{ type: "input_text" }] },
+    ],
     demographic_questions: { header: "Voluntary Self-Identification", questions: [] },
   };
 
@@ -78,7 +82,9 @@ describe("parseGreenhouse", () => {
       ["cover_letter", false],
       ["answer", true],
       ["answer", false],
+      ["field", true],
     ]);
+    expect(r.items.map((i) => i.prompt)).not.toContain("Latitude");
     expect(r.items[3].options).toEqual(["Yes", "No"]);
     expect(r.items[4].prompt).toBe('If "YES", what is the basis of your current employment authorization?');
     expect(r.hasEeo).toBe(true);
