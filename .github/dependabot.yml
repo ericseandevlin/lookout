@@ -14,6 +14,10 @@ updates:
       minor-and-patch:
         update-types: [minor, patch]
     ignore:
+      # @types/node should track the Node runtime (node:22 in the Dockerfile and CI). Types for 26 would let
+      # code compile against APIs that crash at runtime. Drop this when the runtime moves past 24 (#89).
+      - dependency-name: "@types/node"
+        versions: [">=25.0.0"]
       # typescript-eslint (via eslint-config-next) does not support TS 7 yet. Drop this once it does (#87).
       - dependency-name: typescript
         versions: [">=7.0.0"]
