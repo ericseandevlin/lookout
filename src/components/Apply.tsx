@@ -38,8 +38,8 @@ const STEPS = [
 ] as const;
 
 const GROUPS: { title: string; help: string; statuses: ApplicationStatus[] }[] = [
-  { title: "Needs you", help: "Drafts waiting for your review, and anything to finish by hand.", statuses: ["needs_review", "manual", "failed"] },
-  { title: "In progress", help: "Lookout is working on these.", statuses: ["queued", "scanning", "drafting", "approved", "submitting"] },
+  { title: "Needs you", help: "Drafts waiting for your review, and anything to send.", statuses: ["needs_review", "approved", "manual", "failed"] },
+  { title: "In progress", help: "Lookout is working on these.", statuses: ["queued", "scanning", "drafting", "submitting"] },
   { title: "Applied", help: "Sent, with a record of exactly what went out.", statuses: ["submitted"] },
 ];
 
@@ -186,9 +186,9 @@ export function ApplyPage() {
                         )}
                       </div>
                       <span style={{ padding: "5px 11px", borderRadius: 999, fontSize: 14, fontWeight: 600, background: st.bg, color: st.ink }}>{st.label}</span>
-                      {(a.status === "needs_review" || a.status === "manual" || a.status === "submitted") && (
+                      {(a.status === "needs_review" || a.status === "manual" || a.status === "approved" || a.status === "submitted") && (
                         <Link href={`/apply/${a.id}`} style={{ ...btn(a.status === "submitted" ? "outline" : "solid"), height: 34, fontSize: 14, display: "inline-flex", alignItems: "center", textDecoration: "none" }}>
-                          {a.status === "submitted" ? "See what was sent" : a.status === "manual" ? "Send it" : "Review"}
+                          {a.status === "submitted" ? "See what was sent" : a.status === "manual" || a.status === "approved" ? "Send it" : "Review"}
                         </Link>
                       )}
                       {a.status === "failed" && (

@@ -38,11 +38,11 @@ async function ghJob(board: string, id: string) {
 
 /** A company page with ?gh_jid=: find its board on the page, else try the obvious names. */
 async function ghEmbedOrJob(board: string, id: string, postingUrl: string) {
-  if (board) return ghJob(board, id);
+  if (board) return { board, job: await ghJob(board, id) };
   const found = boardFromHtml((await fetchPage(postingUrl)).html);
   for (const b of found ? [found] : boardGuesses(new URL(postingUrl).hostname)) {
     try {
-      return await ghJob(b, id);
+      return { board: b, job: await ghJob(b, id) };
     } catch {
       // try the next guess
     }
@@ -68,7 +68,12 @@ export async function scanPosting(postingUrl: string, usage: Usage): Promise<Sca
   const applyUrl = applyUrlFor(ref, postingUrl);
   const route = routeFor(ref.ats);
   try {
-    if (ref.ats === "greenhouse") return { ats: ref.ats, route, applyUrl, source: "form", ...parseGreenhouse(await ghEmbedOrJob(ref.board, ref.id, postingUrl)) };
+    if (ref.ats === "greenhouse") {
+      const { board, job } = await ghEmbedOrJob(ref.board, ref.id, postingUrl);
+      // Embedded boards live in an iframe on the company page; Greenhouse's own embed URL is the bare form.
+      const url = ref.board ? applyUrl : `https://job-boards.greenhouse.io/embed/job_app?for=${encodeURIComponent(board)}&token=${ref.id}`;
+      return { ats: ref.ats, route, applyUrl: url, source: "form", ...parseGreenhouse(job) };
+    }
     if (ref.ats === "ashby") return { ats: ref.ats, route, applyUrl, source: "form", ...parseAshby(await ashbyForm(ref.org, ref.id)) };
   } catch (e) {
     // A closed posting is final; anything else (API change, outage) falls back to reading the page.

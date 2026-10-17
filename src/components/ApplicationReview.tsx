@@ -34,10 +34,12 @@ type Detail = {
   role: string;
   url: string | null;
   posting: string;
+  autoSubmit: boolean;
   items: Item[];
 };
 
 const WORKING: ApplicationStatus[] = ["queued", "scanning", "drafting"];
+const POLL: ApplicationStatus[] = [...WORKING, "submitting"];
 const SECTIONS: { title: string; kinds: string[] }[] = [
   { title: "Resume", kinds: ["resume"] },
   { title: "Cover letter", kinds: ["cover_letter"] },
@@ -59,11 +61,35 @@ export function ApplicationReview({ id }: { id: string }) {
     load();
   }, [load]);
   const working = !!d && WORKING.includes(d.status);
+  const [testing, setTesting] = useState<string | null>(null);
+  const polling = (!!d && POLL.includes(d.status)) || (!!testing && (d?.report.fill?.at ?? "none") === testing);
   useEffect(() => {
-    if (!working) return;
+    if (!polling) return;
     const t = setInterval(load, 4000);
     return () => clearInterval(t);
-  }, [working, load]);
+  }, [polling, load]);
+
+  const fill = async (mode: "test" | "submit") => {
+    if (mode === "submit") {
+      const ok = await ask({
+        eyebrow: "Submit for me",
+        title: `Send your application to ${d?.company}?`,
+        body: "Lookout fills the form with the exact versions you approved and clicks Submit. If anything looks off (a captcha, a field it can't fill), it stops and you finish with the checklist.",
+        confirmLabel: "Send it",
+      });
+      if (!ok) return;
+    }
+    setErr(null);
+    try {
+      setTesting(d?.report.fill?.at ?? "none");
+      await api(`/api/apply/${id}/fill`, { method: "POST", json: { mode } });
+      setSaid(mode === "test" ? "Filling the form in a test run. Nothing gets submitted. Takes about a minute." : "Sending. Takes about a minute.");
+      await load();
+    } catch (e) {
+      setTesting(null);
+      setErr(e instanceof Error ? e.message : "Couldn't start");
+    }
+  };
 
   const act = async (itemId: string, payload: Record<string, unknown>, done: string) => {
     setErr(null);
@@ -129,7 +155,7 @@ export function ApplicationReview({ id }: { id: string }) {
                   <div style={{ fontSize: 15, fontWeight: 700 }}>
                     {approved} of {required.length} required items approved
                   </div>
-                  <div style={muted}>{d.status === "manual" ? "Ready. Use the checklist at the bottom to send it." : "Approve the exact version of each one you want sent. Editing makes a new version."}</div>
+                  <div style={muted}>{d.status === "manual" ? "Ready. Use the checklist at the bottom to send it." : d.status === "approved" ? "Ready. Lookout can send it for you, or use the checklist." : "Approve the exact version of each one you want sent. Editing makes a new version."}</div>
                 </div>
               </div>
             )}
@@ -162,7 +188,8 @@ export function ApplicationReview({ id }: { id: string }) {
               );
             })}
 
-            {(d.status === "manual" || locked) && <Checklist d={d} onDone={submitted} />}
+            {(d.status === "approved" || d.status === "submitting" || d.report.fill) && d.autoSubmit && <SendForMe d={d} busy={polling} onFill={fill} />}
+            {(d.status === "manual" || d.status === "approved" || locked) && <Checklist d={d} onDone={submitted} />}
           </div>
 
           <aside aria-label="The posting" style={{ ...card, display: "flex", flexDirection: "column", gap: 10 }}>
@@ -354,6 +381,47 @@ function ItemCard({ item, locked, act }: { item: Item; locked: boolean; act: Act
         </>
       )}
     </div>
+  );
+}
+
+function SendForMe({ d, busy, onFill }: { d: Detail; busy: boolean; onFill: (mode: "test" | "submit") => void }) {
+  const f = d.report.fill;
+  const [stamp] = useState(() => Date.now());
+  return (
+    <section aria-labelledby="sfm" style={{ ...card, borderColor: "#1D1A0F", display: "flex", flexDirection: "column", gap: 12 }}>
+      <h2 id="sfm" style={{ margin: 0, fontSize: 18, fontWeight: 700 }}>Send it for you</h2>
+      <p style={{ ...muted, margin: 0 }}>Lookout fills the real form with the versions you approved. Test fill stops before Submit, so you can check the screenshot first.</p>
+      {d.status === "approved" && (
+        <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+          <button onClick={() => onFill("test")} disabled={busy} style={btn("outline")}>
+            {busy ? "Working…" : "Test fill (doesn't submit)"}
+          </button>
+          <button onClick={() => onFill("submit")} disabled={busy} style={btn("solid")}>
+            Submit for me
+          </button>
+        </div>
+      )}
+      {d.status === "submitting" && <div style={muted}>Sending now…</div>}
+      {f && (
+        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+          <div style={{ fontSize: 15, fontWeight: 600 }}>
+            Last {f.mode === "test" ? "test fill" : "send"}: {new Date(f.at).toLocaleString()}
+          </div>
+          {f.stopped && <div role="alert" style={{ fontSize: 14, color: "#99220F" }}>{f.stopped}</div>}
+          {f.confirmation && <div style={{ fontSize: 14, color: "#35662A" }}>Confirmation: {f.confirmation}</div>}
+          <ul style={{ margin: 0, paddingLeft: 18, fontSize: 14, color: "#3B362C" }}>
+            {f.log.map((l) => (
+              <li key={l.prompt}>
+                {l.ok ? "✓" : "✗"} {l.prompt} <span style={{ color: "#6B6358" }}>({l.how})</span>
+              </li>
+            ))}
+          </ul>
+          <a href={`/api/apply/${d.id}/screenshot?which=${f.mode === "submit" ? "after-submit" : "filled"}&t=${stamp}`} target="_blank" rel="noreferrer" style={{ fontSize: 14, color: "#1D1A0F" }}>
+            See the screenshot ↗
+          </a>
+        </div>
+      )}
+    </section>
   );
 }
 
