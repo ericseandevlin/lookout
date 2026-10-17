@@ -17,6 +17,10 @@ updates:
       # typescript-eslint (via eslint-config-next) does not support TS 7 yet. Drop this once it does (#87).
       - dependency-name: typescript
         versions: [">=7.0.0"]
+      # eslint-plugin-react, jsx-a11y and import (via eslint-config-next) do not support ESLint 10 yet;
+      # eslint-plugin-react crashes on load. Drop this once they do (#88).
+      - dependency-name: eslint
+        versions: [">=10.0.0"]
   - package-ecosystem: github-actions
     directory: /
     schedule:
