@@ -7,6 +7,7 @@ import { completeJSON, emptyUsage } from "@/lib/ai/llm";
 import { assertBudget } from "@/lib/ai/runs";
 import { HttpError } from "@/lib/api";
 import { newNumbers } from "./draft";
+import { humanize } from "./resumeLayout";
 import { canAutoSubmit } from "./submit";
 
 /**
@@ -171,7 +172,7 @@ export async function reviseItem(userId: string, appId: string, itemId: string, 
   if (!r.content.trim()) return { status: a.status, question: r.question.trim() || "Lookout needs more detail to make that change." };
   const invented = newNumbers(master, r.content).filter((n) => !newNumbers(master, cur?.content ?? "").includes(n) && !(cur?.content ?? "").includes(n));
   const note = [`You asked: "${instruction.slice(0, 160)}".`, r.note.trim(), invented.length ? `Check these numbers, they aren't in your master resume: ${invented.join(", ")}.` : ""].filter(Boolean).join(" ");
-  await insertVersion(itemId, { content: r.content.trim(), note, author: "ai", sources: ["your instruction", ...(cur ? [`version ${cur.version}`] : [])] });
+  await insertVersion(itemId, { content: it.options?.length ? r.content.trim() : humanize(r.content.trim()), note, author: "ai", sources: ["your instruction", ...(cur ? [`version ${cur.version}`] : [])] });
   return { status: await settleStatus(appId), question: r.question.trim() || null };
 }
 

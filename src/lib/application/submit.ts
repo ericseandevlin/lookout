@@ -6,6 +6,7 @@ import { db, schema } from "@/lib/db";
 import { env } from "@/lib/env";
 import { draftToDocx } from "./docx";
 import { planFill, type FillStep } from "./fillPlan";
+import { letterHeaderFrom } from "./resumeLayout";
 
 /**
  * Auto-apply step 5, browser half (#42): fill the real form with the approved versions in headless
@@ -41,7 +42,8 @@ async function files(appId: string, steps: FillStep[], name: string, company: st
     if (s.kind !== "file" || !s.content) continue;
     const label = s.itemKind === "cover_letter" ? "Cover Letter" : "Resume";
     const file = path.join(dir, `${`${name} - ${company} ${label}`.replace(/[^\w .-]/g, "").trim() || label}.docx`);
-    await writeFile(file, await draftToDocx(s.content, label));
+    const letterHeader = s.itemKind === "cover_letter" ? letterHeaderFrom(steps.find((x) => x.itemKind === "resume")?.content, name) : undefined;
+    await writeFile(file, await draftToDocx(s.content, label, { letterHeader }));
     s.file = file;
   }
 }

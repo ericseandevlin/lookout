@@ -7,6 +7,7 @@ import { completeJSON, emptyUsage, type Usage } from "@/lib/ai/llm";
 import { assertBudget } from "@/lib/ai/runs";
 import { fetchPage, pageToText } from "@/lib/ai/fetchPage";
 import { kinds } from "@/lib/kinds";
+import { humanize } from "./resumeLayout";
 import {
   ANSWERS_SYSTEM,
   AnswersDraft,
@@ -183,7 +184,7 @@ async function draftAll(id: string, userId: string, opp: typeof schema.opportuni
   if (resumeItem) {
     const d = await completeJSON({ name: "apply-resume", schema: ResumeDraft, system: RESUME_SYSTEM, user: resumePrompt(inp), maxTokens: 8000, usage });
     keywords = keywordReport(inp.resume, d.resume, d);
-    out.set(resumeItem.id, { content: d.resume.trim(), note: resumeNote(keywords, d, newNumbers(inp.resume, d.resume)), sources: ["master resume", "posting"], question: null });
+    out.set(resumeItem.id, { content: humanize(d.resume.trim()), note: resumeNote(keywords, d, newNumbers(inp.resume, d.resume)), sources: ["master resume", "posting"], question: null });
   }
 
   const rest: (DraftItem & { id: string })[] = [];
@@ -196,7 +197,11 @@ async function draftAll(id: string, userId: string, opp: typeof schema.opportuni
   if (rest.length) {
     const r = await completeJSON({ name: "apply-answers", schema: AnswersDraft, system: ANSWERS_SYSTEM, user: answersPrompt(inp, rest), maxTokens: 8000, usage });
     const byIndex = new Map(r.items.map((a) => [a.index, a]));
-    for (const it of rest) out.set(it.id, checkAnswer(it, byIndex.get(it.index)));
+    for (const it of rest) {
+      const a = checkAnswer(it, byIndex.get(it.index));
+      // Choice answers must stay exactly as the form words them.
+      out.set(it.id, it.options?.length ? a : { ...a, content: humanize(a.content) });
+    }
   }
 
   await db.transaction(async (tx) => {

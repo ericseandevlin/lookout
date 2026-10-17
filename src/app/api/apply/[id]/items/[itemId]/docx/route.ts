@@ -3,6 +3,7 @@ import { authed, HttpError } from "@/lib/api";
 import { canUseAutoApply } from "@/lib/apply";
 import { draftToDocx } from "@/lib/application/docx";
 import { ownApplication } from "@/lib/application/review";
+import { letterHeaderFrom } from "@/lib/application/resumeLayout";
 import { db, schema } from "@/lib/db";
 
 type Ctx = { params: Promise<{ id: string; itemId: string }> };
@@ -20,7 +21,17 @@ export const GET = authed<Ctx>(async (_req, { user, params }) => {
   if (!v?.content.trim()) throw new HttpError(404, "Nothing drafted yet");
   const [o] = await db.select({ company: schema.opportunities.company }).from(schema.opportunities).where(eq(schema.opportunities.id, a.opportunityId));
   const name = `${user.name || "Resume"} - ${o?.company ?? ""} ${it.kind === "resume" ? "Resume" : "Cover Letter"}`.replace(/[\\/:*?"<>|]/g, "-").trim();
-  const buf = await draftToDocx(v.content, name);
+  let letterHeader;
+  if (it.kind === "cover_letter") {
+    const [r] = await db.select().from(schema.applicationItems).where(and(eq(schema.applicationItems.applicationId, a.id), eq(schema.applicationItems.kind, "resume")));
+    const [rv] = r
+      ? r.approvedVersionId
+        ? await db.select().from(schema.itemVersions).where(eq(schema.itemVersions.id, r.approvedVersionId))
+        : await db.select().from(schema.itemVersions).where(eq(schema.itemVersions.itemId, r.id)).orderBy(desc(schema.itemVersions.version)).limit(1)
+      : [];
+    letterHeader = letterHeaderFrom(rv?.content, user.name);
+  }
+  const buf = await draftToDocx(v.content, name, { letterHeader });
   return new Response(new Uint8Array(buf), {
     headers: {
       "content-type": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
