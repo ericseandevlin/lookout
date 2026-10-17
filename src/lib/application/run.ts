@@ -189,15 +189,25 @@ async function draftAll(id: string, userId: string, opp: typeof schema.opportuni
   return keywords;
 }
 
-/** Scheduler sweep: start anything queued, and re-queue work a restart interrupted. */
-export async function sweepApplications() {
+/** Re-queue work a restart interrupted, then return what's waiting. One user, or everyone. */
+async function leftovers(userId?: string) {
   const stale = new Date(Date.now() - 30 * 60_000);
+  const mine = userId ? [eq(schema.applications.userId, userId)] : [];
   await db
     .update(schema.applications)
     .set({ status: "queued", updatedAt: new Date() })
-    .where(and(inArray(schema.applications.status, ["scanning", "drafting"]), lt(schema.applications.updatedAt, stale)));
-  const queued = await db.select({ id: schema.applications.id }).from(schema.applications).where(inArray(schema.applications.status, ["queued"])).limit(10);
-  for (const { id } of queued) await processApplication(id);
+    .where(and(inArray(schema.applications.status, ["scanning", "drafting"]), lt(schema.applications.updatedAt, stale), ...mine));
+  return db.select({ id: schema.applications.id }).from(schema.applications).where(and(eq(schema.applications.status, "queued"), ...mine)).limit(10);
+}
+
+/** Scheduler sweep: start anything queued, and re-queue work a restart interrupted. */
+export async function sweepApplications() {
+  for (const { id } of await leftovers()) await processApplication(id);
+}
+
+/** Opening /apply resumes the user's own leftovers, so nothing waits on the scheduler (which staging runs without). */
+export async function resumeFor(userId: string) {
+  for (const { id } of await leftovers(userId)) kick(id);
 }
 
 /** Start one right away (fire and forget); the scheduler catches it if this process dies. */
