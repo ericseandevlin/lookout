@@ -300,6 +300,8 @@ export type ApplicationReport = {
   error?: string;
   /** AI spend for this application, in USD. */
   usd?: number;
+  /** Posting keywords and whether the master resume (before) and the ATS draft (after) carry them. */
+  keywords?: { term: string; before: boolean; after: boolean; where?: string }[];
 };
 
 export const APPLICATION_ITEM_KINDS = ["resume", "cover_letter", "answer", "portfolio", "outreach", "field"] as const;
