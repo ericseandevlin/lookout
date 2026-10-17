@@ -1,0 +1,1 @@
+ALTER TABLE "profiles" ADD COLUMN "apply_answers" jsonb DEFAULT '[]'::jsonb NOT NULL;

@@ -40,11 +40,11 @@ type Detail = {
 
 const WORKING: ApplicationStatus[] = ["queued", "scanning", "drafting"];
 const POLL: ApplicationStatus[] = [...WORKING, "submitting"];
-const SECTIONS: { title: string; kinds: string[] }[] = [
+const SECTIONS: { title: string; kinds: string[]; help?: string }[] = [
   { title: "Resume", kinds: ["resume"] },
   { title: "Cover letter", kinds: ["cover_letter"] },
   { title: "Questions", kinds: ["answer", "portfolio", "outreach"] },
-  { title: "Basic fields", kinds: ["field"] },
+  { title: "Basic fields", kinds: ["field"], help: "Filled from your account, resume and saved answers. No approval needed; edit any of them." },
 ];
 const card: React.CSSProperties = { padding: 18, borderRadius: 14, background: "#fff", border: "1.5px solid #E6E0D8" };
 const muted: React.CSSProperties = { fontSize: 14, color: "#6B6358" };
@@ -166,7 +166,7 @@ export function ApplicationReview({ id }: { id: string }) {
                 <p style={{ ...muted, margin: "0 0 12px" }}>It won&apos;t guess facts. Answer here and it becomes a version you can approve.</p>
                 <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
                   {open.map((i) => (
-                    <QuestionRow key={i.id} item={i} onSave={(content) => act(i.id, { action: "edit", content, note: "Answered by you." }, "Saved.")} />
+                    <QuestionRow key={i.id} item={i} onSave={(content) => act(i.id, { action: "edit", content, note: "Answered by you." }, "Saved. Common answers like this one are kept on your profile for next time.")} />
                   ))}
                 </div>
               </section>
@@ -180,6 +180,7 @@ export function ApplicationReview({ id }: { id: string }) {
               return (
                 <section key={s.title} aria-labelledby={`sec-${s.title}`} style={{ display: "flex", flexDirection: "column", gap: 10 }}>
                   <h2 id={`sec-${s.title}`} style={{ margin: "6px 0 0", fontSize: 18, fontWeight: 700 }}>{s.title}</h2>
+                  {s.help && !locked && <div style={{ ...muted, marginTop: -4 }}>{s.help}</div>}
                   {s.title === "Resume" && d.report.keywords && <KeywordReport k={d.report.keywords} />}
                   {list.map((i) => (
                     <ItemCard key={i.id} appId={d.id} item={i} locked={locked} act={act} />
@@ -330,7 +331,7 @@ function ItemCard({ appId, item, locked, act }: { appId: string; item: Item; loc
           {item.prompt}
           {item.required ? <span style={{ color: "#99220F" }}> *</span> : <span style={{ ...muted, fontWeight: 400 }}> (optional)</span>}
         </label>
-        {isApproved && <span style={{ fontSize: 14, fontWeight: 600, color: "#35662A" }}>✓ Approved v{shown.version}</span>}
+        {isApproved && <span style={{ fontSize: 14, fontWeight: 600, color: "#35662A" }}>{item.kind === "field" ? "✓ Will be filled" : `✓ Approved v${shown.version}`}</span>}
       </div>
 
       {doc && !editing ? (
@@ -389,7 +390,7 @@ function ItemCard({ appId, item, locked, act }: { appId: string; item: Item; loc
               <button onClick={() => run("save", { action: "edit", content: text, note: "" }, "Saved as a new version.")} disabled={!!busy} style={btn("outline")}>
                 {busy === "save" ? "Saving…" : "Save as new version"}
               </button>
-            ) : isApproved ? (
+            ) : item.kind === "field" ? null : isApproved ? (
               <button onClick={() => run("approve", { action: "approve", versionId: null }, "Approval removed.")} disabled={!!busy} style={btn("text")}>
                 Unapprove
               </button>
