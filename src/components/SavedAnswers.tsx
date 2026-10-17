@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import type { SavedAnswer } from "@/lib/db/schema";
+import type { SavedAnswer, SkillNote } from "@/lib/db/schema";
 import { PageHead, ProfileTabs } from "./Profile";
 import { btn } from "./Settings";
 import { api } from "./store";
@@ -32,7 +32,7 @@ export function SavedAnswers() {
       <PageHead
         eyebrow="Search profile"
         title="Application answers"
-        intro="Questions most applications ask, answered once. Lookout reuses these on every form it drafts. Change one here when it's no longer true, like a move or a new name."
+        intro="What Lookout reuses on every application: answers to questions most forms ask, and experience notes behind your skills. Change one here when it's no longer true, like a move or a new name."
       />
       <div aria-live="polite" style={{ fontSize: 14, color: "#6B6358", minHeight: 20 }}>{said}</div>
       {err && <div role="alert" style={{ fontSize: 14, color: "#99220F" }}>{err}</div>}
@@ -48,7 +48,67 @@ export function SavedAnswers() {
           ))}
         </ul>
       )}
+      <ExperienceNotes />
     </div>
+  );
+}
+
+/** Skills added while reviewing keywords, with the experience behind them (#121). */
+function ExperienceNotes() {
+  const [notes, setNotes] = useState<SkillNote[] | null>(null);
+  const [said, setSaid] = useState("");
+  const [err, setErr] = useState<string | null>(null);
+  useEffect(() => {
+    api<{ notes: SkillNote[] }>("/api/profile/skill-notes")
+      .then((r) => setNotes(r.notes))
+      .catch((e) => setErr(e instanceof Error ? e.message : "Couldn't load"));
+  }, []);
+  const save = async (skill: string, story: string, forget = false) => {
+    setErr(null);
+    try {
+      const r = await api<{ notes: SkillNote[] }>("/api/profile/skill-notes", { method: "PUT", json: { skill, story, forget } });
+      setNotes(r.notes);
+      setSaid(forget ? `Forgot "${skill}".` : `Saved "${skill}".`);
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : "Couldn't save");
+    }
+  };
+  return (
+    <section aria-labelledby="xp-notes" style={{ display: "flex", flexDirection: "column", gap: 10, marginTop: 18 }}>
+      <h2 id="xp-notes" style={{ margin: 0, fontSize: 20, fontWeight: 700 }}>Experience notes</h2>
+      <p style={{ margin: 0, fontSize: 14, lineHeight: 1.55, color: "#6B6358" }}>
+        Skills you told Lookout you have, and where they come from. Your resume can&apos;t hold everything; these count as facts in every resume, cover letter and answer Lookout drafts.
+      </p>
+      <div aria-live="polite" style={{ fontSize: 14, color: "#6B6358", minHeight: 20 }}>{said}</div>
+      {err && <div role="alert" style={{ fontSize: 14, color: "#99220F" }}>{err}</div>}
+      {notes && notes.length === 0 && (
+        <div style={{ padding: 20, borderRadius: 14, background: "#fff", border: "1.5px solid #E6E0D8", fontSize: 14, lineHeight: 1.55, color: "#3B362C" }}>
+          None yet. On an application&apos;s keyword list, click a struck-through keyword you do have and tell Lookout where it comes from.
+        </div>
+      )}
+      {notes && notes.length > 0 && (
+        <ul style={{ listStyle: "none", margin: 0, padding: 0, display: "flex", flexDirection: "column", gap: 10 }}>
+          {notes.map((n) => (
+            <NoteRow key={n.skill} n={n} save={save} />
+          ))}
+        </ul>
+      )}
+    </section>
+  );
+}
+
+function NoteRow({ n, save }: { n: SkillNote; save: (skill: string, story: string, forget?: boolean) => Promise<void> }) {
+  const [v, setV] = useState(n.story);
+  const id = `xn-${n.skill.replace(/\W+/g, "-").slice(0, 60)}`;
+  return (
+    <li style={{ padding: 16, borderRadius: 14, background: "#fff", border: "1.5px solid #E6E0D8", display: "flex", flexDirection: "column", gap: 8 }}>
+      <label htmlFor={id} style={{ fontSize: 15, fontWeight: 600 }}>{n.skill}</label>
+      <textarea id={id} value={v} onChange={(e) => setV(e.target.value)} rows={2} maxLength={1500} placeholder="Where does this come from? A role, a project, a result." style={{ borderRadius: 10, border: "1.5px solid #E0D9CF", padding: 10, fontSize: 15, fontFamily: "inherit", resize: "vertical" }} />
+      <div style={{ display: "flex", gap: 8 }}>
+        <button onClick={() => save(n.skill, v)} disabled={v === n.story} style={btn("outline")}>Save</button>
+        <button onClick={() => save(n.skill, "", true)} style={btn("text")}>Forget</button>
+      </div>
+    </li>
   );
 }
 
