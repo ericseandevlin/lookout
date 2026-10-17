@@ -133,7 +133,13 @@ export function parseGreenhouse(json: unknown): Omit<ScanResult, "ats" | "route"
   for (const q of job.location_questions ?? []) items.push({ kind: "field", prompt: q.label.trim(), required: !!q.required, fieldType: "text" });
   const eeo = job.demographic_questions;
   const hasEeo = (Array.isArray(job.compliance) && job.compliance.length > 0) || (!!eeo && (!Array.isArray(eeo) || eeo.length > 0));
-  return { items, hasEeo };
+  // Greenhouse escapes the description HTML once more, and keeps location and pay outside it.
+  const pay = (job.pay_input_ranges ?? [])
+    .filter((r) => r.min_cents || r.max_cents)
+    .map((r) => `${r.title ?? "Pay"}: ${[r.min_cents, r.max_cents].filter(Boolean).map((c) => `$${Math.round(c! / 100).toLocaleString("en-US")}`).join(" – ")} ${r.currency_type ?? ""}`.trim());
+  const facts = [job.title && `<p>Title: ${job.title}</p>`, job.location?.name && `<p>Location: ${job.location.name}</p>`, ...pay.map((p) => `<p>${p}</p>`)].filter(Boolean).join("");
+  const body = job.content?.replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&quot;/g, '"').replace(/&#39;/g, "'").replace(/&amp;/g, "&");
+  return { items, hasEeo, ...(body ? { postingHtml: facts + body } : {}) };
 }
 
 const EEO = /eeo|equal employment|demographic|voluntary|self.?identif/i;

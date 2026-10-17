@@ -59,6 +59,17 @@ describe("parseGreenhouse", () => {
     demographic_questions: { header: "Voluntary Self-Identification", questions: [] },
   };
 
+  it("returns the full description with title, location and pay in front", () => {
+    const r = parseGreenhouse({
+      ...job,
+      title: "Group AI Product Manager | Digital",
+      location: { name: "New York, NY" },
+      pay_input_ranges: [{ min_cents: 23000000, max_cents: 26000000, currency_type: "USD", title: "Total cash" }],
+      content: "&lt;p&gt;Own the P&amp;amp;L.&lt;/p&gt;",
+    });
+    expect(r.postingHtml).toBe("<p>Title: Group AI Product Manager | Digital</p><p>Location: New York, NY</p><p>Total cash: $230,000 – $260,000 USD</p><p>Own the P&amp;L.</p>");
+  });
+
   it("lists every question with kind, requiredness and options", () => {
     const r = parseGreenhouse(job);
     expect(r.items.map((i) => [i.kind, i.required])).toEqual([
