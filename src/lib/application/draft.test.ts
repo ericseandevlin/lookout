@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { toPlainText, checkAnswer, fillField, hasKeyword, keywordReport, newNumbers, resumeNote, type DraftInputs } from "./draft";
+import { linkedinUrl, toPlainText, checkAnswer, fillField, hasKeyword, keywordReport, newNumbers, resumeNote, type DraftInputs } from "./draft";
 
 const inp: DraftInputs = {
   name: "Maya Ortiz Reyes",
@@ -19,6 +19,13 @@ describe("fillField", () => {
     expect(fillField("Name", inp)?.content).toBe("Maya Ortiz Reyes");
     expect(fillField("Email", inp)?.content).toBe("maya@example.com");
     expect(fillField("LinkedIn Profile", inp)?.content).toBe("https://www.linkedin.com/in/maya");
+  });
+
+  it("turns a LinkedIn handle into a URL", () => {
+    expect(linkedinUrl("ericseandevlin")).toBe("https://www.linkedin.com/in/ericseandevlin");
+    expect(linkedinUrl("linkedin.com/in/maya/")).toBe("https://linkedin.com/in/maya");
+    expect(linkedinUrl("https://www.linkedin.com/in/maya")).toBe("https://www.linkedin.com/in/maya");
+    expect(fillField("LinkedIn Profile", { ...inp, linkedinUrl: "maya" })?.content).toBe("https://www.linkedin.com/in/maya");
   });
 
   it("leaves everything else to the model", () => {

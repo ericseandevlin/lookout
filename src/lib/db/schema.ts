@@ -300,6 +300,8 @@ export type ApplicationReport = {
   error?: string;
   /** AI spend for this application, in USD. */
   usd?: number;
+  /** The posting text the drafts were written from (shown beside them on the review screen). */
+  postingText?: string;
   /** Posting keywords and whether the master resume (before) and the ATS draft (after) carry them. */
   keywords?: { term: string; before: boolean; after: boolean; where?: string }[];
 };
