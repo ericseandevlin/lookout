@@ -38,6 +38,7 @@ const normPart = (s: string) =>
     .trim();
 
 export function fingerprint(company: string, title: string, location: string) {
+  // nosemgrep: javascript.lang.security.audit.node-sha1.node_sha1 -- SHA-1 here only fingerprints postings for dedupe, not security
   return createHash("sha1")
     .update([company, title, location.split(",")[0]].map(normPart).join("|"))
     .digest("hex");
