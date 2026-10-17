@@ -15,7 +15,10 @@ const inputBase: React.CSSProperties = {
 /** Tabs across the Profile pages: what you want, what you've done, and what searches use. */
 export function ProfileTabs() {
   const path = usePathname();
-  const tabs = [["/profile", "Your answers"], ["/profile/materials", "Materials"], ["/profile/sees", "What Lookout sees"]] as const;
+  const { state } = useStore();
+  const tabs: [string, string][] = [["/profile", "Your answers"], ["/profile/materials", "Materials"], ["/profile/sees", "What Lookout sees"]];
+  // Auto-apply beta: the answers it reuses on every application form (#108).
+  if (state.user.autoApply) tabs.push(["/profile/application", "Application answers"]);
   return (
     <nav aria-label="Profile sections" style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 18 }}>
       {tabs.map(([href, label]) => {

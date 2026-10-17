@@ -98,7 +98,11 @@ export const profiles = pgTable("profiles", {
   searchProfileAt: timestamp("search_profile_at", { withTimezone: true }),
   /** Hash of the inputs it was built from; a mismatch means it's stale. */
   searchProfileHash: text("search_profile_hash"),
+  /** Answers to questions most applications ask (work authorization, ZIP...), reused on the next one. Editable on the profile. */
+  applyAnswers: jsonb("apply_answers").$type<SavedAnswer[]>().notNull().default([]),
 });
+
+export type SavedAnswer = { key: string; question: string; answer: string; updatedAt: string };
 
 export type SearchProfile = {
   summary: string;

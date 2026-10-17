@@ -13,6 +13,8 @@ export type DraftInputs = {
   linkedinUrl: string | null;
   links: { url: string; text: string }[];
   brief: string;
+  /** Answers the person gave on earlier applications (#108). */
+  saved?: import("@/lib/db/schema").SavedAnswer[];
   resume: string;
   posting: { company: string; title: string; text: string };
 };
