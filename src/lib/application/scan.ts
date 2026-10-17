@@ -115,7 +115,7 @@ const GhJob = z.object({
       }),
     )
     .default([]),
-  location_questions: z.array(z.object({ label: z.string(), required: z.boolean().nullable().optional() })).nullable().optional(),
+  location_questions: z.array(z.object({ label: z.string(), required: z.boolean().nullable().optional(), fields: z.array(z.object({ type: z.string() })).optional() })).nullable().optional(),
   demographic_questions: z.unknown().optional(),
   compliance: z.unknown().optional(),
 });
@@ -123,14 +123,17 @@ const GhJob = z.object({
 export function parseGreenhouse(json: unknown): Omit<ScanResult, "ats" | "route" | "applyUrl" | "source"> {
   const job = GhJob.parse(json);
   const items: ScannedItem[] = [];
+  // Hidden inputs (the latitude and longitude behind Greenhouse's location picker) fill themselves; nobody types them.
+  const visible = (fields?: { type: string }[]) => !fields?.length || fields.some((f) => f.type !== "input_hidden");
   for (const q of job.questions) {
+    if (!visible(q.fields)) continue;
     const types = q.fields.map((f) => f.type);
     // Resume and cover letter come as file-or-paste pairs; one item covers both.
     const fieldType = types.includes("input_file") ? "file" : types.includes("textarea") ? "textarea" : /select/.test(types[0] ?? "") ? "select" : "text";
     const options = q.fields.flatMap((f) => (f.values ?? []).map((v) => v.label)).filter(Boolean);
     items.push({ kind: kindFor(q.label, fieldType), prompt: q.label.trim(), required: !!q.required, fieldType, ...(options.length ? { options } : {}) });
   }
-  for (const q of job.location_questions ?? []) items.push({ kind: "field", prompt: q.label.trim(), required: !!q.required, fieldType: "text" });
+  for (const q of job.location_questions ?? []) if (visible(q.fields)) items.push({ kind: "field", prompt: q.label.trim(), required: !!q.required, fieldType: "text" });
   const eeo = job.demographic_questions;
   const hasEeo = (Array.isArray(job.compliance) && job.compliance.length > 0) || (!!eeo && (!Array.isArray(eeo) || eeo.length > 0));
   // Greenhouse escapes the description HTML once more, and keeps location and pay outside it.
