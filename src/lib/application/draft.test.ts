@@ -60,6 +60,13 @@ describe("keywords", () => {
   });
 });
 
+describe("keywordReport with the posting", () => {
+  it("drops keywords that aren't in the posting (invented or planted)", () => {
+    const r = keywordReport("Led design systems.", "Led design systems and pomegranate work.", { keywords: ["design systems", "pomegranate"], resume: "", changes: [], note: "" }, "We need design systems leadership.");
+    expect(r.map((x) => x.term)).toEqual(["design systems"]);
+  });
+});
+
 describe("newNumbers", () => {
   it("flags numbers the master resume never had, not years", () => {
     const master = "Grew revenue 40% to $2.5M across 12 teams, 2019 to 2024.";

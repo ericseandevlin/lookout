@@ -172,6 +172,21 @@ export function ApplicationReview({ id }: { id: string }) {
               </section>
             )}
 
+            {!!d.report.traps?.length && !locked && (
+              <section aria-labelledby="traps" style={{ ...card, borderColor: "#E8B4AA", background: "#FFF6F4" }}>
+                <h2 id="traps" style={{ margin: "0 0 4px", fontSize: 17, fontWeight: 700 }}>This posting tries to catch automated applications</h2>
+                <p style={{ ...muted, margin: "0 0 10px" }}>
+                  Lookout found {d.report.traps.length === 1 ? "an instruction" : `${d.report.traps.length} instructions`} planted for applicants or AI tools and did not follow {d.report.traps.length === 1 ? "it" : "them"}. Hidden ones are invisible to people, so following them gives you away. Visible ones may be an attention check for careful readers; if you want to follow one, add it yourself.
+                </p>
+                <ul style={{ margin: 0, paddingLeft: 18, display: "flex", flexDirection: "column", gap: 6, fontSize: 14 }}>
+                  {d.report.traps.map((t, i) => (
+                    <li key={i}>
+                      <span style={{ fontWeight: 600 }}>{t.hidden ? "Hidden from readers: " : "Visible: "}</span>“{t.text}”
+                    </li>
+                  ))}
+                </ul>
+              </section>
+            )}
             {d.report.hasEeo && !locked && <div style={{ ...card, ...muted }}>This form also has voluntary EEO questions (gender, race, veteran and disability status). Lookout never answers those. Fill them in yourself when you submit, or skip them.</div>}
 
             {SECTIONS.map((s) => {
