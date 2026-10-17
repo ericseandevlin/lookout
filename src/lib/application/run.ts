@@ -1,5 +1,5 @@
 import "server-only";
-import { and, eq, inArray, lt } from "drizzle-orm";
+import { and, eq, inArray, lt, max } from "drizzle-orm";
 import { fetch } from "undici";
 import { db, schema } from "@/lib/db";
 import type { ApplicationReport, ApplicationStatus } from "@/lib/db/schema";
@@ -194,6 +194,47 @@ async function loadInputs(userId: string, opp: typeof schema.opportunities.$infe
   };
 }
 
+/** The ATS resume and its keyword report, from the person's master resume and the cleaned posting. */
+async function draftResume(inp: DraftInputs, usage: Usage) {
+  const d = await completeJSON({ name: "apply-resume", schema: ResumeDraft, system: RESUME_SYSTEM, user: resumePrompt(inp), maxTokens: 8000, usage });
+  const keywords = keywordReport(inp.resume, d.resume, d, inp.posting.text);
+  const draft: Drafted = { content: humanize(d.resume.trim()), note: resumeNote(keywords, d, newNumbers(inp.resume, d.resume)), sources: ["master resume", "posting"], question: null };
+  const hits = trapWordsIn(draft.content, inp.traps ?? [], `${inp.resume}\n${inp.brief}`);
+  if (hits.length) draft.question = `This draft includes ${hits.map((h) => `"${h}"`).join(", ")}, which the posting planted to catch automated applications. Remove it unless you mean to include it.`;
+  return { draft, keywords };
+}
+
+/**
+ * Write a fresh resume from the posting, as a new version: for drafts made before a fix, or when the
+ * user wants to start that one over. Every other item and approval stays as it is.
+ */
+export async function redraftResume(appId: string) {
+  const [a] = await db.select().from(schema.applications).where(eq(schema.applications.id, appId));
+  const [item] = await db.select().from(schema.applicationItems).where(and(eq(schema.applicationItems.applicationId, appId), eq(schema.applicationItems.kind, "resume")));
+  if (!a || !item) throw new Error("No resume on this application");
+  await assertBudget(a.userId);
+  const [opp] = await db.select().from(schema.opportunities).where(eq(schema.opportunities.id, a.opportunityId));
+  const usage = emptyUsage();
+  let postingHtml: string | undefined;
+  try {
+    postingHtml = (await scanPosting(opp.sourceUrl!, usage)).postingHtml;
+  } catch {
+    // The posting page still works without the ATS's full description.
+  }
+  const inp = await loadInputs(a.userId, opp, postingHtml);
+  const { draft, keywords } = await draftResume(inp, usage);
+  await db.transaction(async (tx) => {
+    const [{ n }] = await tx.select({ n: max(schema.itemVersions.version) }).from(schema.itemVersions).where(eq(schema.itemVersions.itemId, item.id));
+    await tx.insert(schema.itemVersions).values({ itemId: item.id, version: (n ?? 0) + 1, content: draft.content, note: `Redrafted from the posting. ${draft.note}`, author: "ai", sources: draft.sources });
+    await tx.update(schema.applicationItems).set({ approvedVersionId: null, question: draft.question }).where(eq(schema.applicationItems.id, item.id));
+    const status = a.status === "approved" || a.status === "manual" ? "needs_review" : a.status;
+    await tx
+      .update(schema.applications)
+      .set({ status, updatedAt: new Date(), report: { ...a.report, keywords, postingText: inp.posting.text, traps: inp.traps ?? [], usd: (a.report.usd ?? 0) + usage.usd } })
+      .where(eq(schema.applications.id, appId));
+  });
+}
+
 /** Draft version 1 of every item. Returns the resume's keyword report and the posting text it drafted from. */
 async function draftAll(id: string, userId: string, opp: typeof schema.opportunities.$inferSelect, usage: Usage, postingHtml?: string) {
   const inp = await loadInputs(userId, opp, postingHtml);
@@ -203,9 +244,9 @@ async function draftAll(id: string, userId: string, opp: typeof schema.opportuni
 
   const resumeItem = items.find((i) => i.kind === "resume");
   if (resumeItem) {
-    const d = await completeJSON({ name: "apply-resume", schema: ResumeDraft, system: RESUME_SYSTEM, user: resumePrompt(inp), maxTokens: 8000, usage });
-    keywords = keywordReport(inp.resume, d.resume, d, inp.posting.text);
-    out.set(resumeItem.id, { content: humanize(d.resume.trim()), note: resumeNote(keywords, d, newNumbers(inp.resume, d.resume)), sources: ["master resume", "posting"], question: null });
+    const r = await draftResume(inp, usage);
+    keywords = r.keywords;
+    out.set(resumeItem.id, r.draft);
   }
 
   const rest: (DraftItem & { id: string })[] = [];
