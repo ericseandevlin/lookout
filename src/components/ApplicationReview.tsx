@@ -385,7 +385,7 @@ function Checklist({ d, onDone }: { d: Detail; onDone: () => void }) {
         <p style={{ ...muted, margin: 0 }}>Applied {d.submittedAt ? new Date(d.submittedAt).toLocaleString() : ""}. This is the exact text you approved.</p>
       ) : (
         <p style={{ ...muted, margin: 0 }}>
-          Open the application, then copy each answer in. Upload the resume and cover letter files where the form asks for them. Takes about two minutes.
+          Open the application, then copy each answer in. Upload the resume and cover letter as Word files where the form asks for them. Takes about two minutes.
         </p>
       )}
       {!locked && d.report.applyUrl && (
@@ -401,10 +401,15 @@ function Checklist({ d, onDone }: { d: Detail; onDone: () => void }) {
               <button onClick={() => copy(r.key, r.kind === "resume" || r.kind === "cover_letter" ? toPlainText(r.content) : r.content)} style={{ ...btn("outline"), height: 32 }}>
                 {copied === r.key ? "Copied" : "Copy"}
               </button>
-              {(r.kind === "resume" || r.kind === "cover_letter") && (
-                <button onClick={() => download(r.prompt, r.content)} style={{ ...btn("outline"), height: 32 }}>
-                  Download .txt
-                </button>
+              {(r.kind === "resume" || r.kind === "cover_letter") && !locked && (
+                <>
+                  <a href={`/api/apply/${d.id}/items/${r.key}/docx`} download style={{ ...btn("solid"), height: 32, display: "inline-flex", alignItems: "center", textDecoration: "none" }}>
+                    Download .docx
+                  </a>
+                  <button onClick={() => download(r.prompt, r.content)} style={{ ...btn("outline"), height: 32 }}>
+                    .txt
+                  </button>
+                </>
               )}
             </div>
             {r.kind !== "resume" && r.kind !== "cover_letter" && <div style={{ ...muted, whiteSpace: "pre-wrap", marginTop: 2 }}>{r.content.length > 240 ? `${r.content.slice(0, 240)}…` : r.content}</div>}
