@@ -165,7 +165,15 @@ export function ApplyPage() {
                       style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap", padding: "12px 14px", borderRadius: 12, background: focusId === a.id ? "#FDF3E8" : "#fff", border: `1.5px solid ${focusId === a.id ? "#F8A865" : "#E6E0D8"}`, transition: "background-color .4s ease, border-color .4s ease", scrollMarginTop: 120 }}
                     >
                       <div style={{ flex: "1 1 260px", minWidth: 0 }}>
-                        <div style={{ fontSize: 15, fontWeight: 600, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{a.role}</div>
+                        <div style={{ fontSize: 15, fontWeight: 600, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                          {a.items > 0 ? (
+                            <Link href={`/apply/${a.id}`} style={{ color: "#1D1A0F" }}>
+                              {a.role}
+                            </Link>
+                          ) : (
+                            a.role
+                          )}
+                        </div>
                         <div style={{ fontSize: 14, color: "#6B6358" }}>
                           {a.company}
                           {a.score ? ` · match ${a.score}/5` : ""}
@@ -178,6 +186,11 @@ export function ApplyPage() {
                         )}
                       </div>
                       <span style={{ padding: "5px 11px", borderRadius: 999, fontSize: 14, fontWeight: 600, background: st.bg, color: st.ink }}>{st.label}</span>
+                      {(a.status === "needs_review" || a.status === "manual" || a.status === "submitted") && (
+                        <Link href={`/apply/${a.id}`} style={{ ...btn(a.status === "submitted" ? "outline" : "solid"), height: 34, fontSize: 14, display: "inline-flex", alignItems: "center", textDecoration: "none" }}>
+                          {a.status === "submitted" ? "See what was sent" : a.status === "manual" ? "Send it" : "Review"}
+                        </Link>
+                      )}
                       {a.status === "failed" && (
                         <button onClick={() => retry(a)} style={{ ...btn("outline"), height: 34, fontSize: 14 }}>Try again</button>
                       )}
@@ -194,7 +207,7 @@ export function ApplyPage() {
 
       {apps && apps.length > 0 && (
         <p style={{ margin: "4px 0 0", fontSize: 14, color: "#6B6358" }}>
-          Being built in stages: today it queues and reads each application. Drafting, review and sending are next.{" "}
+          Sending is a two-minute checklist for now. A browser worker that fills Greenhouse, Lever and Ashby forms for you comes next.{" "}
           <button onClick={() => setPanel(true)} style={{ ...btn("text"), height: "auto", padding: 0, fontSize: 14 }}>How it works</button>
         </p>
       )}
