@@ -4,6 +4,7 @@ import { db, schema } from "@/lib/db";
 import type { ApplicationStatus, AutoApplySettings } from "@/lib/db/schema";
 import type { SessionUser } from "@/lib/auth/session";
 import { isAdmin } from "@/lib/users";
+import { kick } from "@/lib/application/run";
 
 /** Auto-apply is a beta. For now only admins see it, so Eric can build it on his own account first. */
 // Staging-only until Eric releases it: off unless FEATURE_AUTO_APPLY=on in the server's .env.
@@ -37,6 +38,8 @@ export type ApplicationRow = {
   ats: string | null;
   createdAt: string;
   submittedAt: string | null;
+  items: number;
+  error: string | null;
 };
 
 export async function listApplications(userId: string): Promise<ApplicationRow[]> {
@@ -50,6 +53,13 @@ export async function listApplications(userId: string): Promise<ApplicationRow[]
     )
     .where(eq(schema.applications.userId, userId))
     .orderBy(desc(schema.applications.createdAt));
+  const counts = await db
+    .select({ id: schema.applicationItems.applicationId, n: sql<number>`count(*)::int` })
+    .from(schema.applicationItems)
+    .innerJoin(schema.applications, eq(schema.applications.id, schema.applicationItems.applicationId))
+    .where(eq(schema.applications.userId, userId))
+    .groupBy(schema.applicationItems.applicationId);
+  const n = new Map(counts.map((c) => [c.id, c.n]));
   return rows.map(({ a, o, u }) => ({
     id: a.id,
     findId: o.id,
@@ -62,6 +72,8 @@ export async function listApplications(userId: string): Promise<ApplicationRow[]
     ats: a.ats,
     createdAt: a.createdAt.toISOString(),
     submittedAt: a.submittedAt?.toISOString() ?? null,
+    items: n.get(a.id) ?? 0,
+    error: a.status === "failed" ? (a.report.error ?? "Something went wrong") : null,
   }));
 }
 
@@ -77,11 +89,11 @@ export async function queueApplication(userId: string, opportunityId: string, by
     .values({ userId, opportunityId, queuedBy: by })
     .onConflictDoUpdate({
       target: [schema.applications.userId, schema.applications.opportunityId],
-      // Re-queuing a canceled one brings it back; anything further along is left as is.
+      // Re-queuing a canceled or failed one starts it over; anything further along is left as is.
       set: { updatedAt: new Date() },
     })
     .returning();
-  if (row.status === "canceled") {
+  if (row.status === "canceled" || row.status === "failed") {
     await db.update(schema.applications).set({ status: "queued", queuedBy: by, updatedAt: new Date() }).where(eq(schema.applications.id, row.id));
     row.status = "queued";
   }
@@ -105,6 +117,9 @@ export async function autoQueue(userId: string, newFinds: { id: string; score: n
     .where(and(eq(schema.applications.userId, userId), eq(schema.applications.queuedBy, "auto"), gte(schema.applications.createdAt, since)));
   const room = Math.max(0, s.dailyCap - n);
   const picks = newFinds.filter((f) => f.score >= s.threshold).sort((a, b) => b.score - a.score).slice(0, room);
-  for (const f of picks) await queueApplication(userId, f.id, "auto");
+  for (const f of picks) {
+    const row = await queueApplication(userId, f.id, "auto");
+    if (row?.status === "queued") kick(row.id);
+  }
   return picks.length;
 }
