@@ -8,6 +8,7 @@ import { assertBudget } from "@/lib/ai/runs";
 import { fetchPage, pageToText } from "@/lib/ai/fetchPage";
 import { kinds } from "@/lib/kinds";
 import { humanize } from "./resumeLayout";
+import { match, savedBlock } from "./saved";
 import {
   ANSWERS_SYSTEM,
   AnswersDraft,
@@ -171,7 +172,8 @@ async function loadInputs(userId: string, opp: typeof schema.opportunities.$infe
     email: user?.email ?? "",
     linkedinUrl: li?.url ? linkedinUrl(li.url) : null,
     links: mats.filter((m) => m.kind === "link" && m.url).map((m) => ({ url: m.url!, text: m.extracted?.text ?? "" })),
-    brief: kinds[profile?.kind ?? "job"]?.brief(profile?.answers ?? {}) ?? "",
+    brief: (kinds[profile?.kind ?? "job"]?.brief(profile?.answers ?? {}) ?? "") + savedBlock(profile?.applyAnswers ?? []),
+    saved: profile?.applyAnswers ?? [],
     resume: resume.slice(0, 20000),
     posting: { company: opp.company, title: opp.title, text },
   };
@@ -194,7 +196,8 @@ async function draftAll(id: string, userId: string, opp: typeof schema.opportuni
   const rest: (DraftItem & { id: string })[] = [];
   for (const [index, it] of items.entries()) {
     if (it.kind === "resume") continue;
-    const fact = it.kind === "field" ? fillField(it.prompt, inp) : null;
+    const savedHit = match(inp.saved ?? [], it.prompt, it.options);
+    const fact = (it.kind === "field" ? fillField(it.prompt, inp) : null) ?? (savedHit ? { content: savedHit, note: "From your saved answers. Edit them on your profile.", sources: ["saved answer"], question: null } : null);
     if (fact) out.set(it.id, fact);
     else rest.push({ id: it.id, index, kind: it.kind, prompt: it.prompt, required: it.required, options: it.options });
   }
@@ -213,8 +216,10 @@ async function draftAll(id: string, userId: string, opp: typeof schema.opportuni
       const d = out.get(it.id);
       if (!d) continue;
       await tx.delete(schema.itemVersions).where(eq(schema.itemVersions.itemId, it.id));
-      await tx.insert(schema.itemVersions).values({ itemId: it.id, version: 1, content: d.content, note: d.note, author: "ai", sources: d.sources });
-      await tx.update(schema.applicationItems).set({ question: d.question, approvedVersionId: null }).where(eq(schema.applicationItems.id, it.id));
+      const [v] = await tx.insert(schema.itemVersions).values({ itemId: it.id, version: 1, content: d.content, note: d.note, author: "ai", sources: d.sources }).returning();
+      // Basic fields filled from the account, resume or saved answers need no approval (#108).
+      const auto = it.kind === "field" && !!d.content.trim();
+      await tx.update(schema.applicationItems).set({ question: d.question, approvedVersionId: auto ? v.id : null }).where(eq(schema.applicationItems.id, it.id));
     }
   });
   return { keywords, postingText: inp.posting.text };

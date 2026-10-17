@@ -8,6 +8,7 @@ import { assertBudget } from "@/lib/ai/runs";
 import { HttpError } from "@/lib/api";
 import { newNumbers } from "./draft";
 import { humanize } from "./resumeLayout";
+import { isCommon, upsert } from "./saved";
 import { canAutoSubmit } from "./submit";
 
 /**
@@ -115,7 +116,14 @@ export async function editItem(userId: string, appId: string, itemId: string, co
   assertEditable(a.status);
   const it = await ownItem(appId, itemId);
   if (it.options?.length && content && !it.options.includes(content)) throw new HttpError(400, `Pick one of: ${it.options.join(", ")}`);
-  await insertVersion(itemId, { content, note: note.trim() || "Edited by you.", author: "user", sources: ["you"] });
+  const v = await insertVersion(itemId, { content, note: note.trim() || "Edited by you.", author: "user", sources: ["you"] });
+  // Basic fields stay approved when you change them; there's nothing to review in a ZIP code.
+  if (it.kind === "field" && content.trim()) await db.update(schema.applicationItems).set({ approvedVersionId: v.id }).where(eq(schema.applicationItems.id, itemId));
+  // Remember answers to the questions every application asks, for next time (#108).
+  if ((it.kind === "field" || it.kind === "answer") && isCommon(it.prompt, content)) {
+    const [p] = await db.select({ list: schema.profiles.applyAnswers }).from(schema.profiles).where(eq(schema.profiles.userId, userId));
+    if (p) await db.update(schema.profiles).set({ applyAnswers: upsert(p.list, it.prompt, content) }).where(eq(schema.profiles.userId, userId));
+  }
   return settleStatus(appId);
 }
 
