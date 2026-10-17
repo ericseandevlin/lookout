@@ -43,7 +43,7 @@ services:
       - ./data:/data
     ports:
       - "172.17.0.1:${APP_PORT:-3200}:3000"
-    mem_limit: 512m
+    mem_limit: 1g   # headless Chromium for auto-apply needs ~300 MB while it runs
     read_only: true
     tmpfs:
       - /tmp

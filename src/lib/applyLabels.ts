@@ -7,7 +7,7 @@ export function applicationLabel(status: ApplicationStatus, queuedBy: "user" | "
     scanning: ["Reading the application", "#FDE7D3", "#7A3A10"],
     drafting: ["Drafting", "#FDE7D3", "#7A3A10"],
     needs_review: ["Ready for your review", "#1D1A0F", "#fff"],
-    approved: ["Approved, sending soon", "#E3EFDD", "#35662A"],
+    approved: ["Approved, ready to send", "#E3EFDD", "#35662A"],
     submitting: ["Sending", "#E3EFDD", "#35662A"],
     submitted: ["Auto-applied", "#35662A", "#fff"],
     manual: ["Finish by hand", "#FBEDEA", "#99220F"],

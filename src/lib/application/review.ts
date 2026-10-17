@@ -7,6 +7,7 @@ import { completeJSON, emptyUsage } from "@/lib/ai/llm";
 import { assertBudget } from "@/lib/ai/runs";
 import { HttpError } from "@/lib/api";
 import { newNumbers } from "./draft";
+import { canAutoSubmit } from "./submit";
 
 /**
  * Auto-apply step 4 (#41): review, edit, revise with AI, approve; then the manual submit record (#42 part 1).
@@ -53,6 +54,7 @@ export async function getApplicationDetail(userId: string, id: string) {
     ats: a.ats,
     route: a.route,
     report: { ...a.report, postingText: undefined },
+    autoSubmit: a.route === "browser" && canAutoSubmit(),
     submittedAt: a.submittedAt?.toISOString() ?? null,
     confirmation: a.confirmation,
     company: o?.company ?? "",
@@ -75,13 +77,13 @@ export async function getApplicationDetail(userId: string, id: string) {
   };
 }
 
-/** Required items all approved: ready to send. With no browser worker yet (#42), "ready" means the manual checklist. */
+/** Required items all approved: ready to send. Browser-route forms wait for Submit for me ("approved"); the rest get the manual checklist. */
 async function settleStatus(appId: string) {
   const [a] = await db.select().from(schema.applications).where(eq(schema.applications.id, appId));
   if (!a || LOCKED.includes(a.status)) return a?.status;
   const items = await db.select().from(schema.applicationItems).where(eq(schema.applicationItems.applicationId, appId));
   const ready = items.length > 0 && items.every((i) => !i.required || i.approvedVersionId);
-  const status: ApplicationStatus = ready ? "manual" : "needs_review";
+  const status: ApplicationStatus = !ready ? "needs_review" : a.route === "browser" && canAutoSubmit() ? "approved" : "manual";
   if (status !== a.status) await db.update(schema.applications).set({ status, updatedAt: new Date() }).where(eq(schema.applications.id, appId));
   return status;
 }
@@ -173,20 +175,25 @@ export async function reviseItem(userId: string, appId: string, itemId: string, 
   return { status: await settleStatus(appId), question: r.question.trim() || null };
 }
 
-/** The user sent it by hand. Record exactly what was approved, and move the find to Applied. */
-export async function markSubmitted(userId: string, appId: string) {
-  const a = await ownApplication(userId, appId);
-  if (a.status === "submitted") return a.status;
-  if (a.status !== "manual") throw new HttpError(409, "Approve every required item first.");
+/** Exactly what was approved, item by item: the record of what was sent. */
+export async function sentRecord(appId: string) {
   const items = await db.select().from(schema.applicationItems).where(eq(schema.applicationItems.applicationId, appId)).orderBy(asc(schema.applicationItems.position));
   const ids = items.map((i) => i.approvedVersionId).filter((v): v is string => !!v);
   const versions = ids.length ? await db.select().from(schema.itemVersions).where(inArray(schema.itemVersions.id, ids)) : [];
-  const sent = items
+  return items
     .filter((i) => i.approvedVersionId)
     .map((i) => {
       const v = versions.find((x) => x.id === i.approvedVersionId)!;
       return { prompt: i.prompt, kind: i.kind, version: v.version, content: v.content };
     });
+}
+
+/** The user sent it by hand. Record exactly what was approved, and move the find to Applied. */
+export async function markSubmitted(userId: string, appId: string) {
+  const a = await ownApplication(userId, appId);
+  if (a.status === "submitted") return a.status;
+  if (a.status !== "manual" && a.status !== "approved") throw new HttpError(409, "Approve every required item first.");
+  const sent = await sentRecord(appId);
   const now = new Date();
   await db.transaction(async (tx) => {
     await tx
