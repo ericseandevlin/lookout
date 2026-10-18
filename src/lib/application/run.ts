@@ -228,7 +228,7 @@ export async function redraftResume(appId: string) {
   const { draft, keywords } = await draftResume(inp, usage, a.report.keywordChoices);
   await db.transaction(async (tx) => {
     const [{ n }] = await tx.select({ n: max(schema.itemVersions.version) }).from(schema.itemVersions).where(eq(schema.itemVersions.itemId, item.id));
-    await tx.insert(schema.itemVersions).values({ itemId: item.id, version: (n ?? 0) + 1, content: draft.content, note: `Redrafted from the posting. ${draft.note}`, author: "ai", sources: draft.sources });
+    await tx.insert(schema.itemVersions).values({ itemId: item.id, version: (n ?? 0) + 1, content: draft.content, note: `- Redrafted from the posting\n${draft.note}`, author: "ai", sources: draft.sources });
     await tx.update(schema.applicationItems).set({ approvedVersionId: null, question: draft.question }).where(eq(schema.applicationItems.id, item.id));
     const status = a.status === "approved" || a.status === "manual" ? "needs_review" : a.status;
     await tx
@@ -280,7 +280,7 @@ async function draftAll(id: string, userId: string, opp: typeof schema.opportuni
   for (const [itemId, d] of out) {
     const hits = trapWordsIn(d.content, inp.traps ?? [], `${inp.resume}\n${inp.brief}`);
     if (hits.length) {
-      d.note = `${d.note} Contains ${hits.map((h) => `"${h}"`).join(", ")} from an instruction planted in the posting.`.trim();
+      d.note = [d.note.trim(), `- Contains ${hits.map((h) => `"${h}"`).join(", ")} from an instruction planted in the posting`].filter(Boolean).join("\n");
       d.question = `This draft includes ${hits.map((h) => `"${h}"`).join(", ")}, which the posting planted to catch automated applications. Remove it unless you mean to include it.`;
       out.set(itemId, d);
     }

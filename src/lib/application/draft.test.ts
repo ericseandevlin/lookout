@@ -47,22 +47,22 @@ describe("keywords", () => {
       keywords: ["design systems", "accessibility", "GraphQL", "Accessibility"],
       resume: "",
       changes: [{ keyword: "Accessibility", where: "Experience: Citi" }],
-      note: "Moved a11y work up.",
+      notes: ["Moved a11y work up."],
     });
     expect(r).toEqual([
       { term: "design systems", before: true, after: true },
       { term: "accessibility", before: false, after: true, where: "Experience: Citi" },
       { term: "GraphQL", before: false, after: false },
     ]);
-    expect(resumeNote(r, { keywords: [], resume: "", changes: [], note: "Moved a11y work up." }, [])).toBe(
-      "Keyword match 1/3 → 2/3. Added: accessibility (Experience: Citi). Moved a11y work up.",
+    expect(resumeNote(r, { keywords: [], resume: "", changes: [], notes: ["Moved a11y work up."] }, ["17+"])).toBe(
+      "- Keyword match 1/3 → 2/3\n- Added:\n  - accessibility (Experience: Citi)\n- Moved a11y work up.\n- Check these numbers, they aren't in your master resume: 17+",
     );
   });
 });
 
 describe("keywordReport with the person's picks", () => {
   it("shows picks even when the model skipped them, and marks them", () => {
-    const r = keywordReport("Led design systems.", "Led design systems with AI fluency.", { keywords: ["design systems", "SQL"], resume: "", changes: [], note: "" }, "design systems, SQL, AI fluency", { include: ["AI fluency"], exclude: ["SQL"] });
+    const r = keywordReport("Led design systems.", "Led design systems with AI fluency.", { keywords: ["design systems", "SQL"], resume: "", changes: [], notes: [] }, "design systems, SQL, AI fluency", { include: ["AI fluency"], exclude: ["SQL"] });
     expect(r).toEqual([
       { term: "design systems", before: true, after: true },
       { term: "SQL", before: false, after: false, choice: "exclude" },
@@ -73,7 +73,7 @@ describe("keywordReport with the person's picks", () => {
 
 describe("keywordReport with the posting", () => {
   it("drops keywords that aren't in the posting (invented or planted)", () => {
-    const r = keywordReport("Led design systems.", "Led design systems and pomegranate work.", { keywords: ["design systems", "pomegranate"], resume: "", changes: [], note: "" }, "We need design systems leadership.");
+    const r = keywordReport("Led design systems.", "Led design systems and pomegranate work.", { keywords: ["design systems", "pomegranate"], resume: "", changes: [], notes: [] }, "We need design systems leadership.");
     expect(r.map((x) => x.term)).toEqual(["design systems"]);
   });
 });
