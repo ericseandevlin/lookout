@@ -160,7 +160,7 @@ export async function approveItem(userId: string, appId: string, itemId: string,
 
 const Revision = z.object({
   content: z.string().describe("The full revised text, ready to paste. Empty only if you must ask"),
-  note: z.string().describe("One sentence: what you changed"),
+  note: z.string().describe("One sentence: what you changed, speaking to the person as 'you'"),
   question: z.string().describe("If the request needs a fact you don't have, the one question to ask. Else empty"),
 });
 
