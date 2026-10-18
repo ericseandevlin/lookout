@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useId, useState } from "react";
 import type { ApplicationReport, ApplicationStatus } from "@/lib/db/schema";
 import { applicationLabel } from "@/lib/applyLabels";
 import { btn } from "./Settings";
@@ -23,6 +23,8 @@ type Item = {
   approvedVersionId: string | null;
   /** EEO only: the answer matched from the person's profile (with consent), never stored on the application. */
   eeoAnswer?: string | null;
+  /** Salary questions: the suggested ask and how it was worked out (#139). */
+  salary?: { amount: string; note: string } | null;
   versions: Version[];
 };
 type Detail = {
@@ -323,6 +325,44 @@ export function DocPreview({ md, template, accent, header }: { md: string; templ
         ),
       )}
     </div>
+  );
+}
+
+/** An (i) icon with an explanation: shows on hover, keyboard focus or tap; Escape closes it. */
+function InfoTip({ label, text }: { label: string; text: string }) {
+  const [open, setOpen] = useState(false);
+  const [pinned, setPinned] = useState(false);
+  const id = useId();
+  const show = open || pinned;
+  return (
+    <span style={{ position: "relative", display: "inline-flex" }} onMouseEnter={() => setOpen(true)} onMouseLeave={() => setOpen(false)}>
+      <button
+        type="button"
+        aria-label={label}
+        aria-describedby={show ? id : undefined}
+        aria-expanded={show}
+        onClick={() => setPinned((x) => !x)}
+        onFocus={() => setOpen(true)}
+        onBlur={() => {
+          setOpen(false);
+          setPinned(false);
+        }}
+        onKeyDown={(e) => {
+          if (e.key === "Escape") {
+            setOpen(false);
+            setPinned(false);
+          }
+        }}
+        style={{ width: 22, height: 22, borderRadius: "50%", border: "1.5px solid #6B6358", background: "#fff", color: "#3B362C", fontSize: 13, fontWeight: 700, fontStyle: "italic", fontFamily: "Georgia, serif", lineHeight: 1, cursor: "pointer", padding: 0 }}
+      >
+        i
+      </button>
+      {show && (
+        <span role="tooltip" id={id} style={{ position: "absolute", top: "calc(100% + 8px)", left: -12, zIndex: 20, width: "min(340px, 80vw)", padding: "10px 12px", borderRadius: 10, background: "#1D1A0F", color: "#fff", fontSize: 14, lineHeight: 1.5, boxShadow: "0 6px 20px rgba(0,0,0,.2)" }}>
+          {text}
+        </span>
+      )}
+    </span>
   );
 }
 
@@ -656,6 +696,18 @@ function ItemCard({ appId, item, locked, act, template, accent, header, onTempla
         {isApproved && <span style={{ fontSize: 14, fontWeight: 600, color: "#35662A" }}>{item.kind === "field" ? "✓ Will be filled" : `✓ Approved v${shown.version}`}</span>}
       </div>
 
+      {item.salary && !locked && (
+        <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", padding: "8px 12px", borderRadius: 10, background: "#F3F7F1", border: "1px solid #CFE3C6" }}>
+          <span style={{ fontSize: 14, color: "#35662A" }}>Suggested ask</span>
+          <span style={{ fontSize: 16, fontWeight: 700, color: "#1D1A0F" }}>{item.salary.amount}</span>
+          <InfoTip label="How this is calculated" text={item.salary.note} />
+          {text.replace(/[^\d]/g, "") !== item.salary.amount.replace(/[^\d]/g, "") && (
+            <button onClick={() => run("save", { action: "edit", content: item.salary!.amount, note: "Used Lookout's suggested ask." }, "Saved the suggested ask as a new version.")} disabled={!!busy} style={{ ...btn("outline"), height: 32, marginLeft: "auto" }}>
+              Use it
+            </button>
+          )}
+        </div>
+      )}
       {doc && !editing ? (
         <>
           {!locked && <TemplatePicker value={template} accent={accent} onPick={onTemplate} onAccent={onAccent} />}
