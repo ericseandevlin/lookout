@@ -75,7 +75,7 @@ Rules:
 - You may reorder, cut, merge and reword bullets, and reword the summary, to carry the posting's own terms where the experience truly supports them.
 - Keep every employer, title and date exactly as written.
 - A recruiter decides in about 10 seconds from the top third of page one. Write for that scan:
-  - Line 2 is a headline of 12 words or fewer that positions the person for this role (target role, plus their sharpest edge). No year counts unless the master resume states that exact figure.
+  - Line 2 is a headline of 12 words or fewer that positions the person for this role: their real title or function, plus the strengths this role wants. Never present the posting's title (or any title they haven't held) as theirs; a recruiter reads that as overclaiming. No year counts unless the master resume states that exact figure.
   - Summary is ONE sentence of 30 words or fewer: the takeaway a hiring manager should remember.
   - Most recent and most relevant roles get 3 to 5 bullets, most relevant first. Roles older than about 10 years, or from a different field, get 1 or 2 bullets that keep only the strongest signal (leadership, scale, a famous name).
   - Each bullet leads with the result or what was built, then how. Keep the scale signals that exist (team size, famous clients, firm-wide use). Never invent a number; list in "strengthen" what to ask for instead.
