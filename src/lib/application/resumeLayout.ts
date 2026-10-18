@@ -61,6 +61,20 @@ export function parseDraft(md: string): Block[] {
   return out;
 }
 
+/**
+ * How a role line reads (#137): a heading followed by titles under it is an employer (plain); any
+ * other role line starts with the job title, which Cool shows in the highlight color. The title is
+ * the part before the first comma ("Web Development Team Lead, RPM").
+ */
+export function roleParts(blocks: Block[], i: number): { title: string; rest: string } {
+  const b = blocks[i];
+  if (b.t !== "role") return { title: "", rest: "" };
+  if (blocks[i + 1]?.t === "subrole") return { title: "", rest: b.text };
+  // The title ends at the company (", RPM") or the location (" | New York"), whichever comes first.
+  const k = [b.text.indexOf(", "), b.text.indexOf(" | ")].filter((x) => x > 0).sort((x, y) => x - y)[0];
+  return k ? { title: b.text.slice(0, k), rest: b.text.slice(k) } : { title: b.text, rest: "" };
+}
+
 /** Name, then headline, then contact: what a recruiter should read first, in that order (#129). */
 const orderHeader = (h: Block[]) => [...h.filter((b) => b.t === "headline"), ...h.filter((b) => b.t === "contact")];
 

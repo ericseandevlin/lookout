@@ -7,7 +7,7 @@ import { applicationLabel } from "@/lib/applyLabels";
 import { btn } from "./Settings";
 import { useConfirm } from "./Confirm";
 import { api } from "./store";
-import { ACCENTS, contactParts, letterHeaderFrom, parseDraft, readable, styleFor, TEMPLATE_STYLE, TEMPLATES, toPlain as toPlainText, type Block, type Template } from "@/lib/application/resumeLayout";
+import { ACCENTS, contactParts, letterHeaderFrom, parseDraft, readable, roleParts, styleFor, TEMPLATE_STYLE, TEMPLATES, toPlain as toPlainText, type Block, type Template } from "@/lib/application/resumeLayout";
 import { parseNote } from "@/lib/application/notes";
 import { postingBlocks } from "@/lib/application/posting";
 
@@ -260,7 +260,7 @@ export function DocPreview({ md, template, accent, header }: { md: string; templ
   const center = T.align === "center";
   return (
     <div style={{ background: "#fff", border: "1px solid #E0D9CF", borderRadius: 6, boxShadow: "0 2px 10px rgba(29,26,15,.08)", padding: "36px 44px", fontFamily: T.css, color: c(T.ink), fontSize: 13.5, lineHeight: 1.45, maxHeight: 640, overflow: "auto" }}>
-      {[...top, ...blocks].map((b, i) =>
+      {[...top, ...blocks].map((b, i, all) =>
         b.t === "name" ? (
           <div key={i} style={{ fontSize: T.nameSize, fontWeight: T.nameWeight, lineHeight: 1.1, letterSpacing: T.section === "bar" ? "-0.02em" : undefined, textAlign: center ? "center" : "left", marginBottom: 4 }}>{b.text}</div>
         ) : b.t === "headline" ? (
@@ -298,7 +298,14 @@ export function DocPreview({ md, template, accent, header }: { md: string; templ
           </div>
         ) : b.t === "role" ? (
           <div key={i} style={{ display: "flex", gap: 12, justifyContent: "space-between", fontWeight: 700, margin: "10px 0 2px" }}>
-            <span>{b.text}</span>
+            {T.section === "bar" ? (
+              <span>
+                <span style={{ color: c(T.accent) }}>{roleParts(all, i).title}</span>
+                {roleParts(all, i).rest}
+              </span>
+            ) : (
+              <span>{b.text}</span>
+            )}
             {b.right && <span style={{ fontWeight: 400, color: c(T.muted), whiteSpace: "nowrap" }}>{b.right}</span>}
           </div>
         ) : b.t === "subrole" ? (

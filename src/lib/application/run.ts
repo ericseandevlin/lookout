@@ -12,6 +12,7 @@ import { match, savedBlock } from "./saved";
 import { notesBlock, type KeywordChoices } from "./skills";
 import { findTraps, removeTraps, stripBoilerplate, stripHidden, trapWordsIn } from "./posting";
 import { ensureMaster } from "./master";
+import { isSalaryQuestion, suggestSalary } from "./salary";
 import {
   ANSWERS_SYSTEM,
   AnswersDraft,
@@ -193,6 +194,7 @@ async function loadInputs(userId: string, opp: typeof schema.opportunities.$infe
     brief: (kinds[profile?.kind ?? "job"]?.brief(profile?.answers ?? {}) ?? "") + savedBlock(profile?.applyAnswers ?? []) + notesBlock(profile?.skillNotes ?? []),
     notes: notesBlock(profile?.skillNotes ?? []),
     saved: profile?.applyAnswers ?? [],
+    pay: { floor: profile?.answers?.floor, target: profile?.answers?.target },
     resume: resume.slice(0, 20000),
     posting: { company: opp.company, title: opp.title, text },
     traps: cleaned.traps,
@@ -274,8 +276,11 @@ async function draftAll(id: string, userId: string, opp: typeof schema.opportuni
     const byIndex = new Map(r.items.map((a) => [a.index, a]));
     for (const it of rest) {
       const a = checkAnswer(it, byIndex.get(it.index));
+      // Salary asks are math, not model judgment: the top quarter of their range, never below the floor (#139).
+      const ask = !it.options?.length && isSalaryQuestion(it.prompt) ? suggestSalary({ ...inp.pay, min: opp.compMin, max: opp.compMax, totalCash: /total cash|includ\w* (a )?(target )?bonus|\bOTE\b/i.test(inp.posting.text), asksBase: /\bbase\b/i.test(it.prompt) }) : null;
+      if (ask) out.set(it.id, { content: ask.amount, note: ask.note, sources: ["posting range", "your profile: comp floor and target"], question: null });
       // Choice answers must stay exactly as the form words them.
-      out.set(it.id, it.options?.length ? a : { ...a, content: humanize(a.content) });
+      else out.set(it.id, it.options?.length ? a : { ...a, content: humanize(a.content) });
     }
   }
 
