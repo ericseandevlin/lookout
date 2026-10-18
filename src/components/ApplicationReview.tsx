@@ -8,6 +8,7 @@ import { btn } from "./Settings";
 import { useConfirm } from "./Confirm";
 import { api } from "./store";
 import { parseDraft, toPlain as toPlainText } from "@/lib/application/resumeLayout";
+import { parseNote } from "@/lib/application/notes";
 
 type Version = { id: string; version: number; content: string; note: string; author: "user" | "ai"; sources: string[]; createdAt: string };
 type Item = {
@@ -256,6 +257,37 @@ function DocPreview({ md }: { md: string }) {
   );
 }
 
+/** A version note as a list: one point per change, sub-points for what was added where. */
+function NoteList({ head, note }: { head: string; note: string }) {
+  const points = parseNote(note);
+  if (points.length <= 1)
+    return (
+      <span>
+        {head}
+        {points[0] ? `: ${points[0].text}` : ""}
+      </span>
+    );
+  return (
+    <div>
+      <span style={{ fontWeight: 600 }}>{head}</span>
+      <ul style={{ margin: "2px 0 0", paddingLeft: 18, display: "flex", flexDirection: "column", gap: 2 }}>
+        {points.map((p, i) => (
+          <li key={i}>
+            {p.text}
+            {p.sub.length > 0 && (
+              <ul style={{ margin: "2px 0 0", paddingLeft: 18 }}>
+                {p.sub.map((s, j) => (
+                  <li key={j}>{s}</li>
+                ))}
+              </ul>
+            )}
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
 function KeywordReport({ d, reload, locked }: { d: Detail; reload: () => Promise<unknown>; locked: boolean }) {
   const k = d.report.keywords ?? [];
   const choices = d.report.keywordChoices ?? { include: [], exclude: [] };
@@ -472,9 +504,7 @@ function ItemCard({ appId, item, locked, act }: { appId: string; item: Item; loc
 
       {shown && (
         <div style={{ ...muted, display: "flex", flexDirection: "column", gap: 2 }}>
-          <span>
-            v{shown.version} by {shown.author === "ai" ? "Lookout" : "you"}: {shown.note}
-          </span>
+          <NoteList head={`v${shown.version} by ${shown.author === "ai" ? "Lookout" : "you"}`} note={shown.note} />
           {shown.sources.length > 0 && <span>Sources: {shown.sources.join(" · ")}</span>}
         </div>
       )}

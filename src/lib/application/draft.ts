@@ -2,6 +2,7 @@ import { z } from "zod";
 import type { ApplicationItemKind } from "@/lib/db/schema";
 import { isJunkKeyword } from "./posting";
 import { choicesBlock, type KeywordChoices } from "./skills";
+import { bullets } from "./notes";
 
 /**
  * Auto-apply step 3: draft every item (#40). Two model calls per application: the ATS resume, then
@@ -61,7 +62,7 @@ export const ResumeDraft = z.object({
     .describe("12 to 25 skills, tools, methods, domains and must-haves from the posting, each 1 to 4 words, worded exactly as the posting words them. Only from what the role does and requires (responsibilities, qualifications, experience). Never company, brand, product or team names; never words from company notices (fraud warnings, EEO, benefits, privacy) or the hiring process"),
   resume: z.string().describe("The full tailored resume as plain text with simple markdown headings and bullets"),
   changes: z.array(z.object({ keyword: z.string(), where: z.string().describe("Section and role, e.g. 'Summary' or 'Experience: Citi'") })).describe("Each posting keyword you worked in, and where"),
-  note: z.string().describe("One or two sentences: what you changed and why"),
+  notes: z.array(z.string()).describe("2 to 4 short points, one change each: what you changed and why. No em dashes"),
 });
 
 export const RESUME_SYSTEM = `You tailor a master resume to one job posting so it passes applicant tracking systems and reads well to a recruiter.
@@ -123,18 +124,17 @@ export function newNumbers(master: string, draft: string): string[] {
   return [...nums(draft)].filter((n) => n && !have.has(n) && !/^(19|20)\d\d$/.test(n));
 }
 
+/** The resume's version note, as bullets: score, what was added where, each change, numbers to check. */
 export function resumeNote(report: KeywordReport, d: z.infer<typeof ResumeDraft>, invented: string[]) {
   const b = report.filter((r) => r.before).length;
   const a = report.filter((r) => r.after).length;
   const added = report.filter((r) => r.after && !r.before).map((r) => (r.where ? `${r.term} (${r.where})` : r.term));
-  return [
-    `Keyword match ${b}/${report.length} → ${a}/${report.length}.`,
-    added.length ? `Added: ${added.join(", ")}.` : "",
-    d.note.trim(),
-    invented.length ? `Check these numbers, they aren't in your master resume: ${invented.join(", ")}.` : "",
-  ]
-    .filter(Boolean)
-    .join(" ");
+  return bullets([
+    `Keyword match ${b}/${report.length} → ${a}/${report.length}`,
+    added.length > 0 && { text: "Added:", sub: added },
+    ...d.notes.map((n) => n.trim()).filter(Boolean),
+    invented.length > 0 && `Check these numbers, they aren't in your master resume: ${invented.join(", ")}`,
+  ]);
 }
 
 // --- Cover letter, answers, remaining fields, portfolio picks: one call.
