@@ -11,6 +11,7 @@ import { humanize } from "./resumeLayout";
 import { match, savedBlock } from "./saved";
 import { notesBlock, type KeywordChoices } from "./skills";
 import { findTraps, removeTraps, stripBoilerplate, stripHidden, trapWordsIn } from "./posting";
+import { ensureMaster } from "./master";
 import {
   ANSWERS_SYSTEM,
   AnswersDraft,
@@ -151,11 +152,13 @@ export async function processApplication(id: string) {
 }
 
 /** Everything the drafts may draw on. The posting is re-read in full; the stored description is a summary. */
-async function loadInputs(userId: string, opp: typeof schema.opportunities.$inferSelect, postingHtml?: string): Promise<DraftInputs> {
+async function loadInputs(userId: string, opp: typeof schema.opportunities.$inferSelect, usage: Usage, postingHtml?: string): Promise<DraftInputs> {
   const [user] = await db.select().from(schema.users).where(eq(schema.users.id, userId));
   const [profile] = await db.select().from(schema.profiles).where(eq(schema.profiles.userId, userId));
   const mats = await db.select().from(schema.materials).where(eq(schema.materials.userId, userId));
-  const resume = mats.find((m) => m.kind === "resume")?.extracted?.text?.trim() ?? "";
+  // The structured master resume (#131), built once from the upload; the raw PDF text is only a fallback.
+  const master = await ensureMaster(userId, usage);
+  const resume = master?.md ?? mats.find((m) => m.kind === "resume")?.extracted?.text?.trim() ?? "";
   if (!resume) throw new Error("Add your resume on your profile first. Lookout drafts from it.");
   const li = mats.find((m) => m.kind === "linkedin");
   let text = opp.description;
@@ -224,7 +227,7 @@ export async function redraftResume(appId: string) {
   } catch {
     // The posting page still works without the ATS's full description.
   }
-  const inp = await loadInputs(a.userId, opp, postingHtml);
+  const inp = await loadInputs(a.userId, opp, usage, postingHtml);
   const { draft, keywords } = await draftResume(inp, usage, a.report.keywordChoices);
   await db.transaction(async (tx) => {
     const [{ n }] = await tx.select({ n: max(schema.itemVersions.version) }).from(schema.itemVersions).where(eq(schema.itemVersions.itemId, item.id));
@@ -240,7 +243,7 @@ export async function redraftResume(appId: string) {
 
 /** Draft version 1 of every item. Returns the resume's keyword report and the posting text it drafted from. */
 async function draftAll(id: string, userId: string, opp: typeof schema.opportunities.$inferSelect, usage: Usage, postingHtml?: string) {
-  const inp = await loadInputs(userId, opp, postingHtml);
+  const inp = await loadInputs(userId, opp, usage, postingHtml);
   const items = await db.select().from(schema.applicationItems).where(eq(schema.applicationItems.applicationId, id)).orderBy(schema.applicationItems.position);
   const out = new Map<string, Drafted>();
   let keywords: ReturnType<typeof keywordReport> | undefined;
