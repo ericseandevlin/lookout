@@ -9,6 +9,8 @@ export type Block =
   | { t: "contact"; text: string }
   | { t: "section"; text: string }
   | { t: "role"; text: string; right?: string }
+  /** A title under an employer heading: several titles at one company, or clients under a freelance umbrella (#137). */
+  | { t: "subrole"; text: string; right?: string }
   | { t: "bullet"; text: string }
   | { t: "text"; text: string };
 
@@ -50,6 +52,7 @@ export function parseDraft(md: string): Block[] {
       seenSection = true;
       out.push({ t: "section", text: strip(h[2]) });
     } else if (!seenSection && out[0]?.t === "name" && !h && !/^[-*•]\s+/.test(line)) header.push({ t: CONTACTISH.test(line) ? "contact" : "headline", text: strip(line) });
+    else if (h && h[1].length === 4) out.push({ t: "subrole", ...splitRole(strip(h[2])) });
     else if (h) out.push({ t: "role", ...splitRole(strip(h[2])) });
     else if (/^[-*•]\s+/.test(line)) out.push({ t: "bullet", text: strip(line.replace(/^[-*•]\s+/, "")) });
     else out.push({ t: "text", text: strip(line) });
@@ -90,6 +93,40 @@ export const TEMPLATE_STYLE: Record<
   modern: { label: "Modern", css: "Calibri, Carlito, 'Segoe UI', Arial, sans-serif", docxFont: "Calibri", ink: "1F2933", muted: "52606D", accent: "2F4A5C", align: "left", nameSize: 28, nameWeight: 700, section: "color", headlineItalic: false },
   cool: { label: "Cool", css: "'Helvetica Neue', Helvetica, Arial, sans-serif", docxFont: "Arial", ink: "161616", muted: "5B5B5B", accent: "C2410C", align: "left", nameSize: 34, nameWeight: 800, section: "bar", headlineItalic: false },
 };
+
+// --- Highlight color (#137): the person picks Cool's accent; text in it must stay readable on white.
+
+export const ACCENTS: [string, string][] = [
+  ["Rust", "C2410C"],
+  ["Crimson", "B91C1C"],
+  ["Plum", "86198F"],
+  ["Indigo", "4338CA"],
+  ["Navy", "1E3A8A"],
+  ["Teal", "0F766E"],
+  ["Forest", "15803D"],
+];
+
+const lum = (hex: string) => {
+  const [r, g, b] = [0, 2, 4].map((i) => parseInt(hex.slice(i, i + 2), 16) / 255).map((c) => (c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4));
+  return 0.2126 * r + 0.7152 * g + 0.0722 * b;
+};
+/** Contrast of a color against white (WCAG). */
+export const contrastOnWhite = (hex: string) => 1.05 / (lum(hex) + 0.05);
+
+/** Darken until it reads as text on white (4.5:1), keeping the hue. */
+export function readable(hex: string) {
+  let h = hex.replace(/^#/, "").toUpperCase();
+  if (!/^[0-9A-F]{6}$/.test(h)) return "C2410C";
+  for (let i = 0; i < 40 && contrastOnWhite(h) < 4.5; i++)
+    h = [0, 2, 4].map((j) => Math.max(0, Math.round(parseInt(h.slice(j, j + 2), 16) * 0.92)).toString(16).padStart(2, "0")).join("").toUpperCase();
+  return h;
+}
+
+/** Template tokens with the person's highlight color applied (Cool only; Classic and Modern keep theirs). */
+export function styleFor(template: Template, accent?: string | null) {
+  const base = TEMPLATE_STYLE[template];
+  return template === "cool" && accent ? { ...base, accent: readable(accent) } : base;
+}
 
 export const isTemplate = (t: unknown): t is Template => typeof t === "string" && (TEMPLATES as readonly string[]).includes(t);
 
