@@ -66,3 +66,31 @@ describe("header order", () => {
     expect(b.slice(0, 3).map((x) => x.t)).toEqual(["name", "headline", "contact"]);
   });
 });
+
+import { contrastOnWhite, readable, styleFor } from "./resumeLayout";
+
+describe("grouped roles", () => {
+  it("reads titles under one employer heading", () => {
+    const b = parseDraft("## Experience\n### RPM | New York, NY | 07/2017 – 07/2021\n#### Web Development Team Lead | 11/2018 – 07/2021\n- Led a team of five.\n#### Developer | 01/2018 – 11/2018");
+    expect(b.map((x) => [x.t, x.t === "role" || x.t === "subrole" ? x.right : undefined])).toEqual([
+      ["section", undefined],
+      ["role", "07/2017 – 07/2021"],
+      ["subrole", "11/2018 – 07/2021"],
+      ["bullet", undefined],
+      ["subrole", "01/2018 – 11/2018"],
+    ]);
+  });
+});
+
+describe("highlight color", () => {
+  it("keeps readable colors and darkens light ones to 4.5:1 on white", () => {
+    expect(readable("C2410C")).toBe("C2410C");
+    expect(contrastOnWhite(readable("#FFD54F"))).toBeGreaterThanOrEqual(4.5);
+    expect(readable("nonsense")).toBe("C2410C");
+  });
+
+  it("applies only to Cool", () => {
+    expect(styleFor("cool", "4338CA").accent).toBe("4338CA");
+    expect(styleFor("modern", "4338CA").accent).toBe("2F4A5C");
+  });
+});

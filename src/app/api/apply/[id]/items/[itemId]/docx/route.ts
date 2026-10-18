@@ -31,7 +31,8 @@ export const GET = authed<Ctx>(async (_req, { user, params }) => {
       : [];
     letterHeader = letterHeaderFrom(rv?.content, user.name);
   }
-  const buf = await draftToDocx(v.content, name, { letterHeader, template: (await getAutoApplySettings(user.id)).template });
+  const s = await getAutoApplySettings(user.id);
+  const buf = await draftToDocx(v.content, name, { letterHeader, template: s.template, accent: s.accent });
   return new Response(new Uint8Array(buf), {
     headers: {
       "content-type": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",

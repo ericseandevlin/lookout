@@ -14,7 +14,7 @@ export const GET = authed(async (_req, { user }) => {
   if (!p?.m) await assertBudget(user.id);
   const r = await ensureMaster(user.id, emptyUsage());
   const [after] = await db.select({ m: schema.profiles.masterResume }).from(schema.profiles).where(eq(schema.profiles.userId, user.id));
-  return json({ md: r?.md ?? null, edited: !!after?.m?.edited, at: after?.m?.at ?? null, uncertain: after?.m?.uncertain ?? [], template: (await getAutoApplySettings(user.id)).template ?? "modern" });
+  return json({ md: r?.md ?? null, edited: !!after?.m?.edited, at: after?.m?.at ?? null, uncertain: after?.m?.uncertain ?? [], template: (await getAutoApplySettings(user.id)).template ?? "modern", accent: (await getAutoApplySettings(user.id)).accent ?? null });
 });
 
 export const PUT = authed(async (req, { user }) => {

@@ -58,7 +58,7 @@ export async function getApplicationDetail(userId: string, id: string) {
   // EEO answers are matched here from the encrypted profile, only with consent; they're never stored on the application (#122).
   const eeo = items.some((i) => i.kind === "eeo") ? await loadEeo(userId) : null;
   return {
-    template: (await getAutoApplySettings(userId)).template ?? "modern",
+    ...(await getAutoApplySettings(userId).then((s) => ({ template: s.template ?? "modern", accent: s.accent ?? null }))),
     eeoConsent: !!eeo?.consent,
     id: a.id,
     findId: a.opportunityId,

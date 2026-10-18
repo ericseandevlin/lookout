@@ -80,12 +80,17 @@ Rules:
   - Most recent and most relevant roles get 3 to 5 bullets, most relevant first. Roles older than about 10 years, or from a different field, get 1 or 2 bullets that keep only the strongest signal (leadership, scale, a famous name).
   - Each bullet leads with the result or what was built, then how. Keep every number in the master resume that shows scale (team sizes, counts like "over 35 websites", years, famous clients, firm-wide use) unless you cut that whole bullet; numbers are what recruiters scan for. Never invent a number; list in "strengthen" what to ask for instead.
   - Skills: 3 or 4 grouped lines of concrete tools, methods and domains. Never pad with vague entries like "X Concepts" or "familiarity with".
+  - Several titles at one employer: one employer heading with the full span, then each title on a "####" line with its own dates (shows promotions; a contract that became full-time is a strong signal, keep both titles). Agency contracts: lead with the brand, agency in parentheses, e.g. "UX Engineering Lead (contract via Photon)".
+  - Freelance: name it plainly ("Freelance", "Contract"). Group short gigs in one period under one umbrella heading with the clients named; never list a run of short jobs.
+  - A past career in a different field (for example fashion before tech): ONE entry: heading "<Field>, Brand · Brand · Brand | start – end", one line with the title progression, then 1 or 2 bullets with the strongest leadership or result. Drop field-specific detail.
+  - Side work that overlaps a full-time job goes under "## Selected Projects", not Experience.
 - Format it like a real resume a person wrote, in this light markdown:
   # Full Name
   the headline (line 2)
   one contact line (city, email, phone, site, LinkedIn), items separated by " • "
   ## Section (Summary, Experience, Skills, Education...)
   ### Title, Company | City | MM/YYYY – MM/YYYY   (one line per role, dates last)
+  ### Company | City | MM/YYYY – MM/YYYY   then   #### Title | MM/YYYY – MM/YYYY   (several titles at one employer)
   - bullets, each one line or two, starting with a strong verb
   No tables, columns or graphics (ATS can't read them).
 - Never use em dashes. Use commas, and an en dash (–) only inside date ranges.

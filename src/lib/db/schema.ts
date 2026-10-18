@@ -78,7 +78,7 @@ export const settings = pgTable("settings", {
   autoApply: jsonb("auto_apply").$type<AutoApplySettings>().notNull().default({ enabled: false, threshold: 5, dailyCap: 3 }),
 });
 
-export type AutoApplySettings = { enabled: boolean; threshold: 4 | 5; dailyCap: number; /** Resume and cover letter design (#129). */ template?: "classic" | "modern" | "cool" };
+export type AutoApplySettings = { enabled: boolean; threshold: 4 | 5; dailyCap: number; /** Resume and cover letter design (#129). */ template?: "classic" | "modern" | "cool"; /** Cool's highlight color, hex without # (#137). */ accent?: string };
 
 /** Answers to the opportunity type's profile questions. Keys come from the kind config. */
 export type ProfileAnswers = Record<string, string | string[]>;
