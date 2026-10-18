@@ -16,7 +16,7 @@ const usd = (n: number) => `$${n.toLocaleString("en-US")}`;
 
 export const isSalaryQuestion = (prompt: string) => /salary|compensation|pay (expectation|requirement)|expected (base|annual|pay)|desired (base|pay)/i.test(prompt) && !/history|current|previous|last/i.test(prompt);
 
-export function suggestSalary(i: { floor?: unknown; target?: unknown; min?: number | null; max?: number | null; totalCash?: boolean; asksBase?: boolean }): { amount: string; note: string } | null {
+export function suggestSalary(i: { floor?: unknown; target?: unknown; min?: number | null; max?: number | null; totalCash?: boolean; asksBase?: boolean; asksMinimum?: boolean }): { amount: string; note: string } | null {
   const floor = parse(i.floor);
   const target = parse(i.target);
   const lo = i.min ?? i.max ?? null;
@@ -30,9 +30,10 @@ export function suggestSalary(i: { floor?: unknown; target?: unknown; min?: numb
   const topQuarter = round5k(lo + 0.75 * (hi - lo));
   const amount = Math.min(hi, Math.max(topQuarter, floor ?? 0, target ?? 0));
   const why = amount === hi && target && target >= hi ? "their posted max, since your target is at or above it" : target && amount === target ? "your target, which sits inside their range" : "the top quarter of their range";
+  const minimum = i.asksMinimum && floor && floor < lo ? ` The question asks for your minimum, but answering with your floor (${usd(floor)}) would tell them you'd take less than the ${usd(lo)} they've budgeted, so this stays inside their range.` : "";
   const base = i.totalCash && i.asksBase ? " Their range includes a target bonus and this question asks for base; base usually sits lower, so adjust if you know the split." : "";
   return {
     amount: usd(amount),
-    note: `Their range is ${range}. This is ${why}: asking near the top leaves room to negotiate and stays inside their budget${floor ? `, and it's above your floor (${usd(floor)})` : ""}.${base}`,
+    note: `Their range is ${range}. This is ${why}: asking near the top leaves room to negotiate and stays inside their budget${floor ? `, and it's above your floor (${usd(floor)})` : ""}.${minimum}${base}`,
   };
 }
