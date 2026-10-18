@@ -114,7 +114,7 @@ export type SavedAnswer = { key: string; question: string; answer: string; updat
 
 /** Experience the person added for a skill (#121): a role, project or result their resume doesn't show. Counts as a fact in every draft. */
 /** fromHash: the extracted text it was built from (a new upload rebuilds it). edited: the person fixed it by hand. */
-export type MasterResume = { md: string; fromHash: string; edited: boolean; at: string };
+export type MasterResume = { md: string; fromHash: string; edited: boolean; at: string; /** What the rebuild wasn't sure about, for the person to check. */ uncertain?: string[] };
 
 export type SkillNote = { skill: string; story: string; updatedAt: string };
 
