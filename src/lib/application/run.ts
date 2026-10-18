@@ -216,6 +216,43 @@ async function draftResume(inp: DraftInputs, usage: Usage, choices?: KeywordChoi
  * Write a fresh resume from the posting, as a new version: for drafts made before a fix, or when the
  * user wants to start that one over. Every other item and approval stays as it is.
  */
+/** Write a fresh cover letter from the posting as a new version, with the current letter rules (#129). */
+export async function redraftLetter(appId: string) {
+  const [a] = await db.select().from(schema.applications).where(eq(schema.applications.id, appId));
+  const [item] = await db.select().from(schema.applicationItems).where(and(eq(schema.applicationItems.applicationId, appId), eq(schema.applicationItems.kind, "cover_letter")));
+  if (!a || !item) throw new Error("No cover letter on this application");
+  await assertBudget(a.userId);
+  const [opp] = await db.select().from(schema.opportunities).where(eq(schema.opportunities.id, a.opportunityId));
+  const usage = emptyUsage();
+  let postingHtml: string | undefined;
+  try {
+    postingHtml = (await scanPosting(opp.sourceUrl!, usage)).postingHtml;
+  } catch {
+    // The posting page still works without the ATS's full description.
+  }
+  const inp = await loadInputs(a.userId, opp, usage, postingHtml);
+  const one: DraftItem = { index: 0, kind: "cover_letter", prompt: item.prompt, required: item.required, options: null };
+  const r = await completeJSON({ name: "apply-letter", schema: AnswersDraft, system: ANSWERS_SYSTEM, user: answersPrompt(inp, [one]), maxTokens: 4000, usage });
+  const d = checkAnswer(one, r.items.find((x) => x.index === 0) ?? r.items[0]);
+  const content = humanize(d.content);
+  const hits = trapWordsIn(content, inp.traps ?? [], `${inp.resume}\n${inp.brief}`);
+  const words = content.split(/\s+/).filter(Boolean).length;
+  await db.transaction(async (tx) => {
+    const [{ n }] = await tx.select({ n: max(schema.itemVersions.version) }).from(schema.itemVersions).where(eq(schema.itemVersions.itemId, item.id));
+    await tx.insert(schema.itemVersions).values({
+      itemId: item.id,
+      version: (n ?? 0) + 1,
+      content,
+      note: ["- Redrafted from the posting", `- ${words} words`, d.note && `- ${d.note}`, hits.length && `- Contains ${hits.map((h) => `"${h}"`).join(", ")} from an instruction planted in the posting`].filter(Boolean).join("\n"),
+      author: "ai",
+      sources: d.sources.length ? d.sources : ["master resume", "posting"],
+    });
+    await tx.update(schema.applicationItems).set({ approvedVersionId: null, question: hits.length ? "This letter includes a word the posting planted to catch automated applications. Remove it unless you mean to include it." : d.question }).where(eq(schema.applicationItems.id, item.id));
+    const status = a.status === "approved" || a.status === "manual" ? "needs_review" : a.status;
+    await tx.update(schema.applications).set({ status, updatedAt: new Date(), report: { ...a.report, usd: (a.report.usd ?? 0) + usage.usd } }).where(eq(schema.applications.id, appId));
+  });
+}
+
 export async function redraftResume(appId: string) {
   const [a] = await db.select().from(schema.applications).where(eq(schema.applications.id, appId));
   const [item] = await db.select().from(schema.applicationItems).where(and(eq(schema.applicationItems.applicationId, appId), eq(schema.applicationItems.kind, "resume")));

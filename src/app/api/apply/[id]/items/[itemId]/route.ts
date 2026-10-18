@@ -2,7 +2,9 @@ import { z } from "zod";
 import { authed, body, HttpError, json } from "@/lib/api";
 import { canUseAutoApply } from "@/lib/apply";
 import { approveItem, editItem, ownApplication, reviseItem } from "@/lib/application/review";
-import { redraftResume } from "@/lib/application/run";
+import { redraftLetter, redraftResume } from "@/lib/application/run";
+import { db, schema } from "@/lib/db";
+import { and, eq } from "drizzle-orm";
 
 type Ctx = { params: Promise<{ id: string; itemId: string }> };
 
@@ -23,7 +25,10 @@ export const POST = authed<Ctx>(async (req, { user, params }) => {
   if (a.action === "redraft") {
     const app = await ownApplication(user.id, id);
     if (app.status === "submitted" || app.status === "submitting") throw new HttpError(409, "This application was already sent.");
-    await redraftResume(app.id);
+    const [it] = await db.select({ kind: schema.applicationItems.kind }).from(schema.applicationItems).where(and(eq(schema.applicationItems.id, itemId), eq(schema.applicationItems.applicationId, app.id)));
+    if (it?.kind === "cover_letter") await redraftLetter(app.id);
+    else if (it?.kind === "resume") await redraftResume(app.id);
+    else throw new HttpError(400, "Only the resume and cover letter can be redrafted.");
     return json({ status: (await ownApplication(user.id, id)).status });
   }
   return json({ status: await approveItem(user.id, id, itemId, a.versionId) });
