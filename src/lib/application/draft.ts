@@ -78,7 +78,7 @@ Rules:
   - Line 2 is a headline of 12 words or fewer that positions the person for this role: their real title or function, plus the strengths this role wants. Never present the posting's title (or any title they haven't held) as theirs; a recruiter reads that as overclaiming. No year counts unless the master resume states that exact figure.
   - Summary is ONE sentence of 30 words or fewer: the takeaway a hiring manager should remember.
   - Most recent and most relevant roles get 3 to 5 bullets, most relevant first. Roles older than about 10 years, or from a different field, get 1 or 2 bullets that keep only the strongest signal (leadership, scale, a famous name).
-  - Each bullet leads with the result or what was built, then how. Keep the scale signals that exist (team size, famous clients, firm-wide use). Never invent a number; list in "strengthen" what to ask for instead.
+  - Each bullet leads with the result or what was built, then how. Keep every number in the master resume that shows scale (team sizes, counts like "over 35 websites", years, famous clients, firm-wide use) unless you cut that whole bullet; numbers are what recruiters scan for. Never invent a number; list in "strengthen" what to ask for instead.
   - Skills: 3 or 4 grouped lines of concrete tools, methods and domains. Never pad with vague entries like "X Concepts" or "familiarity with".
 - Format it like a real resume a person wrote, in this light markdown:
   # Full Name
