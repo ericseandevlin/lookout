@@ -94,3 +94,14 @@ describe("highlight color", () => {
     expect(styleFor("modern", "4338CA").accent).toBe("2F4A5C");
   });
 });
+
+import { roleParts } from "./resumeLayout";
+
+describe("roleParts", () => {
+  it("splits the job title from the company, and leaves employer headings plain", () => {
+    const b = parseDraft("## Experience\n### Citi | New York, NY | 2021 – Present\n#### Vice President | 2025 – Present\n### Web Development Team Lead, RPM | New York, NY | 2017 – 2021\n### Freelance Web Developer | New York, NY | 2016 – 2017");
+    expect(roleParts(b, 1)).toEqual({ title: "", rest: "Citi | New York, NY" });
+    expect(roleParts(b, 3)).toEqual({ title: "Web Development Team Lead", rest: ", RPM | New York, NY" });
+    expect(roleParts(b, 4)).toEqual({ title: "Freelance Web Developer", rest: " | New York, NY" });
+  });
+});

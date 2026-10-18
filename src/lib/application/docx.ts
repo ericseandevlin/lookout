@@ -1,6 +1,6 @@
 import "server-only";
 import { AlignmentType, BorderStyle, Document, ExternalHyperlink, Packer, Paragraph, TabStopType, TextRun, type ParagraphChild } from "docx";
-import { contactParts, parseDraft, styleFor, type Template } from "./resumeLayout";
+import { contactParts, parseDraft, roleParts, styleFor, type Template } from "./resumeLayout";
 
 /**
  * A Word file that reads as a resume a person made, in the chosen template (#106, #129): name,
@@ -61,7 +61,15 @@ export async function draftToDocx(md: string, title: string, opts: { letterHeade
       kids.push(
         new Paragraph({
           tabStops: [{ type: TabStopType.RIGHT, position: RIGHT }],
-          children: [run(b.text, { size: 10.5, bold: true }), ...(b.right ? [run(`\t${b.right}`, { color: T.muted })] : [])],
+          children: [
+            ...(T.section === "bar"
+              ? (() => {
+                  const r = roleParts(blocks, i);
+                  return [...(r.title ? [run(r.title, { size: 10.5, bold: true, color: T.accent })] : []), ...(r.rest ? [run(r.rest, { size: 10.5, bold: true })] : [])];
+                })()
+              : [run(b.text, { size: 10.5, bold: true })]),
+            ...(b.right ? [run(`\t${b.right}`, { color: T.muted })] : []),
+          ],
           spacing: { before: 140, after: 40 },
           keepNext: true,
         }),

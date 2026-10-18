@@ -20,6 +20,8 @@ export type DraftInputs = {
   traps?: import("./posting").Trap[];
   /** Experience notes the person added for skills (#121), rendered for prompts; facts like the resume. */
   notes?: string;
+  /** Comp floor and "would jump for" target from the profile, for salary asks (#139). */
+  pay?: { floor?: unknown; target?: unknown };
   /** Answers the person gave on earlier applications (#108). */
   saved?: import("@/lib/db/schema").SavedAnswer[];
   resume: string;
