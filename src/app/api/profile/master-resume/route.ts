@@ -14,12 +14,12 @@ export const GET = authed(async (_req, { user }) => {
   if (!p?.m) await assertBudget(user.id);
   const r = await ensureMaster(user.id, emptyUsage());
   const [after] = await db.select({ m: schema.profiles.masterResume }).from(schema.profiles).where(eq(schema.profiles.userId, user.id));
-  return json({ md: r?.md ?? null, edited: !!after?.m?.edited, at: after?.m?.at ?? null, template: (await getAutoApplySettings(user.id)).template ?? "modern" });
+  return json({ md: r?.md ?? null, edited: !!after?.m?.edited, at: after?.m?.at ?? null, uncertain: after?.m?.uncertain ?? [], template: (await getAutoApplySettings(user.id)).template ?? "modern" });
 });
 
 export const PUT = authed(async (req, { user }) => {
   if (!canUseAutoApply(user)) throw new HttpError(404, "Not found");
   const { md } = await body(req, z.object({ md: z.string().trim().min(40).max(40000) }));
   const m = await saveMaster(user.id, md);
-  return json({ md: m.md, edited: true, at: m.at });
+  return json({ md: m.md, edited: true, at: m.at, uncertain: [] });
 });
