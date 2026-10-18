@@ -10,6 +10,12 @@ describe("suggestSalary", () => {
     expect(r.note).toMatch(/asks for base/);
   });
 
+  it("explains why a minimum question still gets an in-range answer (Understood)", () => {
+    const r = suggestSalary({ floor: "220000", min: 235000, max: 250000, asksMinimum: true })!;
+    expect(r.amount).toBe("$245,000");
+    expect(r.note).toMatch(/asks for your minimum/);
+  });
+
   it("uses the target when it sits inside the range", () => {
     expect(suggestSalary({ floor: "220000", target: "255k", min: 230000, max: 260000 })!.amount).toBe("$255,000");
   });
