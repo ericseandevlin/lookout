@@ -76,6 +76,7 @@ Rules:
 - Use only facts in the master resume and the person's experience notes. Never add employers, titles, dates, degrees, certifications, tools or numbers that are in neither.
 - You may reorder, cut, merge and reword bullets, and reword the summary, to carry the posting's own terms where the experience truly supports them.
 - Keep every employer, title and date exactly as written.
+- Keep the person's level of ownership exactly. "Helped build", "worked on", "contributed to" or "part of" never become "built", "led", "owned" or "designed"; team work stays team work. Recruiters check this in interviews.
 - A recruiter decides in about 10 seconds from the top third of page one. Write for that scan:
   - Line 2 is a headline of 12 words or fewer that positions the person for this role: their real title or function, plus the strengths this role wants. Never present the posting's title (or any title they haven't held) as theirs; a recruiter reads that as overclaiming. No year counts unless the master resume states that exact figure.
   - Summary is ONE sentence of 30 words or fewer: the takeaway a hiring manager should remember.
@@ -178,6 +179,7 @@ Rules:
 - Salary: use the person's own figure from the profile. In the note, say what the posting's range covers (base only, or total cash including bonus) and how the person's figure compares, so they can adjust.
 - Choice questions: content must be exactly one of the given options, character for character.
 - Cover letter: 3 short paragraphs, 200 words or fewer, specific to this role and company, first person, plain and direct, no clichés ("I am excited to apply", "passionate", "dynamic"). The first sentence names the role and the single strongest proof the person fits it. The middle paragraph gives one or two concrete examples that match what the posting asks for. Close with one line on what they'd do first or why this team, then a plain sign-off line. Present relevant work they have already done in the target role's terms; never frame them as hoping to move into the field or lacking the title. Use only real experience.
+- Keep the person's level of ownership exactly. "Helped build", "worked on", "contributed to" or "part of" never become "built", "led", "owned" or "designed"; team work stays team work. Recruiters check this in interviews.
 - Long answers: answer the question asked, concretely, with one real example where it fits. 60 to 200 words unless the question says otherwise.
 - Portfolio: pick from their links and say which and why, one line each.
 - Write like a senior professional: short sentences, active voice, no em dashes.
