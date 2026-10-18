@@ -314,7 +314,7 @@ async function draftAll(id: string, userId: string, opp: typeof schema.opportuni
     for (const it of rest) {
       const a = checkAnswer(it, byIndex.get(it.index));
       // Salary asks are math, not model judgment: the top quarter of their range, never below the floor (#139).
-      const ask = !it.options?.length && isSalaryQuestion(it.prompt) ? suggestSalary({ ...inp.pay, min: opp.compMin, max: opp.compMax, totalCash: /total cash|includ\w* (a )?(target )?bonus|\bOTE\b/i.test(inp.posting.text), asksBase: /\bbase\b/i.test(it.prompt) }) : null;
+      const ask = !it.options?.length && isSalaryQuestion(it.prompt) ? suggestSalary({ ...inp.pay, min: opp.compMin, max: opp.compMax, totalCash: /total cash|includ\w* (a )?(target )?bonus|\bOTE\b/i.test(inp.posting.text), asksBase: /\bbase\b/i.test(it.prompt), asksMinimum: /\bminimum\b|\bat least\b|\blowest\b/i.test(it.prompt) }) : null;
       if (ask) out.set(it.id, { content: ask.amount, note: ask.note, sources: ["posting range", "your profile: comp floor and target"], question: null });
       // Choice answers must stay exactly as the form words them.
       else out.set(it.id, it.options?.length ? a : { ...a, content: humanize(a.content) });
