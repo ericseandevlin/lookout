@@ -17,7 +17,7 @@ import { humanize } from "./resumeLayout";
 export const MASTER_SYSTEM = `You rebuild a resume from text extracted from a PDF into clean structure. The extraction lost the layout:
 - columns can be interleaved, and a job's heading (title, company, dates) can appear AFTER its bullets instead of before them;
 - contact details can sit in the middle.
-If a LinkedIn profile is given, trust it for which title, company and dates go together (a resume heading like "Freelance Web Development" may be the same job LinkedIn lists under the client's name).
+If a LinkedIn profile is given, it is usually more current than the resume file: where LinkedIn has a newer role, title or dates (for example a promotion, or a contract that became full-time), use LinkedIn's version and its bullets, keep the resume's extra bullets under the matching role, and say in "uncertain" what you took from LinkedIn. Also trust it for which title, company and dates go together (a resume heading like "Freelance Web Development" may be the same job LinkedIn lists under the client's name).
 Work out which bullets belong to which job from all the evidence: the order pattern of the whole file (if the first job's heading follows its bullets, the others usually do too), dates, company and product names, and topic.
 Output this light markdown:
 # Full Name
