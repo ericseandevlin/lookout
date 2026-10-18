@@ -17,6 +17,7 @@ import { humanize } from "./resumeLayout";
 export const MASTER_SYSTEM = `You rebuild a resume from text extracted from a PDF into clean structure. The extraction lost the layout:
 - columns can be interleaved, and a job's heading (title, company, dates) can appear AFTER its bullets instead of before them;
 - contact details can sit in the middle.
+If a LinkedIn profile is given, trust it for which title, company and dates go together (a resume heading like "Freelance Web Development" may be the same job LinkedIn lists under the client's name).
 Work out which bullets belong to which job from all the evidence: the order pattern of the whole file (if the first job's heading follows its bullets, the others usually do too), dates, company and product names, and topic.
 Output this light markdown:
 # Full Name
@@ -65,7 +66,11 @@ export async function ensureMaster(userId: string, usage: Usage): Promise<{ md: 
   const [p] = await db.select({ master: schema.profiles.masterResume }).from(schema.profiles).where(eq(schema.profiles.userId, userId));
   const hash = sourceHash(text);
   if (p?.master?.md && p.master.fromHash === hash) return { md: p.master.md, built: false };
-  const r = await completeJSON({ name: "master-resume", schema: Out, system: MASTER_SYSTEM, user: `<resume_text>\n${text.slice(0, 24000)}\n</resume_text>`, maxTokens: 8000, usage });
+  // A LinkedIn PDF lists each role with its own title, company and dates: the best evidence for which go together.
+  const [li] = await db.select().from(schema.materials).where(and(eq(schema.materials.userId, userId), eq(schema.materials.kind, "linkedin")));
+  const liText = li?.extracted?.text?.trim();
+  const user = `<resume_text>\n${text.slice(0, 24000)}\n</resume_text>${liText ? `\n\n<linkedin_profile use="only to decide which titles, companies and dates belong together; never copy other content from it">\n${liText.slice(0, 12000)}\n</linkedin_profile>` : ""}`;
+  const r = await completeJSON({ name: "master-resume", schema: Out, system: MASTER_SYSTEM, user, maxTokens: 8000, usage });
   const master: MasterResume = { md: humanize(r.resume.trim()), fromHash: hash, edited: false, at: new Date().toISOString(), uncertain: [...looseDates(r.resume, text), ...r.uncertain.map((u) => humanize(u.trim())).filter(Boolean)] };
   await db.update(schema.profiles).set({ masterResume: master }).where(eq(schema.profiles.userId, userId));
   return { md: master.md, built: true };
