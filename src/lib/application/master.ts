@@ -36,6 +36,27 @@ const Out = z.object({
 
 export const sourceHash = (text: string) => createHash("sha256").update(text).digest("hex").slice(0, 16);
 
+const dashes = (s: string) => s.replace(/\s*[–—-]\s*/g, "-").toLowerCase();
+
+/**
+ * Dates the rebuild attached to a job without the file putting them on the same line as that job's
+ * name. PDF text floats dates loose, so those pairings are guesses: say so, in code (#131).
+ */
+export function looseDates(md: string, source: string): string[] {
+  const lines = source.split("\n").map(dashes);
+  const out: string[] = [];
+  for (const l of md.split("\n")) {
+    const m = l.match(/^###\s+(.+?)\s*\|.*\|\s*([^|]*\d{4}[^|]*)$/) ?? l.match(/^###\s+(.+?)\s*\|\s*([^|]*\d{4}[^|]*)$/);
+    if (!m) continue;
+    const [, title, dates] = m;
+    const d = dashes(dates.trim());
+    const words = title.split(/[\s,()]+/).filter((w) => w.length > 3).map((w) => w.toLowerCase());
+    const together = lines.some((x) => x.includes(d) && words.some((w) => x.includes(w)));
+    if (!together) out.push(`The dates ${dates.trim()} weren't next to "${title.trim()}" in your file, so Lookout matched them by guess. Check them.`);
+  }
+  return out;
+}
+
 /** The structured master resume for this person, building it the first time (one model call). */
 export async function ensureMaster(userId: string, usage: Usage): Promise<{ md: string; built: boolean } | null> {
   const [m] = await db.select().from(schema.materials).where(and(eq(schema.materials.userId, userId), eq(schema.materials.kind, "resume")));
@@ -45,7 +66,7 @@ export async function ensureMaster(userId: string, usage: Usage): Promise<{ md: 
   const hash = sourceHash(text);
   if (p?.master?.md && p.master.fromHash === hash) return { md: p.master.md, built: false };
   const r = await completeJSON({ name: "master-resume", schema: Out, system: MASTER_SYSTEM, user: `<resume_text>\n${text.slice(0, 24000)}\n</resume_text>`, maxTokens: 8000, usage });
-  const master: MasterResume = { md: humanize(r.resume.trim()), fromHash: hash, edited: false, at: new Date().toISOString(), uncertain: r.uncertain.map((u) => humanize(u.trim())).filter(Boolean) };
+  const master: MasterResume = { md: humanize(r.resume.trim()), fromHash: hash, edited: false, at: new Date().toISOString(), uncertain: [...looseDates(r.resume, text), ...r.uncertain.map((u) => humanize(u.trim())).filter(Boolean)] };
   await db.update(schema.profiles).set({ masterResume: master }).where(eq(schema.profiles.userId, userId));
   return { md: master.md, built: true };
 }
