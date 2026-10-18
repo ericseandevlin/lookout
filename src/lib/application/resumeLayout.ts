@@ -5,6 +5,7 @@
 
 export type Block =
   | { t: "name"; text: string }
+  | { t: "headline"; text: string }
   | { t: "contact"; text: string }
   | { t: "section"; text: string }
   | { t: "role"; text: string; right?: string }
@@ -32,8 +33,12 @@ export function splitRole(line: string): { text: string; right?: string } {
   return { text: line };
 }
 
+/** A header line is contact info when it holds an email, phone, URL or domain. Anything else is the headline. */
+const CONTACTISH = /@|https?:\/\/|www\.|linkedin|github|\b[\w-]+\.(com|co|io|net|org|dev|me|design|studio|ai)\b|\(?\d{3}\)?[.\s-]\d{3}[.\s-]\d{4}|\+\d/i;
+
 export function parseDraft(md: string): Block[] {
   const out: Block[] = [];
+  const header: Block[] = [];
   let seenSection = false;
   for (const raw of md.replace(/\r/g, "").split("\n")) {
     const line = raw.trim();
@@ -41,15 +46,52 @@ export function parseDraft(md: string): Block[] {
     const h = line.match(/^(#{1,4})\s+(.*)$/);
     if (h && h[1].length === 1 && !out.length) out.push({ t: "name", text: strip(h[2]) });
     else if (h && h[1].length === 2) {
+      if (!seenSection) out.push(...orderHeader(header));
       seenSection = true;
       out.push({ t: "section", text: strip(h[2]) });
-    } else if (h) out.push({ t: "role", ...splitRole(strip(h[2])) });
+    } else if (!seenSection && out[0]?.t === "name" && !h && !/^[-*•]\s+/.test(line)) header.push({ t: CONTACTISH.test(line) ? "contact" : "headline", text: strip(line) });
+    else if (h) out.push({ t: "role", ...splitRole(strip(h[2])) });
     else if (/^[-*•]\s+/.test(line)) out.push({ t: "bullet", text: strip(line.replace(/^[-*•]\s+/, "")) });
-    else if (!seenSection && out[0]?.t === "name") out.push({ t: "contact", text: strip(line) });
     else out.push({ t: "text", text: strip(line) });
   }
+  if (!seenSection) out.push(...orderHeader(header));
   return out;
 }
+
+/** Name, then headline, then contact: what a recruiter should read first, in that order (#129). */
+const orderHeader = (h: Block[]) => [...h.filter((b) => b.t === "headline"), ...h.filter((b) => b.t === "contact")];
+
+export type ContactPart = { text: string; href?: string };
+
+/** Split a contact line into its pieces and make each one a link where it is one. */
+export function contactParts(line: string): ContactPart[] {
+  return line
+    .split(/\s+[•|·]\s+|\s{2,}/)
+    .map((t) => t.trim())
+    .filter(Boolean)
+    .map((text) => {
+      if (/^[\w.+-]+@[\w-]+\.[\w.-]+$/.test(text)) return { text, href: `mailto:${text}` };
+      const digits = text.replace(/[^\d+]/g, "");
+      if (/^\+?[\d\s().-]{10,}$/.test(text) && digits.replace("+", "").length >= 10) return { text, href: `tel:${digits}` };
+      if (/^(https?:\/\/)?(www\.)?[\w-]+(\.[\w-]+)+(\/\S*)?$/.test(text)) return { text, href: /^https?:/.test(text) ? text : `https://${text}` };
+      return { text };
+    });
+}
+
+export const TEMPLATES = ["classic", "modern", "cool"] as const;
+export type Template = (typeof TEMPLATES)[number];
+
+/** One set of design tokens per template, used by both the on-screen preview and the .docx (#129). Single column always, so ATS can read it. */
+export const TEMPLATE_STYLE: Record<
+  Template,
+  { label: string; css: string; docxFont: string; ink: string; muted: string; accent: string; align: "left" | "center"; nameSize: number; nameWeight: number; section: "rule" | "color" | "bar"; headlineItalic: boolean }
+> = {
+  classic: { label: "Classic", css: "Georgia, 'Times New Roman', serif", docxFont: "Georgia", ink: "1F1F1F", muted: "555555", accent: "1F1F1F", align: "center", nameSize: 26, nameWeight: 700, section: "rule", headlineItalic: true },
+  modern: { label: "Modern", css: "Calibri, Carlito, 'Segoe UI', Arial, sans-serif", docxFont: "Calibri", ink: "1F2933", muted: "52606D", accent: "2F4A5C", align: "left", nameSize: 28, nameWeight: 700, section: "color", headlineItalic: false },
+  cool: { label: "Cool", css: "'Helvetica Neue', Helvetica, Arial, sans-serif", docxFont: "Arial", ink: "161616", muted: "5B5B5B", accent: "C2410C", align: "left", nameSize: 34, nameWeight: 800, section: "bar", headlineItalic: false },
+};
+
+export const isTemplate = (t: unknown): t is Template => typeof t === "string" && (TEMPLATES as readonly string[]).includes(t);
 
 /** Plain text for pasting into a form's text box: the same structure, no markup. */
 export function toPlain(md: string) {
@@ -65,5 +107,6 @@ export function letterHeaderFrom(resumeMd: string | undefined, fallbackName: str
   const b = parseDraft(resumeMd ?? "");
   const name = b[0]?.t === "name" ? b[0].text : fallbackName;
   const contact = b.find((x) => x.t === "contact")?.text ?? "";
-  return { name, contact };
+  const headline = b.find((x) => x.t === "headline")?.text;
+  return { name, contact, ...(headline ? { headline } : {}) };
 }

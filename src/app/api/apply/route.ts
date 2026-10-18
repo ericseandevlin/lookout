@@ -14,6 +14,7 @@ const Settings = z.object({
   enabled: z.boolean().optional(),
   threshold: z.union([z.literal(4), z.literal(5)]).optional(),
   dailyCap: z.number().int().min(1).max(20).optional(),
+  template: z.enum(["classic", "modern", "cool"]).optional(),
 });
 
 export const PATCH = authed(async (req, { user }) => {
