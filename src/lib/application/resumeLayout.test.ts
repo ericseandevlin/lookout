@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { humanize, parseDraft, splitRole, toPlain } from "./resumeLayout";
+import { contactParts, humanize, parseDraft, splitRole, toPlain } from "./resumeLayout";
 
 const md = `# Maya Ortiz
 New York, NY • maya@example.com • 646.555.0100
@@ -18,8 +18,8 @@ describe("parseDraft", () => {
   it("reads name, contact lines, sections, roles with dates, bullets", () => {
     expect(parseDraft(md)).toEqual([
       { t: "name", text: "Maya Ortiz" },
+      { t: "headline", text: "UX Engineer | Design Systems Lead" },
       { t: "contact", text: "New York, NY • maya@example.com • 646.555.0100" },
-      { t: "contact", text: "UX Engineer | Design Systems Lead" },
       { t: "section", text: "Summary" },
       { t: "text", text: "Leads design systems, and the teams that build them." },
       { t: "section", text: "Experience" },
@@ -45,5 +45,24 @@ describe("parseDraft", () => {
     expect(t).not.toMatch(/[#*]/);
     expect(t).toContain("EXPERIENCE");
     expect(t).toContain("• Built the design system site used across the firm.");
+  });
+});
+
+describe("contactParts", () => {
+  it("makes email, phone, site and LinkedIn into links, leaves the city as text", () => {
+    expect(contactParts("New York, NY • ericdevlin@me.com • 646.555.0100 • ericdevlin.co • linkedin.com/in/ericseandev")).toEqual([
+      { text: "New York, NY" },
+      { text: "ericdevlin@me.com", href: "mailto:ericdevlin@me.com" },
+      { text: "646.555.0100", href: "tel:6465550100" },
+      { text: "ericdevlin.co", href: "https://ericdevlin.co" },
+      { text: "linkedin.com/in/ericseandev", href: "https://linkedin.com/in/ericseandev" },
+    ]);
+  });
+});
+
+describe("header order", () => {
+  it("puts the headline right under the name even when the draft lists contact first", () => {
+    const b = parseDraft("# Eric Devlin\nNew York, NY • ericdevlin@me.com\nUX Engineering Lead\n## Summary\nShips things.");
+    expect(b.slice(0, 3).map((x) => x.t)).toEqual(["name", "headline", "contact"]);
   });
 });

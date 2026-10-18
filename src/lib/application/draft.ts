@@ -62,6 +62,10 @@ export const ResumeDraft = z.object({
     .describe("12 to 25 skills, tools, methods, domains and must-haves from the posting, each 1 to 4 words, worded exactly as the posting words them. Only from what the role does and requires (responsibilities, qualifications, experience). Never company, brand, product or team names; never words from company notices (fraud warnings, EEO, benefits, privacy) or the hiring process"),
   resume: z.string().describe("The full tailored resume as plain text with simple markdown headings and bullets"),
   changes: z.array(z.object({ keyword: z.string(), where: z.string().describe("Section and role, e.g. 'Summary' or 'Experience: Citi'") })).describe("Each posting keyword you worked in, and where"),
+  strengthen: z
+    .array(z.string())
+    .describe("Up to 4 short questions to ask the person for a real number or result that would make a specific bullet stronger, e.g. 'How many people used the design system site?'. Speak to them as 'you'. Empty if none")
+    .optional(),
   notes: z.array(z.string()).describe("2 to 4 short points, one change each: what you changed and why. Speak to the person as 'you' (never 'he', 'she' or 'they'). No em dashes"),
 });
 
@@ -70,9 +74,16 @@ Rules:
 - Use only facts in the master resume and the person's experience notes. Never add employers, titles, dates, degrees, certifications, tools or numbers that are in neither.
 - You may reorder, cut, merge and reword bullets, and reword the summary, to carry the posting's own terms where the experience truly supports them.
 - Keep every employer, title and date exactly as written.
+- A recruiter decides in about 10 seconds from the top third of page one. Write for that scan:
+  - Line 2 is a headline of 12 words or fewer that positions the person for this role (target role, plus their sharpest edge). No year counts unless the master resume states that exact figure.
+  - Summary is ONE sentence of 30 words or fewer: the takeaway a hiring manager should remember.
+  - Most recent and most relevant roles get 3 to 5 bullets, most relevant first. Roles older than about 10 years, or from a different field, get 1 or 2 bullets that keep only the strongest signal (leadership, scale, a famous name).
+  - Each bullet leads with the result or what was built, then how. Keep the scale signals that exist (team size, famous clients, firm-wide use). Never invent a number; list in "strengthen" what to ask for instead.
+  - Skills: 3 or 4 grouped lines of concrete tools, methods and domains. Never pad with vague entries like "X Concepts" or "familiarity with".
 - Format it like a real resume a person wrote, in this light markdown:
   # Full Name
-  one contact line (city, email, phone, site, LinkedIn), then optionally a one-line headline
+  the headline (line 2)
+  one contact line (city, email, phone, site, LinkedIn), items separated by " • "
   ## Section (Summary, Experience, Skills, Education...)
   ### Title, Company | City | MM/YYYY – MM/YYYY   (one line per role, dates last)
   - bullets, each one line or two, starting with a strong verb
@@ -134,6 +145,7 @@ export function resumeNote(report: KeywordReport, d: z.infer<typeof ResumeDraft>
     added.length > 0 && { text: "Added:", sub: added },
     ...d.notes.map((n) => n.trim()).filter(Boolean),
     invented.length > 0 && `Check these numbers, they aren't in your master resume: ${invented.join(", ")}`,
+    (d.strengthen ?? []).length > 0 && { text: "Make it stronger: answer these and add them to your experience notes", sub: d.strengthen ?? [] },
   ]);
 }
 
@@ -158,7 +170,7 @@ Rules:
 - Location, office and work mode questions: read the posting's facts and text first (location is often listed under the title). Ask only if neither says.
 - Salary: use the person's own figure from the profile. In the note, say what the posting's range covers (base only, or total cash including bonus) and how the person's figure compares, so they can adjust.
 - Choice questions: content must be exactly one of the given options, character for character.
-- Cover letter: 200 to 300 words, specific to this role and company, first person, plain and direct, no clichés ("I am excited to apply", "passionate", "dynamic"). Lead with the strongest match to what the posting needs. Use only real experience.
+- Cover letter: 3 short paragraphs, 200 words or fewer, specific to this role and company, first person, plain and direct, no clichés ("I am excited to apply", "passionate", "dynamic"). The first sentence names the role and the single strongest proof the person fits it. The middle paragraph gives one or two concrete examples that match what the posting asks for. Close with one line on what they'd do first or why this team, then a plain sign-off line. Present relevant work they have already done in the target role's terms; never frame them as hoping to move into the field or lacking the title. Use only real experience.
 - Long answers: answer the question asked, concretely, with one real example where it fits. 60 to 200 words unless the question says otherwise.
 - Portfolio: pick from their links and say which and why, one line each.
 - Write like a senior professional: short sentences, active voice, no em dashes.

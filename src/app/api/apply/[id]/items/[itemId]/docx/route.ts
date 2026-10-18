@@ -1,6 +1,6 @@
 import { and, desc, eq } from "drizzle-orm";
 import { authed, HttpError } from "@/lib/api";
-import { canUseAutoApply } from "@/lib/apply";
+import { canUseAutoApply, getAutoApplySettings } from "@/lib/apply";
 import { draftToDocx } from "@/lib/application/docx";
 import { ownApplication } from "@/lib/application/review";
 import { letterHeaderFrom } from "@/lib/application/resumeLayout";
@@ -31,7 +31,7 @@ export const GET = authed<Ctx>(async (_req, { user, params }) => {
       : [];
     letterHeader = letterHeaderFrom(rv?.content, user.name);
   }
-  const buf = await draftToDocx(v.content, name, { letterHeader });
+  const buf = await draftToDocx(v.content, name, { letterHeader, template: (await getAutoApplySettings(user.id)).template });
   return new Response(new Uint8Array(buf), {
     headers: {
       "content-type": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
