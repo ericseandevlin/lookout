@@ -7,7 +7,7 @@ import { applicationLabel } from "@/lib/applyLabels";
 import { btn } from "./Settings";
 import { useConfirm } from "./Confirm";
 import { api } from "./store";
-import { parseDraft, toPlain as toPlainText } from "@/lib/application/resumeLayout";
+import { contactParts, letterHeaderFrom, parseDraft, TEMPLATE_STYLE, TEMPLATES, toPlain as toPlainText, type Block, type Template } from "@/lib/application/resumeLayout";
 import { parseNote } from "@/lib/application/notes";
 import { postingBlocks } from "@/lib/application/posting";
 
@@ -40,6 +40,7 @@ type Detail = {
   posting: string;
   autoSubmit: boolean;
   eeoConsent: boolean;
+  template: Template;
   items: Item[];
 };
 
@@ -106,6 +107,16 @@ export function ApplicationReview({ id }: { id: string }) {
     } catch (e) {
       setErr(e instanceof Error ? e.message : "Couldn't save");
       return false;
+    }
+  };
+
+  const pickTemplate = async (template: Template) => {
+    setD((x) => (x ? { ...x, template } : x));
+    try {
+      await api("/api/apply", { method: "PATCH", json: { template } });
+      setSaid(`${TEMPLATE_STYLE[template].label} design. Your resume and cover letter use it, here and in the files Lookout uploads.`);
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : "Couldn't save");
     }
   };
 
@@ -203,7 +214,7 @@ export function ApplicationReview({ id }: { id: string }) {
                   {s.help && !locked && <div style={{ ...muted, marginTop: -4 }}>{s.help}</div>}
                   {s.title === "Resume" && d.report.keywords && <KeywordReport d={d} reload={load} locked={locked} />}
                   {list.map((i) => (
-                    <ItemCard key={i.id} appId={d.id} item={i} locked={locked} act={act} />
+                    <ItemCard key={i.id} appId={d.id} item={i} locked={locked} act={act} template={d.template} header={i.kind === "cover_letter" ? letterHeaderFrom(resumeText(d), "") : null} onTemplate={pickTemplate} />
                   ))}
                 </section>
               );
@@ -229,25 +240,59 @@ export function ApplicationReview({ id }: { id: string }) {
 }
 
 /** The resume or letter as the recruiter sees it: same layout as the .docx Lookout uploads. */
-function DocPreview({ md }: { md: string }) {
+function DocPreview({ md, template, header }: { md: string; template: Template; header?: { name: string; contact: string; headline?: string } | null }) {
+  const T = TEMPLATE_STYLE[template];
+  const c = (hex: string) => `#${hex}`;
   const blocks = parseDraft(md);
+  // A cover letter carries the resume's header, so both files match.
+  const top: Block[] = header && blocks[0]?.t !== "name" ? [{ t: "name", text: header.name }, ...(header.headline ? [{ t: "headline" as const, text: header.headline }] : []), ...(header.contact ? [{ t: "contact" as const, text: header.contact }] : [])] : [];
+  const center = T.align === "center";
   return (
-    <div style={{ background: "#fff", border: "1px solid #E0D9CF", borderRadius: 6, boxShadow: "0 2px 10px rgba(29,26,15,.08)", padding: "36px 44px", fontFamily: "Calibri, Carlito, 'Segoe UI', Arial, sans-serif", color: "#1F1F1F", fontSize: 13.5, lineHeight: 1.45, maxHeight: 640, overflow: "auto" }}>
-      {blocks.map((b, i) =>
+    <div style={{ background: "#fff", border: "1px solid #E0D9CF", borderRadius: 6, boxShadow: "0 2px 10px rgba(29,26,15,.08)", padding: "36px 44px", fontFamily: T.css, color: c(T.ink), fontSize: 13.5, lineHeight: 1.45, maxHeight: 640, overflow: "auto" }}>
+      {[...top, ...blocks].map((b, i) =>
         b.t === "name" ? (
-          <div key={i} style={{ fontSize: 26, fontWeight: 700, marginBottom: 4 }}>{b.text}</div>
+          <div key={i} style={{ fontSize: T.nameSize, fontWeight: T.nameWeight, lineHeight: 1.1, letterSpacing: T.section === "bar" ? "-0.02em" : undefined, textAlign: center ? "center" : "left", marginBottom: 4 }}>{b.text}</div>
+        ) : b.t === "headline" ? (
+          <div key={i} style={{ fontSize: 16, fontStyle: T.headlineItalic ? "italic" : "normal", fontWeight: T.section === "bar" ? 700 : 400, color: T.section === "bar" ? c(T.accent) : c(T.ink), textAlign: center ? "center" : "left", marginBottom: 4 }}>{b.text}</div>
         ) : b.t === "contact" ? (
-          <div key={i} style={{ fontSize: 12.5, color: "#555" }}>{b.text}</div>
+          <div key={i} style={{ fontSize: 12.5, color: c(T.muted), textAlign: center ? "center" : "left", marginBottom: top.length && i === top.length - 1 ? 22 : 0 }}>
+            {contactParts(b.text).map((p, j) => (
+              <span key={j}>
+                {j > 0 && <span aria-hidden> • </span>}
+                {p.href ? (
+                  <a href={p.href} target={p.href.startsWith("http") ? "_blank" : undefined} rel="noreferrer" style={{ color: c(T.accent) }}>
+                    {p.text}
+                  </a>
+                ) : (
+                  p.text
+                )}
+              </span>
+            ))}
+          </div>
         ) : b.t === "section" ? (
-          <div key={i} style={{ fontSize: 13.5, fontWeight: 700, letterSpacing: ".06em", textTransform: "uppercase", borderBottom: "1px solid #999", padding: "0 0 2px", margin: "16px 0 6px" }}>{b.text}</div>
+          <div
+            key={i}
+            style={{
+              fontSize: 13.5,
+              fontWeight: 700,
+              letterSpacing: ".08em",
+              textTransform: "uppercase",
+              color: T.section === "rule" ? c(T.ink) : c(T.accent),
+              textAlign: T.section === "rule" && center ? "center" : "left",
+              margin: "18px 0 6px",
+              ...(T.section === "rule" ? { borderBottom: "1px solid #999", paddingBottom: 2 } : T.section === "bar" ? { borderLeft: `4px solid ${c(T.accent)}`, paddingLeft: 8 } : {}),
+            }}
+          >
+            {b.text}
+          </div>
         ) : b.t === "role" ? (
           <div key={i} style={{ display: "flex", gap: 12, justifyContent: "space-between", fontWeight: 700, margin: "10px 0 2px" }}>
             <span>{b.text}</span>
-            {b.right && <span style={{ fontWeight: 400, color: "#555", whiteSpace: "nowrap" }}>{b.right}</span>}
+            {b.right && <span style={{ fontWeight: 400, color: c(T.muted), whiteSpace: "nowrap" }}>{b.right}</span>}
           </div>
         ) : b.t === "bullet" ? (
           <div key={i} style={{ display: "grid", gridTemplateColumns: "14px 1fr", margin: "1px 0" }}>
-            <span aria-hidden>•</span>
+            <span aria-hidden style={{ color: T.section === "bar" ? c(T.accent) : undefined }}>•</span>
             <span>{b.text}</span>
           </div>
         ) : (
@@ -284,6 +329,20 @@ function PostingText({ text }: { text: string }) {
           <p key={i} style={{ margin: 0 }}>{b.text}</p>
         ),
       )}
+    </div>
+  );
+}
+
+/** Classic, Modern or Cool, saved for the person; the .docx Lookout uploads uses the same one (#129). */
+function TemplatePicker({ value, onPick }: { value: Template; onPick: (t: Template) => void }) {
+  return (
+    <div role="radiogroup" aria-label="Resume design" style={{ display: "flex", gap: 6, alignItems: "center", flexWrap: "wrap" }}>
+      <span style={{ fontSize: 14, color: "#6B6358", marginRight: 4 }}>Design</span>
+      {TEMPLATES.map((t) => (
+        <button key={t} role="radio" aria-checked={value === t} onClick={() => onPick(t)} style={{ height: 32, padding: "0 12px", borderRadius: 999, border: `1.5px solid ${value === t ? "#1D1A0F" : "#E0D9CF"}`, background: value === t ? "#1D1A0F" : "#fff", color: value === t ? "#fff" : "#1D1A0F", fontSize: 14, fontWeight: 600, cursor: "pointer" }}>
+          {TEMPLATE_STYLE[t].label}
+        </button>
+      ))}
     </div>
   );
 }
@@ -506,7 +565,13 @@ function QuestionRow({ item, onSave }: { item: Item; onSave: (content: string) =
 
 type Act = (itemId: string, payload: Record<string, unknown>, done: string) => Promise<boolean>;
 
-function ItemCard({ appId, item, locked, act }: { appId: string; item: Item; locked: boolean; act: Act }) {
+/** The resume as it will go out: the approved version, else the latest. */
+const resumeText = (d: Detail) => {
+  const r = d.items.find((i) => i.kind === "resume");
+  return (r?.versions.find((v) => v.id === r.approvedVersionId) ?? r?.versions[0])?.content;
+};
+
+function ItemCard({ appId, item, locked, act, template, header, onTemplate }: { appId: string; item: Item; locked: boolean; act: Act; template: Template; header: { name: string; contact: string; headline?: string } | null; onTemplate: (t: Template) => void }) {
   const latest = item.versions[0];
   const [pick, setPick] = useState<string | null>(null);
   const shown = item.versions.find((v) => v.id === pick) ?? item.versions.find((v) => v.id === item.approvedVersionId) ?? latest;
@@ -545,7 +610,10 @@ function ItemCard({ appId, item, locked, act }: { appId: string; item: Item; loc
       </div>
 
       {doc && !editing ? (
-        <DocPreview md={text} />
+        <>
+          {!locked && <TemplatePicker value={template} onPick={onTemplate} />}
+          <DocPreview md={text} template={template} header={header} />
+        </>
       ) : item.options?.length && !locked ? (
         <select id={`it-${item.id}`} value={text} onChange={(e) => setText(e.target.value)} style={{ height: 40, borderRadius: 10, border: "1.5px solid #E0D9CF", padding: "0 10px", fontSize: 15, maxWidth: 420 }}>
           <option value="">Choose…</option>

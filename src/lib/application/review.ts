@@ -10,6 +10,7 @@ import { newNumbers } from "./draft";
 import { humanize } from "./resumeLayout";
 import { isCommon, upsert } from "./saved";
 import { notesBlock } from "./skills";
+import { getAutoApplySettings } from "@/lib/apply";
 import { bullets } from "./notes";
 import { resolve } from "./eeo";
 import { loadEeo, saveEeo } from "./eeoStore";
@@ -57,6 +58,7 @@ export async function getApplicationDetail(userId: string, id: string) {
   // EEO answers are matched here from the encrypted profile, only with consent; they're never stored on the application (#122).
   const eeo = items.some((i) => i.kind === "eeo") ? await loadEeo(userId) : null;
   return {
+    template: (await getAutoApplySettings(userId)).template ?? "modern",
     eeoConsent: !!eeo?.consent,
     id: a.id,
     findId: a.opportunityId,
