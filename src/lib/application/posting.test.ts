@@ -74,3 +74,35 @@ describe("traps", () => {
     expect(trapWordsIn("I love pomegranate and Python.", traps, "Skills: Python")).toEqual(["pomegranate"]);
   });
 });
+
+import { postingBlocks } from "./posting";
+
+describe("postingBlocks", () => {
+  it("pulls facts to the top and turns headings and lists into structure", () => {
+    const t = [
+      "Role: Director, Product Design",
+      "Company: Impiricus",
+      "Location: New York, NY",
+      "",
+      "TITLE: Job Application for Director, Product Design at Impiricus",
+      "PAY ON PAGE (text): USD 180,000 to 200,000 a year",
+      "TEXT:",
+      "Back to jobs",
+      "Apply",
+      "Reports to: SVP, Product",
+      "Who We Are",
+      "Impiricus is the Agentic Commercialization Platform for Healthcare. We help life sciences teams understand physician intent.",
+      "What You'll Do:",
+      "Own product design across the portfolio.",
+      "Run user discovery with HCPs.",
+      "Hold the team to a high bar.",
+    ].join("\n");
+    expect(postingBlocks(t)).toEqual([
+      { t: "facts", rows: [["Role", "Director, Product Design"], ["Company", "Impiricus"], ["Location", "New York, NY"], ["Pay", "USD 180,000 to 200,000 a year"], ["Reports to", "SVP, Product"]] },
+      { t: "heading", text: "Who We Are" },
+      { t: "para", text: "Impiricus is the Agentic Commercialization Platform for Healthcare. We help life sciences teams understand physician intent." },
+      { t: "heading", text: "What You'll Do" },
+      { t: "bullets", items: ["Own product design across the portfolio.", "Run user discovery with HCPs.", "Hold the team to a high bar."] },
+    ]);
+  });
+});
