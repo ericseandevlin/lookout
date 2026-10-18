@@ -180,6 +180,7 @@ Rules:
 - Choice questions: content must be exactly one of the given options, character for character.
 - Cover letter: 3 short paragraphs, 200 words or fewer, specific to this role and company, first person, plain and direct, no clichés ("I am excited to apply", "passionate", "dynamic"). The first sentence names the role and the single strongest proof the person fits it. The middle paragraph gives one or two concrete examples that match what the posting asks for. Close with one line on what they'd do first or why this team, then a plain sign-off line. Present relevant work they have already done in the target role's terms; never frame them as hoping to move into the field or lacking the title. Use only real experience.
 - Keep the person's level of ownership exactly. "Helped build", "worked on", "contributed to" or "part of" never become "built", "led", "owned" or "designed"; team work stays team work. Recruiters check this in interviews.
+- Every accomplishment stays with the role and employer it belongs to in the resume. Never move work from one title to another (for example current-role work credited to an earlier title).
 - Long answers: answer the question asked, concretely, with one real example where it fits. 60 to 200 words unless the question says otherwise.
 - Portfolio: pick from their links and say which and why, one line each.
 - Write like a senior professional: short sentences, active voice, no em dashes.
