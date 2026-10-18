@@ -94,3 +94,44 @@ export function removeTraps(visibleText: string, hiddenTexts: string[]) {
 /** Trap words that slipped into a draft and aren't in the person's own materials. */
 export const trapWordsIn = (draft: string, traps: Trap[], own: string) =>
   [...new Set(traps.flatMap((t) => t.words))].filter((w) => w.length > 1 && new RegExp(`\\b${w.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\b`, "i").test(draft) && !new RegExp(`\\b${w.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\b`, "i").test(own));
+
+// --- Display (#41): the stored posting text as readable blocks for the review screen.
+
+export type PostingBlock = { t: "facts"; rows: [string, string][] } | { t: "heading"; text: string } | { t: "bullets"; items: string[] } | { t: "para"; text: string };
+
+const FACT = /^(Role|Company|Location|Work mode|Pay range on file|Title|Job Title|Reports to|Exemption Status|Employment type|Department|[A-Za-z ]*Compensation Range|PAY ON PAGE \(text\)|Pay)\s*:\s*(.+)$/i;
+const NOISE = /^(apply|back to jobs|apply now|share|save|job application for .+)$/i;
+
+export function postingBlocks(text: string): PostingBlock[] {
+  const lines = text
+    .replace(/^STRUCTURED DATA:[\s\S]*?(?=^TEXT:)/m, "")
+    .split("\n")
+    .map((l) => l.trim())
+    .filter((l) => l && !/^(TITLE:|TEXT:)/.test(l) && !NOISE.test(l));
+  const facts: [string, string][] = [];
+  const body: string[] = [];
+  for (const l of lines) {
+    const m = l.match(FACT);
+    if (m && m[2].length < 120) {
+      const k = m[1].replace(/^PAY ON PAGE \(text\)$/i, "Pay").replace(/^Pay range on file$/i, "Pay");
+      if (!facts.some(([fk, fv]) => fk.toLowerCase() === k.toLowerCase() || fv === m[2])) facts.push([k, m[2]]);
+    } else body.push(l);
+  }
+  const isHeading = (l: string, next?: string) => !!next && l.length <= 60 && !/[.,;!?]$/.test(l) && l.split(/\s+/).length <= 8 && (/:$/.test(l) || next.length > l.length);
+  const out: PostingBlock[] = facts.length ? [{ t: "facts", rows: facts }] : [];
+  let run: string[] = [];
+  const flush = () => {
+    // Three or more short lines in a row read as a list on the original page.
+    if (run.length >= 3 && run.every((r) => r.length <= 260)) out.push({ t: "bullets", items: run.map((r) => r.replace(/^[•·*-]\s*/, "")) });
+    else for (const r of run) out.push({ t: "para", text: r.replace(/^[•·*-]\s*/, "") });
+    run = [];
+  };
+  body.forEach((l, i) => {
+    if (isHeading(l, body[i + 1])) {
+      flush();
+      out.push({ t: "heading", text: l.replace(/:$/, "") });
+    } else run.push(l);
+  });
+  flush();
+  return out;
+}

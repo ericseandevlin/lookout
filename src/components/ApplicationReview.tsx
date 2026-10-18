@@ -9,6 +9,7 @@ import { useConfirm } from "./Confirm";
 import { api } from "./store";
 import { parseDraft, toPlain as toPlainText } from "@/lib/application/resumeLayout";
 import { parseNote } from "@/lib/application/notes";
+import { postingBlocks } from "@/lib/application/posting";
 
 type Version = { id: string; version: number; content: string; note: string; author: "user" | "ai"; sources: string[]; createdAt: string };
 type Item = {
@@ -219,7 +220,7 @@ export function ApplicationReview({ id }: { id: string }) {
                 Open the original ↗
               </a>
             )}
-            <div style={{ fontSize: 14, lineHeight: 1.55, color: "#3B362C", whiteSpace: "pre-wrap" }}>{d.posting || "No description saved for this role."}</div>
+            {d.posting ? <PostingText text={d.posting} /> : <div style={muted}>No description saved for this role.</div>}
           </aside>
         </div>
       )}
@@ -257,19 +258,80 @@ function DocPreview({ md }: { md: string }) {
   );
 }
 
-/** A version note as a list: one point per change, sub-points for what was added where. */
-function NoteList({ head, note }: { head: string; note: string }) {
-  const points = parseNote(note);
-  if (points.length <= 1)
+/** The posting, readable: key facts first, then its own headings, lists and paragraphs. */
+function PostingText({ text }: { text: string }) {
+  return (
+    <div style={{ fontSize: 14, lineHeight: 1.55, color: "#3B362C", display: "flex", flexDirection: "column", gap: 8 }}>
+      {postingBlocks(text).map((b, i) =>
+        b.t === "facts" ? (
+          <dl key={i} style={{ margin: 0, display: "grid", gridTemplateColumns: "auto 1fr", gap: "4px 12px", padding: 12, borderRadius: 10, background: "#FAF8F5" }}>
+            {b.rows.map(([k, v]) => (
+              <div key={k} style={{ display: "contents" }}>
+                <dt style={{ fontWeight: 600, color: "#6B6358" }}>{k}</dt>
+                <dd style={{ margin: 0 }}>{v}</dd>
+              </div>
+            ))}
+          </dl>
+        ) : b.t === "heading" ? (
+          <h3 key={i} style={{ margin: "8px 0 0", fontSize: 15, fontWeight: 700, color: "#1D1A0F" }}>{b.text}</h3>
+        ) : b.t === "bullets" ? (
+          <ul key={i} style={{ margin: 0, paddingLeft: 18, display: "flex", flexDirection: "column", gap: 4 }}>
+            {b.items.map((x, j) => (
+              <li key={j}>{x}</li>
+            ))}
+          </ul>
+        ) : (
+          <p key={i} style={{ margin: 0 }}>{b.text}</p>
+        ),
+      )}
+    </div>
+  );
+}
+
+/**
+ * What changed in a version and where its facts came from. Reading it is optional, so anything
+ * longer than a line sits in a collapsed section.
+ */
+function VersionNotes({ v }: { v: Version }) {
+  const head = `v${v.version} by ${v.author === "ai" ? "Lookout" : "you"}`;
+  const points = parseNote(v.note);
+  const sources = v.sources.filter((s) => s !== "you");
+  if (points.length <= 1 && sources.length <= 1)
     return (
-      <span>
+      <div style={muted}>
         {head}
         {points[0] ? `: ${points[0].text}` : ""}
-      </span>
+        {sources[0] ? ` · Source: ${sources[0]}` : ""}
+      </div>
     );
   return (
+    <details style={{ ...muted }}>
+      <summary style={{ cursor: "pointer", fontWeight: 600 }}>
+        {head}: what changed and why ({points.length} note{points.length === 1 ? "" : "s"}
+        {sources.length ? `, ${sources.length} source${sources.length === 1 ? "" : "s"}` : ""})
+      </summary>
+      <div style={{ display: "flex", flexDirection: "column", gap: 8, marginTop: 6 }}>
+        {points.length > 0 && <NoteList note={v.note} />}
+        {sources.length > 0 && (
+          <div>
+            <div style={{ fontWeight: 600 }}>Sources</div>
+            <ul style={{ margin: "2px 0 0", paddingLeft: 18 }}>
+              {sources.map((s, i) => (
+                <li key={i}>{s}</li>
+              ))}
+            </ul>
+          </div>
+        )}
+      </div>
+    </details>
+  );
+}
+
+/** A version note as a list: one point per change, sub-points for what was added where. */
+function NoteList({ note }: { note: string }) {
+  const points = parseNote(note);
+  return (
     <div>
-      <span style={{ fontWeight: 600 }}>{head}</span>
       <ul style={{ margin: "2px 0 0", paddingLeft: 18, display: "flex", flexDirection: "column", gap: 2 }}>
         {points.map((p, i) => (
           <li key={i}>
@@ -502,12 +564,7 @@ function ItemCard({ appId, item, locked, act }: { appId: string; item: Item; loc
         />
       )}
 
-      {shown && (
-        <div style={{ ...muted, display: "flex", flexDirection: "column", gap: 2 }}>
-          <NoteList head={`v${shown.version} by ${shown.author === "ai" ? "Lookout" : "you"}`} note={shown.note} />
-          {shown.sources.length > 0 && <span>Sources: {shown.sources.join(" · ")}</span>}
-        </div>
-      )}
+      {shown && <VersionNotes v={shown} />}
 
       {!locked && (
         <>

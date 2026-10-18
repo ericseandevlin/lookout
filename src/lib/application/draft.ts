@@ -62,7 +62,7 @@ export const ResumeDraft = z.object({
     .describe("12 to 25 skills, tools, methods, domains and must-haves from the posting, each 1 to 4 words, worded exactly as the posting words them. Only from what the role does and requires (responsibilities, qualifications, experience). Never company, brand, product or team names; never words from company notices (fraud warnings, EEO, benefits, privacy) or the hiring process"),
   resume: z.string().describe("The full tailored resume as plain text with simple markdown headings and bullets"),
   changes: z.array(z.object({ keyword: z.string(), where: z.string().describe("Section and role, e.g. 'Summary' or 'Experience: Citi'") })).describe("Each posting keyword you worked in, and where"),
-  notes: z.array(z.string()).describe("2 to 4 short points, one change each: what you changed and why. No em dashes"),
+  notes: z.array(z.string()).describe("2 to 4 short points, one change each: what you changed and why. Speak to the person as 'you' (never 'he', 'she' or 'they'). No em dashes"),
 });
 
 export const RESUME_SYSTEM = `You tailor a master resume to one job posting so it passes applicant tracking systems and reads well to a recruiter.
@@ -146,7 +146,7 @@ export const AnswersDraft = z.object({
       content: z.string().describe("The answer, ready to paste. For a choice question, exactly one of the options. Empty if you need to ask"),
       sources: z.array(z.string()).describe("Where each fact came from: 'resume: <role or line>', 'profile: <field>', 'posting', 'LinkedIn'"),
       question: z.string().describe("If you can't answer from the materials, the one question to ask the person. Else empty"),
-      note: z.string().describe("One short sentence on how you approached it"),
+      note: z.string().describe("One short sentence on how you approached it, speaking to the person as 'you'"),
     }),
   ),
 });
