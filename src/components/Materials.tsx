@@ -308,13 +308,13 @@ function KindOption({ label, note, on, pick }: { label: string; note?: string; o
  * its title), so Lookout rebuilds it once into clean structure; the person checks it here, once.
  */
 function MasterResumeSection() {
-  const [m, setM] = useState<{ md: string | null; edited: boolean; at: string | null; template: Template } | null>(null);
+  const [m, setM] = useState<{ md: string | null; edited: boolean; at: string | null; uncertain: string[]; template: Template } | null>(null);
   const [editing, setEditing] = useState(false);
   const [text, setText] = useState("");
   const [err, setErr] = useState<string | null>(null);
   const [said, setSaid] = useState("");
   useEffect(() => {
-    api<{ md: string | null; edited: boolean; at: string | null; template: Template }>("/api/profile/master-resume")
+    api<{ md: string | null; edited: boolean; at: string | null; uncertain: string[]; template: Template }>("/api/profile/master-resume")
       .then((r) => {
         setM(r);
         setText(r.md ?? "");
@@ -324,7 +324,7 @@ function MasterResumeSection() {
   const save = async () => {
     setErr(null);
     try {
-      const r = await api<{ md: string; edited: boolean; at: string }>("/api/profile/master-resume", { method: "PUT", json: { md: text } });
+      const r = await api<{ md: string; edited: boolean; at: string; uncertain: string[] }>("/api/profile/master-resume", { method: "PUT", json: { md: text } });
       setM((x) => (x ? { ...x, ...r } : x));
       setEditing(false);
       setSaid("Saved. Every new draft starts from this version.");
@@ -341,6 +341,16 @@ function MasterResumeSection() {
       </p>
       {!m && !err && <div style={{ fontSize: 14, color: "#6B6358" }}>Reading your resume… this takes about a minute the first time.</div>}
       {err && <div role="alert" style={{ fontSize: 14, color: "#99220F" }}>{err}</div>}
+      {!!m?.uncertain.length && !editing && (
+        <div style={{ padding: 12, borderRadius: 10, background: "#FFF9F3", border: "1px solid #F8A865", fontSize: 14, color: "#3B362C" }}>
+          <div style={{ fontWeight: 600, marginBottom: 4 }}>Check these</div>
+          <ul style={{ margin: 0, paddingLeft: 18, display: "flex", flexDirection: "column", gap: 2 }}>
+            {m.uncertain.map((u, i) => (
+              <li key={i}>{u}</li>
+            ))}
+          </ul>
+        </div>
+      )}
       {unplaced && !editing && (
         <div role="alert" style={{ fontSize: 14, color: "#99220F" }}>
           Some lines couldn&apos;t be matched to a job; they&apos;re under &ldquo;Unplaced&rdquo; at the end. Use Edit text to move them under the right job.
