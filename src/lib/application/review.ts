@@ -182,7 +182,8 @@ export async function reviseItem(userId: string, appId: string, itemId: string, 
   const [resume] = await db.select().from(schema.materials).where(and(eq(schema.materials.userId, userId), eq(schema.materials.kind, "resume")));
   const [prof] = await db.select({ notes: schema.profiles.skillNotes }).from(schema.profiles).where(eq(schema.profiles.userId, userId));
   // Experience notes count as facts, same as the resume (#121).
-  const master = (resume?.extracted?.text ?? "") + notesBlock(prof?.notes ?? []);
+  const [mp] = await db.select({ m: schema.profiles.masterResume }).from(schema.profiles).where(eq(schema.profiles.userId, userId));
+  const master = (mp?.m?.md ?? resume?.extracted?.text ?? "") + notesBlock(prof?.notes ?? []);
   const usage = emptyUsage();
   const r = await completeJSON({
     name: "apply-revise",

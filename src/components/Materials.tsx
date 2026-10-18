@@ -1,11 +1,15 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { cleanUrl, hrefOf, LINK_KINDS, LINK_TILE, linkKind } from "@/lib/links";
 import { ChevronDown, PencilIcon, TrashIcon } from "./icons";
 import { PageHead, ProfileTabs } from "./Profile";
 import { useStore } from "./store";
 import { useConfirm } from "./Confirm";
+import { DocPreview } from "./ApplicationReview";
+import { btn } from "./Settings";
+import { api } from "./store";
+import type { Template } from "@/lib/application/resumeLayout";
 
 const SectionLabel = ({ children }: { children: React.ReactNode }) => (
   <div style={{ fontSize: 14, fontWeight: 600, letterSpacing: ".08em", textTransform: "uppercase", color: "#6B6358" }}>{children}</div>
@@ -279,6 +283,7 @@ export function Materials() {
           </div>
         </div>
       </div>
+      {state.user.autoApply && resume && <MasterResumeSection />}
     </div>
   );
 }
@@ -295,5 +300,66 @@ function KindOption({ label, note, on, pick }: { label: string; note?: string; o
       {label}
       {note && <span style={{ fontSize: 14, color: "#6B6358" }}>{note}</span>}
     </button>
+  );
+}
+
+/**
+ * The resume as Lookout reads it (#131). PDF text loses its layout (a job's bullets can come before
+ * its title), so Lookout rebuilds it once into clean structure; the person checks it here, once.
+ */
+function MasterResumeSection() {
+  const [m, setM] = useState<{ md: string | null; edited: boolean; at: string | null; template: Template } | null>(null);
+  const [editing, setEditing] = useState(false);
+  const [text, setText] = useState("");
+  const [err, setErr] = useState<string | null>(null);
+  const [said, setSaid] = useState("");
+  useEffect(() => {
+    api<{ md: string | null; edited: boolean; at: string | null; template: Template }>("/api/profile/master-resume")
+      .then((r) => {
+        setM(r);
+        setText(r.md ?? "");
+      })
+      .catch((e) => setErr(e instanceof Error ? e.message : "Couldn't load"));
+  }, []);
+  const save = async () => {
+    setErr(null);
+    try {
+      const r = await api<{ md: string; edited: boolean; at: string }>("/api/profile/master-resume", { method: "PUT", json: { md: text } });
+      setM((x) => (x ? { ...x, ...r } : x));
+      setEditing(false);
+      setSaid("Saved. Every new draft starts from this version.");
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : "Couldn't save");
+    }
+  };
+  const unplaced = !!m?.md && /^##\s+Unplaced/im.test(m.md);
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+      <SectionLabel>How Lookout reads your resume</SectionLabel>
+      <p style={{ margin: "0 0 4px", fontSize: 14, lineHeight: 1.5, color: "#6B6358", textWrap: "pretty" }}>
+        Text pulled from a PDF loses its layout, so Lookout rebuilds your resume once: each job with its own bullets, in your exact words. Auto-apply drafts every tailored resume from this version. Check that every bullet sits under the right job; fix anything once and it stays fixed.
+      </p>
+      {!m && !err && <div style={{ fontSize: 14, color: "#6B6358" }}>Reading your resume… this takes about a minute the first time.</div>}
+      {err && <div role="alert" style={{ fontSize: 14, color: "#99220F" }}>{err}</div>}
+      {unplaced && !editing && (
+        <div role="alert" style={{ fontSize: 14, color: "#99220F" }}>
+          Some lines couldn&apos;t be matched to a job; they&apos;re under &ldquo;Unplaced&rdquo; at the end. Use Edit text to move them under the right job.
+        </div>
+      )}
+      {m?.md && (editing ? <textarea aria-label="Your resume as Lookout reads it" value={text} onChange={(e) => setText(e.target.value)} rows={24} style={{ borderRadius: 10, border: "1.5px solid #E0D9CF", padding: 10, fontSize: 14, lineHeight: 1.5, fontFamily: "ui-monospace, Menlo, monospace" }} /> : <DocPreview md={m.md} template={m.template} />)}
+      {m?.md && (
+        <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+          {editing ? (
+            <>
+              <button onClick={save} disabled={text.trim().length < 40} style={btn("solid")}>Save</button>
+              <button onClick={() => { setEditing(false); setText(m.md ?? ""); }} style={btn("text")}>Cancel</button>
+            </>
+          ) : (
+            <button onClick={() => setEditing(true)} style={btn("outline")}>Edit text</button>
+          )}
+          <span aria-live="polite" style={{ fontSize: 14, color: "#6B6358" }}>{said || (m.edited ? "Fixed by you." : "")}</span>
+        </div>
+      )}
+    </div>
   );
 }
