@@ -106,11 +106,16 @@ export const profiles = pgTable("profiles", {
   eeo: text("eeo"),
   /** The person allowed Lookout to fill EEO questions from those answers. Off by default. */
   eeoConsent: boolean("eeo_consent").notNull().default(false),
+  /** The resume rebuilt once from the uploaded file into clean structure (#131); drafts start from this. */
+  masterResume: jsonb("master_resume").$type<MasterResume>(),
 });
 
 export type SavedAnswer = { key: string; question: string; answer: string; updatedAt: string };
 
 /** Experience the person added for a skill (#121): a role, project or result their resume doesn't show. Counts as a fact in every draft. */
+/** fromHash: the extracted text it was built from (a new upload rebuilds it). edited: the person fixed it by hand. */
+export type MasterResume = { md: string; fromHash: string; edited: boolean; at: string };
+
 export type SkillNote = { skill: string; story: string; updatedAt: string };
 
 export type SearchProfile = {

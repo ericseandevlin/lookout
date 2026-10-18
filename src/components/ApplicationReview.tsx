@@ -240,7 +240,7 @@ export function ApplicationReview({ id }: { id: string }) {
 }
 
 /** The resume or letter as the recruiter sees it: same layout as the .docx Lookout uploads. */
-function DocPreview({ md, template, header }: { md: string; template: Template; header?: { name: string; contact: string; headline?: string } | null }) {
+export function DocPreview({ md, template, header }: { md: string; template: Template; header?: { name: string; contact: string; headline?: string } | null }) {
   const T = TEMPLATE_STYLE[template];
   const c = (hex: string) => `#${hex}`;
   const blocks = parseDraft(md);
