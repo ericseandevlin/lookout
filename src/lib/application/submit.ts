@@ -38,7 +38,7 @@ async function loadPacket(appId: string) {
 }
 
 /** Write the resume and cover letter as .docx for upload. */
-async function files(appId: string, steps: FillStep[], name: string, company: string, template?: Template) {
+async function files(appId: string, steps: FillStep[], name: string, company: string, template?: Template, accent?: string) {
   const dir = shotDir(appId);
   await mkdir(dir, { recursive: true });
   for (const s of steps) {
@@ -46,7 +46,7 @@ async function files(appId: string, steps: FillStep[], name: string, company: st
     const label = s.itemKind === "cover_letter" ? "Cover Letter" : "Resume";
     const file = path.join(dir, `${`${name} - ${company} ${label}`.replace(/[^\w .-]/g, "").trim() || label}.docx`);
     const letterHeader = s.itemKind === "cover_letter" ? letterHeaderFrom(steps.find((x) => x.itemKind === "resume")?.content, name) : undefined;
-    await writeFile(file, await draftToDocx(s.content, label, { letterHeader, template }));
+    await writeFile(file, await draftToDocx(s.content, label, { letterHeader, template, accent }));
     s.file = file;
   }
 }
@@ -64,7 +64,8 @@ export async function runFill(appId: string, mode: "test" | "submit"): Promise<F
         if (answer) steps.push({ prompt: i.prompt, required: false, itemKind: "eeo", kind: "choice", content: answer });
       }
   }
-  await files(appId, steps, user?.name || "Resume", opp?.company ?? "", (await getAutoApplySettings(a.userId)).template);
+  const look = await getAutoApplySettings(a.userId);
+  await files(appId, steps, user?.name || "Resume", opp?.company ?? "", look.template, look.accent);
   const url = a.report.applyUrl;
   if (!url) throw new Error("No application page to open");
 

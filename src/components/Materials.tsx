@@ -308,13 +308,13 @@ function KindOption({ label, note, on, pick }: { label: string; note?: string; o
  * its title), so Lookout rebuilds it once into clean structure; the person checks it here, once.
  */
 function MasterResumeSection() {
-  const [m, setM] = useState<{ md: string | null; edited: boolean; at: string | null; uncertain: string[]; template: Template } | null>(null);
+  const [m, setM] = useState<{ md: string | null; edited: boolean; at: string | null; uncertain: string[]; template: Template; accent: string | null } | null>(null);
   const [editing, setEditing] = useState(false);
   const [text, setText] = useState("");
   const [err, setErr] = useState<string | null>(null);
   const [said, setSaid] = useState("");
   useEffect(() => {
-    api<{ md: string | null; edited: boolean; at: string | null; uncertain: string[]; template: Template }>("/api/profile/master-resume")
+    api<{ md: string | null; edited: boolean; at: string | null; uncertain: string[]; template: Template; accent: string | null }>("/api/profile/master-resume")
       .then((r) => {
         setM(r);
         setText(r.md ?? "");
@@ -356,7 +356,7 @@ function MasterResumeSection() {
           Some lines couldn&apos;t be matched to a job; they&apos;re under &ldquo;Unplaced&rdquo; at the end. Use Edit text to move them under the right job.
         </div>
       )}
-      {m?.md && (editing ? <textarea aria-label="Your resume as Lookout reads it" value={text} onChange={(e) => setText(e.target.value)} rows={24} style={{ borderRadius: 10, border: "1.5px solid #E0D9CF", padding: 10, fontSize: 14, lineHeight: 1.5, fontFamily: "ui-monospace, Menlo, monospace" }} /> : <DocPreview md={m.md} template={m.template} />)}
+      {m?.md && (editing ? <textarea aria-label="Your resume as Lookout reads it" value={text} onChange={(e) => setText(e.target.value)} rows={24} style={{ borderRadius: 10, border: "1.5px solid #E0D9CF", padding: 10, fontSize: 14, lineHeight: 1.5, fontFamily: "ui-monospace, Menlo, monospace" }} /> : <DocPreview md={m.md} template={m.template} accent={m.accent} />)}
       {m?.md && (
         <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
           {editing ? (

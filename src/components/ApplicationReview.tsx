@@ -7,7 +7,7 @@ import { applicationLabel } from "@/lib/applyLabels";
 import { btn } from "./Settings";
 import { useConfirm } from "./Confirm";
 import { api } from "./store";
-import { contactParts, letterHeaderFrom, parseDraft, TEMPLATE_STYLE, TEMPLATES, toPlain as toPlainText, type Block, type Template } from "@/lib/application/resumeLayout";
+import { ACCENTS, contactParts, letterHeaderFrom, parseDraft, readable, styleFor, TEMPLATE_STYLE, TEMPLATES, toPlain as toPlainText, type Block, type Template } from "@/lib/application/resumeLayout";
 import { parseNote } from "@/lib/application/notes";
 import { postingBlocks } from "@/lib/application/posting";
 
@@ -41,6 +41,7 @@ type Detail = {
   autoSubmit: boolean;
   eeoConsent: boolean;
   template: Template;
+  accent: string | null;
   items: Item[];
 };
 
@@ -115,6 +116,16 @@ export function ApplicationReview({ id }: { id: string }) {
     try {
       await api("/api/apply", { method: "PATCH", json: { template } });
       setSaid(`${TEMPLATE_STYLE[template].label} design. Your resume and cover letter use it, here and in the files Lookout uploads.`);
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : "Couldn't save");
+    }
+  };
+
+  const pickAccent = async (hex: string) => {
+    const accent = readable(hex);
+    setD((x) => (x ? { ...x, accent } : x));
+    try {
+      await api("/api/apply", { method: "PATCH", json: { accent } });
     } catch (e) {
       setErr(e instanceof Error ? e.message : "Couldn't save");
     }
@@ -214,7 +225,7 @@ export function ApplicationReview({ id }: { id: string }) {
                   {s.help && !locked && <div style={{ ...muted, marginTop: -4 }}>{s.help}</div>}
                   {s.title === "Resume" && d.report.keywords && <KeywordReport d={d} reload={load} locked={locked} />}
                   {list.map((i) => (
-                    <ItemCard key={i.id} appId={d.id} item={i} locked={locked} act={act} template={d.template} header={i.kind === "cover_letter" ? letterHeaderFrom(resumeText(d), "") : null} onTemplate={pickTemplate} />
+                    <ItemCard key={i.id} appId={d.id} item={i} locked={locked} act={act} template={d.template} accent={d.accent} header={i.kind === "cover_letter" ? letterHeaderFrom(resumeText(d), "") : null} onTemplate={pickTemplate} onAccent={pickAccent} />
                   ))}
                 </section>
               );
@@ -240,8 +251,8 @@ export function ApplicationReview({ id }: { id: string }) {
 }
 
 /** The resume or letter as the recruiter sees it: same layout as the .docx Lookout uploads. */
-export function DocPreview({ md, template, header }: { md: string; template: Template; header?: { name: string; contact: string; headline?: string } | null }) {
-  const T = TEMPLATE_STYLE[template];
+export function DocPreview({ md, template, accent, header }: { md: string; template: Template; accent?: string | null; header?: { name: string; contact: string; headline?: string } | null }) {
+  const T = styleFor(template, accent);
   const c = (hex: string) => `#${hex}`;
   const blocks = parseDraft(md);
   // A cover letter carries the resume's header, so both files match.
@@ -290,6 +301,11 @@ export function DocPreview({ md, template, header }: { md: string; template: Tem
             <span>{b.text}</span>
             {b.right && <span style={{ fontWeight: 400, color: c(T.muted), whiteSpace: "nowrap" }}>{b.right}</span>}
           </div>
+        ) : b.t === "subrole" ? (
+          <div key={i} style={{ display: "flex", gap: 12, justifyContent: "space-between", fontWeight: 600, fontStyle: T.headlineItalic ? "italic" : "normal", color: T.section === "bar" ? c(T.accent) : c(T.ink), margin: "6px 0 2px" }}>
+            <span>{b.text}</span>
+            {b.right && <span style={{ fontWeight: 400, fontStyle: "normal", color: c(T.muted), whiteSpace: "nowrap" }}>{b.right}</span>}
+          </div>
         ) : b.t === "bullet" ? (
           <div key={i} style={{ display: "grid", gridTemplateColumns: "14px 1fr", margin: "1px 0" }}>
             <span aria-hidden style={{ color: T.section === "bar" ? c(T.accent) : undefined }}>•</span>
@@ -333,16 +349,40 @@ function PostingText({ text }: { text: string }) {
   );
 }
 
-/** Classic, Modern or Cool, saved for the person; the .docx Lookout uploads uses the same one (#129). */
-function TemplatePicker({ value, onPick }: { value: Template; onPick: (t: Template) => void }) {
+/** Classic, Modern or Cool, saved for the person; the .docx Lookout uploads uses the same one (#129). Cool takes a highlight color (#137). */
+function TemplatePicker({ value, accent, onPick, onAccent }: { value: Template; accent?: string | null; onPick: (t: Template) => void; onAccent: (hex: string) => void }) {
+  const cur = styleFor(value, accent).accent;
+  const [custom, setCustom] = useState<string | null>(null);
   return (
-    <div role="radiogroup" aria-label="Resume design" style={{ display: "flex", gap: 6, alignItems: "center", flexWrap: "wrap" }}>
-      <span style={{ fontSize: 14, color: "#6B6358", marginRight: 4 }}>Design</span>
-      {TEMPLATES.map((t) => (
-        <button key={t} role="radio" aria-checked={value === t} onClick={() => onPick(t)} style={{ height: 32, padding: "0 12px", borderRadius: 999, border: `1.5px solid ${value === t ? "#1D1A0F" : "#E0D9CF"}`, background: value === t ? "#1D1A0F" : "#fff", color: value === t ? "#fff" : "#1D1A0F", fontSize: 14, fontWeight: 600, cursor: "pointer" }}>
-          {TEMPLATE_STYLE[t].label}
-        </button>
-      ))}
+    <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+      <div role="radiogroup" aria-label="Resume design" style={{ display: "flex", gap: 6, alignItems: "center", flexWrap: "wrap" }}>
+        <span style={{ fontSize: 14, color: "#6B6358", marginRight: 4 }}>Design</span>
+        {TEMPLATES.map((t) => (
+          <button key={t} role="radio" aria-checked={value === t} onClick={() => onPick(t)} style={{ height: 32, padding: "0 12px", borderRadius: 999, border: `1.5px solid ${value === t ? "#1D1A0F" : "#E0D9CF"}`, background: value === t ? "#1D1A0F" : "#fff", color: value === t ? "#fff" : "#1D1A0F", fontSize: 14, fontWeight: 600, cursor: "pointer" }}>
+            {TEMPLATE_STYLE[t].label}
+          </button>
+        ))}
+      </div>
+      {value === "cool" && (
+        <div role="radiogroup" aria-label="Highlight color" style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+          <span style={{ fontSize: 14, color: "#6B6358", marginRight: 4 }}>Highlight</span>
+          {ACCENTS.map(([name, hex]) => (
+            <button key={hex} role="radio" aria-checked={cur === hex} aria-label={name} title={name} onClick={() => onAccent(hex)} style={{ width: 26, height: 26, borderRadius: "50%", border: cur === hex ? "2px solid #1D1A0F" : "2px solid #fff", outline: "1px solid #E0D9CF", background: `#${hex}`, cursor: "pointer" }} />
+          ))}
+          <label style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 14, color: "#6B6358", cursor: "pointer" }}>
+            <input
+              type="color"
+              aria-label="Custom highlight color"
+              value={`#${cur}`}
+              onChange={(e) => setCustom(e.target.value.slice(1).toUpperCase())}
+              onBlur={() => custom && onAccent(custom)}
+              style={{ width: 30, height: 26, border: 0, padding: 0, background: "none", cursor: "pointer" }}
+            />
+            Custom
+          </label>
+          {custom && readable(custom) !== custom && <span style={{ fontSize: 14, color: "#6B6358" }}>Darkened a little so text stays readable.</span>}
+        </div>
+      )}
     </div>
   );
 }
@@ -571,7 +611,7 @@ const resumeText = (d: Detail) => {
   return (r?.versions.find((v) => v.id === r.approvedVersionId) ?? r?.versions[0])?.content;
 };
 
-function ItemCard({ appId, item, locked, act, template, header, onTemplate }: { appId: string; item: Item; locked: boolean; act: Act; template: Template; header: { name: string; contact: string; headline?: string } | null; onTemplate: (t: Template) => void }) {
+function ItemCard({ appId, item, locked, act, template, accent, header, onTemplate, onAccent }: { appId: string; item: Item; locked: boolean; act: Act; template: Template; accent: string | null; header: { name: string; contact: string; headline?: string } | null; onTemplate: (t: Template) => void; onAccent: (hex: string) => void }) {
   const latest = item.versions[0];
   const [pick, setPick] = useState<string | null>(null);
   const shown = item.versions.find((v) => v.id === pick) ?? item.versions.find((v) => v.id === item.approvedVersionId) ?? latest;
@@ -611,8 +651,8 @@ function ItemCard({ appId, item, locked, act, template, header, onTemplate }: { 
 
       {doc && !editing ? (
         <>
-          {!locked && <TemplatePicker value={template} onPick={onTemplate} />}
-          <DocPreview md={text} template={template} header={header} />
+          {!locked && <TemplatePicker value={template} accent={accent} onPick={onTemplate} onAccent={onAccent} />}
+          <DocPreview md={text} template={template} accent={accent} header={header} />
         </>
       ) : item.options?.length && !locked ? (
         <select id={`it-${item.id}`} value={text} onChange={(e) => setText(e.target.value)} style={{ height: 40, borderRadius: 10, border: "1.5px solid #E0D9CF", padding: "0 10px", fontSize: 15, maxWidth: 420 }}>
