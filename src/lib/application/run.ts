@@ -12,6 +12,7 @@ import { match, savedBlock } from "./saved";
 import { notesBlock, type KeywordChoices } from "./skills";
 import { findTraps, removeTraps, stripBoilerplate, stripHidden, trapWordsIn } from "./posting";
 import { ensureMaster } from "./master";
+import { roleSwaps } from "./masterCheck";
 import { isSalaryQuestion, suggestSalary } from "./salary";
 import {
   ANSWERS_SYSTEM,
@@ -208,7 +209,9 @@ async function draftResume(inp: DraftInputs, usage: Usage, choices?: KeywordChoi
   const facts = `${inp.resume}\n${inp.notes ?? ""}`;
   // The 10-second rules, held in code: one-sentence summary, Experience right after it (#129).
   const shaped = shapeResume(humanize(d.resume.trim()));
-  const draft: Drafted = { content: shaped.md, note: resumeNote(keywords, { ...d, notes: [...d.notes, ...shaped.fixed] }, newNumbers(facts, d.resume)), sources: ["master resume", ...(inp.notes ? ["your experience notes"] : []), "posting"], question: null };
+  // A bullet that left its job in the confirmed master is the Oct 18 bug coming back: say so (#131).
+  const swaps = roleSwaps(inp.resume, shaped.md);
+  const draft: Drafted = { content: shaped.md, note: resumeNote(keywords, { ...d, notes: [...d.notes, ...shaped.fixed, ...swaps] }, newNumbers(facts, d.resume)), sources: ["master resume", ...(inp.notes ? ["your experience notes"] : []), "posting"], question: null };
   const hits = trapWordsIn(draft.content, inp.traps ?? [], `${inp.resume}\n${inp.brief}`);
   if (hits.length) draft.question = `This draft includes ${hits.map((h) => `"${h}"`).join(", ")}, which the posting planted to catch automated applications. Remove it unless you mean to include it.`;
   return { draft, keywords };

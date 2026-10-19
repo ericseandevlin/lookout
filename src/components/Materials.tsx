@@ -303,44 +303,71 @@ function KindOption({ label, note, on, pick }: { label: string; note?: string; o
   );
 }
 
+type MasterView = { md: string | null; confirmed: boolean; confirmedAt: string | null; hasConfirmed: boolean; stale: boolean; uncertain: string[]; unplaced: string[]; template: Template; accent: string | null };
+
+const day = (iso: string | null) => (iso ? new Date(iso).toLocaleDateString("en-US", { month: "short", day: "numeric" }) : "");
+
 /**
  * The resume as Lookout reads it (#131). PDF text loses its layout (a job's bullets can come before
- * its title), so Lookout rebuilds it once into clean structure; the person checks it here, once.
+ * its title), so Lookout rebuilds it once into clean structure; the person checks and confirms it
+ * here, once. Drafts read the confirmed version; a rebuild never replaces it until confirmed.
  */
 function MasterResumeSection() {
-  const [m, setM] = useState<{ md: string | null; edited: boolean; at: string | null; uncertain: string[]; template: Template; accent: string | null } | null>(null);
+  const [m, setM] = useState<MasterView | null>(null);
   const [editing, setEditing] = useState(false);
   const [text, setText] = useState("");
   const [err, setErr] = useState<string | null>(null);
   const [said, setSaid] = useState("");
+  const [busy, setBusy] = useState(false);
+  const take = (r: MasterView) => {
+    setM(r);
+    setText(r.md ?? "");
+  };
   useEffect(() => {
-    api<{ md: string | null; edited: boolean; at: string | null; uncertain: string[]; template: Template; accent: string | null }>("/api/profile/master-resume")
-      .then((r) => {
-        setM(r);
-        setText(r.md ?? "");
-      })
+    api<MasterView>("/api/profile/master-resume")
+      .then(take)
       .catch((e) => setErr(e instanceof Error ? e.message : "Couldn't load"));
   }, []);
-  const save = async () => {
+  const call = async (method: "POST" | "PUT" | "DELETE", done: string, json?: object) => {
     setErr(null);
+    setSaid("");
+    setBusy(true);
     try {
-      const r = await api<{ md: string; edited: boolean; at: string; uncertain: string[] }>("/api/profile/master-resume", { method: "PUT", json: { md: text } });
-      setM((x) => (x ? { ...x, ...r } : x));
+      take(await api<MasterView>("/api/profile/master-resume", { method, json }));
       setEditing(false);
-      setSaid("Saved. Every new draft starts from this version.");
+      setSaid(done);
     } catch (e) {
-      setErr(e instanceof Error ? e.message : "Couldn't save");
+      setErr(e instanceof Error ? e.message : "Something went wrong");
+    } finally {
+      setBusy(false);
     }
   };
-  const unplaced = !!m?.md && /^##\s+Unplaced/im.test(m.md);
+  const build = () => call("POST", "Built. Check it, then confirm.");
+  const confirm = (md: string) => call("PUT", "Confirmed. Every new draft reads this version.", { md });
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
       <SectionLabel>How Lookout reads your resume</SectionLabel>
       <p style={{ margin: "0 0 4px", fontSize: 14, lineHeight: 1.5, color: "#6B6358", textWrap: "pretty" }}>
-        Text pulled from a PDF loses its layout, so Lookout rebuilds your resume once: each job with its own bullets, in your exact words. Auto-apply drafts every tailored resume from this version. Check that every bullet sits under the right job; fix anything once and it stays fixed.
+        Text pulled from a PDF loses its layout, so Lookout rebuilds your resume once: each job with its own bullets, in your exact words. Check that every bullet sits under the right job, fix anything, and confirm. Auto-apply drafts every tailored resume from the version you confirm.
       </p>
-      {!m && !err && <div style={{ fontSize: 14, color: "#6B6358" }}>Reading your resume… this takes about a minute the first time.</div>}
+      {!m && !err && <div style={{ fontSize: 14, color: "#6B6358" }}>Loading…</div>}
       {err && <div role="alert" style={{ fontSize: 14, color: "#99220F" }}>{err}</div>}
+      {m && !m.md && (
+        <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+          <button onClick={build} disabled={busy} style={btn("solid")}>Build master resume</button>
+          {busy && <span aria-live="polite" style={{ fontSize: 14, color: "#6B6358" }}>Reading your resume… this takes about a minute.</span>}
+        </div>
+      )}
+      {m?.stale && !editing && (
+        <div style={{ padding: 12, borderRadius: 10, background: "#FFF9F3", border: "1px solid #F8A865", fontSize: 14, color: "#3B362C" }}>
+          Your resume file changed since this was built. Build master resume again to read the new file{m.hasConfirmed ? "; drafts keep using the version you confirmed until you confirm the new one" : ""}.
+        </div>
+      )}
+      {m?.md && !m.confirmed && !editing && (
+        <div style={{ fontSize: 14, color: "#3B362C" }}>
+          {m.hasConfirmed ? `Not confirmed yet. Drafts still use the version you confirmed on ${day(m.confirmedAt)} until you confirm this one.` : "Not confirmed yet. Until you confirm it, drafts use it as it stands."}
+        </div>
+      )}
       {!!m?.uncertain.length && !editing && (
         <div style={{ padding: 12, borderRadius: 10, background: "#FFF9F3", border: "1px solid #F8A865", fontSize: 14, color: "#3B362C" }}>
           <div style={{ fontWeight: 600, marginBottom: 4 }}>Check these</div>
@@ -351,9 +378,15 @@ function MasterResumeSection() {
           </ul>
         </div>
       )}
-      {unplaced && !editing && (
-        <div role="alert" style={{ fontSize: 14, color: "#99220F" }}>
-          Some lines couldn&apos;t be matched to a job; they&apos;re under &ldquo;Unplaced&rdquo; at the end. Use Edit text to move them under the right job.
+      {!!m?.unplaced.length && !editing && (
+        <div role="alert" style={{ padding: 12, borderRadius: 10, background: "#FFF4F1", border: "1px solid #99220F", fontSize: 14, color: "#3B362C" }}>
+          <div style={{ fontWeight: 600, marginBottom: 4, color: "#99220F" }}>Unplaced: Lookout couldn&apos;t tell which job these belong to</div>
+          <ul style={{ margin: "0 0 4px", paddingLeft: 18, display: "flex", flexDirection: "column", gap: 2 }}>
+            {m.unplaced.map((u, i) => (
+              <li key={i}>{u}</li>
+            ))}
+          </ul>
+          Use Edit text to move each one under its job, or delete it. Drafts leave them out while they sit here.
         </div>
       )}
       {m?.md && (editing ? <textarea aria-label="Your resume as Lookout reads it" value={text} onChange={(e) => setText(e.target.value)} rows={24} style={{ borderRadius: 10, border: "1.5px solid #E0D9CF", padding: 10, fontSize: 14, lineHeight: 1.5, fontFamily: "ui-monospace, Menlo, monospace" }} /> : <DocPreview md={m.md} template={m.template} accent={m.accent} />)}
@@ -361,13 +394,21 @@ function MasterResumeSection() {
         <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
           {editing ? (
             <>
-              <button onClick={save} disabled={text.trim().length < 40} style={btn("solid")}>Save</button>
+              <button onClick={() => confirm(text)} disabled={busy || text.trim().length < 40} style={btn("solid")}>Save and confirm</button>
               <button onClick={() => { setEditing(false); setText(m.md ?? ""); }} style={btn("text")}>Cancel</button>
             </>
           ) : (
-            <button onClick={() => setEditing(true)} style={btn("outline")}>Edit text</button>
+            <>
+              {!m.confirmed && <button onClick={() => confirm(m.md!)} disabled={busy} style={btn("solid")}>Confirm</button>}
+              <button onClick={() => setEditing(true)} disabled={busy} style={btn("outline")}>Edit text</button>
+              {!m.confirmed && m.hasConfirmed ? (
+                <button onClick={() => call("DELETE", "Kept the version you confirmed.")} disabled={busy} style={btn("text")}>Keep my confirmed version</button>
+              ) : (
+                <button onClick={build} disabled={busy} style={btn("text")}>{m.stale ? "Build master resume" : "Rebuild from file"}</button>
+              )}
+            </>
           )}
-          <span aria-live="polite" style={{ fontSize: 14, color: "#6B6358" }}>{said || (m.edited ? "Fixed by you." : "")}</span>
+          <span aria-live="polite" style={{ fontSize: 14, color: "#6B6358" }}>{busy ? "Working… a rebuild takes about a minute." : said || (m.confirmed ? `Confirmed ${day(m.confirmedAt)}. Every new draft reads this version.` : "")}</span>
         </div>
       )}
     </div>

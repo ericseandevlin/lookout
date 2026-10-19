@@ -15,6 +15,7 @@ import { bullets } from "./notes";
 import { resolve } from "./eeo";
 import { isSalaryQuestion, suggestSalary } from "./salary";
 import { loadEeo, saveEeo } from "./eeoStore";
+import { masterForDrafts } from "./masterCheck";
 import { answerKey } from "./saved";
 import { canAutoSubmit } from "./submit";
 
@@ -190,7 +191,7 @@ export async function reviseItem(userId: string, appId: string, itemId: string, 
   const [prof] = await db.select({ notes: schema.profiles.skillNotes }).from(schema.profiles).where(eq(schema.profiles.userId, userId));
   // Experience notes count as facts, same as the resume (#121).
   const [mp] = await db.select({ m: schema.profiles.masterResume }).from(schema.profiles).where(eq(schema.profiles.userId, userId));
-  const master = (mp?.m?.md ?? resume?.extracted?.text ?? "") + notesBlock(prof?.notes ?? []);
+  const master = (masterForDrafts(mp?.m) ?? resume?.extracted?.text ?? "") + notesBlock(prof?.notes ?? []);
   const usage = emptyUsage();
   const r = await completeJSON({
     name: "apply-revise",
