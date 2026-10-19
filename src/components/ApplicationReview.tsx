@@ -261,7 +261,7 @@ export function DocPreview({ md, template, accent, header }: { md: string; templ
   const top: Block[] = header && blocks[0]?.t !== "name" ? [{ t: "name", text: header.name }, ...(header.headline ? [{ t: "headline" as const, text: header.headline }] : []), ...(header.contact ? [{ t: "contact" as const, text: header.contact }] : [])] : [];
   const center = T.align === "center";
   return (
-    <div style={{ background: "#fff", border: "1px solid #E0D9CF", borderRadius: 6, boxShadow: "0 2px 10px rgba(29,26,15,.08)", padding: "36px 44px", fontFamily: T.css, color: c(T.ink), fontSize: 13.5, lineHeight: 1.45, maxHeight: 640, overflow: "auto" }}>
+    <div style={{ background: "#fff", border: "1px solid #E0D9CF", borderRadius: 6, boxShadow: "0 2px 10px rgba(29,26,15,.08)", padding: "clamp(18px, 5%, 36px) clamp(16px, 6%, 44px)", fontFamily: T.css, color: c(T.ink), fontSize: 13.5, lineHeight: 1.45, maxHeight: 640, overflow: "auto", overflowWrap: "anywhere" }}>
       {[...top, ...blocks].map((b, i, all) =>
         b.t === "name" ? (
           <div key={i} style={{ fontSize: T.nameSize, fontWeight: T.nameWeight, lineHeight: 1.1, letterSpacing: T.section === "bar" ? "-0.02em" : undefined, textAlign: center ? "center" : "left", marginBottom: 4 }}>{b.text}</div>
@@ -299,7 +299,7 @@ export function DocPreview({ md, template, accent, header }: { md: string; templ
             {b.text}
           </div>
         ) : b.t === "role" ? (
-          <div key={i} style={{ display: "flex", gap: 12, justifyContent: "space-between", fontWeight: 700, margin: "10px 0 2px" }}>
+          <div key={i} style={{ display: "flex", flexWrap: "wrap", gap: "0 12px", justifyContent: "space-between", fontWeight: 700, margin: "10px 0 2px" }}>
             {T.section === "bar" ? (
               <span>
                 <span style={{ color: c(T.accent) }}>{roleParts(all, i).title}</span>
@@ -311,7 +311,7 @@ export function DocPreview({ md, template, accent, header }: { md: string; templ
             {b.right && <span style={{ fontWeight: 400, color: c(T.muted), whiteSpace: "nowrap" }}>{b.right}</span>}
           </div>
         ) : b.t === "subrole" ? (
-          <div key={i} style={{ display: "flex", gap: 12, justifyContent: "space-between", fontWeight: 600, fontStyle: T.headlineItalic ? "italic" : "normal", color: T.section === "bar" ? c(T.accent) : c(T.ink), margin: "6px 0 2px" }}>
+          <div key={i} style={{ display: "flex", flexWrap: "wrap", gap: "0 12px", justifyContent: "space-between", fontWeight: 600, fontStyle: T.headlineItalic ? "italic" : "normal", color: T.section === "bar" ? c(T.accent) : c(T.ink), margin: "6px 0 2px" }}>
             <span>{b.text}</span>
             {b.right && <span style={{ fontWeight: 400, fontStyle: "normal", color: c(T.muted), whiteSpace: "nowrap" }}>{b.right}</span>}
           </div>

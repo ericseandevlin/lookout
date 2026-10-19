@@ -105,3 +105,61 @@ describe("roleParts", () => {
     expect(roleParts(b, 4)).toEqual({ title: "Freelance Web Developer", rest: " | New York, NY" });
   });
 });
+
+import { liftHeadline, sentences, shapeResume } from "./resumeLayout";
+
+describe("headline in the contact line (#129)", () => {
+  it("lifts a title off the front of the contact line and puts it above", () => {
+    const b = parseDraft("# Eric Devlin\nUX Engineering Lead | New York, NY • ericdevlin@me.com • ericdevlin.co\n## Summary\nShips things.");
+    expect(b.slice(0, 3)).toEqual([
+      { t: "name", text: "Eric Devlin" },
+      { t: "headline", text: "UX Engineering Lead" },
+      { t: "contact", text: "New York, NY • ericdevlin@me.com • ericdevlin.co" },
+    ]);
+  });
+
+  it("leaves a plain contact line alone", () => {
+    expect(liftHeadline("New York, NY • ericdevlin@me.com")).toEqual({ rest: "New York, NY • ericdevlin@me.com" });
+    expect(liftHeadline("Brooklyn • me@x.com").headline).toBeUndefined();
+  });
+});
+
+describe("sentences", () => {
+  it("doesn't split on abbreviations", () => {
+    expect(sentences("Led design at U.S. Bank and Acme Inc. Teams for 10 years.")).toHaveLength(1);
+    expect(sentences("Builds design systems. Leads teams of 12.")).toHaveLength(2);
+  });
+});
+
+describe("shapeResume (#129)", () => {
+  const draft = `# Maya Ortiz
+UX Engineer
+New York, NY • maya@example.com
+
+## Summary
+Builds design systems that ship. Leads teams of 12.
+
+## Skills
+- React, TypeScript
+
+## Experience
+### UX Engineering Lead, Acme | 07/2021 – Present
+- Built the design system.
+
+## Education
+BFA, Parsons`;
+
+  it("cuts the summary to one sentence and moves Experience right after it", () => {
+    const r = shapeResume(draft);
+    const b = parseDraft(r.md);
+    expect(b.filter((x) => x.t === "section").map((x) => x.text)).toEqual(["Summary", "Experience", "Skills", "Education"]);
+    expect(b[4]).toEqual({ t: "text", text: "Builds design systems that ship." });
+    expect(r.fixed).toHaveLength(2);
+    expect(r.fixed[0]).toContain("Leads teams of 12.");
+  });
+
+  it("leaves a draft that already follows the rules untouched", () => {
+    const ok = shapeResume(draft).md;
+    expect(shapeResume(ok)).toEqual({ md: ok, fixed: [] });
+  });
+});

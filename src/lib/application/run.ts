@@ -7,7 +7,7 @@ import { completeJSON, emptyUsage, type Usage } from "@/lib/ai/llm";
 import { assertBudget } from "@/lib/ai/runs";
 import { fetchPage, pageToText } from "@/lib/ai/fetchPage";
 import { kinds } from "@/lib/kinds";
-import { humanize } from "./resumeLayout";
+import { humanize, shapeResume } from "./resumeLayout";
 import { match, savedBlock } from "./saved";
 import { notesBlock, type KeywordChoices } from "./skills";
 import { findTraps, removeTraps, stripBoilerplate, stripHidden, trapWordsIn } from "./posting";
@@ -206,7 +206,9 @@ async function draftResume(inp: DraftInputs, usage: Usage, choices?: KeywordChoi
   const d = await completeJSON({ name: "apply-resume", schema: ResumeDraft, system: RESUME_SYSTEM, user: resumePrompt(inp, choices), maxTokens: 8000, usage });
   const keywords = keywordReport(inp.resume, d.resume, d, inp.posting.text, choices);
   const facts = `${inp.resume}\n${inp.notes ?? ""}`;
-  const draft: Drafted = { content: humanize(d.resume.trim()), note: resumeNote(keywords, d, newNumbers(facts, d.resume)), sources: ["master resume", ...(inp.notes ? ["your experience notes"] : []), "posting"], question: null };
+  // The 10-second rules, held in code: one-sentence summary, Experience right after it (#129).
+  const shaped = shapeResume(humanize(d.resume.trim()));
+  const draft: Drafted = { content: shaped.md, note: resumeNote(keywords, { ...d, notes: [...d.notes, ...shaped.fixed] }, newNumbers(facts, d.resume)), sources: ["master resume", ...(inp.notes ? ["your experience notes"] : []), "posting"], question: null };
   const hits = trapWordsIn(draft.content, inp.traps ?? [], `${inp.resume}\n${inp.brief}`);
   if (hits.length) draft.question = `This draft includes ${hits.map((h) => `"${h}"`).join(", ")}, which the posting planted to catch automated applications. Remove it unless you mean to include it.`;
   return { draft, keywords };
