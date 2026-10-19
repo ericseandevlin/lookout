@@ -24,7 +24,7 @@ type Item = {
   /** EEO only: the answer matched from the person's profile (with consent), never stored on the application. */
   eeoAnswer?: string | null;
   /** Salary questions: the suggested ask and how it was worked out (#139). */
-  salary?: { amount: string; note: string } | null;
+  salary?: { amount: string | null; note: string } | null;
   versions: Version[];
 };
 type Detail = {
@@ -696,13 +696,18 @@ function ItemCard({ appId, item, locked, act, template, accent, header, onTempla
         {isApproved && <span style={{ fontSize: 14, fontWeight: 600, color: "#35662A" }}>{item.kind === "field" ? "✓ Will be filled" : `✓ Approved v${shown.version}`}</span>}
       </div>
 
-      {item.salary && !locked && (
+      {item.salary && item.salary.amount === null && !locked && (
+        <div style={{ padding: "8px 12px", borderRadius: 10, background: "#FBF4E6", border: "1px solid #E8D3A6", fontSize: 14, color: "#5C4613" }}>
+          <strong>No suggested ask.</strong> {item.salary.note}
+        </div>
+      )}
+      {item.salary?.amount && !locked && (
         <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", padding: "8px 12px", borderRadius: 10, background: "#F3F7F1", border: "1px solid #CFE3C6" }}>
           <span style={{ fontSize: 14, color: "#35662A" }}>Suggested ask</span>
           <span style={{ fontSize: 16, fontWeight: 700, color: "#1D1A0F" }}>{item.salary.amount}</span>
           <InfoTip label="How this is calculated" text={item.salary.note} />
           {text.replace(/[^\d]/g, "") !== item.salary.amount.replace(/[^\d]/g, "") && (
-            <button onClick={() => run("save", { action: "edit", content: item.salary!.amount, note: "Used Lookout's suggested ask." }, "Saved the suggested ask as a new version.")} disabled={!!busy} style={{ ...btn("outline"), height: 32, marginLeft: "auto" }}>
+            <button onClick={() => run("save", { action: "edit", content: item.salary!.amount!, note: "Used Lookout's suggested ask." }, "Saved the suggested ask as a new version.")} disabled={!!busy} style={{ ...btn("outline"), height: 32, marginLeft: "auto" }}>
               Use it
             </button>
           )}
