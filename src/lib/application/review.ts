@@ -7,7 +7,7 @@ import { completeJSON, emptyUsage } from "@/lib/ai/llm";
 import { assertBudget } from "@/lib/ai/runs";
 import { HttpError } from "@/lib/api";
 import { newNumbers } from "./draft";
-import { humanize } from "./resumeLayout";
+import { humanize, shapeResume } from "./resumeLayout";
 import { isCommon, upsert } from "./saved";
 import { notesBlock } from "./skills";
 import { getAutoApplySettings } from "@/lib/apply";
@@ -210,8 +210,9 @@ export async function reviseItem(userId: string, appId: string, itemId: string, 
     .where(eq(schema.applications.id, appId));
   if (!r.content.trim()) return { status: a.status, question: r.question.trim() || "Lookout needs more detail to make that change." };
   const invented = newNumbers(master, r.content).filter((n) => !newNumbers(master, cur?.content ?? "").includes(n) && !(cur?.content ?? "").includes(n));
-  const note = bullets([`You asked: "${instruction.slice(0, 160)}"`, r.note.trim(), invented.length > 0 && `Check these numbers, they aren't in your master resume: ${invented.join(", ")}`]);
-  await insertVersion(itemId, { content: it.options?.length ? r.content.trim() : humanize(r.content.trim()), note, author: "ai", sources: ["your instruction", ...(cur ? [`version ${cur.version}`] : [])] });
+  const shaped = it.kind === "resume" ? shapeResume(humanize(r.content.trim())) : { md: it.options?.length ? r.content.trim() : humanize(r.content.trim()), fixed: [] };
+  const note = bullets([`You asked: "${instruction.slice(0, 160)}"`, r.note.trim(), ...shaped.fixed, invented.length > 0 && `Check these numbers, they aren't in your master resume: ${invented.join(", ")}`]);
+  await insertVersion(itemId, { content: shaped.md, note, author: "ai", sources: ["your instruction", ...(cur ? [`version ${cur.version}`] : [])] });
   return { status: await settleStatus(appId), question: r.question.trim() || null };
 }
 
