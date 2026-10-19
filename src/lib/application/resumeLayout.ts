@@ -169,7 +169,7 @@ export const isTemplate = (t: unknown): t is Template => typeof t === "string" &
 /** Plain text for pasting into a form's text box: the same structure, no markup. */
 export function toPlain(md: string) {
   return parseDraft(md)
-    .map((b) => (b.t === "section" ? `\n${b.text.toUpperCase()}` : b.t === "bullet" ? `• ${b.text}` : b.t === "role" ? `\n${b.text}${b.right ? `    ${b.right}` : ""}` : b.text))
+    .map((b) => (b.t === "section" ? `\n${b.text.toUpperCase()}` : b.t === "bullet" ? `• ${b.text}` : b.t === "role" ? `\n${b.text}${b.right ? `    ${b.right}` : ""}` : b.t === "subrole" ? `${b.text}${b.right ? `    ${b.right}` : ""}` : b.text))
     .join("\n")
     .replace(/\n{3,}/g, "\n\n")
     .trim();
@@ -227,8 +227,187 @@ export function shapeResume(md: string): { md: string; fixed: string[] } {
     secs.splice(want, 0, e);
     fixed.push(`Moved Experience up${sum ? " to right after the summary" : " to the top"}, so your latest role shows in the first 10 seconds.`);
   }
+  fixed.push(...shapeExperience(secs));
   if (!fixed.length) return { md, fixed };
   const out = [...head, ...secs.flatMap((x) => x.lines)].join("\n").replace(/\n{3,}/g, "\n\n").trim();
   return { md: out, fixed };
 }
 
+
+// --- Experience shape (#137), held in code like the 10-second rules: one heading per employer with
+// its titles under it, one freelance umbrella with the clients named, agency contracts written
+// "Title (contract via Agency), Brand", and side work that overlaps another job under Selected Projects.
+
+type Kid = { head: string; body: string[] };
+type Entry = { head: string; body: string[]; kids: Kid[] };
+type Span = { s: number; e: number; from: string; to: string };
+
+const MONTHS = ["jan", "feb", "mar", "apr", "may", "jun", "jul", "aug", "sep", "oct", "nov", "dec"];
+const FREELANCE = /\b(freelance|self-employed|independent contractor)\b/i;
+const PROJECTS = /^(selected )?projects$/i;
+
+/** A month count for one side of a date range; Present is open-ended. */
+function when(s: string, end: boolean): number | null {
+  if (/present|current|now/i.test(s)) return Infinity;
+  const y = s.match(/(19|20)\d{2}/);
+  if (!y) return null;
+  const mm = s.match(/\b(\d{1,2})\//);
+  const mon = s.match(/\b(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)/i);
+  const m = mm ? +mm[1] : mon ? MONTHS.indexOf(mon[1].toLowerCase()) + 1 : end ? 12 : 1;
+  return +y[0] * 12 + m;
+}
+
+function span(right?: string): Span | null {
+  if (!right) return null;
+  const [from, to = from] = right.split(/\s*[–-]\s*|\s+to\s+/i);
+  const s = when(from, false);
+  const e = when(to, true);
+  return s === null || e === null ? null : { s, e, from: from.trim(), to: to.trim() };
+}
+
+/** "Title, Agency (client: Brand)" and "Title, Brand (via Agency)" read as "Title (contract via Agency), Brand". */
+export function agencyWording(line: string): string {
+  if (/\(contract via /i.test(line)) return line;
+  const client = line.match(/^(.+?),\s*(.+?)\s*\((?:client|for|at|on assignment (?:to|at))\s*:?\s*(.+?)\)$/i);
+  if (client) return `${client[1]} (contract via ${client[2]}), ${client[3]}`;
+  const via = line.match(/^(.+?),\s*(.+?)\s*\((?:contract(?:ed)?\s+)?(?:via|through)\s+(.+?)\)$/i);
+  if (via) return `${via[1]} (contract via ${via[3]}), ${via[2]}`;
+  return line;
+}
+
+/** Title, company and city of a single role line ("Title, Company | City | dates"). */
+function roleOf(head: string) {
+  const { text, right } = splitRole(head.replace(/^#{3,4}\s+/, "").trim());
+  const [first, ...rest] = text.split(/\s+\|\s+/);
+  const k = first.indexOf(", ");
+  return { first, title: k > 0 ? first.slice(0, k) : first, company: k > 0 ? first.slice(k + 2) : "", city: rest.join(" | "), right };
+}
+
+const keyOf = (company: string) =>
+  company
+    .toLowerCase()
+    .replace(/[,.]?\s*\b(inc|llc|ltd|corp|co)\.?$/, "")
+    .replace(/[^a-z0-9]/g, "");
+
+const entrySpan = (e: Entry): Span | null => {
+  const all = (e.kids.length ? e.kids.map((k) => roleOf(k.head).right) : [roleOf(e.head).right]).map(span);
+  if (!all.length || all.some((x) => !x)) return span(roleOf(e.head).right);
+  const s = all.reduce((a, b) => (b!.s < a!.s ? b : a))!;
+  const t = all.reduce((a, b) => (b!.e > a!.e ? b : a))!;
+  return { s: s.s, e: t.e, from: s.from, to: t.to };
+};
+
+const byLatest = <T>(xs: T[], at: (x: T) => Span | null) => {
+  const spans = xs.map(at);
+  if (spans.some((x) => !x)) return xs;
+  return xs.map((x, i) => ({ x, sp: spans[i]! })).sort((a, b) => b.sp.e - a.sp.e || b.sp.s - a.sp.s).map((p) => p.x);
+};
+
+function shapeExperience(secs: { title: string; lines: string[] }[]): string[] {
+  const ex = secs.find((x) => EXPERIENCE.test(x.title));
+  if (!ex) return [];
+  const fixed: string[] = [];
+
+  const pre: string[] = [];
+  const entries: Entry[] = [];
+  for (const l of ex.lines.slice(1)) {
+    const t = l.trim();
+    if (/^###\s+/.test(t) && !/^####/.test(t)) entries.push({ head: t, body: [], kids: [] });
+    else if (/^####\s+/.test(t) && entries.length) entries[entries.length - 1].kids.push({ head: t, body: [] });
+    else if (!entries.length) pre.push(l);
+    else if (t) {
+      const e = entries[entries.length - 1];
+      (e.kids.length ? e.kids[e.kids.length - 1].body : e.body).push(l);
+    }
+  }
+  if (!entries.length) return [];
+
+  // Agency contracts, the way recruiters read them.
+  for (const e of entries)
+    for (const k of [e, ...e.kids]) {
+      const r = roleOf(k.head);
+      const w = agencyWording(r.first);
+      if (w !== r.first) {
+        k.head = k.head.replace(r.first, w);
+        fixed.push(`Wrote your agency contract as "${w}".`);
+      }
+    }
+
+  // One heading per employer: several titles at one company show a promotion, not three jobs.
+  let out: Entry[] = [];
+  const buckets = new Map<string, Entry[]>();
+  entries.forEach((e, i) => {
+    const r = roleOf(e.head);
+    const key = FREELANCE.test(e.head) ? "" : e.kids.length ? keyOf(r.first) : r.company ? keyOf(r.company) : "";
+    const k = key || `#${i}`;
+    buckets.set(k, [...(buckets.get(k) ?? []), e]);
+  });
+  for (const group of buckets.values()) {
+    out.push(group.length > 1 ? merge(group, false) : group[0]);
+    if (group.length > 1) fixed.push(`Put your ${countKids(group)} titles at ${roleOf(out[out.length - 1].head).first} under one heading, newest first.`);
+  }
+
+  // Titles under each employer, newest first.
+  for (const e of out) {
+    const sorted = byLatest(e.kids, (k) => span(roleOf(k.head).right));
+    if (sorted.some((k, i) => k !== e.kids[i])) {
+      e.kids = sorted;
+      fixed.push(`Listed the titles at ${roleOf(e.head).first} newest first.`);
+    }
+  }
+
+  // Side work that sits inside another job's dates is a project, not a second employer.
+  const spanOf = (e: Entry) => entrySpan(e);
+  const side = out.filter((e) => {
+    const a = spanOf(e);
+    return a && out.some((o) => {
+      const b = spanOf(o);
+      return o !== e && b && b.s <= a.s && a.e <= b.e && (b.s < a.s || a.e < b.e);
+    });
+  });
+  if (side.length) {
+    out = out.filter((e) => !side.includes(e));
+    let proj = secs.find((x) => PROJECTS.test(x.title));
+    if (!proj) secs.splice(secs.indexOf(ex) + 1, 0, (proj = { title: "Selected Projects", lines: ["## Selected Projects"] }));
+    proj.lines = [...proj.lines.filter((l, i) => i === 0 || l.trim()), ...side.flatMap(lines), ""];
+    for (const e of side) fixed.push(`Moved ${roleOf(e.head).first} to Selected Projects: it overlaps a job you held at the same time.`);
+  }
+
+  // Newest first, then one freelance umbrella for each run of freelance gigs next to each other.
+  const ordered = byLatest(out, spanOf);
+  if (ordered.some((e, i) => e !== out[i])) fixed.push("Put Experience newest first.");
+  const final: Entry[] = [];
+  for (let i = 0; i < ordered.length; ) {
+    let j = i;
+    while (j < ordered.length && FREELANCE.test(ordered[j].head) && !ordered[j].kids.length) j++;
+    if (j - i > 1) {
+      final.push(merge(ordered.slice(i, j), true));
+      fixed.push("Put your freelance work under one Freelance heading with the clients named.");
+      i = j;
+    } else final.push(ordered[i++]);
+  }
+  if (fixed.length) ex.lines = [ex.lines[0], ...pre.filter((l) => l.trim()), ...final.flatMap(lines), ""];
+  return fixed;
+}
+
+const countKids = (group: Entry[]) => group.reduce((n, e) => n + (e.kids.length || 1), 0);
+
+/** Several entries as one heading with each title (or each freelance client) under it, newest first. */
+function merge(group: Entry[], free: boolean): Entry {
+  const lead = group.find((e) => e.kids.length);
+  const r0 = roleOf((lead ?? group[0]).head);
+  const name = free ? "Freelance" : lead ? r0.first : r0.company;
+  const city = group.map((e) => roleOf(e.head).city).find(Boolean) ?? "";
+  const kids = group.flatMap((e) => {
+    if (e.kids.length) return e.kids;
+    const r = roleOf(e.head);
+    const title = free ? r.first.replace(/^freelance\s+/i, "").replace(/\s*\(freelance\)/i, "").replace(/,\s*freelance$/i, "") : r.title;
+    return [{ head: `#### ${title}${r.right ? ` | ${r.right}` : ""}`, body: e.body }];
+  });
+  const merged: Entry = { head: "", body: group.flatMap((e) => (e.kids.length ? e.body : [])), kids: byLatest(kids, (k) => span(roleOf(k.head).right)) };
+  const sp = entrySpan(merged);
+  merged.head = `### ${name}${city ? ` | ${city}` : ""}${sp ? ` | ${sp.from} – ${sp.to}` : ""}`;
+  return merged;
+}
+
+const lines = (e: Entry) => [e.head, ...e.body, ...e.kids.flatMap((k) => [k.head, ...k.body])];
