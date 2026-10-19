@@ -6,6 +6,9 @@ import { db, schema } from "@/lib/db";
 import type { MasterResume } from "@/lib/db/schema";
 import { completeJSON, type Usage } from "@/lib/ai/llm";
 import { humanize } from "./resumeLayout";
+import { confirmedMaster, finishMaster, masterForDrafts } from "./masterCheck";
+
+export { looseDates } from "./masterDates";
 
 /**
  * The master resume, read once (#131). Text pulled from a PDF loses its layout: in two-column
@@ -38,49 +41,66 @@ const Out = z.object({
 
 export const sourceHash = (text: string) => createHash("sha256").update(text).digest("hex").slice(0, 16);
 
-const dashes = (s: string) => s.replace(/\s*[–—-]\s*/g, "-").toLowerCase();
-
-/**
- * Dates the rebuild attached to a job without the file putting them on the same line as that job's
- * name. PDF text floats dates loose, so those pairings are guesses: say so, in code (#131).
- */
-export function looseDates(md: string, source: string): string[] {
-  const lines = source.split("\n").map(dashes);
-  const out: string[] = [];
-  for (const l of md.split("\n")) {
-    const m = l.match(/^###\s+(.+?)\s*\|.*\|\s*([^|]*\d{4}[^|]*)$/) ?? l.match(/^###\s+(.+?)\s*\|\s*([^|]*\d{4}[^|]*)$/);
-    if (!m) continue;
-    const [, title, dates] = m;
-    const d = dashes(dates.trim());
-    const words = title.split(/[\s,()]+/).filter((w) => w.length > 3).map((w) => w.toLowerCase());
-    const together = lines.some((x) => x.includes(d) && words.some((w) => x.includes(w)));
-    if (!together) out.push(`The dates ${dates.trim()} weren't next to "${title.trim()}" in your file, so Lookout matched them by guess. Check them.`);
-  }
-  return out;
+async function current(userId: string) {
+  const [m] = await db.select().from(schema.materials).where(and(eq(schema.materials.userId, userId), eq(schema.materials.kind, "resume")));
+  const [p] = await db.select({ master: schema.profiles.masterResume }).from(schema.profiles).where(eq(schema.profiles.userId, userId));
+  return { text: m?.extracted?.text?.trim() ?? "", master: p?.master ?? null };
 }
 
-/** The structured master resume for this person, building it the first time (one model call). */
-export async function ensureMaster(userId: string, usage: Usage): Promise<{ md: string; built: boolean } | null> {
-  const [m] = await db.select().from(schema.materials).where(and(eq(schema.materials.userId, userId), eq(schema.materials.kind, "resume")));
-  const text = m?.extracted?.text?.trim();
+const store = (userId: string, master: MasterResume | null) => db.update(schema.profiles).set({ masterResume: master }).where(eq(schema.profiles.userId, userId));
+
+/**
+ * Rebuild the master resume from the uploaded file (one model call). The new version is a working
+ * copy for the person to check; the version they confirmed stays as it was until they confirm again.
+ */
+export async function buildMaster(userId: string, usage: Usage): Promise<MasterResume | null> {
+  const { text, master: prev } = await current(userId);
   if (!text) return null;
-  const [p] = await db.select({ master: schema.profiles.masterResume }).from(schema.profiles).where(eq(schema.profiles.userId, userId));
-  const hash = sourceHash(text);
-  if (p?.master?.md && p.master.fromHash === hash) return { md: p.master.md, built: false };
   // A LinkedIn PDF lists each role with its own title, company and dates: the best evidence for which go together.
   const [li] = await db.select().from(schema.materials).where(and(eq(schema.materials.userId, userId), eq(schema.materials.kind, "linkedin")));
   const liText = li?.extracted?.text?.trim();
   const user = `<resume_text>\n${text.slice(0, 24000)}\n</resume_text>${liText ? `\n\n<linkedin_profile use="only to decide which titles, companies and dates belong together; never copy other content from it">\n${liText.slice(0, 12000)}\n</linkedin_profile>` : ""}`;
   const r = await completeJSON({ name: "master-resume", schema: Out, system: MASTER_SYSTEM, user, maxTokens: 8000, usage });
-  const master: MasterResume = { md: humanize(r.resume.trim()), fromHash: hash, edited: false, at: new Date().toISOString(), uncertain: [...looseDates(r.resume, text), ...r.uncertain.map((u) => humanize(u.trim())).filter(Boolean)] };
-  await db.update(schema.profiles).set({ masterResume: master }).where(eq(schema.profiles.userId, userId));
-  return { md: master.md, built: true };
+  const checked = finishMaster(r.resume, text);
+  const master: MasterResume = { md: checked.md, fromHash: sourceHash(text), edited: false, at: new Date().toISOString(), uncertain: [...checked.uncertain, ...r.uncertain.map((u) => humanize(u.trim())).filter(Boolean)], confirmed: confirmedMaster(prev) };
+  await store(userId, master);
+  return master;
 }
 
-export async function saveMaster(userId: string, md: string) {
-  const [m] = await db.select().from(schema.materials).where(and(eq(schema.materials.userId, userId), eq(schema.materials.kind, "resume")));
-  // Fixed by hand: the person has checked it, so the uncertainty list goes.
-  const master: MasterResume = { md: md.trim(), fromHash: sourceHash(m?.extracted?.text?.trim() ?? ""), edited: true, at: new Date().toISOString(), uncertain: [] };
-  await db.update(schema.profiles).set({ masterResume: master }).where(eq(schema.profiles.userId, userId));
+/**
+ * The master resume drafts read: the confirmed version, else the rebuild as it stands. Built the
+ * first time only; a newer upload waits for the person to rebuild it on Materials.
+ */
+export async function ensureMaster(userId: string, usage: Usage): Promise<{ md: string; built: boolean } | null> {
+  const { text, master } = await current(userId);
+  if (master?.md) return { md: masterForDrafts(master)!, built: false };
+  if (!text) return null;
+  const b = await buildMaster(userId, usage);
+  return b ? { md: masterForDrafts(b)!, built: true } : null;
+}
+
+export async function getMaster(userId: string) {
+  const { text, master } = await current(userId);
+  return { master, stale: !!master && !!text && master.fromHash !== sourceHash(text) };
+}
+
+/** Save the person's text and confirm it: from now on every draft reads this version. */
+export async function confirmMaster(userId: string, md: string) {
+  const { text, master: prev } = await current(userId);
+  const at = new Date().toISOString();
+  const edited = !!prev && md.trim() !== prev.md;
+  const fromHash = prev?.fromHash ?? sourceHash(text);
+  // Checked by the person, so the uncertainty list goes.
+  const master: MasterResume = { md: md.trim(), fromHash, edited: edited || !!prev?.edited, at, uncertain: [], confirmed: { md: md.trim(), at, fromHash } };
+  await store(userId, master);
   return master;
+}
+
+/** Throw away an unconfirmed rebuild: back to the confirmed version, or to nothing built. */
+export async function discardMaster(userId: string) {
+  const { master } = await current(userId);
+  const c = confirmedMaster(master);
+  const back: MasterResume | null = c ? { md: c.md, fromHash: c.fromHash ?? master!.fromHash, edited: master!.edited, at: c.at, uncertain: [], confirmed: c } : null;
+  await store(userId, back);
+  return back;
 }
