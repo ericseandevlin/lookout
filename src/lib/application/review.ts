@@ -169,7 +169,7 @@ export async function approveItem(userId: string, appId: string, itemId: string,
 
 const Revision = z.object({
   content: z.string().describe("The full revised text, ready to paste. Empty only if you must ask"),
-  note: z.string().describe("One sentence: what you changed, speaking to the person as 'you'"),
+  note: z.string().describe("One sentence describing the change Lookout made, starting with a verb, e.g. 'Moved the AI workflows line to your current role.' Refer to the person as 'you'; never say 'you moved' for Lookout's own edit"),
   question: z.string().describe("If the request needs a fact you don't have, the one question to ask. Else empty"),
 });
 
