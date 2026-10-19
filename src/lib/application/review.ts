@@ -13,7 +13,7 @@ import { notesBlock } from "./skills";
 import { getAutoApplySettings } from "@/lib/apply";
 import { bullets } from "./notes";
 import { resolve } from "./eeo";
-import { isSalaryQuestion, suggestSalary } from "./salary";
+import { asksBase, asksMinimum, isSalaryQuestion, rangeBasis, suggestSalary } from "./salary";
 import { loadEeo, saveEeo } from "./eeoStore";
 import { masterForDrafts } from "./masterCheck";
 import { answerKey } from "./saved";
@@ -61,7 +61,7 @@ export async function getApplicationDetail(userId: string, id: string) {
   const [prof] = items.some((i) => i.kind !== "eeo" && !i.options?.length && isSalaryQuestion(i.prompt)) ? await db.select({ answers: schema.profiles.answers }).from(schema.profiles).where(eq(schema.profiles.userId, userId)) : [];
   const postingText = a.report.postingText || o?.description || "";
   const salaryHint = (prompt: string) =>
-    prof ? suggestSalary({ floor: prof.answers.floor, target: prof.answers.target, min: o?.compMin, max: o?.compMax, totalCash: /total cash|includ\w* (a )?(target )?bonus|\bOTE\b/i.test(postingText), asksBase: /\bbase\b/i.test(prompt), asksMinimum: /\bminimum\b|\bat least\b|\blowest\b/i.test(prompt) }) : null;
+    prof ? suggestSalary({ floor: prof.answers.floor, target: prof.answers.target, min: o?.compMin, max: o?.compMax, basis: rangeBasis(postingText), asksBase: asksBase(prompt), asksMinimum: asksMinimum(prompt) }) : null;
   // EEO answers are matched here from the encrypted profile, only with consent; they're never stored on the application (#122).
   const eeo = items.some((i) => i.kind === "eeo") ? await loadEeo(userId) : null;
   return {
