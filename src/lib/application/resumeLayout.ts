@@ -76,7 +76,29 @@ export function roleParts(blocks: Block[], i: number): { title: string; rest: st
 }
 
 /** Name, then headline, then contact: what a recruiter should read first, in that order (#129). */
-const orderHeader = (h: Block[]) => [...h.filter((b) => b.t === "headline"), ...h.filter((b) => b.t === "contact")];
+const orderHeader = (h: Block[]) => {
+  const head = h.filter((b) => b.t === "headline");
+  const contact = h.filter((b) => b.t === "contact");
+  // No headline line of its own: it may be buried at the front of the contact line. Lift it out (#129).
+  if (!head.length && contact[0]?.t === "contact") {
+    const { headline, rest } = liftHeadline(contact[0].text);
+    if (headline) return [{ t: "headline" as const, text: headline }, ...(rest ? [{ t: "contact" as const, text: rest }] : []), ...contact.slice(1)];
+  }
+  return [...head, ...contact];
+};
+
+/** Words that make a header piece a job title, not a city. */
+const ROLEISH = /\b(engineer\w*|design\w*|develop\w*|lead|leader|manager|director|architect|strateg\w*|consultant|scientist|analyst|head|vp|president|officer|founder|product|ux|ui|writer|researcher|specialist)\b/i;
+
+/** Leading title pieces of a contact line ("UX Engineering Lead | New York, NY • me@x.com"), split from the rest. */
+export function liftHeadline(line: string): { headline?: string; rest: string } {
+  const parts = line.split(/\s+([•|·])\s+/);
+  const pieces = parts.filter((_, i) => i % 2 === 0);
+  let k = 0;
+  while (k < pieces.length && !CONTACTISH.test(pieces[k]) && ROLEISH.test(pieces[k])) k++;
+  if (!k || k === pieces.length) return { rest: line };
+  return { headline: pieces.slice(0, k).join(" | "), rest: pieces.slice(k).join(" • ") };
+}
 
 export type ContactPart = { text: string; href?: string };
 
@@ -161,3 +183,52 @@ export function letterHeaderFrom(resumeMd: string | undefined, fallbackName: str
   const headline = b.find((x) => x.t === "headline")?.text;
   return { name, contact, ...(headline ? { headline } : {}) };
 }
+
+// --- Draft shape (#129): what a recruiter reads in 10 seconds, checked in code, not only asked of the model.
+
+const SUMMARY = /^(summary|profile|professional summary|about)$/i;
+const EXPERIENCE = /^(experience|work experience|professional experience|employment|work history)$/i;
+
+/** Sentence ends: a period after a lowercase letter, digit, % or ), then a capital. "U.S. Bank" and "Inc." don't count. */
+export function sentences(text: string): string[] {
+  return text
+    .split(/(?<=[a-z0-9%)][.!?])(?<!\b(?:Inc|Co|Corp|Ltd|Jr|Sr|St|Mr|Ms|Dr|vs|etc)\.)\s+(?=[A-Z])/)
+    .map((x) => x.trim())
+    .filter(Boolean);
+}
+
+/**
+ * Hold a resume draft to the 10-second rules: the summary is one sentence, and Experience comes right
+ * after it, so the most recent role and its dates sit in the top third. Returns what it changed.
+ */
+export function shapeResume(md: string): { md: string; fixed: string[] } {
+  const lines = md.replace(/\r/g, "").split("\n");
+  const starts = lines.flatMap((l, i) => (/^##\s+/.test(l.trim()) && !/^###/.test(l.trim()) ? [i] : []));
+  if (!starts.length) return { md, fixed: [] };
+  const head = lines.slice(0, starts[0]);
+  const secs = starts.map((s, j) => ({ title: lines[s].trim().replace(/^##\s+/, "").replace(/\*/g, "").trim(), lines: lines.slice(s, starts[j + 1] ?? lines.length) }));
+  const fixed: string[] = [];
+
+  const sum = secs.find((x) => SUMMARY.test(x.title));
+  if (sum) {
+    const body = sum.lines.slice(1).map((l) => l.trim()).filter(Boolean);
+    const text = body.map((l) => l.replace(/^[-*•]\s+/, "")).join(" ");
+    const all = sentences(text);
+    if (all.length > 1) {
+      sum.lines = [sum.lines[0], all[0], ""];
+      fixed.push(`Cut your summary to one sentence. Left out: "${all.slice(1).join(" ")}"`);
+    }
+  }
+
+  const ex = secs.findIndex((x) => EXPERIENCE.test(x.title));
+  const want = sum ? secs.indexOf(sum) + 1 : 0;
+  if (ex > want) {
+    const [e] = secs.splice(ex, 1);
+    secs.splice(want, 0, e);
+    fixed.push(`Moved Experience up${sum ? " to right after the summary" : " to the top"}, so your latest role shows in the first 10 seconds.`);
+  }
+  if (!fixed.length) return { md, fixed };
+  const out = [...head, ...secs.flatMap((x) => x.lines)].join("\n").replace(/\n{3,}/g, "\n\n").trim();
+  return { md: out, fixed };
+}
+
