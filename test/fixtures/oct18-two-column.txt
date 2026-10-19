@@ -1,0 +1,26 @@
+Eric Devlin
+VP, UX Engineering
+New York, NY • eric@example.com • linkedin.com/in/example
+SUMMARY
+UX engineering leader who builds design systems and the teams that ship them.
+EXPERIENCE
+• Design System: Led the firm-wide design system used by over 40 product
+teams, with accessible components in React and Angular.
+• Accessibility: Set the WCAG 2.1 AA bar for consumer web and trained
+engineers across three regions.
+• Delivery: Cut release time for new UI from weeks to days with a shared
+component pipeline.
+Vice President, UX Engineering, Citi New York, NY • 07/2021 - Present
+• Team Expansion: Grew the web development team from two to nine
+developers and set up code review and hiring.
+• Client Work: Built over 35 websites for consumer brands, from pitch to
+launch.
+• Process: Introduced sprint planning and estimates that held across a
+year of client work.
+Web Development Team Lead, RPM New York, NY • 07/2017 - 07/2021
+• Built marketing sites for small businesses on WordPress and custom
+stacks.
+• Prototyped browser games for an indie studio.
+Freelance Web Developer New York, NY • 03/2016 - 11/2017
+SKILLS
+React • TypeScript • Design systems • Accessibility • Team leadership
