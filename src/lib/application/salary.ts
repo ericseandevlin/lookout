@@ -52,12 +52,20 @@ export function suggestSalary(i: { floor?: unknown; target?: unknown; min?: numb
   // A target inside their range is the person's own number, so it wins over the top quarter; the floor still holds.
   const inRange = target && target >= lo && target <= hi ? target : null;
   const amount = Math.min(hi, inRange ? Math.max(inRange, floor ?? 0) : Math.max(topQuarter, floor ?? 0, target ?? 0));
-  const why = amount === hi && target && target >= hi ? "their posted max, since your target is at or above it" : inRange && amount === inRange ? "your target, which sits inside their range" : amount === floor && floor > topQuarter ? "your floor, which sits in the top quarter of their range" : "the top quarter of their range";
+  // Each case explains itself: at their max there's no room left in the range, so the advice is different.
+  const why =
+    amount === hi && target && target >= hi
+      ? `This is their posted max: your target (${usd(target)}) is at or above it, and asking above their max tends to screen you out. Take the top of their budget and negotiate the rest of the offer instead: bonus, equity, title or start date`
+      : inRange && amount === inRange
+        ? "This is your target, which fits inside their range, so ask for it"
+        : amount === floor && floor > topQuarter
+          ? "This is your floor, which sits in the top quarter of their range, so it's also a strong ask"
+          : "This is the top quarter of their range: asking near the top leaves room to negotiate down and stays inside their budget";
   const minimum = i.asksMinimum && floor && floor < lo ? ` The question asks for your minimum, but answering with your floor (${usd(floor)}) would tell them you'd take less than the ${usd(lo)} they've budgeted, so this stays inside their range.` : "";
   const unclear = !i.basis && i.asksBase ? ` The posting doesn't say whether ${usd(lo)} – ${usd(hi)} is base or total cash. If it includes a bonus, base is lower; check before you use this.` : "";
   return {
     amount: usd(amount),
-    note: `Their range is ${range}. This is ${why}: asking near the top leaves room to negotiate and stays inside their budget${floor ? `, and it's at or above your floor (${usd(floor)})` : ""}.${minimum}${unclear}`,
+    note: `Their range is ${range}. ${why}${floor ? `. It's at or above your floor (${usd(floor)})` : ""}.${minimum}${unclear}`,
     ...(unclear ? { question: `The posting doesn't say whether its range is base or total cash. Check before you send ${usd(amount)} as base.` } : {}),
   };
 }
