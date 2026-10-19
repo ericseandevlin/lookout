@@ -83,3 +83,17 @@ describe("isSalaryQuestion", () => {
     expect(isSalaryQuestion("What is your current salary?")).toBe(false);
   });
 });
+
+describe("salary note wording", () => {
+  it("at their max, says to negotiate the rest of the offer, not 'room to negotiate'", () => {
+    const r = suggestSalary({ floor: "220000", target: "300000", min: 235000, max: 250000 })!;
+    expect(r.amount).toBe("$250,000");
+    expect(r.note).toMatch(/posted max/);
+    expect(r.note).toMatch(/bonus, equity/);
+    expect(r.note).not.toMatch(/room to negotiate down/);
+  });
+
+  it("in the top quarter, explains the room to negotiate down", () => {
+    expect(suggestSalary({ floor: "200000", min: 230000, max: 260000 })!.note).toMatch(/room to negotiate down/);
+  });
+});
