@@ -114,7 +114,16 @@ export type SavedAnswer = { key: string; question: string; answer: string; updat
 
 /** Experience the person added for a skill (#121): a role, project or result their resume doesn't show. Counts as a fact in every draft. */
 /** fromHash: the extracted text it was built from (a new upload rebuilds it). edited: the person fixed it by hand. */
-export type MasterResume = { md: string; fromHash: string; edited: boolean; at: string; /** What the rebuild wasn't sure about, for the person to check. */ uncertain?: string[] };
+export type MasterResume = {
+  /** The working copy: the latest rebuild or the person's latest edit. */
+  md: string;
+  fromHash: string;
+  edited: boolean;
+  at: string;
+  /** What the rebuild wasn't sure about, for the person to check. */ uncertain?: string[];
+  /** The version the person confirmed; drafts read this one, and a rebuild never touches it (#131). */
+  confirmed?: { md: string; at: string; fromHash?: string };
+};
 
 export type SkillNote = { skill: string; story: string; updatedAt: string };
 
