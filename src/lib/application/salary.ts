@@ -53,11 +53,13 @@ export function suggestSalary(i: { floor?: unknown; target?: unknown; min?: numb
   // never below their floor, never above the posted max.
   const inRange = target && target >= lo && target <= hi ? target : null;
   const amount = Math.min(hi, Math.max(inRange ?? topQuarter, floor ?? 0));
+  // The strategy in three rules, each with the reason a recruiter would give (#139).
   const lines = [
-    `Their range: ${range}`,
-    `• The ask: the top quarter of the posted range (${usd(topQuarter)}), or your target if it sits inside the range${inRange ? ` (${usd(inRange)})` : ""}.`,
-    `• Limits: never below your floor${floor ? ` (${usd(floor)})` : ""}, never above their posted max (${usd(hi)}).`,
-    i.asksMinimum && floor && floor < lo && `• This asks for your minimum; it's still answered inside their range.`,
+    `How Lookout picked ${usd(amount)} (their range: ${range})`,
+    `• Top quarter of their range (${usd(topQuarter)}). You start high, and they still have room to come down to a number you'd take.`,
+    `• Your target, if it's inside their range${inRange ? ` (${usd(inRange)})` : ""}. It's your number, and they can afford it.`,
+    `• Never below your floor${floor ? ` (${usd(floor)})` : ""} or above their max (${usd(hi)}). Your walk-away number isn't your ask, and asking over budget gets you screened out.`,
+    i.asksMinimum && floor && floor < lo && `• Minimum question: still answered inside their range. Naming less than they budgeted leaves money on the table.`,
     !i.basis && i.asksBase && `• The posting doesn't say whether this range is base or total cash. Check before you send it as base.`,
   ].filter(Boolean);
   return {

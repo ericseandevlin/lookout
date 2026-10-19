@@ -6,7 +6,7 @@ describe("suggestSalary", () => {
   it("asks in the top quarter of 100-140 with a floor of 120, never above 140", () => {
     const r = suggestSalary({ floor: "120000", min: 100000, max: 140000 })!;
     expect(r.amount).toBe("$130,000");
-    expect(r.note).toMatch(/top quarter/);
+    expect(r.note).toMatch(/Top quarter/);
     expect(r.question).toBeUndefined();
   });
 
@@ -59,7 +59,7 @@ describe("suggestSalary", () => {
   it("explains why a minimum question still gets an in-range answer (Understood)", () => {
     const r = suggestSalary({ floor: "220000", min: 235000, max: 250000, asksMinimum: true })!;
     expect(r.amount).toBe("$245,000");
-    expect(r.note).toMatch(/asks for your minimum/);
+    expect(r.note).toMatch(/Minimum question/);
   });
 
   it("states one number without a range, and never invents one", () => {
@@ -89,15 +89,16 @@ describe("isSalaryQuestion", () => {
 });
 
 describe("salary note wording", () => {
-  it("is just the rule, with the real numbers (Understood)", () => {
+  it("states the three rules with why, using the real numbers (Understood)", () => {
     const r = suggestSalary({ floor: "220000", target: "260000", min: 235000, max: 250000, asksMinimum: true })!;
     expect(r.amount).toBe("$245,000");
     expect(r.note).toBe(
       [
-        "Their range: $235,000 – $250,000",
-        "• The ask: the top quarter of the posted range ($245,000), or your target if it sits inside the range.",
-        "• Limits: never below your floor ($220,000), never above their posted max ($250,000).",
-        "• This asks for your minimum; it's still answered inside their range.",
+        "How Lookout picked $245,000 (their range: $235,000 – $250,000)",
+        "• Top quarter of their range ($245,000). You start high, and they still have room to come down to a number you'd take.",
+        "• Your target, if it's inside their range. It's your number, and they can afford it.",
+        "• Never below your floor ($220,000) or above their max ($250,000). Your walk-away number isn't your ask, and asking over budget gets you screened out.",
+        "• Minimum question: still answered inside their range. Naming less than they budgeted leaves money on the table.",
       ].join("\n"),
     );
   });
