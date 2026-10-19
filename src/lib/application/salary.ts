@@ -49,23 +49,20 @@ export function suggestSalary(i: { floor?: unknown; target?: unknown; min?: numb
     return { amount: null, note, question: `${note} What base salary do you want to ask for?` };
   }
   const topQuarter = round5k(lo + 0.75 * (hi - lo));
-  // A target inside their range is the person's own number, so it wins over the top quarter; the floor still holds.
+  // The rule, and only the rule: the top quarter, or the person's target when it sits inside the range;
+  // never below their floor, never above the posted max.
   const inRange = target && target >= lo && target <= hi ? target : null;
-  const amount = Math.min(hi, inRange ? Math.max(inRange, floor ?? 0) : Math.max(topQuarter, floor ?? 0, target ?? 0));
-  // Each case explains itself: at their max there's no room left in the range, so the advice is different.
-  const why =
-    amount === hi && target && target >= hi
-      ? `This is their posted max: your target (${usd(target)}) is at or above it, and asking above their max tends to screen you out. Take the top of their budget and negotiate the rest of the offer instead: bonus, equity, title or start date`
-      : inRange && amount === inRange
-        ? "This is your target, which fits inside their range, so ask for it"
-        : amount === floor && floor > topQuarter
-          ? "This is your floor, which sits in the top quarter of their range, so it's also a strong ask"
-          : "This is the top quarter of their range: asking near the top leaves room to negotiate down and stays inside their budget";
-  const minimum = i.asksMinimum && floor && floor < lo ? ` The question asks for your minimum, but answering with your floor (${usd(floor)}) would tell them you'd take less than the ${usd(lo)} they've budgeted, so this stays inside their range.` : "";
-  const unclear = !i.basis && i.asksBase ? ` The posting doesn't say whether ${usd(lo)} – ${usd(hi)} is base or total cash. If it includes a bonus, base is lower; check before you use this.` : "";
+  const amount = Math.min(hi, Math.max(inRange ?? topQuarter, floor ?? 0));
+  const lines = [
+    `Their range: ${range}`,
+    `• The ask: the top quarter of the posted range (${usd(topQuarter)}), or your target if it sits inside the range${inRange ? ` (${usd(inRange)})` : ""}.`,
+    `• Limits: never below your floor${floor ? ` (${usd(floor)})` : ""}, never above their posted max (${usd(hi)}).`,
+    i.asksMinimum && floor && floor < lo && `• This asks for your minimum; it's still answered inside their range.`,
+    !i.basis && i.asksBase && `• The posting doesn't say whether this range is base or total cash. Check before you send it as base.`,
+  ].filter(Boolean);
   return {
     amount: usd(amount),
-    note: `Their range is ${range}. ${why}${floor ? `. It's at or above your floor (${usd(floor)})` : ""}.${minimum}${unclear}`,
-    ...(unclear ? { question: `The posting doesn't say whether its range is base or total cash. Check before you send ${usd(amount)} as base.` } : {}),
+    note: lines.join("\n"),
+    ...(!i.basis && i.asksBase ? { question: `The posting doesn't say whether its range is base or total cash. Check before you send ${usd(amount)} as base.` } : {}),
   };
 }

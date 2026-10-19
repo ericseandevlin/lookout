@@ -27,8 +27,12 @@ describe("suggestSalary", () => {
     expect(suggestSalary({ floor: "100000", target: "110k", min: 100000, max: 140000 })!.amount).toBe("$110,000");
   });
 
-  it("caps at the posted max", () => {
-    expect(suggestSalary({ floor: "200000", target: "300000", min: 230000, max: 260000 })!.amount).toBe("$260,000");
+  it("asks the top quarter when the target is above their range (Eric's rule, not their max)", () => {
+    expect(suggestSalary({ floor: "200000", target: "300000", min: 230000, max: 260000 })!.amount).toBe("$255,000");
+  });
+
+  it("never goes above the posted max, even for a floor near it", () => {
+    expect(suggestSalary({ floor: "259000", min: 230000, max: 260000 })!.amount).toBe("$259,000");
   });
 
   it("does not answer a base question with a total-cash range (Red Ventures)", () => {
@@ -47,7 +51,7 @@ describe("suggestSalary", () => {
 
   it("says when it can't tell base from total cash, without picking one", () => {
     const r = suggestSalary({ min: 230000, max: 260000, basis: null, asksBase: true })!;
-    expect(r.note).toMatch(/doesn't say whether .* is base or total cash/);
+    expect(r.note).toMatch(/doesn't say whether this range is base or total cash/);
     expect(r.question).toMatch(/base or total cash/);
     expect(suggestSalary({ min: 230000, max: 260000, basis: "base", asksBase: true })!.question).toBeUndefined();
   });
@@ -85,15 +89,16 @@ describe("isSalaryQuestion", () => {
 });
 
 describe("salary note wording", () => {
-  it("at their max, says to negotiate the rest of the offer, not 'room to negotiate'", () => {
-    const r = suggestSalary({ floor: "220000", target: "300000", min: 235000, max: 250000 })!;
-    expect(r.amount).toBe("$250,000");
-    expect(r.note).toMatch(/posted max/);
-    expect(r.note).toMatch(/bonus, equity/);
-    expect(r.note).not.toMatch(/room to negotiate down/);
-  });
-
-  it("in the top quarter, explains the room to negotiate down", () => {
-    expect(suggestSalary({ floor: "200000", min: 230000, max: 260000 })!.note).toMatch(/room to negotiate down/);
+  it("is just the rule, with the real numbers (Understood)", () => {
+    const r = suggestSalary({ floor: "220000", target: "260000", min: 235000, max: 250000, asksMinimum: true })!;
+    expect(r.amount).toBe("$245,000");
+    expect(r.note).toBe(
+      [
+        "Their range: $235,000 – $250,000",
+        "• The ask: the top quarter of the posted range ($245,000), or your target if it sits inside the range.",
+        "• Limits: never below your floor ($220,000), never above their posted max ($250,000).",
+        "• This asks for your minimum; it's still answered inside their range.",
+      ].join("\n"),
+    );
   });
 });
