@@ -11,7 +11,7 @@ const Input = z.object({ token: z.string().min(20).max(100) });
 
 // POST, not GET: mail scanners prefetch GET links and would burn the token.
 export const POST = publicRoute(async (req) => {
-  if (!rateLimit(`verify-ip:${await clientIp()}`, 30, 60 * 60_000)) throw new HttpError(429, "Too many attempts");
+  if (!await rateLimit(`verify-ip:${await clientIp()}`, 30, 60 * 60_000)) throw new HttpError(429, "Too many attempts");
   const { token } = await body(req, Input);
   const [row] = await db
     .update(schema.loginTokens)

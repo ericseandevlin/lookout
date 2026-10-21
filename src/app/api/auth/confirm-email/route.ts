@@ -10,7 +10,7 @@ const Input = z.object({ token: z.string().min(20).max(100) });
 
 /** Finish an email change. Proves the person controls the new address. */
 export const POST = publicRoute(async (req) => {
-  if (!rateLimit(`confirm-email:${await clientIp()}`, 30, 60 * 60_000)) throw new HttpError(429, "Too many attempts");
+  if (!await rateLimit(`confirm-email:${await clientIp()}`, 30, 60 * 60_000)) throw new HttpError(429, "Too many attempts");
   const { token } = await body(req, Input);
   const [row] = await db
     .update(schema.loginTokens)

@@ -18,7 +18,7 @@ const linkedinOf = (userId: string) =>
     .then((r) => r[0]);
 
 export const POST = authed(async (req, { user }) => {
-  if (!rateLimit(`linkedin-pdf:${user.id}`, 10, 24 * 3600_000)) throw new HttpError(429, "Upload limit reached for today.");
+  if (!await rateLimit(`linkedin-pdf:${user.id}`, 10, 24 * 3600_000)) throw new HttpError(429, "Upload limit reached for today.");
   const form = await req.formData().catch(() => null);
   const file = form?.get("file");
   if (!(file instanceof File)) throw new HttpError(400, "No file");
