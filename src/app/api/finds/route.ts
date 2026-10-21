@@ -10,7 +10,7 @@ const Input = z.object({ url: z.string().trim().url().max(1000).refine((u) => /^
 /** Manual add. Runs in the background; the client polls /api/state until `running` clears. */
 export const POST = authed(async (req, { user }) => {
   const { url } = await body(req, Input);
-  if (!rateLimit(`add-url:${user.id}`, 20, 24 * 3600_000)) throw new HttpError(429, "That's enough links for today.");
+  if (!await rateLimit(`add-url:${user.id}`, 20, 24 * 3600_000)) throw new HttpError(429, "That's enough links for today.");
   const ai = await getAiConfig();
   if (ai.provider !== "agent" && !ai.model) throw new HttpError(503, "Adding links isn't set up yet: no AI model is configured.");
   if (await isRunning(user.id)) throw new HttpError(409, "Lookout is already working. Try again in a minute.");

@@ -12,7 +12,7 @@ const Input = z.object({
 
 /** Invite-only waitlist. Same response whether the email is new, pending, or already in. */
 export const POST = publicRoute(async (req) => {
-  if (!rateLimit(`request-ip:${await clientIp()}`, 5, 60 * 60_000)) throw new HttpError(429, "Too many requests. Try again in an hour.");
+  if (!await rateLimit(`request-ip:${await clientIp()}`, 5, 60 * 60_000)) throw new HttpError(429, "Too many requests. Try again in an hour.");
   const p = await body(req, Input);
   const email = normalizeEmail(p.email);
   await db
