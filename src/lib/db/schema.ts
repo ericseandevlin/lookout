@@ -393,3 +393,14 @@ export const applicationMessages = pgTable("application_messages", {
   createdAt: createdAt(),
 });
 
+
+/** Fixed-window rate-limit counters (see src/lib/ratelimit.ts). Rows past expires_at no longer count and get swept. */
+export const rateLimits = pgTable(
+  "rate_limits",
+  {
+    key: text("key").primaryKey(),
+    count: integer("count").notNull(),
+    expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+  },
+  (t) => [index("rate_limits_expires_at_idx").on(t.expiresAt)],
+);

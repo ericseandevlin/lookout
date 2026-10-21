@@ -13,7 +13,7 @@ export const POST = publicRoute(async (req) => {
   const { email: raw } = await body(req, Input);
   const email = normalizeEmail(raw);
   const ip = await clientIp();
-  if (!rateLimit(`login-ip:${ip}`, 10, 60 * 60_000) || !rateLimit(`login-email:${email}`, 5, 60 * 60_000)) {
+  if (!await rateLimit(`login-ip:${ip}`, 10, 60 * 60_000) || !await rateLimit(`login-email:${email}`, 5, 60 * 60_000)) {
     throw new HttpError(429, "Too many requests. Try again in an hour.");
   }
   // Same response whether or not the address may sign in, so the endpoint can't be used to probe accounts.

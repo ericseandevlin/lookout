@@ -7,7 +7,7 @@ import { rateLimit } from "@/lib/ratelimit";
 async function respond(userId: string, force: boolean) {
   const usage = emptyUsage();
   // Building costs a model call; cap rebuilds so a stuck tab can't loop.
-  const mayBuild = rateLimit(`search-profile:${userId}`, 30, 24 * 3600_000);
+  const mayBuild = await rateLimit(`search-profile:${userId}`, 30, 24 * 3600_000);
   const r = await ensureSearchProfile(userId, usage, { force, build: mayBuild });
   const stale = !!r.raw.stored?.searchProfileHash && r.raw.stored.searchProfileHash !== r.raw.hash && !r.rebuilt;
   return json({

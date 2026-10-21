@@ -12,7 +12,7 @@ const Input = z.object({ email: z.string().trim().email().max(254) });
 /** Start an email change: a confirmation link goes to the new address; nothing changes until it's clicked. */
 export const POST = authed(async (req, { user }) => {
   if (!env.smtpUrl && !env.logEmails) throw new HttpError(503, "Email isn't set up yet, so a new address can't be confirmed.");
-  if (!rateLimit(`email-change:${user.id}`, 5, 60 * 60_000)) throw new HttpError(429, "Too many requests. Try again in an hour.");
+  if (!await rateLimit(`email-change:${user.id}`, 5, 60 * 60_000)) throw new HttpError(429, "Too many requests. Try again in an hour.");
   const email = normalizeEmail((await body(req, Input)).email);
   if (email === normalizeEmail(user.email)) throw new HttpError(400, "That's already your email.");
   if (await findUserByEmail(email)) throw new HttpError(409, "That email belongs to another account.");
