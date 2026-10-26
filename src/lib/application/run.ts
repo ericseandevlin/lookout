@@ -9,7 +9,10 @@ import { fetchPage, pageToText } from "@/lib/ai/fetchPage";
 import { kinds } from "@/lib/kinds";
 import { humanize, shapeResume } from "./resumeLayout";
 import { match, savedBlock } from "./saved";
-import { notesBlock, type KeywordChoices } from "./skills";
+import { notesBlock } from "./skills";
+import { HttpError } from "@/lib/api";
+import { KEYWORD_PLAN_SYSTEM, KeywordPlanDraft, approvedBlock, approvedFor, finalTerms, keywordPlanPrompt, planFrom, unapprovedIn, type KeywordRow } from "./evidence";
+import { keywordState } from "./review";
 import { findTraps, removeTraps, stripBoilerplate, stripHidden, trapWordsIn } from "./posting";
 import { ensureMaster } from "./master";
 import { roleSwaps } from "./masterCheck";
@@ -202,16 +205,36 @@ async function loadInputs(userId: string, opp: typeof schema.opportunities.$infe
   };
 }
 
-/** The ATS resume and its keyword report, from the person's master resume and the cleaned posting. */
-async function draftResume(inp: DraftInputs, usage: Usage, choices?: KeywordChoices) {
-  const d = await completeJSON({ name: "apply-resume", schema: ResumeDraft, system: RESUME_SYSTEM, user: resumePrompt(inp, choices), maxTokens: 8000, usage });
-  const keywords = keywordReport(inp.resume, d.resume, d, inp.posting.text, choices);
+/** Keywords for the person to check before any draft uses them (#121): posting terms, each with the line of theirs the model says backs it. */
+async function proposeKeywords(inp: DraftInputs, usage: Usage) {
+  const d = await completeJSON({ name: "apply-keywords", schema: KeywordPlanDraft, system: KEYWORD_PLAN_SYSTEM, user: keywordPlanPrompt(inp.posting.text, inp.resume, inp.notes ?? ""), maxTokens: 3000, usage });
+  return planFrom(d, inp.posting.text);
+}
+
+/** Until the person approves the keywords, the resume is their master as it stands: nothing is worked in silently (#121). */
+const untailored = (inp: DraftInputs): Drafted => ({
+  content: shapeResume(humanize(inp.resume.trim())).md,
+  note: "- Not tailored to this posting yet. Check the keywords above, then press \"Use these keywords\" to write the tailored resume.",
+  sources: ["master resume"],
+  question: null,
+});
+
+/** The ATS resume and its keyword report, from the person's master resume, the cleaned posting and their approved keywords. */
+async function draftResume(inp: DraftInputs, usage: Usage, rows: KeywordRow[]) {
+  const d = await completeJSON({ name: "apply-resume", schema: ResumeDraft, system: RESUME_SYSTEM, user: resumePrompt(inp) + approvedBlock(rows), maxTokens: 8000, usage });
+  // The report covers exactly the approved list; the model's own keyword picks don't count here.
+  const keywords = keywordReport(inp.resume, d.resume, { ...d, keywords: [] }, undefined, { include: finalTerms(rows), exclude: [] });
+  const stray = unapprovedIn(d.resume, inp.resume, rows);
   const facts = `${inp.resume}\n${inp.notes ?? ""}`;
   // The 10-second rules, held in code: one-sentence summary, Experience right after it (#129).
   const shaped = shapeResume(humanize(d.resume.trim()));
   // A bullet that left its job in the confirmed master is the Oct 18 bug coming back: say so (#131).
   const swaps = roleSwaps(inp.resume, shaped.md);
   const draft: Drafted = { content: shaped.md, note: resumeNote(keywords, { ...d, notes: [...d.notes, ...shaped.fixed, ...swaps] }, newNumbers(facts, d.resume)), sources: ["master resume", ...(inp.notes ? ["your experience notes"] : []), "posting"], question: null };
+  if (stray.length) {
+    draft.note += `\n- Check these, you didn't approve them and your experience doesn't show them: ${stray.join(", ")}`;
+    draft.question = `This draft uses ${stray.map((t) => `"${t}"`).join(", ")}, which you didn't approve. Remove ${stray.length === 1 ? "it" : "them"} or add the experience behind ${stray.length === 1 ? "it" : "them"} first.`;
+  }
   const hits = trapWordsIn(draft.content, inp.traps ?? [], `${inp.resume}\n${inp.brief}`);
   if (hits.length) draft.question = `This draft includes ${hits.map((h) => `"${h}"`).join(", ")}, which the posting planted to catch automated applications. Remove it unless you mean to include it.`;
   return { draft, keywords };
@@ -272,7 +295,10 @@ export async function redraftResume(appId: string) {
     // The posting page still works without the ATS's full description.
   }
   const inp = await loadInputs(a.userId, opp, usage, postingHtml);
-  const { draft, keywords } = await draftResume(inp, usage, a.report.keywordChoices);
+  // Only the list the person said go to, worked out again from today's resume and notes (#121).
+  const { rows } = await keywordState(a.userId, a, inp.posting.text);
+  if (!approvedFor(a.report, rows)) throw new HttpError(409, "Check the keywords first, then press \"Use these keywords\".");
+  const { draft, keywords } = await draftResume(inp, usage, rows);
   await db.transaction(async (tx) => {
     const [{ n }] = await tx.select({ n: max(schema.itemVersions.version) }).from(schema.itemVersions).where(eq(schema.itemVersions.itemId, item.id));
     await tx.insert(schema.itemVersions).values({ itemId: item.id, version: (n ?? 0) + 1, content: draft.content, note: `- Redrafted from the posting\n${draft.note}`, author: "ai", sources: draft.sources });
@@ -290,13 +316,12 @@ async function draftAll(id: string, userId: string, opp: typeof schema.opportuni
   const inp = await loadInputs(userId, opp, usage, postingHtml);
   const items = await db.select().from(schema.applicationItems).where(eq(schema.applicationItems.applicationId, id)).orderBy(schema.applicationItems.position);
   const out = new Map<string, Drafted>();
-  let keywords: ReturnType<typeof keywordReport> | undefined;
+  let keywordPlan: ReturnType<typeof planFrom> | undefined;
 
   const resumeItem = items.find((i) => i.kind === "resume");
   if (resumeItem) {
-    const r = await draftResume(inp, usage);
-    keywords = r.keywords;
-    out.set(resumeItem.id, r.draft);
+    keywordPlan = await proposeKeywords(inp, usage);
+    out.set(resumeItem.id, untailored(inp));
   }
 
   const rest: (DraftItem & { id: string })[] = [];
@@ -347,7 +372,7 @@ async function draftAll(id: string, userId: string, opp: typeof schema.opportuni
       await tx.update(schema.applicationItems).set({ question: d.question, approvedVersionId: auto ? v.id : null }).where(eq(schema.applicationItems.id, it.id));
     }
   });
-  return { keywords, postingText: inp.posting.text, traps: inp.traps ?? [] };
+  return { keywordPlan, keywords: undefined, keywordsApproved: undefined, postingText: inp.posting.text, traps: inp.traps ?? [] };
 }
 
 /** Re-queue work a restart interrupted, then return what's waiting. One user, or everyone. */

@@ -335,6 +335,10 @@ export type ApplicationReport = {
   postingText?: string;
   /** The user's keyword picks for this resume (#121): terms to work in, terms to leave out. */
   keywordChoices?: { include: string[]; exclude: string[] };
+  /** Keywords proposed from the posting, with the experience line the model cited (checked in code before use) (#121). */
+  keywordPlan?: { term: string; cite?: string }[];
+  /** The person's one go for the final keyword list; any change to the list clears it (#121). */
+  keywordsApproved?: { terms: string[]; at: string };
   /** Posting keywords and whether the master resume (before) and the ATS draft (after) carry them. */
   keywords?: { term: string; before: boolean; after: boolean; where?: string; choice?: "include" | "exclude" }[];
 };
