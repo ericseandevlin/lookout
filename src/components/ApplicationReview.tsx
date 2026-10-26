@@ -7,7 +7,8 @@ import { applicationLabel } from "@/lib/applyLabels";
 import { btn } from "./Settings";
 import { useConfirm } from "./Confirm";
 import { api } from "./store";
-import { ACCENTS, contactParts, letterHeaderFrom, parseDraft, readable, roleParts, styleFor, TEMPLATE_STYLE, TEMPLATES, toPlain as toPlainText, type Block, type Template } from "@/lib/application/resumeLayout";
+import { ACCENTS, contactParts, letterHeaderFrom, parseDraft, readable, roleParts, styleFor, TEMPLATE_STYLE, TEMPLATES, toPlain as toPlainText, type Template } from "@/lib/application/resumeLayout";
+import { docBlocks } from "@/lib/application/docHtml";
 import { parseNote } from "@/lib/application/notes";
 import { postingBlocks } from "@/lib/application/posting";
 
@@ -256,19 +257,19 @@ export function ApplicationReview({ id }: { id: string }) {
 export function DocPreview({ md, template, accent, header }: { md: string; template: Template; accent?: string | null; header?: { name: string; contact: string; headline?: string } | null }) {
   const T = styleFor(template, accent);
   const c = (hex: string) => `#${hex}`;
-  const blocks = parseDraft(md);
-  // A cover letter carries the resume's header, so both files match.
-  const top: Block[] = header && blocks[0]?.t !== "name" ? [{ t: "name", text: header.name }, ...(header.headline ? [{ t: "headline" as const, text: header.headline }] : []), ...(header.contact ? [{ t: "contact" as const, text: header.contact }] : [])] : [];
+  // A cover letter carries the resume's header, so both files match. Same blocks as the PDF (#106).
+  const all = docBlocks(md, header);
+  const topLen = all.length - parseDraft(md).length;
   const center = T.align === "center";
   return (
     <div style={{ background: "#fff", border: "1px solid #E0D9CF", borderRadius: 6, boxShadow: "0 2px 10px rgba(29,26,15,.08)", padding: "clamp(18px, 5%, 36px) clamp(16px, 6%, 44px)", fontFamily: T.css, color: c(T.ink), fontSize: 13.5, lineHeight: 1.45, maxHeight: 640, overflow: "auto", overflowWrap: "anywhere" }}>
-      {[...top, ...blocks].map((b, i, all) =>
+      {all.map((b, i) =>
         b.t === "name" ? (
-          <div key={i} style={{ fontSize: T.nameSize, fontWeight: T.nameWeight, lineHeight: 1.1, letterSpacing: T.section === "bar" ? "-0.02em" : undefined, textAlign: center ? "center" : "left", marginBottom: 4 }}>{b.text}</div>
+          <h1 key={i} style={{ margin: 0, fontSize: T.nameSize, fontWeight: T.nameWeight, lineHeight: 1.1, letterSpacing: T.section === "bar" ? "-0.02em" : undefined, textAlign: center ? "center" : "left", marginBottom: 4 }}>{b.text}</h1>
         ) : b.t === "headline" ? (
           <div key={i} style={{ fontSize: 16, fontStyle: T.headlineItalic ? "italic" : "normal", fontWeight: T.section === "bar" ? 700 : 400, color: T.section === "bar" ? c(T.accent) : c(T.ink), textAlign: center ? "center" : "left", marginBottom: 4 }}>{b.text}</div>
         ) : b.t === "contact" ? (
-          <div key={i} style={{ fontSize: 12.5, color: c(T.muted), textAlign: center ? "center" : "left", marginBottom: top.length && i === top.length - 1 ? 22 : 0 }}>
+          <div key={i} style={{ fontSize: 12.5, color: c(T.muted), textAlign: center ? "center" : "left", marginBottom: topLen && i === topLen - 1 ? 22 : 0 }}>
             {contactParts(b.text).map((p, j) => (
               <span key={j}>
                 {j > 0 && <span aria-hidden> • </span>}
@@ -283,7 +284,7 @@ export function DocPreview({ md, template, accent, header }: { md: string; templ
             ))}
           </div>
         ) : b.t === "section" ? (
-          <div
+          <h2
             key={i}
             style={{
               fontSize: 13.5,
@@ -297,7 +298,7 @@ export function DocPreview({ md, template, accent, header }: { md: string; templ
             }}
           >
             {b.text}
-          </div>
+          </h2>
         ) : b.t === "role" ? (
           <div key={i} style={{ display: "flex", flexWrap: "wrap", gap: "0 12px", justifyContent: "space-between", fontWeight: 700, margin: "10px 0 2px" }}>
             {T.section === "bar" ? (
@@ -754,6 +755,11 @@ function ItemCard({ appId, item, locked, act, template, accent, header, onTempla
             {doc && !dirty && (
               <a href={`/api/apply/${appId}/items/${item.id}/docx`} style={{ ...btn("text"), display: "inline-flex", alignItems: "center" }}>
                 Download .docx
+              </a>
+            )}
+            {doc && !dirty && (
+              <a href={`/api/apply/${appId}/items/${item.id}/pdf`} style={{ ...btn("text"), display: "inline-flex", alignItems: "center" }}>
+                Download PDF
               </a>
             )}
             {item.versions.length > 1 && (

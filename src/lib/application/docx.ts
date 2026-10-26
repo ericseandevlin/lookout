@@ -1,5 +1,5 @@
 import "server-only";
-import { AlignmentType, BorderStyle, Document, ExternalHyperlink, Packer, Paragraph, TabStopType, TextRun, type ParagraphChild } from "docx";
+import { AlignmentType, BorderStyle, Document, ExternalHyperlink, HeadingLevel, Packer, Paragraph, TabStopType, TextRun, type ParagraphChild } from "docx";
 import { contactParts, parseDraft, roleParts, styleFor, type Template } from "./resumeLayout";
 
 /**
@@ -31,6 +31,8 @@ export async function draftToDocx(md: string, title: string, opts: { letterHeade
     new Paragraph({ alignment: align, children: [run(text, { size: 12, color: T.section === "bar" ? T.accent : T.ink, italics: T.headlineItalic, bold: T.section === "bar" })], spacing: { after: 60 } });
   const section = (text: string) =>
     new Paragraph({
+      // A real Heading 1, so Word's navigation pane and Google Docs' outline list the sections (#106).
+      heading: HeadingLevel.HEADING_1,
       alignment: T.section === "rule" ? align : AlignmentType.LEFT,
       children: [run(text, { size: 10.5, bold: true, caps: true, spacing: 30, color: T.section === "rule" ? T.ink : T.accent })],
       border:
@@ -86,10 +88,16 @@ export async function draftToDocx(md: string, title: string, opts: { letterHeade
     else if (b.t === "bullet") kids.push(new Paragraph({ bullet: { level: 0 }, children: [run(b.text)], spacing: { after: 30 } }));
     else kids.push(new Paragraph({ children: [run(b.text)], spacing: { after: header ? 200 : 80 } }));
   }
+  const author = header?.name ?? (blocks[0]?.t === "name" ? blocks[0].text : "");
   const doc = new Document({
     title,
-    creator: header?.name ?? (blocks[0]?.t === "name" ? blocks[0].text : ""),
-    styles: { default: { document: { run: { font: T.docxFont, size: 20 } } } },
+    creator: author,
+    lastModifiedBy: author,
+    styles: {
+      default: { document: { run: { font: T.docxFont, size: 20 } } },
+      // Heading 1 carries no look of its own (Word's default is blue Calibri Light); the runs set it.
+      paragraphStyles: [{ id: "Heading1", name: "heading 1", basedOn: "Normal", next: "Normal", quickFormat: true, run: { font: T.docxFont, size: pt(10.5), color: T.ink }, paragraph: { outlineLevel: 0 } }],
+    },
     sections: [{ properties: { page: { size: { width: 12240, height: 15840 }, margin: { top: 900, bottom: 900, left: 1080, right: 1080 } } }, children: kids }],
   });
   return Packer.toBuffer(doc);
