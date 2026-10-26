@@ -15,15 +15,95 @@ const BOILERPLATE = [
   /^#\S+$|^(click|learn more) here\.?$|curious how .* fits into/i,
 ];
 
-/** Drop boilerplate paragraphs, keep everything that describes the job and the company. */
-export function stripBoilerplate(text: string) {
-  return text
-    .split("\n")
-    .filter((p) => !BOILERPLATE.some((re) => re.test(p.trim())))
-    .join("\n");
+// Paragraphs that only appear in pay-transparency notes, legal disclaimers, application instructions and "about us" blurbs.
+const BOILERPLATE_MORE = [
+  /\b(the|this) (salary|pay|base pay|compensation|hiring) range (for this|is|reflects|listed|displayed|above|below)|actual (pay|compensation|salary|offer)s? (will|may|could) (be|vary)|(may|will) vary (based|depending) (on|upon)|pay range(s)? (is|are) (determined|based)|in compliance with .*(pay|wage|salary)/i,
+  /\bdisclaimer\b|nothing in this (job )?(posting|description)|not (intended to be |meant to be )?(an )?(exhaustive|all-inclusive|comprehensive) list|\bat-will\b|reserves the right to/i,
+  /^to apply\b|\bplease (submit|apply|send|upload|include) (your |a )?(resume|cv|application|cover letter|portfolio)|applications? (will be|are) (accepted|reviewed|considered)|\b(how|where) to apply\b|selected candidates will be|only (shortlisted|selected) candidates/i,
+];
+
+/** Section headings whose whole section is company boilerplate, not the job (#114). */
+const BOILER_HEADING =
+  /^(our |a |an |important )?(fraud|scam|beware of (recruit\w*|fraud|scam)s?|(note|warning|notice|alert) (on|about|regarding) (recruit\w*|fraud|scam)s?( fraud| scams?)?|recruit(ing|ment|er)? (fraud|scams?)|equal (employment )?opportunity( employer)?|eeo|eeoc|diversity,? (equity|inclusion)(,? (&|and) (inclusion|belonging))?|(reasonable )?accommodations?|(legal )?disclaimer|legal|privacy|pay transparency|salary transparency|compensation (transparency|disclosure)|about us|who we are|about the company|(our )?(company|story)|how to apply|application (instructions|process)|to apply|(our )?(hiring|interview) process|(our |the )?benefits|(work )?perks|what we offer|compensation|compensation,? (&|and) (work )?(perks|benefits)|benefits,? (&|and) perks)( (notice|statement|policy|alert|warning|information|disclosure|act|law|commitment|(&|and) perks|(&|and) benefits))*$/i;
+
+/** Headings that start the job again: responsibilities, requirements, the role, the team. */
+const JOB_HEADING =
+  /^(about (the|this) (role|position|job|team|opportunity)|about you|the role|the team|the opportunity|role overview|position (overview|summary)|(job )?(summary|overview|description)|responsibilities|key responsibilities|what you('|’)?ll (do|own|bring|work on)|what (we're|we are|you'll be) (looking for|doing)|in this role|requirements|qualifications|(minimum|basic|preferred|required) qualifications|skills|experience|nice to have|bonus points|who you are|you (have|are|bring)|your (role|impact|responsibilities)|day to day|what success looks like)/i;
+
+const PAY_FACT = /\$\s?\d|total cash|includ\w* (a )?(target )?bonus|\bOTE\b|\bbase (salary|pay|compensation)\b/i;
+
+/** Facts the answers need even when a notice section carries them: pay, sponsorship, work authorization. */
+const KEEP_FACT = /\$\s?\d|total cash|\bOTE\b|\bbase (salary|pay|compensation)\b|sponsor|\bvisa\b|work authori[sz]ation|authori[sz]ed to work/i;
+
+/** One paragraph that is company boilerplate. A line with a pay figure is a fact, never boilerplate. */
+export const isBoilerplate = (line: string) => [...BOILERPLATE, ...BOILERPLATE_MORE].some((re) => re.test(line.trim())) && !(PAY_FACT.test(line) && /\$\s?\d/.test(line));
+
+const headingLike = (l: string) => l.length > 0 && l.length <= 70 && l.split(/\s+/).length <= 9 && !/[.;!?,]$/.test(l);
+
+/**
+ * Split a posting into the job and its company boilerplate. Sections under a boilerplate heading go,
+ * up to the next job heading; without headings, paragraphs that carry boilerplate phrases go (#114).
+ * Pay figures stay even inside a pay-transparency section: salary asks read them.
+ */
+export function splitBoilerplate(text: string, company?: string) {
+  const aboutCompany = company?.trim() ? new RegExp(`^(about|why|life at|working at|join|benefits at) ${company.trim().replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}( inc\\.?| llc)?$`, "i") : null;
+  const kept: string[] = [];
+  const removed: string[] = [];
+  let inSection = false;
+  for (const line of text.split("\n")) {
+    const l = line.trim().replace(/^#+\s*/, "").replace(/:$/, "");
+    const heading = headingLike(l);
+    if (heading && (BOILER_HEADING.test(l) || aboutCompany?.test(l))) {
+      inSection = true;
+      removed.push(line);
+      continue;
+    }
+    if (heading && JOB_HEADING.test(l)) inSection = false;
+    if (inSection) {
+      if (KEEP_FACT.test(line)) kept.push(line);
+      else removed.push(line);
+      continue;
+    }
+    if (isBoilerplate(line)) removed.push(line);
+    else kept.push(line);
+  }
+  return { text: kept.join("\n"), removed: removed.map((r) => r.trim()).filter(Boolean) };
 }
 
-const JUNK = /scam|fraud|recruit|candidate|applicant|hiring|interview|verify|equal opportunit|\beeo\b|accommodation|benefit|insurance|401\s?\(?k|\bpto\b|parental|privacy|e-?mail|social media|open (roles|positions)|apply|application|job (posting|description)|opportunit(y|ies)$/i;
+/** Drop boilerplate sections and paragraphs, keep everything that describes the job and the company. */
+export const stripBoilerplate = (text: string, company?: string) => splitBoilerplate(text, company).text;
+
+const JUNK = /scam|fraud|recruit|candidate|applicant|hiring|interview|verify|equal opportunit|\beeo\b|accommodation|benefit|insurance|401\s?\(?k|\bpto\b|parental|privacy|e-?mail|social media|open (roles|positions)|apply|application|job (posting|description)|opportunit(y|ies)$|\bbonus|salary|pay (range|transparency)|compensation (range|package)|base pay|total cash|disclaimer|at-will|discriminat|diversity|inclusive (workplace|environment)|sponsor|\bvisa\b|work authori/i;
+
+// --- Phrases lifted from boilerplate (#114): a draft should carry none of them.
+
+const words = (s: string) => s.toLowerCase().replace(/[^a-z0-9&+#' ]+/g, " ").split(/\s+/).filter(Boolean);
+const shingles = (s: string, n = 4) => {
+  const w = words(s);
+  const out = new Set<string>();
+  for (let i = 0; i + n <= w.length; i++) out.add(w.slice(i, i + n).join(" "));
+  return out;
+};
+
+/**
+ * Four-word runs from the removed boilerplate that show up in a draft, unless the job text or the
+ * person's own materials also use them ("the ability to work" is everywhere; "real human connection" is not).
+ */
+export function boilerplateIn(draft: string, removed: string[], job: string, own: string) {
+  if (!removed.length) return [];
+  const common = new Set([...shingles(job), ...shingles(own)]);
+  const hits = [...shingles(draft)].filter((g) => !common.has(g) && removed.some((r) => shingles(r).has(g)));
+  // Merge overlapping runs into the phrases a reader would recognize.
+  const phrases: string[] = [];
+  for (const g of hits) if (!phrases.some((p) => p.includes(g))) phrases.push(g);
+  return phrases.slice(0, 5);
+}
+
+// --- Where each keyword came from (#114): the posting line that carries it.
+
+/** Fewer real keywords than this and the posting has too little skill text to tailor from. */
+export const MIN_KEYWORDS = 5;
+export const THIN_KEYWORDS = "Not enough skill text in this posting.";
 
 /** Keywords that describe the hiring process or the posting itself, not the job. */
 export const isJunkKeyword = (term: string) => JUNK.test(term.trim());

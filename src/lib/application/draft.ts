@@ -1,6 +1,6 @@
 import { z } from "zod";
 import type { ApplicationItemKind } from "@/lib/db/schema";
-import { isJunkKeyword } from "./posting";
+import { isBoilerplate, isJunkKeyword, MIN_KEYWORDS, THIN_KEYWORDS } from "./posting";
 import { choicesBlock, type KeywordChoices } from "./skills";
 import { bullets } from "./notes";
 
@@ -18,6 +18,8 @@ export type DraftInputs = {
   brief: string;
   /** Instructions planted in the posting, already cut from posting.text (#116). */
   traps?: import("./posting").Trap[];
+  /** Company boilerplate cut from posting.text (#114); drafts are checked for phrases lifted from it. */
+  boilerplate?: string[];
   /** Experience notes the person added for skills (#121), rendered for prompts; facts like the resume. */
   notes?: string;
   /** Comp floor and "would jump for" target from the profile, for salary asks (#139). */
@@ -61,7 +63,7 @@ export function fillField(prompt: string, inp: DraftInputs): Drafted | null {
 export const ResumeDraft = z.object({
   keywords: z
     .array(z.string())
-    .describe("12 to 25 skills, tools, methods, domains and must-haves from the posting, each 1 to 4 words, worded exactly as the posting words them. Only from what the role does and requires (responsibilities, qualifications, experience). Never company, brand, product or team names; never words from company notices (fraud warnings, EEO, benefits, privacy) or the hiring process"),
+    .describe("Up to 25 skills, tools, methods, domains and must-haves from the posting, each 1 to 4 words, worded exactly as the posting words them. Only from what the role does and requires (responsibilities, qualifications, experience). Never company, brand, product or team names; never words from company notices (fraud warnings, EEO, benefits, pay transparency, legal disclaimers, about us, how to apply) or the hiring process. If the posting has little skill text, return only the few real ones; never pad the list"),
   resume: z.string().describe("The full tailored resume as plain text with simple markdown headings and bullets"),
   changes: z.array(z.object({ keyword: z.string(), where: z.string().describe("Section and role, e.g. 'Summary' or 'Experience: Citi'") })).describe("Each posting keyword you worked in, and where"),
   strengthen: z
@@ -116,7 +118,25 @@ export function hasKeyword(text: string, keyword: string) {
   return !!k && norm(text).includes(` ${k} `);
 }
 
-export type KeywordReport = { term: string; before: boolean; after: boolean; where?: string; choice?: "include" | "exclude" }[];
+export type KeywordReport = { term: string; before: boolean; after: boolean; where?: string; choice?: "include" | "exclude"; snippet?: string }[];
+
+/** The posting sentence a keyword came from, so the person can see and judge its source (#114). */
+export function snippetFor(posting: string, term: string) {
+  const sentences = posting
+    .replace(/^STRUCTURED DATA:[\s\S]*?(?=^TEXT:)/m, "")
+    .split(/\n+|(?<=[.!?])\s+/)
+    .map((s) => s.trim().replace(/^[•·*-]\s*/, ""))
+    .filter((s) => s && !/^(TITLE|TEXT):/.test(s));
+  const hit = sentences.find((s) => hasKeyword(s, term));
+  if (!hit) return undefined;
+  return hit.length <= 220 ? hit : `${hit.slice(0, 217).trimEnd()}…`;
+}
+
+/** A keyword counts only if some sentence of the job text that isn't boilerplate carries it (#114). */
+const fromJob = (posting: string, term: string) => hasKeyword(posting, term) && posting.split(/\n+|(?<=[.!?])\s+/).some((s) => hasKeyword(s, term) && !isBoilerplate(s));
+
+/** Too few real keywords: the posting is mostly boilerplate, so say so instead of padding (#114). */
+export const thinKeywords = (report: KeywordReport) => report.filter((r) => !r.choice).length < MIN_KEYWORDS;
 
 /** posting: when given, a keyword must appear in it; anything else was invented or planted (#116). */
 export function keywordReport(master: string, tailored: string, d: z.infer<typeof ResumeDraft>, posting?: string, choices?: KeywordChoices): KeywordReport {
@@ -127,12 +147,13 @@ export function keywordReport(master: string, tailored: string, d: z.infer<typeo
   const choice = (t: string) => (choices?.include.some((x) => x.toLowerCase() === t.toLowerCase()) ? "include" : choices?.exclude.some((x) => x.toLowerCase() === t.toLowerCase()) ? "exclude" : undefined);
   return terms
     .map((t) => t.trim())
-    .filter((t) => t && (choice(t) || (!isJunkKeyword(t) && (!posting || hasKeyword(posting, t)))) && !seen.has(t.toLowerCase()) && seen.add(t.toLowerCase()))
+    .filter((t) => t && (choice(t) || (!isJunkKeyword(t) && (!posting || fromJob(posting, t)))) && !seen.has(t.toLowerCase()) && seen.add(t.toLowerCase()))
     .map((term) => {
       const before = hasKeyword(master, term);
       const after = hasKeyword(tailored, term);
       const c = choice(term);
-      return { term, before, after, ...(after && !before && where.get(term.toLowerCase()) ? { where: where.get(term.toLowerCase()) } : {}), ...(c ? { choice: c } : {}) };
+      const snippet = posting ? snippetFor(posting, term) : undefined;
+      return { term, before, after, ...(after && !before && where.get(term.toLowerCase()) ? { where: where.get(term.toLowerCase()) } : {}), ...(c ? { choice: c } : {}), ...(snippet ? { snippet } : {}) };
     });
 }
 
@@ -150,6 +171,7 @@ export function resumeNote(report: KeywordReport, d: z.infer<typeof ResumeDraft>
   const added = report.filter((r) => r.after && !r.before).map((r) => (r.where ? `${r.term} (${r.where})` : r.term));
   return bullets([
     `Keyword match ${b}/${report.length} → ${a}/${report.length}`,
+    thinKeywords(report) && `${THIN_KEYWORDS} Lookout kept to the few real keywords it found instead of padding the list.`,
     added.length > 0 && { text: "Added:", sub: added },
     ...d.notes.map((n) => n.trim()).filter(Boolean),
     invented.length > 0 && `Check these numbers, they aren't in your master resume: ${invented.join(", ")}`,

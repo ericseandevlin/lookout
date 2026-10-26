@@ -9,7 +9,7 @@ import { useConfirm } from "./Confirm";
 import { api } from "./store";
 import { ACCENTS, contactParts, letterHeaderFrom, parseDraft, readable, roleParts, styleFor, TEMPLATE_STYLE, TEMPLATES, toPlain as toPlainText, type Block, type Template } from "@/lib/application/resumeLayout";
 import { parseNote } from "@/lib/application/notes";
-import { postingBlocks } from "@/lib/application/posting";
+import { MIN_KEYWORDS, postingBlocks, THIN_KEYWORDS } from "@/lib/application/posting";
 
 type Version = { id: string; version: number; content: string; note: string; author: "user" | "ai"; sources: string[]; createdAt: string };
 type Item = {
@@ -504,6 +504,7 @@ function KeywordReport({ d, reload, locked }: { d: Detail; reload: () => Promise
   const [story, setStory] = useState("");
   const [busy, setBusy] = useState<string | null>(null);
   const [err, setErr] = useState<string | null>(null);
+  const [sources, setSources] = useState(false);
   const picked = (t: string) => (choices.include.some((x) => x.toLowerCase() === t.toLowerCase()) ? "include" : choices.exclude.some((x) => x.toLowerCase() === t.toLowerCase()) ? "exclude" : null);
   const inDraft = (x: (typeof k)[number]) => (x.after && picked(x.term) !== "exclude") || picked(x.term) === "include";
   // Picks made since the resume was last written.
@@ -537,6 +538,8 @@ function KeywordReport({ d, reload, locked }: { d: Detail; reload: () => Promise
     setBusy(null);
   };
   const cur = k.find((x) => x.term === open);
+  const thin = k.filter((x) => !x.choice).length < MIN_KEYWORDS;
+  const from = (x: (typeof k)[number]) => (x.snippet ? <div style={muted}>From the posting: “{x.snippet}”</div> : x.choice === "include" ? <div style={muted}>Added by you.</div> : null);
 
   return (
     <div style={{ ...card, display: "flex", flexDirection: "column", gap: 10 }}>
@@ -546,6 +549,11 @@ function KeywordReport({ d, reload, locked }: { d: Detail; reload: () => Promise
       <div style={muted}>
         Terms from the posting that applicant tracking systems screen for. Green: in this resume. Struck through: not in your experience as Lookout knows it. {locked ? "" : "Click any keyword to change it, or to tell Lookout about experience your resume leaves out."}
       </div>
+      {thin && (
+        <div role="status" style={{ fontSize: 14, fontWeight: 600, color: "#99220F" }}>
+          {THIN_KEYWORDS} Lookout only lists the skills the posting actually names; it doesn&apos;t fill the list from company notices.
+        </div>
+      )}
       <ul style={{ listStyle: "none", margin: 0, padding: 0, display: "flex", flexWrap: "wrap", gap: 6 }}>
         {k.map((x) => {
           const on = inDraft(x);
@@ -559,7 +567,7 @@ function KeywordReport({ d, reload, locked }: { d: Detail; reload: () => Promise
                   setStory("");
                 }}
                 aria-expanded={open === x.term}
-                title={x.where ? `Added in ${x.where}` : x.before ? "Already in your resume" : "Not in your experience as Lookout knows it"}
+                title={[x.where ? `Added in ${x.where}` : x.before ? "Already in your resume" : "Not in your experience as Lookout knows it", x.snippet && `From the posting: “${x.snippet}”`].filter(Boolean).join("\n")}
                 style={{ padding: "4px 10px", borderRadius: 999, fontSize: 14, cursor: locked ? "default" : "pointer", border: c ? `1.5px dashed ${c === "include" ? "#35662A" : "#99220F"}` : "1.5px solid transparent", background: on ? "#E3EFDD" : "#F4F1EC", color: on ? "#35662A" : "#6B6358", textDecoration: on ? "none" : "line-through" }}
               >
                 {x.term}
@@ -569,8 +577,22 @@ function KeywordReport({ d, reload, locked }: { d: Detail; reload: () => Promise
           );
         })}
       </ul>
+      <button onClick={() => setSources(!sources)} aria-expanded={sources} style={{ ...btn("text"), alignSelf: "flex-start" }}>
+        {sources ? "Hide where each keyword came from" : "Show where each keyword came from"}
+      </button>
+      {sources && (
+        <ul style={{ margin: 0, paddingLeft: 18, display: "flex", flexDirection: "column", gap: 6, fontSize: 14 }}>
+          {k.map((x) => (
+            <li key={x.term}>
+              <strong>{x.term}</strong>
+              {picked(x.term) === "exclude" ? " (left out)" : ""}: <span style={{ color: "#6B6358" }}>{x.snippet ? `“${x.snippet}”` : x.choice === "include" ? "added by you" : "no source line saved; redraft the resume to see it"}</span>
+            </li>
+          ))}
+        </ul>
+      )}
       {cur && !locked && (
         <div style={{ padding: 14, borderRadius: 12, background: "#FAF8F5", border: "1px solid #E6E0D8", display: "flex", flexDirection: "column", gap: 8 }}>
+          {from(cur)}
           {picked(cur.term) ? (
             <>
               <div style={{ fontSize: 14 }}>You {picked(cur.term) === "include" ? "added" : "left out"} “{cur.term}”.</div>
@@ -598,6 +620,9 @@ function KeywordReport({ d, reload, locked }: { d: Detail; reload: () => Promise
                 </button>
                 <button onClick={() => pick(cur.term, "include", "")} disabled={!!busy} style={btn("text")}>
                   Add it without details
+                </button>
+                <button onClick={() => pick(cur.term, "exclude")} disabled={!!busy} style={btn("text")}>
+                  Remove it from the list
                 </button>
               </div>
             </>

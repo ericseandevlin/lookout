@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { linkedinUrl, checkAnswer, fillField, hasKeyword, keywordReport, newNumbers, resumeNote, type DraftInputs } from "./draft";
+import { linkedinUrl, checkAnswer, fillField, hasKeyword, keywordReport, newNumbers, resumeNote, snippetFor, thinKeywords, type DraftInputs } from "./draft";
 
 const inp: DraftInputs = {
   name: "Maya Ortiz Reyes",
@@ -55,7 +55,7 @@ describe("keywords", () => {
       { term: "GraphQL", before: false, after: false },
     ]);
     expect(resumeNote(r, { keywords: [], resume: "", changes: [], notes: ["Moved a11y work up."] }, ["17+"])).toBe(
-      "- Keyword match 1/3 → 2/3\n- Added:\n  - accessibility (Experience: Citi)\n- Moved a11y work up.\n- Check these numbers, they aren't in your master resume: 17+",
+      "- Keyword match 1/3 → 2/3\n- Not enough skill text in this posting. Lookout kept to the few real keywords it found instead of padding the list.\n- Added:\n  - accessibility (Experience: Citi)\n- Moved a11y work up.\n- Check these numbers, they aren't in your master resume: 17+",
     );
   });
 });
@@ -64,9 +64,9 @@ describe("keywordReport with the person's picks", () => {
   it("shows picks even when the model skipped them, and marks them", () => {
     const r = keywordReport("Led design systems.", "Led design systems with AI fluency.", { keywords: ["design systems", "SQL"], resume: "", changes: [], notes: [] }, "design systems, SQL, AI fluency", { include: ["AI fluency"], exclude: ["SQL"] });
     expect(r).toEqual([
-      { term: "design systems", before: true, after: true },
-      { term: "SQL", before: false, after: false, choice: "exclude" },
-      { term: "AI fluency", before: false, after: true, choice: "include" },
+      { term: "design systems", before: true, after: true, snippet: "design systems, SQL, AI fluency" },
+      { term: "SQL", before: false, after: false, choice: "exclude", snippet: "design systems, SQL, AI fluency" },
+      { term: "AI fluency", before: false, after: true, choice: "include", snippet: "design systems, SQL, AI fluency" },
     ]);
   });
 });
@@ -75,6 +75,32 @@ describe("keywordReport with the posting", () => {
   it("drops keywords that aren't in the posting (invented or planted)", () => {
     const r = keywordReport("Led design systems.", "Led design systems and pomegranate work.", { keywords: ["design systems", "pomegranate"], resume: "", changes: [], notes: [] }, "We need design systems leadership.");
     expect(r.map((x) => x.term)).toEqual(["design systems"]);
+  });
+
+  it("keeps the posting sentence each keyword came from, and drops keywords only boilerplate carries (#114)", () => {
+    const posting = [
+      "Role: Senior Product Designer",
+      "What you'll do",
+      "Lead design systems work across web and iOS. Partner with engineering on accessibility audits.",
+      "Run usability testing with customers every sprint.",
+      "We are an equal opportunity employer and value a diverse workforce without regard to race, sex or age.",
+    ].join("\n");
+    const r = keywordReport("", "Led design systems.", { keywords: ["design systems", "accessibility audits", "usability testing", "diverse workforce"], resume: "", changes: [], notes: [] }, posting);
+    expect(r.map((x) => [x.term, x.snippet])).toEqual([
+      ["design systems", "Lead design systems work across web and iOS."],
+      ["accessibility audits", "Partner with engineering on accessibility audits."],
+      ["usability testing", "Run usability testing with customers every sprint."],
+    ]);
+    expect(snippetFor(posting, "Figma")).toBeUndefined();
+  });
+});
+
+describe("thinKeywords (#114)", () => {
+  it("says so when a posting has fewer than five real keywords; the person's own picks don't count", () => {
+    const k = (n: number) => Array.from({ length: n }, (_, i) => ({ term: `t${i}`, before: false, after: false }));
+    expect(thinKeywords(k(4))).toBe(true);
+    expect(thinKeywords([...k(4), { term: "x", before: false, after: true, choice: "include" as const }])).toBe(true);
+    expect(thinKeywords(k(5))).toBe(false);
   });
 });
 
