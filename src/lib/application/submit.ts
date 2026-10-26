@@ -10,6 +10,7 @@ import { letterHeaderFrom, type Template } from "./resumeLayout";
 import { getAutoApplySettings } from "@/lib/apply";
 import { resolve } from "./eeo";
 import { loadEeo } from "./eeoStore";
+import { launchChromium } from "./chromium";
 
 /**
  * Auto-apply step 5, browser half (#42): fill the real form with the approved versions in headless
@@ -20,7 +21,6 @@ import { loadEeo } from "./eeoStore";
  */
 
 export const canAutoSubmit = () => process.env.FEATURE_AUTO_SUBMIT === "on";
-const CHROMIUM = process.env.CHROMIUM_PATH || "/usr/bin/chromium-browser";
 export const shotDir = (appId: string) => path.resolve(env.dataDir, "apply", appId);
 
 type Log = { prompt: string; ok: boolean; how: string }[];
@@ -69,13 +69,7 @@ export async function runFill(appId: string, mode: "test" | "submit"): Promise<F
   const url = a.report.applyUrl;
   if (!url) throw new Error("No application page to open");
 
-  const { chromium } = await import("playwright-core");
-  // The app container is read-only except /tmp; Chromium writes its profile, config and crash files under HOME.
-  const browser = await chromium.launch({
-    executablePath: CHROMIUM,
-    args: ["--no-sandbox", "--disable-dev-shm-usage"],
-    env: { ...process.env, HOME: "/tmp", XDG_CONFIG_HOME: "/tmp/.config", XDG_CACHE_HOME: "/tmp/.cache" },
-  });
+  const browser = await launchChromium();
   try {
     const page = await (await browser.newContext({ viewport: { width: 1280, height: 1000 }, locale: "en-US" })).newPage();
     page.setDefaultTimeout(8000);

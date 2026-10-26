@@ -8,6 +8,8 @@ import { assertBudget } from "@/lib/ai/runs";
 import { fetchPage, pageToText } from "@/lib/ai/fetchPage";
 import { kinds } from "@/lib/kinds";
 import { humanize, shapeResume } from "./resumeLayout";
+import { cleanResume, shapeLetter } from "./docShape";
+import { bullets } from "./notes";
 import { match, savedBlock } from "./saved";
 import { notesBlock, type KeywordChoices } from "./skills";
 import { findTraps, removeTraps, stripBoilerplate, stripHidden, trapWordsIn } from "./posting";
@@ -208,10 +210,12 @@ async function draftResume(inp: DraftInputs, usage: Usage, choices?: KeywordChoi
   const keywords = keywordReport(inp.resume, d.resume, d, inp.posting.text, choices);
   const facts = `${inp.resume}\n${inp.notes ?? ""}`;
   // The 10-second rules, held in code: one-sentence summary, Experience right after it (#129).
-  const shaped = shapeResume(humanize(d.resume.trim()));
+  // The document only: no artifacts, standard section names (#106).
+  const clean = cleanResume(humanize(d.resume.trim()));
+  const shaped = shapeResume(clean.md);
   // A bullet that left its job in the confirmed master is the Oct 18 bug coming back: say so (#131).
   const swaps = roleSwaps(inp.resume, shaped.md);
-  const draft: Drafted = { content: shaped.md, note: resumeNote(keywords, { ...d, notes: [...d.notes, ...shaped.fixed, ...swaps] }, newNumbers(facts, d.resume)), sources: ["master resume", ...(inp.notes ? ["your experience notes"] : []), "posting"], question: null };
+  const draft: Drafted = { content: shaped.md, note: resumeNote(keywords, { ...d, notes: [...d.notes, ...clean.fixed, ...shaped.fixed, ...swaps] }, newNumbers(facts, d.resume)), sources: ["master resume", ...(inp.notes ? ["your experience notes"] : []), "posting"], question: null };
   const hits = trapWordsIn(draft.content, inp.traps ?? [], `${inp.resume}\n${inp.brief}`);
   if (hits.length) draft.question = `This draft includes ${hits.map((h) => `"${h}"`).join(", ")}, which the posting planted to catch automated applications. Remove it unless you mean to include it.`;
   return { draft, keywords };
@@ -239,7 +243,8 @@ export async function redraftLetter(appId: string) {
   const one: DraftItem = { index: 0, kind: "cover_letter", prompt: item.prompt, required: item.required, options: null };
   const r = await completeJSON({ name: "apply-letter", schema: AnswersDraft, system: ANSWERS_SYSTEM, user: answersPrompt(inp, [one]), maxTokens: 4000, usage });
   const d = checkAnswer(one, r.items.find((x) => x.index === 0) ?? r.items[0]);
-  const content = humanize(d.content);
+  const letter = shapeLetter(humanize(d.content), { name: inp.name, company: opp.company });
+  const content = letter.md;
   const hits = trapWordsIn(content, inp.traps ?? [], `${inp.resume}\n${inp.brief}`);
   const words = content.split(/\s+/).filter(Boolean).length;
   await db.transaction(async (tx) => {
@@ -248,7 +253,7 @@ export async function redraftLetter(appId: string) {
       itemId: item.id,
       version: (n ?? 0) + 1,
       content,
-      note: ["- Redrafted from the posting", `- ${words} words`, d.note && `- ${d.note}`, hits.length && `- Contains ${hits.map((h) => `"${h}"`).join(", ")} from an instruction planted in the posting`].filter(Boolean).join("\n"),
+      note: ["- Redrafted from the posting", `- ${words} words`, d.note && `- ${d.note}`, ...letter.fixed.map((f) => `- ${f}`), hits.length && `- Contains ${hits.map((h) => `"${h}"`).join(", ")} from an instruction planted in the posting`].filter(Boolean).join("\n"),
       author: "ai",
       sources: d.sources.length ? d.sources : ["master resume", "posting"],
     });
@@ -321,6 +326,11 @@ async function draftAll(id: string, userId: string, opp: typeof schema.opportuni
       // Salary asks are math, not model judgment: the top quarter of their range, never below the floor (#139).
       const ask = !it.options?.length && isSalaryQuestion(it.prompt) ? suggestSalary({ ...inp.pay, min: opp.compMin, max: opp.compMax, basis: rangeBasis(inp.posting.text), asksBase: asksBase(it.prompt), asksMinimum: asksMinimum(it.prompt) }) : null;
       if (ask) out.set(it.id, { content: ask.amount ?? "", note: ask.note, sources: ["posting range", "your profile: comp floor and target"], question: ask.question ?? null });
+      // A cover letter is a letter: greeting, paragraphs, close, no list (#106).
+      else if (it.kind === "cover_letter" && a.content) {
+        const letter = shapeLetter(humanize(a.content), { name: inp.name, company: opp.company });
+        out.set(it.id, { ...a, content: letter.md, note: bullets([a.note, ...letter.fixed]) });
+      }
       // Choice answers must stay exactly as the form words them.
       else out.set(it.id, it.options?.length ? a : { ...a, content: humanize(a.content) });
     }
