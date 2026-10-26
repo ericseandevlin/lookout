@@ -10,7 +10,7 @@ import { kinds } from "@/lib/kinds";
 import { humanize, shapeResume } from "./resumeLayout";
 import { match, savedBlock } from "./saved";
 import { notesBlock, type KeywordChoices } from "./skills";
-import { findTraps, removeTraps, stripBoilerplate, stripHidden, trapWordsIn } from "./posting";
+import { boilerplateIn, findTraps, removeTraps, splitBoilerplate, stripHidden, trapWordsIn } from "./posting";
 import { ensureMaster } from "./master";
 import { roleSwaps } from "./masterCheck";
 import { asksBase, asksMinimum, isSalaryQuestion, rangeBasis, suggestSalary } from "./salary";
@@ -178,8 +178,9 @@ async function loadInputs(userId: string, opp: typeof schema.opportunities.$infe
     hidden = v.hidden;
     text = pageToText(v.html, 12000);
   }
-  // Company notices (fraud warnings, EEO, privacy) aren't the job; keep them out of every draft (#114).
-  text = stripBoilerplate(text);
+  // Company notices (fraud warnings, EEO, privacy, pay transparency, about us, how to apply) aren't the job; keep them out of every draft (#114).
+  const split = splitBoilerplate(text, opp.company);
+  text = split.text;
   // Instructions planted for applicants or AI ("include the word X") are cut and shown to the user instead (#116).
   const cleaned = removeTraps(text, hidden);
   text = cleaned.text;
@@ -199,7 +200,18 @@ async function loadInputs(userId: string, opp: typeof schema.opportunities.$infe
     resume: resume.slice(0, 20000),
     posting: { company: opp.company, title: opp.title, text },
     traps: cleaned.traps,
+    boilerplate: split.removed,
   };
+}
+
+const liftedNote = (phrases: string[]) => `This draft repeats the posting's company notices (${phrases.map((p) => `"${p}"`).join(", ")}). Rewrite or remove that part; it isn't about the job.`;
+
+/** A phrase lifted from the posting's boilerplate goes back to the person, like a trap word (#114). */
+function lifted(d: Drafted, inp: DraftInputs) {
+  const copied = boilerplateIn(d.content, inp.boilerplate ?? [], inp.posting.text, `${inp.resume}\n${inp.brief}`);
+  if (!copied.length || d.note.includes(liftedNote(copied))) return;
+  d.note = [d.note.trim(), `- ${liftedNote(copied)}`].filter(Boolean).join("\n");
+  d.question = d.question ?? liftedNote(copied);
 }
 
 /** The ATS resume and its keyword report, from the person's master resume and the cleaned posting. */
@@ -214,6 +226,7 @@ async function draftResume(inp: DraftInputs, usage: Usage, choices?: KeywordChoi
   const draft: Drafted = { content: shaped.md, note: resumeNote(keywords, { ...d, notes: [...d.notes, ...shaped.fixed, ...swaps] }, newNumbers(facts, d.resume)), sources: ["master resume", ...(inp.notes ? ["your experience notes"] : []), "posting"], question: null };
   const hits = trapWordsIn(draft.content, inp.traps ?? [], `${inp.resume}\n${inp.brief}`);
   if (hits.length) draft.question = `This draft includes ${hits.map((h) => `"${h}"`).join(", ")}, which the posting planted to catch automated applications. Remove it unless you mean to include it.`;
+  lifted(draft, inp);
   return { draft, keywords };
 }
 
@@ -242,17 +255,18 @@ export async function redraftLetter(appId: string) {
   const content = humanize(d.content);
   const hits = trapWordsIn(content, inp.traps ?? [], `${inp.resume}\n${inp.brief}`);
   const words = content.split(/\s+/).filter(Boolean).length;
+  const copied = boilerplateIn(content, inp.boilerplate ?? [], inp.posting.text, `${inp.resume}\n${inp.brief}`);
   await db.transaction(async (tx) => {
     const [{ n }] = await tx.select({ n: max(schema.itemVersions.version) }).from(schema.itemVersions).where(eq(schema.itemVersions.itemId, item.id));
     await tx.insert(schema.itemVersions).values({
       itemId: item.id,
       version: (n ?? 0) + 1,
       content,
-      note: ["- Redrafted from the posting", `- ${words} words`, d.note && `- ${d.note}`, hits.length && `- Contains ${hits.map((h) => `"${h}"`).join(", ")} from an instruction planted in the posting`].filter(Boolean).join("\n"),
+      note: ["- Redrafted from the posting", `- ${words} words`, d.note && `- ${d.note}`, hits.length && `- Contains ${hits.map((h) => `"${h}"`).join(", ")} from an instruction planted in the posting`, copied.length && `- ${liftedNote(copied)}`].filter(Boolean).join("\n"),
       author: "ai",
       sources: d.sources.length ? d.sources : ["master resume", "posting"],
     });
-    await tx.update(schema.applicationItems).set({ approvedVersionId: null, question: hits.length ? "This letter includes a word the posting planted to catch automated applications. Remove it unless you mean to include it." : d.question }).where(eq(schema.applicationItems.id, item.id));
+    await tx.update(schema.applicationItems).set({ approvedVersionId: null, question: hits.length ? "This letter includes a word the posting planted to catch automated applications. Remove it unless you mean to include it." : copied.length ? liftedNote(copied) : d.question }).where(eq(schema.applicationItems.id, item.id));
     const status = a.status === "approved" || a.status === "manual" ? "needs_review" : a.status;
     await tx.update(schema.applications).set({ status, updatedAt: new Date(), report: { ...a.report, usd: (a.report.usd ?? 0) + usage.usd } }).where(eq(schema.applications.id, appId));
   });
@@ -334,6 +348,7 @@ async function draftAll(id: string, userId: string, opp: typeof schema.opportuni
       d.question = `This draft includes ${hits.map((h) => `"${h}"`).join(", ")}, which the posting planted to catch automated applications. Remove it unless you mean to include it.`;
       out.set(itemId, d);
     }
+    lifted(d, inp);
   }
 
   await db.transaction(async (tx) => {

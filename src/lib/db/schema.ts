@@ -336,7 +336,7 @@ export type ApplicationReport = {
   /** The user's keyword picks for this resume (#121): terms to work in, terms to leave out. */
   keywordChoices?: { include: string[]; exclude: string[] };
   /** Posting keywords and whether the master resume (before) and the ATS draft (after) carry them. */
-  keywords?: { term: string; before: boolean; after: boolean; where?: string; choice?: "include" | "exclude" }[];
+  keywords?: { term: string; before: boolean; after: boolean; where?: string; choice?: "include" | "exclude"; snippet?: string }[];
 };
 
 export const APPLICATION_ITEM_KINDS = ["resume", "cover_letter", "answer", "portfolio", "outreach", "field", "eeo"] as const;

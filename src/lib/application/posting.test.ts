@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { isJunkKeyword, stripBoilerplate } from "./posting";
+import { boilerplateIn, isJunkKeyword, splitBoilerplate, stripBoilerplate } from "./posting";
 
 // Paragraphs from Red Ventures' Group AI Product Manager posting (Greenhouse), 2026-10-17.
 const job = [
@@ -26,9 +26,83 @@ describe("stripBoilerplate", () => {
   });
 });
 
+// A posting with section headings, every boilerplate section Quill's criteria name (Leantime 145).
+const sectioned = {
+  job: [
+    "About the role",
+    "You'll lead the design system for our consumer apps and partner with engineering on React components.",
+    "What you'll do",
+    "Own the component library roadmap",
+    "Legal and compliance reviews of new patterns",
+    "Mentor three designers",
+    "Requirements",
+    "8+ years in product design, with design systems at scale.",
+    "The base salary range for this role is $180,000 - $210,000.",
+  ],
+  boilerplate: [
+    "About Acme",
+    "Acme is a family of brands that believes in real human connection and bold ideas.",
+    "Recruiting Fraud Notice",
+    "We will only contact you from an official acme.com address.",
+    "Never share your bank details with anyone claiming to hire for us.",
+    "Equal Employment Opportunity",
+    "We welcome people of every background and celebrate who you are.",
+    "Pay Transparency",
+    "Final offers depend on location, skills and experience.",
+    "Legal Disclaimer",
+    "This list of duties is a summary only.",
+    "How to Apply",
+    "Send a short note and your portfolio link. We read every one.",
+    "Benefits",
+    "Medical, dental and vision",
+    "Unlimited PTO",
+  ],
+};
+
+describe("splitBoilerplate (#114)", () => {
+  it("drops whole boilerplate sections by heading, up to the next job heading", () => {
+    const [about, ...rest] = sectioned.boilerplate;
+    const lines = [about, rest[0], ...sectioned.job.slice(0, 6), ...rest.slice(1, 10), ...sectioned.job.slice(6), ...rest.slice(10)];
+    const out = splitBoilerplate(lines.join("\n"), "Acme");
+    expect(out.text.split("\n")).toEqual(sectioned.job);
+    expect(out.removed).toEqual(sectioned.boilerplate);
+  });
+
+  it("keeps a bullet that merely starts like a heading, and pay and sponsorship facts inside notice sections", () => {
+    const out = splitBoilerplate(["Responsibilities", "Legal review of vendor contracts", "Pay Transparency", "New York: $150,000 - $170,000 base salary", "Ranges vary by location.", "Who We Are:", "We are a family of brands.", "This role is not eligible for sponsorship or transfer of visa sponsorship at this time."].join("\n"));
+    expect(out.text.split("\n")).toEqual(["Responsibilities", "Legal review of vendor contracts", "New York: $150,000 - $170,000 base salary", "This role is not eligible for sponsorship or transfer of visa sponsorship at this time."]);
+  });
+
+  it("drops compensation and perks sections except the pay lines (Red Ventures, 2026-10-26)", () => {
+    const out = splitBoilerplate(["Statistical programming knowledge (e.g., R or Python) is required", "Compensation and Work Perks:", "Cash Compensation Range: $3,846.00 per bi-weekly pay period", "Free onsite fitness classes, premier wellness center, spin studio", "Casual dress code – yes, that means jeans!"].join("\n"));
+    expect(out.text.split("\n")).toEqual(["Statistical programming knowledge (e.g., R or Python) is required", "Cash Compensation Range: $3,846.00 per bi-weekly pay period"]);
+  });
+
+  it("drops headless paragraphs that carry pay-transparency, disclaimer and how-to-apply phrases", () => {
+    const keep = "Build dashboards in SQL and Looker for the growth team.";
+    const drop = [
+      "The pay range for this role reflects the minimum and maximum target for new hires; actual pay may vary based on location.",
+      "This job description is not intended to be an exhaustive list of duties.",
+      "To apply, please submit your resume and a cover letter.",
+    ];
+    expect(stripBoilerplate([keep, ...drop].join("\n"))).toBe(keep);
+  });
+});
+
+describe("boilerplateIn (#114)", () => {
+  it("finds phrases a draft lifted from removed boilerplate, not ones the job or the person also use", () => {
+    const removed = ["At Red Ventures, we believe in real human connection. As part of the hiring process, you should expect live conversations with RV teammates."];
+    const job = "You will have live conversations with RV teammates about the roadmap.";
+    const draft = "I believe in real human connection and in shipping work that matters. Led live conversations with RV teammates.";
+    expect(boilerplateIn(draft, removed, job, "")).toEqual(["believe in real human", "in real human connection"]);
+    expect(boilerplateIn(draft, removed, job, "I believe in real human connection.")).toEqual([]);
+    expect(boilerplateIn("Led the design system.", removed, job, "")).toEqual([]);
+  });
+});
+
 describe("isJunkKeyword", () => {
   it("drops hiring-process words, keeps real skills", () => {
-    for (const k of ["recruiter scams", "candidates", "verify the opportunity", "hiring process", "open roles", "official email addresses", "social media", "401(k)"]) expect(isJunkKeyword(k)).toBe(true);
+    for (const k of ["visa sponsorship", "total cash compensation", "annual bonus", "pay transparency", "recruiter scams", "candidates", "verify the opportunity", "hiring process", "open roles", "official email addresses", "social media", "401(k)"]) expect(isJunkKeyword(k)).toBe(true);
     for (const k of ["agentic workflows", "P&L ownership", "SQL", "AI/ML products", "product strategy", "market opportunity sizing"]) expect(isJunkKeyword(k)).toBe(false);
   });
 });
