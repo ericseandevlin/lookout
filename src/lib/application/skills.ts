@@ -31,9 +31,3 @@ export function choose(c: KeywordChoices | undefined, term: string, action: "inc
   if (action === "exclude") exclude.push(t);
   return { include, exclude };
 }
-
-/** For the resume prompt. */
-export const choicesBlock = (c?: KeywordChoices) =>
-  !c || (!c.include.length && !c.exclude.length)
-    ? ""
-    : `\n\nThe person's keyword choices for this resume:${c.include.length ? `\n- Work these in, using their experience notes where given: ${c.include.join("; ")}` : ""}${c.exclude.length ? `\n- Leave these out entirely: ${c.exclude.join("; ")}` : ""}`;
