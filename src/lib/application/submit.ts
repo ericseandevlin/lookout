@@ -8,8 +8,9 @@ import { draftToDocx } from "./docx";
 import { planFill, type FillStep } from "./fillPlan";
 import { letterHeaderFrom, type Template } from "./resumeLayout";
 import { getAutoApplySettings } from "@/lib/apply";
-import { resolve } from "./eeo";
-import { loadEeo } from "./eeoStore";
+import { eeoPicks, eeoRunOf, sourceLabel } from "./eeo";
+import { eeoRecord, loadEeo } from "./eeoStore";
+import type { EeoRecord } from "@/lib/db/schema";
 
 /**
  * Auto-apply step 5, browser half (#42): fill the real form with the approved versions in headless
@@ -25,7 +26,7 @@ export const shotDir = (appId: string) => path.resolve(env.dataDir, "apply", app
 
 type Log = { prompt: string; ok: boolean; how: string }[];
 
-export type FillReport = { mode: "test" | "submit"; at: string; log: Log; missing: string[]; stopped?: string; confirmation?: string; finalUrl?: string };
+export type FillReport = { mode: "test" | "submit"; at: string; log: Log; missing: string[]; stopped?: string; confirmation?: string; finalUrl?: string; eeo?: EeoRecord };
 
 async function loadPacket(appId: string) {
   const [a] = await db.select().from(schema.applications).where(eq(schema.applications.id, appId));
@@ -55,14 +56,19 @@ export async function runFill(appId: string, mode: "test" | "submit"): Promise<F
   const { a, items, versions, user, opp } = await loadPacket(appId);
   const report: FillReport = { mode, at: new Date().toISOString(), log: [], missing: [] };
   const steps = planFill(items, versions);
-  // Voluntary EEO questions: from the encrypted profile, only with consent, matched in code (#122).
-  if (items.some((i) => i.kind === "eeo")) {
+  // Voluntary EEO questions: from the encrypted profile, only with the profile permission and this application's
+  // switch on, skipped ones left blank, matched in code (#122). The record says what was shared and from where.
+  const asked = items.filter((i) => i.kind === "eeo").length;
+  const from = new Map<string, string>();
+  if (asked) {
     const { consent, profile } = await loadEeo(a.userId);
-    if (consent)
-      for (const i of items.filter((x) => x.kind === "eeo")) {
-        const answer = resolve(profile, i.prompt, i.options);
-        if (answer) steps.push({ prompt: i.prompt, required: false, itemKind: "eeo", kind: "choice", content: answer });
-      }
+    const run = eeoRunOf(a.report);
+    const picks = eeoPicks(items, profile, consent, run);
+    for (const p of picks) {
+      steps.push({ prompt: p.prompt, required: false, itemKind: "eeo", kind: "choice", content: p.answer });
+      from.set(p.prompt, sourceLabel(p));
+    }
+    report.eeo = eeoRecord(asked, consent, run, picks);
   }
   const look = await getAutoApplySettings(a.userId);
   await files(appId, steps, user?.name || "Resume", opp?.company ?? "", look.template, look.accent);
@@ -87,7 +93,7 @@ export async function runFill(appId: string, mode: "test" | "submit"): Promise<F
 
     for (const s of steps) {
       const r = await fillOne(page, s);
-      report.log.push({ prompt: s.prompt, ok: r.ok, how: s.itemKind === "eeo" ? (r.ok ? "filled from your EEO answers" : "couldn't fill") : r.how });
+      report.log.push({ prompt: s.prompt, ok: r.ok, how: s.itemKind === "eeo" ? (r.ok ? `filled from ${from.get(s.prompt)}` : "couldn't fill") : r.how });
       if (!r.ok && s.required) report.missing.push(s.prompt);
     }
     const dir = shotDir(appId);
@@ -178,7 +184,7 @@ export async function startFill(appId: string, mode: "test" | "submit") {
       await db.transaction(async (tx) => {
         await tx
           .update(schema.applications)
-          .set({ status: "submitted", submittedAt: now, updatedAt: now, report, confirmation: { how: "browser", at: now.toISOString(), applyUrl: a.report.applyUrl ?? null, url: fill.finalUrl, text: fill.confirmation, sent: await sentRecord(appId) } })
+          .set({ status: "submitted", submittedAt: now, updatedAt: now, report, confirmation: { how: "browser", at: now.toISOString(), applyUrl: a.report.applyUrl ?? null, url: fill.finalUrl, text: fill.confirmation, sent: await sentRecord(appId), ...(fill.eeo ? { eeo: fill.eeo } : {}) } })
           .where(eq(schema.applications.id, appId));
         await tx
           .update(schema.userOpportunities)

@@ -318,8 +318,10 @@ export type ApplicationReport = {
   /** "form": the ATS's published form. "page": read from the apply page by the model. */
   source?: "form" | "page";
   applyUrl?: string;
-  /** The form has voluntary EEO questions. Lookout never answers those; the user does. */
+  /** The form has voluntary EEO questions. Filled only with the person's permission (#122). */
   hasEeo?: boolean;
+  /** This application's EEO switch and the questions the person skipped (#122). Missing means off. */
+  eeoRun?: EeoRun;
   /** No form found: how the posting says to apply. */
   howToApply?: string;
   scannedAt?: string;
@@ -328,7 +330,7 @@ export type ApplicationReport = {
   /** AI spend for this application, in USD. */
   usd?: number;
   /** Last browser fill: a test run or a real submit, what it filled and why it stopped. */
-  fill?: { mode: "test" | "submit"; at: string; log: { prompt: string; ok: boolean; how: string }[]; missing: string[]; stopped?: string; confirmation?: string; finalUrl?: string };
+  fill?: { mode: "test" | "submit"; at: string; log: { prompt: string; ok: boolean; how: string }[]; missing: string[]; stopped?: string; confirmation?: string; finalUrl?: string; eeo?: EeoRecord };
   /** Instructions planted in the posting to catch automated applications; cut from drafts, shown to the user (#116). */
   traps?: { text: string; words: string[]; hidden: boolean }[];
   /** The posting text the drafts were written from (shown beside them on the review screen). */
@@ -337,6 +339,23 @@ export type ApplicationReport = {
   keywordChoices?: { include: string[]; exclude: string[] };
   /** Posting keywords and whether the master resume (before) and the ATS draft (after) carry them. */
   keywords?: { term: string; before: boolean; after: boolean; where?: string; choice?: "include" | "exclude" }[];
+};
+
+/** Per application: EEO answers are shared only once the person switches this on. Item ids in skip stay blank. */
+export type EeoRun = { on: boolean; at?: string; skip: string[] };
+
+/**
+ * What one fill or submission did with EEO questions (#122): the switch, the profile permission, which questions were
+ * filled, in which category, from which saved answer. The answers themselves are kept encrypted (secrets.ts), for the owner only.
+ */
+export type EeoRecord = {
+  on: boolean;
+  profileConsent: boolean;
+  at: string;
+  asked: number;
+  categories: string[];
+  fields: { prompt: string; category: string | null; source: "wording" | "category" }[];
+  answers?: string;
 };
 
 export const APPLICATION_ITEM_KINDS = ["resume", "cover_letter", "answer", "portfolio", "outreach", "field", "eeo"] as const;

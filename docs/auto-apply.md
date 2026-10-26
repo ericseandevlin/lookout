@@ -24,6 +24,7 @@ Opt-in, per user, off by default. Lives on its own page (`/apply`) with an on/of
 - Show sources for every claim in a draft.
 - Respect sites that forbid automated submission (#29): those go to Manual submit.
 - Outreach is drafted, never sent.
+- Voluntary EEO questions (#122) are answered only from answers the person saved for them, only with the profile permission and the switch on that application (off by default), and any question can be skipped. Never sent to an AI, never in a resume, letter or message. Each fill and submission records the switch and what was shared from which saved answer (answers encrypted).
 
 ## Data
 

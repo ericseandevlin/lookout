@@ -1,3 +1,4 @@
+import type { ApplicationReport, EeoRun } from "@/lib/db/schema";
 import { answerKey } from "./saved";
 
 /**
@@ -85,13 +86,46 @@ export function matchOption(choice: string, options: string[]): string | null {
   return re ? (options.find((o) => !DECLINES.test(o) && re.test(o)) ?? null) : null;
 }
 
-/** The answer to fill for one EEO question: the exact wording first, then the category answer. */
-export function resolve(profile: EeoProfile, prompt: string, options: string[] | null): string | null {
+/** Which saved answer a fill came from: the person's pick for this exact wording, or their answer for the category. */
+export type EeoSource = "wording" | "category";
+
+/** The answer to fill for one EEO question, and which saved answer it came from: the exact wording first, then the category answer. */
+export function resolveWithSource(profile: EeoProfile, prompt: string, options: string[] | null): { answer: string; source: EeoSource; category: EeoCategory | null } | null {
   const opts = options ?? [];
-  const saved = profile.exact[answerKey(prompt)];
-  if (saved && (!opts.length || opts.includes(saved))) return saved;
   const cat = classify(prompt);
+  const saved = profile.exact[answerKey(prompt)];
+  if (saved && (!opts.length || opts.includes(saved))) return { answer: saved, source: "wording", category: cat };
   const choice = cat ? profile.answers[cat] : undefined;
-  if (!choice) return null;
-  return opts.length ? matchOption(choice, opts) : choice;
+  if (!cat || !choice) return null;
+  const answer = opts.length ? matchOption(choice, opts) : choice;
+  return answer ? { answer, source: "category", category: cat } : null;
+}
+
+export function resolve(profile: EeoProfile, prompt: string, options: string[] | null): string | null {
+  return resolveWithSource(profile, prompt, options)?.answer ?? null;
+}
+
+/** This application's own EEO switch. Off until the person turns it on for this application; off means every question is skipped. */
+export const eeoRunOf = (report: Pick<ApplicationReport, "eeoRun">): EeoRun => ({ on: !!report.eeoRun?.on, skip: report.eeoRun?.skip ?? [] });
+
+export type EeoPick = { itemId: string; prompt: string; category: EeoCategory | null; source: EeoSource; answer: string };
+
+/**
+ * What Lookout may fill on one application: only with the profile permission AND this application's switch on,
+ * only questions the person didn't skip, only from answers they saved. Nothing is ever inferred from other fields.
+ */
+export function eeoPicks(items: { id: string; kind: string; prompt: string; options: string[] | null }[], profile: EeoProfile, consent: boolean, run: EeoRun): EeoPick[] {
+  if (!consent || !run.on) return [];
+  const out: EeoPick[] = [];
+  for (const i of items) {
+    if (i.kind !== "eeo" || run.skip.includes(i.id)) continue;
+    const r = resolveWithSource(profile, i.prompt, i.options);
+    if (r) out.push({ itemId: i.id, prompt: i.prompt, ...r });
+  }
+  return out;
+}
+
+/** "your Gender answer" / "your pick for this wording": where a filled answer came from, for the record. */
+export function sourceLabel(p: { source: EeoSource; category: EeoCategory | null }) {
+  return p.source === "wording" || !p.category ? "your pick for this wording" : `your ${EEO_CHOICES[p.category].label} answer`;
 }
