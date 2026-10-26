@@ -21,12 +21,19 @@ type Item = {
   options: string[] | null;
   question: string | null;
   approvedVersionId: string | null;
-  /** EEO only: the answer matched from the person's profile (with consent), never stored on the application. */
+  /** EEO only: the answer matched from the person's saved answers, only with both permissions on and not skipped. */
   eeoAnswer?: string | null;
+  /** EEO only: which saved answer it came from. */
+  eeoFrom?: string | null;
+  /** EEO only: left blank, because this application's switch is off or the person skipped it. */
+  eeoSkipped?: boolean;
   /** Salary questions: the suggested ask and how it was worked out (#139). */
   salary?: { amount: string | null; note: string } | null;
   versions: Version[];
 };
+/** What a fill or submission did with EEO questions (#122), as the owner sees it. */
+type EeoShown = { on: boolean; profileConsent: boolean; at: string; asked: number; fields: { prompt: string; answer: string | null; from: string }[] };
+type EeoSet = (p: { on?: boolean; skip?: { itemId: string; skip: boolean } }, done: string) => Promise<void>;
 type Detail = {
   id: string;
   findId: string;
@@ -42,6 +49,9 @@ type Detail = {
   posting: string;
   autoSubmit: boolean;
   eeoConsent: boolean;
+  eeoRun: { on: boolean; skip: string[] };
+  eeoSent: EeoShown | null;
+  eeoLastFill: EeoShown | null;
   template: Template;
   accent: string | null;
   items: Item[];
@@ -110,6 +120,17 @@ export function ApplicationReview({ id }: { id: string }) {
     } catch (e) {
       setErr(e instanceof Error ? e.message : "Couldn't save");
       return false;
+    }
+  };
+
+  const eeoSet: EeoSet = async (p, done) => {
+    setErr(null);
+    try {
+      await api(`/api/apply/${id}/eeo`, { method: "POST", json: p });
+      await load();
+      setSaid(done);
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : "Couldn't save");
     }
   };
 
@@ -216,7 +237,7 @@ export function ApplicationReview({ id }: { id: string }) {
                 </ul>
               </section>
             )}
-            {d.items.some((i) => i.kind === "eeo") && !locked && <EeoSection d={d} act={act} />}
+            {d.items.some((i) => i.kind === "eeo") && !locked && <EeoSection d={d} act={act} eeoSet={eeoSet} />}
 
             {SECTIONS.map((s) => {
               const list = d.items.filter((i) => s.kinds.includes(i.kind));
@@ -809,8 +830,11 @@ function ItemCard({ appId, item, locked, act, template, accent, header, onTempla
   );
 }
 
-/** Voluntary EEO questions (#122): filled only from the person's own answers, with their permission. */
-function EeoSection({ d, act }: { d: Detail; act: Act }) {
+/**
+ * Voluntary EEO questions (#122): filled only from the person's saved answers, with the profile permission AND this
+ * application's switch on. The switch starts off; off leaves every question blank; any question can be skipped.
+ */
+function EeoSection({ d, act, eeoSet }: { d: Detail; act: Act; eeoSet: EeoSet }) {
   const qs = d.items.filter((i) => i.kind === "eeo");
   if (!d.eeoConsent)
     return (
@@ -818,30 +842,76 @@ function EeoSection({ d, act }: { d: Detail; act: Act }) {
         This form has {qs.length} voluntary EEO question{qs.length === 1 ? "" : "s"} (gender, race, veteran and disability status). Lookout leaves them blank. To have Lookout answer them from your own answers, set them up in <Link href="/profile/application">Profile › Application answers</Link>.
       </div>
     );
+  const on = d.eeoRun.on;
   return (
     <section aria-labelledby="eeo" style={{ display: "flex", flexDirection: "column", gap: 10 }}>
       <h2 id="eeo" style={{ margin: "6px 0 0", fontSize: 18, fontWeight: 700 }}>Voluntary questions (EEO)</h2>
-      <div style={{ ...muted, marginTop: -4 }}>From your answers on your profile. Never shared with an AI. Change one here and Lookout remembers it for this wording.</div>
+      <div style={{ ...muted, marginTop: -4 }}>Only from the answers you saved on your profile. Never shared with an AI, never put in your resume, cover letter or messages.</div>
       <div style={{ ...card, display: "flex", flexDirection: "column", gap: 14 }}>
-        {qs.map((q) => (
-          <div key={q.id} style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-            <label htmlFor={`eeo-${q.id}`} style={{ fontSize: 15, fontWeight: 600 }}>{q.prompt}</label>
-            <select
-              id={`eeo-${q.id}`}
-              value={q.eeoAnswer ?? ""}
-              onChange={(e) => act(q.id, { action: "edit", content: e.target.value, note: "" }, "Saved for this wording.")}
-              style={{ height: 40, borderRadius: 10, border: "1.5px solid #E0D9CF", padding: "0 10px", fontSize: 15, maxWidth: 520 }}
-            >
-              <option value="">Leave blank</option>
-              {(q.options ?? []).map((o) => (
-                <option key={o}>{o}</option>
-              ))}
-            </select>
-            <div style={muted}>{q.eeoAnswer ? "✓ Will be filled" : "Blank. Lookout couldn't match your answer to this wording; pick one or leave it blank."}</div>
-          </div>
-        ))}
+        <label style={{ display: "flex", gap: 10, alignItems: "center", fontSize: 15, fontWeight: 600 }}>
+          <input
+            type="checkbox"
+            checked={on}
+            onChange={(e) => eeoSet({ on: e.target.checked }, e.target.checked ? "EEO answers on for this application." : "EEO answers off. Every question stays blank.")}
+            style={{ width: 18, height: 18 }}
+          />
+          Answer these on this application
+        </label>
+        {!on && <div style={muted}>Off. Every EEO question on this form stays blank. Turning this on applies to this application only.</div>}
+        {on &&
+          qs.map((q) => {
+            const skipped = d.eeoRun.skip.includes(q.id);
+            return (
+              <div key={q.id} style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                <label htmlFor={`eeo-${q.id}`} style={{ fontSize: 15, fontWeight: 600 }}>{q.prompt}</label>
+                {!skipped && (
+                  <select
+                    id={`eeo-${q.id}`}
+                    value={q.eeoAnswer ?? ""}
+                    onChange={(e) => act(q.id, { action: "edit", content: e.target.value, note: "" }, "Saved for this wording.")}
+                    style={{ height: 40, borderRadius: 10, border: "1.5px solid #E0D9CF", padding: "0 10px", fontSize: 15, maxWidth: 520 }}
+                  >
+                    <option value="">Leave blank</option>
+                    {(q.options ?? []).map((o) => (
+                      <option key={o}>{o}</option>
+                    ))}
+                  </select>
+                )}
+                <label style={{ display: "flex", gap: 8, alignItems: "center", fontSize: 14 }}>
+                  <input type="checkbox" checked={skipped} onChange={(e) => eeoSet({ skip: { itemId: q.id, skip: e.target.checked } }, e.target.checked ? "Skipped. Left blank." : "Will be answered.")} />
+                  Skip this one
+                </label>
+                <div style={muted}>{skipped ? "Skipped. Left blank." : q.eeoAnswer ? `✓ Will be filled, from ${q.eeoFrom}` : "Blank. No saved answer matches this wording; pick one to save it, or leave it blank."}</div>
+              </div>
+            );
+          })}
       </div>
     </section>
+  );
+}
+
+/** The record of EEO answers kept with a fill or a submission. */
+function EeoRecordView({ r, title }: { r: EeoShown; title: string }) {
+  return (
+    <div style={{ fontSize: 14 }}>
+      <div style={{ fontWeight: 600, marginBottom: 4 }}>{title}</div>
+      {!r.on || !r.profileConsent ? (
+        <div style={muted}>
+          EEO answers were off{!r.profileConsent ? " on your profile" : " for this application"}. All {r.asked} EEO question{r.asked === 1 ? " was" : "s were"} left blank.
+        </div>
+      ) : (
+        <>
+          <ul style={{ margin: 0, paddingLeft: 18, color: "#3B362C" }}>
+            {r.fields.map((f) => (
+              <li key={f.prompt}>
+                {f.prompt}: {f.answer ?? "(answer unreadable)"} <span style={{ color: "#6B6358" }}>(from {f.from})</span>
+              </li>
+            ))}
+          </ul>
+          {r.asked > r.fields.length && <div style={muted}>{r.asked - r.fields.length} left blank (skipped or no saved answer).</div>}
+        </>
+      )}
+    </div>
   );
 }
 
@@ -877,6 +947,7 @@ function SendForMe({ d, busy, onFill }: { d: Detail; busy: boolean; onFill: (mod
               </li>
             ))}
           </ul>
+          {d.eeoLastFill && <EeoRecordView r={d.eeoLastFill} title="Voluntary EEO in this run" />}
           <a href={`/api/apply/${d.id}/screenshot?which=${f.mode === "submit" ? "after-submit" : "filled"}&t=${stamp}`} target="_blank" rel="noreferrer" style={{ fontSize: 14, color: "#1D1A0F" }}>
             See the screenshot ↗
           </a>
@@ -945,7 +1016,8 @@ function Checklist({ d, onDone }: { d: Detail; onDone: () => void }) {
           </li>
         ))}
       </ol>
-      {!locked && d.eeoConsent && d.items.some((i) => i.kind === "eeo" && i.eeoAnswer) && (
+      {locked && d.eeoSent && <EeoRecordView r={d.eeoSent} title="Voluntary EEO you shared" />}
+      {!locked && d.items.some((i) => i.kind === "eeo" && i.eeoAnswer) && (
         <div style={{ fontSize: 14 }}>
           <div style={{ fontWeight: 600, marginBottom: 4 }}>Voluntary EEO (pick these in the form)</div>
           <ul style={{ margin: 0, paddingLeft: 18, color: "#3B362C" }}>
@@ -953,7 +1025,7 @@ function Checklist({ d, onDone }: { d: Detail; onDone: () => void }) {
               .filter((i) => i.kind === "eeo" && i.eeoAnswer)
               .map((i) => (
                 <li key={i.id}>
-                  {i.prompt}: {i.eeoAnswer}
+                  {i.prompt}: {i.eeoAnswer} <span style={{ color: "#6B6358" }}>(from {i.eeoFrom})</span>
                 </li>
               ))}
           </ul>

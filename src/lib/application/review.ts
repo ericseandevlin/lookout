@@ -2,7 +2,7 @@ import "server-only";
 import { and, asc, desc, eq, inArray, max } from "drizzle-orm";
 import { z } from "zod";
 import { db, schema } from "@/lib/db";
-import type { ApplicationStatus } from "@/lib/db/schema";
+import type { ApplicationStatus, EeoRecord } from "@/lib/db/schema";
 import { completeJSON, emptyUsage } from "@/lib/ai/llm";
 import { assertBudget } from "@/lib/ai/runs";
 import { HttpError } from "@/lib/api";
@@ -12,9 +12,9 @@ import { isCommon, upsert } from "./saved";
 import { notesBlock } from "./skills";
 import { getAutoApplySettings } from "@/lib/apply";
 import { bullets } from "./notes";
-import { resolve } from "./eeo";
+import { eeoPicks, eeoRunOf, sourceLabel } from "./eeo";
 import { asksBase, asksMinimum, isSalaryQuestion, rangeBasis, suggestSalary } from "./salary";
-import { loadEeo, saveEeo } from "./eeoStore";
+import { eeoRecord, loadEeo, saveEeo, showEeoRecord } from "./eeoStore";
 import { masterForDrafts } from "./masterCheck";
 import { answerKey } from "./saved";
 import { canAutoSubmit } from "./submit";
@@ -62,20 +62,27 @@ export async function getApplicationDetail(userId: string, id: string) {
   const postingText = a.report.postingText || o?.description || "";
   const salaryHint = (prompt: string) =>
     prof ? suggestSalary({ floor: prof.answers.floor, target: prof.answers.target, min: o?.compMin, max: o?.compMax, basis: rangeBasis(postingText), asksBase: asksBase(prompt), asksMinimum: asksMinimum(prompt) }) : null;
-  // EEO answers are matched here from the encrypted profile, only with consent; they're never stored on the application (#122).
+  // EEO answers are matched here from the encrypted profile, only with the profile permission and this
+  // application's switch on. Only the record of a fill or submission keeps them, encrypted (#122).
   const eeo = items.some((i) => i.kind === "eeo") ? await loadEeo(userId) : null;
+  const eeoRun = eeoRunOf(a.report);
+  const picks = eeo ? eeoPicks(items, eeo.profile, eeo.consent, eeoRun) : [];
+  const { eeo: sentEeo, ...confirmation } = (a.confirmation ?? {}) as { eeo?: EeoRecord };
   return {
     ...(await getAutoApplySettings(userId).then((s) => ({ template: s.template ?? "modern", accent: s.accent ?? null }))),
     eeoConsent: !!eeo?.consent,
+    eeoRun,
+    eeoSent: showEeoRecord(sentEeo),
+    eeoLastFill: showEeoRecord(a.report.fill?.eeo),
     id: a.id,
     findId: a.opportunityId,
     status: a.status,
     ats: a.ats,
     route: a.route,
-    report: { ...a.report, postingText: undefined },
+    report: { ...a.report, postingText: undefined, fill: a.report.fill && { ...a.report.fill, eeo: undefined } },
     autoSubmit: a.route === "browser" && canAutoSubmit(),
     submittedAt: a.submittedAt?.toISOString() ?? null,
-    confirmation: a.confirmation,
+    confirmation: a.confirmation ? confirmation : null,
     company: o?.company ?? "",
     role: o?.title ?? "",
     url: o?.sourceUrl ?? null,
@@ -89,7 +96,9 @@ export async function getApplicationDetail(userId: string, id: string) {
       options: i.options,
       question: i.question,
       approvedVersionId: i.approvedVersionId,
-      eeoAnswer: i.kind === "eeo" && eeo?.consent ? resolve(eeo.profile, i.prompt, i.options) : null,
+      eeoAnswer: picks.find((p) => p.itemId === i.id)?.answer ?? null,
+      eeoFrom: ((p) => (p ? sourceLabel(p) : null))(picks.find((p) => p.itemId === i.id)),
+      eeoSkipped: i.kind === "eeo" && (!eeoRun.on || eeoRun.skip.includes(i.id)),
       salary: i.kind !== "eeo" && !i.options?.length && isSalaryQuestion(i.prompt) ? salaryHint(i.prompt) : null,
       versions: versions
         .filter((v) => v.itemId === i.id)
@@ -139,6 +148,7 @@ export async function editItem(userId: string, appId: string, itemId: string, co
     // Remembered for this exact wording, in the encrypted profile only.
     const { consent, profile } = await loadEeo(userId);
     if (!consent) throw new HttpError(409, "Turn on EEO answers on your profile first.");
+    if (!eeoRunOf(a.report).on) throw new HttpError(409, "Turn on EEO answers for this application first.");
     if (content) profile.exact[answerKey(it.prompt)] = content;
     else delete profile.exact[answerKey(it.prompt)];
     await saveEeo(userId, { profile });
@@ -222,8 +232,9 @@ export async function sentRecord(appId: string) {
   const items = await db.select().from(schema.applicationItems).where(eq(schema.applicationItems.applicationId, appId)).orderBy(asc(schema.applicationItems.position));
   const ids = items.map((i) => i.approvedVersionId).filter((v): v is string => !!v);
   const versions = ids.length ? await db.select().from(schema.itemVersions).where(inArray(schema.itemVersions.id, ids)) : [];
+  // EEO answers are never part of what was sent as text; they have their own record (#122).
   return items
-    .filter((i) => i.approvedVersionId)
+    .filter((i) => i.approvedVersionId && i.kind !== "eeo")
     .map((i) => {
       const v = versions.find((x) => x.id === i.approvedVersionId)!;
       return { prompt: i.prompt, kind: i.kind, version: v.version, content: v.content };
@@ -236,11 +247,20 @@ export async function markSubmitted(userId: string, appId: string) {
   if (a.status === "submitted") return a.status;
   if (a.status !== "manual" && a.status !== "approved") throw new HttpError(409, "Approve every required item first.");
   const sent = await sentRecord(appId);
+  // The checklist showed these EEO answers to pick by hand; keep the record of them with the submission.
+  const items = await db.select().from(schema.applicationItems).where(eq(schema.applicationItems.applicationId, appId));
+  const asked = items.filter((i) => i.kind === "eeo").length;
+  let eeo: EeoRecord | undefined;
+  if (asked) {
+    const { consent, profile } = await loadEeo(userId);
+    const run = eeoRunOf(a.report);
+    eeo = eeoRecord(asked, consent, run, eeoPicks(items, profile, consent, run));
+  }
   const now = new Date();
   await db.transaction(async (tx) => {
     await tx
       .update(schema.applications)
-      .set({ status: "submitted", submittedAt: now, updatedAt: now, confirmation: { how: "manual", at: now.toISOString(), applyUrl: a.report.applyUrl ?? null, sent } })
+      .set({ status: "submitted", submittedAt: now, updatedAt: now, confirmation: { how: "manual", at: now.toISOString(), applyUrl: a.report.applyUrl ?? null, sent, ...(eeo ? { eeo } : {}) } })
       .where(eq(schema.applications.id, appId));
     await tx
       .update(schema.userOpportunities)
@@ -248,4 +268,23 @@ export async function markSubmitted(userId: string, appId: string) {
       .where(and(eq(schema.userOpportunities.userId, userId), eq(schema.userOpportunities.opportunityId, a.opportunityId)));
   });
   return "submitted" as const;
+}
+
+/** This application's EEO switch (off by default) and per-question skips (#122). */
+export async function setEeoRun(userId: string, appId: string, p: { on?: boolean; skip?: { itemId: string; skip: boolean } }) {
+  const a = await ownApplication(userId, appId);
+  assertEditable(a.status);
+  const run = eeoRunOf(a.report);
+  if (p.on !== undefined) {
+    if (p.on && !(await loadEeo(userId)).consent) throw new HttpError(409, "Set up your EEO answers and turn on the permission in Profile › Application answers first.");
+    run.on = p.on;
+    run.at = new Date().toISOString();
+  }
+  if (p.skip) {
+    const it = await ownItem(appId, p.skip.itemId);
+    if (it.kind !== "eeo") throw new HttpError(400, "Only EEO questions can be skipped here.");
+    run.skip = p.skip.skip ? [...new Set([...run.skip, it.id])] : run.skip.filter((id) => id !== it.id);
+  }
+  await db.update(schema.applications).set({ report: { ...a.report, eeoRun: run }, updatedAt: new Date() }).where(eq(schema.applications.id, appId));
+  return run;
 }
