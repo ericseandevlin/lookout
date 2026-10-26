@@ -8,6 +8,7 @@ import { BONUS_KEY, kindOf } from "@/lib/kinds";
 import { WORK_MODE_LABEL } from "@/lib/onboarding";
 import { searchBlocker } from "@/lib/ready";
 import { togglePhrase } from "@/lib/phrases";
+import { CurrentCompField } from "./CurrentComp";
 import { useCounts } from "./Shell";
 import { useStore } from "./store";
 
@@ -361,6 +362,9 @@ export function Profile() {
           </button>
           {savedAt && <div aria-live="polite" style={{ flexBasis: "100%", fontSize: 14, color: "#6B6358" }}>Saved at {savedAt}. The next discovery run will use it.</div>}
         </div>
+
+        {/* Current pay only means something next to posted pay ranges (#109). */}
+        {cfg.board.columns.some((c) => c.key === "comp") && <CurrentCompField />}
       </div>
     </div>
   );
