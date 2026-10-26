@@ -22,6 +22,7 @@ function toFind(
     role: o.title,
     location: o.location,
     comp: o.compMin || o.compMax ? [o.compMin ?? o.compMax!, o.compMax ?? o.compMin!] : null,
+    currency: o.currency,
     postedAt: o.postedAt,
     attributes: o.attributes ?? {},
     url: o.sourceUrl,

@@ -6,6 +6,7 @@ import { cellQuiet, cellText, slugOf, stageStyle } from "@/lib/board";
 import { kindOf } from "@/lib/kinds";
 import type { Find } from "@/lib/types";
 import { applicationLabel } from "@/lib/applyLabels";
+import { CompCompare } from "../CurrentComp";
 import { ArrowUpRight, CheckIcon, LinkIcon, PinIcon, XIcon } from "../icons";
 import { api, useStore } from "../store";
 import { SubmitModeNote } from "../SubmitModeNote";
@@ -23,7 +24,7 @@ const NOT_A_FIT = ["Wrong level", "Wrong kind of role", "Wrong industry", "Locat
 
 type DrawerNav = { index: number; total: number; prev?: () => void; next?: () => void };
 
-export function Drawer({ f, close, toggle, setStage, enter, nav }: { f: Find; close: () => void; toggle: (f: Find, k: "pinned" | "archived") => void; setStage: (f: Find, s: string) => void; enter: boolean; nav: DrawerNav }) {
+export function Drawer({ f, currentComp, close, toggle, setStage, enter, nav }: { f: Find; currentComp: number | null; close: () => void; toggle: (f: Find, k: "pinned" | "archived") => void; setStage: (f: Find, s: string) => void; enter: boolean; nav: DrawerNav }) {
   const { patchFind, state, refresh, readOnly } = useStore();
   const [applyMsg, setApplyMsg] = useState<string | null>(null);
   const applyWithLookout = async () => {
@@ -161,7 +162,7 @@ export function Drawer({ f, close, toggle, setStage, enter, nav }: { f: Find; cl
         </div>
         <div style={{ padding: "22px 26px", display: "flex", flexDirection: "column", gap: 22, overflowY: "auto", flex: 1 }}>
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "14px 18px" }}>
-            <div><Label>{cells[0].label}</Label><div style={{ fontSize: 14.5, marginTop: 4, fontWeight: 600, color: cells[0].quiet ? "#6B6358" : "#99220F" }}>{cells[0].text}</div></div>
+            <div><Label>{cells[0].label}</Label><div style={{ fontSize: 14.5, marginTop: 4, fontWeight: 600, color: cells[0].quiet ? "#6B6358" : "#99220F" }}>{cells[0].text}</div>{cfg.board.columns[2].key === "comp" && <CompCompare f={f} current={currentComp} style={{ marginTop: 2 }} />}</div>
             <div><Label>{cells[1].label}</Label><div style={{ fontSize: 14.5, marginTop: 4 }}>{cells[1].text}</div></div>
             <div style={{ gridColumn: "1 / -1" }}><Label>{cells[2].label}</Label><div style={{ fontSize: 14.5, marginTop: 4 }}>{cells[2].text || "Not stated"}</div></div>
           </div>

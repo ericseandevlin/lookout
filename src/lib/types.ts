@@ -12,6 +12,8 @@ export type Find = {
   role: string;
   location: string;
   comp: [number, number] | null;
+  /** Currency of the posted range. */
+  currency: string;
   postedAt: string | null;
   /** Type-specific fields (#8): rfp carries agency, due date, value, set-aside. */
   attributes: Record<string, unknown>;

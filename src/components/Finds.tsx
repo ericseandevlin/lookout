@@ -6,6 +6,7 @@ import {
 } from "@/lib/board";
 import { kindOf } from "@/lib/kinds";
 import type { Find } from "@/lib/types";
+import { CompCompare, useCurrentComp } from "./CurrentComp";
 import { ArchiveIcon, ChevronDown, PinIcon, SearchIcon, SlidersIcon } from "./icons";
 import { useCounts } from "./Shell";
 import { LastReport, SearchPanel } from "./SearchPanel";
@@ -53,6 +54,7 @@ export function Finds() {
   const store = useStore();
   const { state, patchFind } = store;
   const { settings } = state;
+  const { amount: currentComp } = useCurrentComp();
   const counts = useCounts(state);
   // Board columns, headers and stage list come from the profile's kind (#8).
   const cfg = kindOf(state.profile.kind);
@@ -350,6 +352,7 @@ export function Finds() {
                       ) : (
                         <div role="cell" key={c.key} style={{ fontSize: 14, fontWeight: c.key === "comp" || c.key === "value" ? 600 : 400, color: cellQuiet(f, c.key) ? "#6B6358" : c.key === "comp" || c.key === "value" ? "#99220F" : "#1D1A0F", fontVariantNumeric: "tabular-nums", paddingRight: 16, textWrap: "pretty" }}>
                           {cellText(f, c.key)}
+                          {c.key === "comp" && <CompCompare f={f} current={currentComp} style={{ marginTop: 2 }} />}
                         </div>
                       ),
                     )}
@@ -397,7 +400,10 @@ export function Finds() {
                       <span style={{ flex: "none", fontSize: 14, color: "#6B6358", fontStyle: cellQuiet(f, cfg.board.preStage.key) ? "italic" : "normal", whiteSpace: "nowrap", marginTop: 2 }}>{cellText(f, cfg.board.preStage.key)}</span>
                     </div>
                     <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, marginTop: 2 }}>
-                      <span style={{ minWidth: 0, fontSize: 14, fontWeight: 600, color: "#99220F", fontVariantNumeric: "tabular-nums", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{cellText(f, cfg.board.columns[2].key)}</span>
+                      <div style={{ minWidth: 0 }}>
+                        <div style={{ fontSize: 14, fontWeight: 600, color: "#99220F", fontVariantNumeric: "tabular-nums", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{cellText(f, cfg.board.columns[2].key)}</div>
+                        {cfg.board.columns[2].key === "comp" && <CompCompare f={f} current={currentComp} />}
+                      </div>
                       <div style={{ position: "relative", flex: "none" }}>
                         <button onClick={(e) => toggleStageMenu(e, f.id, "right")} style={{ display: "inline-flex", alignItems: "center", gap: 4, height: 26, padding: "0 8px 0 10px", borderRadius: 999, fontSize: 14, fontWeight: 600, border: "1.5px solid rgba(29,26,15,.14)", background: st.bg, color: st.ink, cursor: "pointer", whiteSpace: "nowrap" }}>
                           {f.stage}
@@ -433,6 +439,7 @@ export function Finds() {
         <Drawer
           key={openFind.id}
           f={openFind}
+          currentComp={currentComp}
           close={() => open(null)}
           toggle={toggle}
           setStage={setStage}
