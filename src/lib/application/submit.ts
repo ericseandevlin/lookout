@@ -5,7 +5,7 @@ import { and, asc, eq, inArray } from "drizzle-orm";
 import { db, schema } from "@/lib/db";
 import { env } from "@/lib/env";
 import { draftToDocx } from "./docx";
-import { planFill, type FillStep } from "./fillPlan";
+import { pickOptions, planFill, type FillStep } from "./fillPlan";
 import { letterHeaderFrom, type Template } from "./resumeLayout";
 import { getAutoApplySettings } from "@/lib/apply";
 import { resolve } from "./eeo";
@@ -129,7 +129,19 @@ async function fillOne(page: Page, s: FillStep): Promise<{ ok: boolean; how: str
       return { ok: true, how: "uploaded .docx" };
     }
     const field = page.getByLabel(s.prompt, { exact: false }).first();
-    if (!(await field.count())) return { ok: false, how: "field not found" };
+    if (!(await field.count())) {
+      // "Select any that apply" is a group of checkboxes under one legend, with no single labeled control (#165).
+      const group = page.locator("fieldset, [role=group]").filter({ hasText: s.prompt.slice(0, 60) }).filter({ has: page.locator("input[type=checkbox]") }).last();
+      if (s.kind !== "choice" || !(await group.count())) return { ok: false, how: "field not found" };
+      const picks = pickOptions(s.content, s.options);
+      if (!picks.length) return { ok: false, how: "answer matches no option" };
+      for (const label of picks) {
+        const box = group.getByLabel(label, { exact: true }).first();
+        if (!(await box.count())) return { ok: false, how: `option not found: ${label.slice(0, 60)}` };
+        await box.check();
+      }
+      return { ok: true, how: `checked ${picks.length}` };
+    }
     const tag = await field.evaluate((e) => `${e.tagName.toLowerCase()}:${e.getAttribute("type") ?? ""}:${e.getAttribute("role") ?? ""}`);
     if (tag.startsWith("select")) {
       await field.selectOption({ label: s.content });
