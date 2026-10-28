@@ -230,8 +230,8 @@ export async function sentRecord(appId: string) {
     });
 }
 
-/** The user sent it by hand. Record exactly what was approved, and move the find to Applied. */
-export async function markSubmitted(userId: string, appId: string) {
+/** The user sent it by hand, or pressed Submit after the Firefox extension filled it (#169). Record exactly what was approved, and move the find to Applied. */
+export async function markSubmitted(userId: string, appId: string, via?: { how: "extension"; url?: string; text?: string }) {
   const a = await ownApplication(userId, appId);
   if (a.status === "submitted") return a.status;
   if (a.status !== "manual" && a.status !== "approved") throw new HttpError(409, "Approve every required item first.");
@@ -240,7 +240,12 @@ export async function markSubmitted(userId: string, appId: string) {
   await db.transaction(async (tx) => {
     await tx
       .update(schema.applications)
-      .set({ status: "submitted", submittedAt: now, updatedAt: now, confirmation: { how: "manual", at: now.toISOString(), applyUrl: a.report.applyUrl ?? null, sent } })
+      .set({
+        status: "submitted",
+        submittedAt: now,
+        updatedAt: now,
+        confirmation: { how: via?.how ?? "manual", at: now.toISOString(), applyUrl: a.report.applyUrl ?? null, ...(via?.url ? { url: via.url } : {}), ...(via?.text ? { text: via.text } : {}), sent },
+      })
       .where(eq(schema.applications.id, appId));
     await tx
       .update(schema.userOpportunities)
