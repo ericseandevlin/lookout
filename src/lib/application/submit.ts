@@ -90,6 +90,11 @@ export async function runFill(appId: string, mode: "test" | "submit"): Promise<F
       report.log.push({ prompt: s.prompt, ok: r.ok, how: s.itemKind === "eeo" ? (r.ok ? "filled from your EEO answers" : "couldn't fill") : r.how });
       if (!r.ok && s.required) report.missing.push(s.prompt);
     }
+    const phone = steps.find((s) => /^phone\b/i.test(s.prompt));
+    if (phone && !steps.some((s) => /^country\b/i.test(s.prompt))) {
+      const r = await phoneCountry(page);
+      if (r) report.log.push({ prompt: "Phone country", ok: r.ok, how: r.how });
+    }
     const dir = shotDir(appId);
     await page.screenshot({ path: path.join(dir, "filled.png"), fullPage: true });
 
@@ -117,6 +122,25 @@ export async function runFill(appId: string, mode: "test" | "submit"): Promise<F
 }
 
 type Page = import("playwright-core").Page;
+
+/**
+ * Greenhouse's phone input carries its own required "Country" picker that isn't one of the API questions (#167).
+ * Pick United States. Returns null when the page has no such picker.
+ */
+async function phoneCountry(page: Page): Promise<{ ok: boolean; how: string } | null> {
+  const box = page.getByRole("combobox", { name: /^country\*?$/i }).first();
+  if (!(await box.count())) return null;
+  try {
+    await box.click();
+    await box.fill("United States").catch(() => {});
+    const opt = page.getByRole("option", { name: /^United States(?!\s+Minor)/ }).first();
+    if (!(await opt.isVisible().catch(() => false))) return { ok: false, how: "United States not in the list" };
+    await opt.click();
+    return { ok: true, how: "picked United States" };
+  } catch (e) {
+    return { ok: false, how: e instanceof Error ? e.message.split("\n")[0].slice(0, 120) : "error" };
+  }
+}
 
 /** Find the control for one question by its label and put the approved answer in. */
 async function fillOne(page: Page, s: FillStep): Promise<{ ok: boolean; how: string }> {
