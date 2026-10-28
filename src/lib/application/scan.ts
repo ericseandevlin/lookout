@@ -129,7 +129,7 @@ export function parseGreenhouse(json: unknown): Omit<ScanResult, "ats" | "route"
     if (!visible(q.fields)) continue;
     const types = q.fields.map((f) => f.type);
     // Resume and cover letter come as file-or-paste pairs; one item covers both.
-    const fieldType = types.includes("input_file") ? "file" : types.includes("textarea") ? "textarea" : /select/.test(types[0] ?? "") ? "select" : "text";
+    const fieldType = types.includes("input_file") ? "file" : types.includes("textarea") ? "textarea" : /multi_select/.test(types[0] ?? "") ? "multiselect" : /select/.test(types[0] ?? "") ? "select" : "text";
     const options = q.fields.flatMap((f) => (f.values ?? []).map((v) => v.label)).filter(Boolean);
     items.push({ kind: kindFor(q.label, fieldType), prompt: q.label.trim(), required: !!q.required, fieldType, ...(options.length ? { options } : {}) });
   }
