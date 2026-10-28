@@ -1,0 +1,34 @@
+import { describe, expect, it } from "vitest";
+import { jobKey, sameJob } from "./match";
+
+describe("jobKey (#169)", () => {
+  it("reduces every Greenhouse URL for one job to the same key", () => {
+    for (const u of [
+      "https://www.redventures.com/careers/positions/open?gh_jid=8008090",
+      "https://job-boards.greenhouse.io/embed/job_app?for=redventures&token=8008090",
+      "https://boards.greenhouse.io/redventures/jobs/8008090",
+      "https://job-boards.greenhouse.io/redventures/jobs/8008090?gh_src=abc",
+    ])
+      expect(jobKey(u)).toBe("greenhouse:8008090");
+  });
+  it("keys Ashby and Lever by the posting id, with or without /application", () => {
+    expect(jobKey("https://jobs.ashbyhq.com/understood/0B5F3A1C-2D4E-4F60-8A7B-9C0D1E2F3A4B/application")).toBe("ashby:0b5f3a1c-2d4e-4f60-8a7b-9c0d1e2f3a4b");
+    expect(jobKey("https://jobs.lever.co/acme/0b5f3a1c-2d4e-4f60-8a7b-9c0d1e2f3a4b/apply")).toBe("lever:0b5f3a1c-2d4e-4f60-8a7b-9c0d1e2f3a4b");
+  });
+  it("falls back to host and path, ignoring www, query, trailing slash and /apply", () => {
+    expect(jobKey("https://www.example.com/Jobs/42/apply/?ref=x")).toBe("url:example.com/jobs/42");
+  });
+  it("returns null for junk", () => {
+    expect(jobKey("not a url")).toBeNull();
+    expect(jobKey(undefined)).toBeNull();
+  });
+});
+
+describe("sameJob", () => {
+  it("matches when an embedded frame is the application's job", () => {
+    expect(sameJob(["https://www.redventures.com/careers", "https://job-boards.greenhouse.io/embed/job_app?for=redventures&token=8008090"], ["https://www.redventures.com/careers/positions/open?gh_jid=8008090"])).toBe(true);
+  });
+  it("does not match a different job on the same board", () => {
+    expect(sameJob(["https://boards.greenhouse.io/redventures/jobs/1"], ["https://boards.greenhouse.io/redventures/jobs/2"])).toBe(false);
+  });
+});
