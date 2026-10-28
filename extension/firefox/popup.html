@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<link rel="stylesheet" href="popup.css">
+</head>
+<body>
+<header><img src="icon.svg" alt="" width="20" height="20"><h1>Lookout Autofill</h1><button id="gear" class="link" aria-expanded="false" aria-controls="settings">Settings</button></header>
+<section id="settings" hidden>
+  <label for="server">Lookout</label>
+  <select id="server">
+    <option value="https://lookout.ericdevlin.co">Production</option>
+    <option value="https://staging.lookout.ericdevlin.co">Staging</option>
+  </select>
+  <label for="token">Extension token</label>
+  <input id="token" type="password" autocomplete="off" placeholder="lkx_... from Auto-apply settings">
+  <button id="save" class="solid">Save</button>
+  <p class="hint">Make the token in Lookout: Auto-apply, Settings, Firefox extension.</p>
+</section>
+<main id="main">
+  <p id="status" role="status">Looking for this job in Lookout...</p>
+  <ul id="matches"></ul>
+  <ol id="log" hidden></ol>
+  <div id="after" hidden>
+    <p>Check the form, then press the site's Submit button. Lookout marks it Applied when the thank-you page shows.</p>
+    <button id="done" class="outline">I submitted it</button>
+  </div>
+</main>
+<script src="popup.js"></script>
+</body>
+</html>

@@ -270,6 +270,7 @@ function SettingsPanel({ settings, save, close }: { settings: AutoApplySettings;
               <div style={{ fontSize: 14, color: "#6B6358" }}>A cap so review never piles up.</div>
             </div>
           </fieldset>
+          <ExtensionSection />
           <div style={{ borderTop: "1px solid #EEEAE4", paddingTop: 18 }}>
             <h3 style={{ margin: "0 0 12px", fontSize: 16, fontWeight: 700 }}>How it works</h3>
             <ol style={{ listStyle: "none", margin: 0, padding: 0, display: "flex", flexDirection: "column", gap: 12 }}>
@@ -287,5 +288,69 @@ function SettingsPanel({ settings, save, close }: { settings: AutoApplySettings;
         </div>
       </aside>
     </>
+  );
+}
+
+type ExtStatus = { connected: boolean; createdAt?: string; lastUsedAt?: string | null };
+
+/** Connect the Firefox extension that fills applications in your own browser (#169). */
+function ExtensionSection() {
+  const [status, setStatus] = useState<ExtStatus | null>(null);
+  const [token, setToken] = useState<string | null>(null);
+  const [copied, setCopied] = useState(false);
+  const [err, setErr] = useState("");
+  useEffect(() => {
+    api<ExtStatus>("/api/ext/token").then(setStatus).catch(() => setStatus({ connected: false }));
+  }, []);
+  const make = async () => {
+    setErr("");
+    try {
+      const r = await api<{ token: string }>("/api/ext/token", { method: "POST", json: {} });
+      setToken(r.token);
+      setCopied(false);
+      setStatus({ connected: true, createdAt: new Date().toISOString(), lastUsedAt: null });
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : "Something went wrong");
+    }
+  };
+  const revoke = async () => {
+    await api("/api/ext/token", { method: "DELETE" }).catch(() => {});
+    setToken(null);
+    setStatus({ connected: false });
+  };
+  const copy = async () => {
+    if (!token) return;
+    await navigator.clipboard.writeText(token).catch(() => {});
+    setCopied(true);
+  };
+  const used = status?.lastUsedAt ? `Last used ${new Date(status.lastUsedAt).toLocaleString()}` : "Not used yet";
+  return (
+    <div style={{ borderTop: "1px solid #EEEAE4", paddingTop: 18, display: "flex", flexDirection: "column", gap: 10 }}>
+      <h3 style={{ margin: 0, fontSize: 16, fontWeight: 700 }}>Firefox extension</h3>
+      <div style={{ fontSize: 14, lineHeight: 1.5, color: "#6B6358" }}>
+        Fills an approved application on the job&apos;s own page in your Firefox. You check it and press Submit. When the thank-you page shows, Lookout marks it Applied.{" "}
+        <a href="/ext/lookout-autofill.xpi" style={{ color: "#99220F" }}>Install the extension</a>
+      </div>
+      {token ? (
+        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+          <div style={{ fontSize: 14, fontWeight: 600 }}>Paste this into the extension. It won&apos;t be shown again.</div>
+          <code style={{ fontSize: 12.5, wordBreak: "break-all", background: "#F4F1EC", borderRadius: 8, padding: "10px 12px" }}>{token}</code>
+          <div>
+            <button onClick={copy} style={btn("solid")}>{copied ? "Copied" : "Copy token"}</button>
+          </div>
+        </div>
+      ) : (
+        <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+          <button onClick={make} style={btn(status?.connected ? "outline" : "solid")}>{status?.connected ? "Make a new token" : "Connect the extension"}</button>
+          {status?.connected && (
+            <>
+              <span style={{ fontSize: 13.5, color: "#6B6358" }}>Connected. {used}.</span>
+              <button onClick={revoke} style={btn("text")}>Disconnect</button>
+            </>
+          )}
+        </div>
+      )}
+      {err && <div role="alert" style={{ fontSize: 14, color: "#99220F" }}>{err}</div>}
+    </div>
   );
 }

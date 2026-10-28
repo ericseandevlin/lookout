@@ -52,7 +52,7 @@ export function publicRoute<C = object>(fn: (req: Request, ctx: C) => Promise<Re
   };
 }
 
-function errorResponse(e: unknown) {
+export function errorResponse(e: unknown) {
   if (e instanceof HttpError) return json({ error: e.message }, { status: e.status });
   if (e instanceof z.ZodError) return json({ error: "Invalid input", issues: e.issues }, { status: 400 });
   console.error(e);

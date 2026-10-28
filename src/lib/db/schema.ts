@@ -404,3 +404,17 @@ export const rateLimits = pgTable(
   },
   (t) => [index("rate_limits_expires_at_idx").on(t.expiresAt)],
 );
+
+/** Bearer tokens for the Firefox extension (#169). Stored hashed, like sessions; one active token per user. */
+export const extensionTokens = pgTable(
+  "extension_tokens",
+  {
+    tokenHash: text("token_hash").primaryKey(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    lastUsedAt: timestamp("last_used_at", { withTimezone: true }),
+    createdAt: createdAt(),
+  },
+  (t) => [index("extension_tokens_user_idx").on(t.userId)],
+);

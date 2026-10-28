@@ -51,9 +51,9 @@ async function files(appId: string, steps: FillStep[], name: string, company: st
   }
 }
 
-export async function runFill(appId: string, mode: "test" | "submit"): Promise<FillReport> {
+/** Everything a form needs, in form order, with the Word files written to disk. Shared by the browser worker and the Firefox extension (#169). */
+export async function preparePacket(appId: string) {
   const { a, items, versions, user, opp } = await loadPacket(appId);
-  const report: FillReport = { mode, at: new Date().toISOString(), log: [], missing: [] };
   const steps = planFill(items, versions);
   // Voluntary EEO questions: from the encrypted profile, only with consent, matched in code (#122).
   if (items.some((i) => i.kind === "eeo")) {
@@ -66,6 +66,12 @@ export async function runFill(appId: string, mode: "test" | "submit"): Promise<F
   }
   const look = await getAutoApplySettings(a.userId);
   await files(appId, steps, user?.name || "Resume", opp?.company ?? "", look.template, look.accent);
+  return { a, steps, opp };
+}
+
+export async function runFill(appId: string, mode: "test" | "submit"): Promise<FillReport> {
+  const { a, steps } = await preparePacket(appId);
+  const report: FillReport = { mode, at: new Date().toISOString(), log: [], missing: [] };
   const url = a.report.applyUrl;
   if (!url) throw new Error("No application page to open");
 
