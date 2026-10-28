@@ -15,7 +15,21 @@
     const by = el.getAttribute("aria-labelledby");
     if (by) for (const id of by.split(/\s+/)) parts.push(document.getElementById(id)?.textContent || "");
     parts.push(el.getAttribute("aria-label") || "");
-    return norm(parts.join(" "));
+    // Greenhouse labels a field twice (<label for> and aria-labelledby with the same text); count it once.
+    return [...new Set(parts.map(norm).filter(Boolean))].join(" ");
+  }
+
+  /** What a real click sends. React pickers ignore a lone synthetic mousedown but open on the full sequence. */
+  function press(el) {
+    const r = el.getBoundingClientRect();
+    const o = { bubbles: true, cancelable: true, composed: true, button: 0, buttons: 1, clientX: r.x + 5, clientY: r.y + 5, view: window };
+    const p = { ...o, pointerId: 1, pointerType: "mouse", isPrimary: true };
+    el.dispatchEvent(new PointerEvent("pointerdown", p));
+    el.dispatchEvent(new MouseEvent("mousedown", o));
+    if (typeof el.focus === "function") el.focus();
+    el.dispatchEvent(new PointerEvent("pointerup", { ...p, buttons: 0 }));
+    el.dispatchEvent(new MouseEvent("mouseup", { ...o, buttons: 0 }));
+    el.dispatchEvent(new MouseEvent("click", { ...o, buttons: 0 }));
   }
 
   function sameText(a, b) {
@@ -74,23 +88,27 @@
     return null;
   }
 
-  /** Custom dropdowns (react-select on Greenhouse, Ashby's own): open, type, click the matching option. */
-  async function pickFromCombobox(el, answer) {
-    const control = el.closest("[class*=control]") || el.parentElement;
-    el.focus();
-    control.dispatchEvent(new MouseEvent("mousedown", { bubbles: true }));
-    if (el.tagName === "INPUT") setValue(el, answer.slice(0, 40));
-    const option = await waitFor(() => {
-      const opts = [...document.querySelectorAll("[role=option]")].filter(visible);
-      return opts.find((o) => norm(o.textContent) === norm(answer)) || opts.find((o) => sameText(o.textContent, answer));
-    });
+  /**
+   * Custom dropdowns (react-select on Greenhouse, Ashby's own, intl-tel-input's country list): open with a real-looking
+   * click, match against the open list, and type to filter only when the answer isn't showing.
+   */
+  async function pickFromCombobox(el, answer, matches) {
+    const is = matches || ((text) => norm(text) === norm(answer) || sameText(text, answer));
+    const options = () => [...document.querySelectorAll("[role=option], [class*=select__option]")].filter(visible);
+    const find = () => options().find((o) => norm(o.textContent) === norm(answer) && is(o.textContent)) || options().find((o) => is(o.textContent));
+    press(el);
+    let option = await waitFor(find, 1500);
+    if (!option && el.tagName === "INPUT") {
+      setValue(el, answer.slice(0, 40));
+      option = await waitFor(find, 1500);
+    }
     if (!option) {
       el.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true }));
-      return { ok: false, how: "option not in the list" };
+      return { ok: false, how: options().length ? "option not in the list" : "list didn't open" };
     }
-    option.dispatchEvent(new MouseEvent("mousedown", { bubbles: true }));
-    option.click();
-    await sleep(150);
+    option.scrollIntoView({ block: "nearest" });
+    press(option);
+    await sleep(200);
     return { ok: true, how: "picked option" };
   }
 
@@ -151,7 +169,7 @@
       el.dispatchEvent(new Event("change", { bubbles: true }));
       return { prompt: "Phone country", ok: true, how: "selected" };
     }
-    const r = await pickFromCombobox(el, packet.phoneCountry || "United States");
+    const r = await pickFromCombobox(el, packet.phoneCountry || "United States", (text) => /^\s*united states(?!\s+minor)/i.test(text));
     return { prompt: "Phone country", ...r };
   }
 
