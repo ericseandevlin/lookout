@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import {
-  compText, DAYS, isNewFind, postedDays, postedText, scoreStyle, shortDate, slugOf, STAGE_STYLE, STAGES,
+  compText, DAYS, ENDED_STAGES, isNewFind, postedDays, postedText, scoreStyle, shortDate, slugOf, STAGE_STYLE, STAGES,
 } from "@/lib/board";
 import type { Find, Stage } from "@/lib/types";
 import { ArchiveIcon, ArrowUpRight, CheckIcon, ChevronDown, LinkIcon, PinIcon, PlusIcon, SearchIcon, SlidersIcon, XIcon } from "./icons";
@@ -140,9 +140,9 @@ export function Finds() {
     setStageMenu(null);
     setFitMenu(false);
   };
-  // "Nope" is a stage and a dismissal in one: it archives the find.
+  // Closed, Ghosted, Not selected and Nope end a find, so they archive it too (#180).
   const setStage = (f: Find, s: Stage) => {
-    if (s !== "Nope") return patchFind(f.id, { stage: s });
+    if (!ENDED_STAGES.includes(s)) return patchFind(f.id, { stage: s });
     patchFind(f.id, { stage: s, archived: true });
     if (openId === f.id) open(null);
   };
@@ -443,7 +443,7 @@ function StageMenu({ current, onPick, style, mobile }: { current: Stage; onPick:
           <button
             role="menuitem"
             className="h-menu"
-            data-tip={s === "Nope" ? "Archives it" : undefined}
+            data-tip={ENDED_STAGES.includes(s) ? "Archives it" : undefined}
             onClick={(e) => { e.stopPropagation(); onPick(s); }}
             style={{ display: "flex", alignItems: "center", gap: 9, padding: mobile ? "0 10px" : "8px 10px", minHeight: mobile ? 40 : undefined, border: 0, borderRadius: 8, background: s === current ? "#F6F2EC" : "transparent", fontSize: mobile ? 14 : 13, fontWeight: 500, color: "#1D1A0F", cursor: "pointer", textAlign: "left", whiteSpace: "nowrap" }}
           >
@@ -878,7 +878,7 @@ function Drawer({ f, close, toggle, setStage, enter, nav }: { f: Find; close: ()
               {STAGES.map((s) => {
                 const on = f.stage === s, ss = STAGE_STYLE[s];
                 return (
-                  <button key={s} onClick={() => setStage(f, s)} aria-pressed={on} data-tip={s === "Nope" ? "Archives it" : undefined} style={{ height: 36, borderRadius: 9, border: `1.5px solid ${on ? ss.bg : "#E6E0D8"}`, background: on ? ss.bg : "#fff", color: on ? ss.ink : "#6B6358", fontSize: 14, fontWeight: 600, cursor: "pointer", padding: "0 4px" }}>
+                  <button key={s} onClick={() => setStage(f, s)} aria-pressed={on} data-tip={ENDED_STAGES.includes(s) ? "Archives it" : undefined} style={{ height: 36, borderRadius: 9, border: `1.5px solid ${on ? ss.bg : "#E6E0D8"}`, background: on ? ss.bg : "#fff", color: on ? ss.ink : "#6B6358", fontSize: 14, fontWeight: 600, cursor: "pointer", padding: "0 4px" }}>
                     {s}
                   </button>
                 );

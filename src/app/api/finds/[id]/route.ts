@@ -1,6 +1,7 @@
 import { and, eq } from "drizzle-orm";
 import { z } from "zod";
 import { authed, body, HttpError, json } from "@/lib/api";
+import { ENDED_STAGES } from "@/lib/board";
 import { db, schema } from "@/lib/db";
 import { STAGES } from "@/lib/db/schema";
 
@@ -22,6 +23,8 @@ export const PATCH = authed<Ctx>(async (req, { user, params }) => {
   const p = await body(req, Patch);
   const { seen, feedback, ...rest } = p;
   const set: Partial<typeof schema.userOpportunities.$inferInsert> = { ...rest };
+  // An ended stage archives the find, whichever client set it (#180). Leaving one does not unarchive it; Restore does.
+  if (rest.stage && ENDED_STAGES.includes(rest.stage)) set.archived = true;
   if (feedback !== undefined) set.feedback = feedback ? { reason: feedback, at: new Date().toISOString() } : null;
   // Any interaction marks the find as seen, like opening it does.
   if (seen || Object.keys(rest).length || feedback !== undefined) set.seenAt = new Date();
