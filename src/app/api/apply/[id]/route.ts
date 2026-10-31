@@ -1,7 +1,7 @@
 import { and, eq } from "drizzle-orm";
 import { z } from "zod";
 import { authed, HttpError, json } from "@/lib/api";
-import { canUseAutoApply } from "@/lib/apply";
+import { canUseAutoApply, setAutoApplying } from "@/lib/apply";
 import { db, schema } from "@/lib/db";
 import { getApplicationDetail } from "@/lib/application/review";
 
@@ -22,5 +22,6 @@ export const DELETE = authed<Ctx>(async (_req, { user, params }) => {
   if (!a) throw new HttpError(404, "Not found");
   if (a.status === "submitted" || a.status === "submitting") throw new HttpError(409, "It's already been sent, so it can't be canceled.");
   await db.delete(schema.applications).where(eq(schema.applications.id, id));
+  await setAutoApplying(user.id, a.opportunityId, false);
   return json({ ok: true });
 });

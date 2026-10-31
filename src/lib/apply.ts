@@ -97,7 +97,19 @@ export async function queueApplication(userId: string, opportunityId: string, by
     await db.update(schema.applications).set({ status: "queued", queuedBy: by, updatedAt: new Date() }).where(eq(schema.applications.id, row.id));
     row.status = "queued";
   }
+  if (row.status !== "submitted") await setAutoApplying(userId, opportunityId, true);
   return row;
+}
+
+/**
+ * The board's Auto-applying stage follows the application (#182): queuing moves a Not applied find to it, canceling
+ * moves it back. A stage the user picked is never overwritten; submitting moves it to Applied elsewhere.
+ */
+export async function setAutoApplying(userId: string, opportunityId: string, on: boolean) {
+  await db
+    .update(schema.userOpportunities)
+    .set({ stage: on ? "Auto-applying" : "Not applied" })
+    .where(and(eq(schema.userOpportunities.userId, userId), eq(schema.userOpportunities.opportunityId, opportunityId), eq(schema.userOpportunities.stage, on ? "Not applied" : "Auto-applying")));
 }
 
 /**

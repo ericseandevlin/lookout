@@ -63,7 +63,7 @@ export async function closeGonePostings(userId: string, now = new Date()): Promi
         await db
           .update(schema.userOpportunities)
           .set({ stage: "Closed", archived: true, notes: r.uo.notes ? `${r.uo.notes.trimEnd()}\n\n${line}` : line })
-          .where(and(eq(schema.userOpportunities.userId, userId), eq(schema.userOpportunities.opportunityId, r.o.id), inArray(schema.userOpportunities.stage, ["Not applied", "Ghosted", "Not selected"])));
+          .where(and(eq(schema.userOpportunities.userId, userId), eq(schema.userOpportunities.opportunityId, r.o.id), inArray(schema.userOpportunities.stage, ["Not applied", "Auto-applying", "Ghosted", "Not selected"])));
         closed++;
       }
     }
