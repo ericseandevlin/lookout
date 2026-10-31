@@ -1,0 +1,77 @@
+<svg viewBox="0 0 842 324" width="1263" height="486" role="img" aria-labelledby="t d" xmlns="http://www.w3.org/2000/svg">
+<title id="t">How a Lookout search works</title><desc id="d">A person answers five questions and adds materials. Lookout writes queries, searches the web with SearXNG, reads each posting, scores it against the profile and the rules, and puts the matches on the Finds board.</desc>
+<defs><pattern id="dots" width="22" height="22" patternUnits="userSpaceOnUse"><circle cx="11" cy="11" r="0.8" fill="#1d252d" fill-opacity=".10"/></pattern><marker id="ar" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polygon points="0 0, 8 3, 0 6" fill="#354a5f"/></marker><marker id="ara" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polygon points="0 0, 8 3, 0 6" fill="#006ac0"/></marker></defs>
+<rect width="842" height="324" fill="#a5ddff"/><rect width="842" height="324" fill="url(#dots)" opacity=".55"/>
+<rect x="110" y="40" width="732" height="80" fill="#1d252d" fill-opacity=".03"/>
+<rect x="110" y="200" width="732" height="80" fill="#1d252d" fill-opacity=".03"/>
+<line x1="0" y1="40" x2="842" y2="40" stroke="#1d252d" stroke-opacity=".12" stroke-width=".8"/>
+<line x1="0" y1="120" x2="842" y2="120" stroke="#1d252d" stroke-opacity=".12" stroke-width=".8"/>
+<line x1="0" y1="200" x2="842" y2="200" stroke="#1d252d" stroke-opacity=".12" stroke-width=".8"/>
+<line x1="0" y1="280" x2="842" y2="280" stroke="#1d252d" stroke-opacity=".12" stroke-width=".8"/>
+<line x1="110" y1="40" x2="110" y2="280" stroke="#1d252d" stroke-opacity=".2"/>
+<rect x="163" y="8" width="16" height="16" rx="8" fill="#1d252d" fill-opacity="0.12"/>
+<text x="171" y="19" text-anchor="middle" font-family="SFMono-Regular, Menlo, Consolas, monospace" font-size="8" font-weight="600" fill="#1d252d">1</text>
+<text x="171" y="34" text-anchor="middle" font-family="SFMono-Regular, Menlo, Consolas, monospace" font-size="6.5" font-weight="500" letter-spacing=".12em" fill="#354a5f">PROFILE</text>
+<rect x="281" y="8" width="16" height="16" rx="8" fill="#1d252d" fill-opacity="0.12"/>
+<text x="289" y="19" text-anchor="middle" font-family="SFMono-Regular, Menlo, Consolas, monospace" font-size="8" font-weight="600" fill="#1d252d">2</text>
+<text x="289" y="34" text-anchor="middle" font-family="SFMono-Regular, Menlo, Consolas, monospace" font-size="6.5" font-weight="500" letter-spacing=".12em" fill="#354a5f">QUERIES</text>
+<rect x="399" y="8" width="16" height="16" rx="8" fill="#1d252d" fill-opacity="0.12"/>
+<text x="407" y="19" text-anchor="middle" font-family="SFMono-Regular, Menlo, Consolas, monospace" font-size="8" font-weight="600" fill="#1d252d">3</text>
+<text x="407" y="34" text-anchor="middle" font-family="SFMono-Regular, Menlo, Consolas, monospace" font-size="6.5" font-weight="500" letter-spacing=".12em" fill="#354a5f">SEARCH</text>
+<rect x="517" y="8" width="16" height="16" rx="8" fill="#1d252d" fill-opacity="0.12"/>
+<text x="525" y="19" text-anchor="middle" font-family="SFMono-Regular, Menlo, Consolas, monospace" font-size="8" font-weight="600" fill="#1d252d">4</text>
+<text x="525" y="34" text-anchor="middle" font-family="SFMono-Regular, Menlo, Consolas, monospace" font-size="6.5" font-weight="500" letter-spacing=".12em" fill="#354a5f">READ</text>
+<rect x="635" y="8" width="16" height="16" rx="8" fill="#006ac0" fill-opacity="0.2"/>
+<text x="643" y="19" text-anchor="middle" font-family="SFMono-Regular, Menlo, Consolas, monospace" font-size="8" font-weight="600" fill="#006ac0">5</text>
+<text x="643" y="34" text-anchor="middle" font-family="SFMono-Regular, Menlo, Consolas, monospace" font-size="6.5" font-weight="500" letter-spacing=".12em" fill="#006ac0">SCORE</text>
+<rect x="753" y="8" width="16" height="16" rx="8" fill="#1d252d" fill-opacity="0.12"/>
+<text x="761" y="19" text-anchor="middle" font-family="SFMono-Regular, Menlo, Consolas, monospace" font-size="8" font-weight="600" fill="#1d252d">6</text>
+<text x="761" y="34" text-anchor="middle" font-family="SFMono-Regular, Menlo, Consolas, monospace" font-size="6.5" font-weight="500" letter-spacing=".12em" fill="#354a5f">FINDS</text>
+<text x="55" y="83" text-anchor="middle" font-family="SFMono-Regular, Menlo, Consolas, monospace" font-size="8" letter-spacing=".08em" fill="#354a5f">PERSON</text>
+<text x="55" y="163" text-anchor="middle" font-family="SFMono-Regular, Menlo, Consolas, monospace" font-size="8" letter-spacing=".08em" fill="#354a5f">LOOKOUT</text>
+<text x="55" y="243" text-anchor="middle" font-family="SFMono-Regular, Menlo, Consolas, monospace" font-size="8" letter-spacing=".08em" fill="#354a5f">WEB</text>
+<path d="M 224,80 H 281 Q 289,80 289,88 V 128" fill="none" stroke="#354a5f" stroke-width="1.0" marker-end="url(#ar)"/>
+<path d="M 342,160 H 399 Q 407,160 407,168 V 208" fill="none" stroke="#354a5f" stroke-width="1.0" marker-end="url(#ar)"/>
+<line x1="460" y1="240" x2="472" y2="240" stroke="#354a5f" stroke-width="1.0" marker-end="url(#ar)"/>
+<path d="M 578,240 H 635 Q 643,240 643,232 V 192" fill="none" stroke="#006ac0" stroke-width="1.2" marker-end="url(#ara)"/>
+<path d="M 696,160 H 753 Q 761,160 761,152 V 112" fill="none" stroke="#006ac0" stroke-width="1.2" marker-end="url(#ara)"/>
+<rect x="118" y="48" width="106" height="64" fill="#caecff" fill-opacity="1" stroke="#1d252d" stroke-opacity="0.35"/>
+<rect x="122" y="52" width="16" height="10" fill="#1d252d" fill-opacity="0.12"/>
+<text x="130" y="60" text-anchor="middle" font-family="SFMono-Regular, Menlo, Consolas, monospace" font-size="6" font-weight="600" fill="#1d252d">YOU</text>
+<text x="171" y="78" text-anchor="middle" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="9" font-weight="600" fill="#1d252d">Answer 5 questions</text>
+<text x="171" y="91" text-anchor="middle" font-family="SFMono-Regular, Menlo, Consolas, monospace" font-size="6.5" fill="#354a5f">resume, linkedin pdf</text>
+<text x="171" y="102" text-anchor="middle" font-family="SFMono-Regular, Menlo, Consolas, monospace" font-size="6.5" fill="#547596">search profile</text>
+<rect x="236" y="128" width="106" height="64" fill="#caecff" fill-opacity="1" stroke="#1d252d" stroke-opacity="0.35"/>
+<rect x="240" y="132" width="16" height="10" fill="#1d252d" fill-opacity="0.12"/>
+<text x="248" y="140" text-anchor="middle" font-family="SFMono-Regular, Menlo, Consolas, monospace" font-size="6" font-weight="600" fill="#1d252d">LKT</text>
+<text x="289" y="158" text-anchor="middle" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="9" font-weight="600" fill="#1d252d">Write queries</text>
+<text x="289" y="171" text-anchor="middle" font-family="SFMono-Regular, Menlo, Consolas, monospace" font-size="6.5" fill="#354a5f">4 to 6, cheap model</text>
+<text x="289" y="182" text-anchor="middle" font-family="SFMono-Regular, Menlo, Consolas, monospace" font-size="6.5" fill="#547596">on a schedule</text>
+<rect x="354" y="208" width="106" height="64" fill="#caecff" fill-opacity="1" stroke="#1d252d" stroke-opacity="0.35"/>
+<rect x="358" y="212" width="16" height="10" fill="#1d252d" fill-opacity="0.12"/>
+<text x="366" y="220" text-anchor="middle" font-family="SFMono-Regular, Menlo, Consolas, monospace" font-size="6" font-weight="600" fill="#1d252d">WEB</text>
+<text x="407" y="238" text-anchor="middle" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="9" font-weight="600" fill="#1d252d">Search</text>
+<text x="407" y="251" text-anchor="middle" font-family="SFMono-Regular, Menlo, Consolas, monospace" font-size="6.5" fill="#354a5f">self-hosted searxng</text>
+<text x="407" y="262" text-anchor="middle" font-family="SFMono-Regular, Menlo, Consolas, monospace" font-size="6.5" fill="#547596">dedupe vs board</text>
+<rect x="472" y="208" width="106" height="64" fill="#caecff" fill-opacity="1" stroke="#1d252d" stroke-opacity="0.35"/>
+<rect x="476" y="212" width="16" height="10" fill="#1d252d" fill-opacity="0.12"/>
+<text x="484" y="220" text-anchor="middle" font-family="SFMono-Regular, Menlo, Consolas, monospace" font-size="6" font-weight="600" fill="#1d252d">WEB</text>
+<text x="525" y="238" text-anchor="middle" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="9" font-weight="600" fill="#1d252d">Read postings</text>
+<text x="525" y="251" text-anchor="middle" font-family="SFMono-Regular, Menlo, Consolas, monospace" font-size="6.5" fill="#354a5f">safe fetch, 2 MB cap</text>
+<text x="525" y="262" text-anchor="middle" font-family="SFMono-Regular, Menlo, Consolas, monospace" font-size="6.5" fill="#547596">JobPosting data</text>
+<rect x="590" y="128" width="106" height="64" fill="#006ac0" fill-opacity="0.08" stroke="#006ac0" stroke-opacity="1"/>
+<rect x="594" y="132" width="16" height="10" fill="#006ac0" fill-opacity="0.2"/>
+<text x="602" y="140" text-anchor="middle" font-family="SFMono-Regular, Menlo, Consolas, monospace" font-size="6" font-weight="600" fill="#006ac0">LKT</text>
+<text x="643" y="158" text-anchor="middle" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="9" font-weight="600" fill="#1d252d">Score + rules</text>
+<text x="643" y="171" text-anchor="middle" font-family="SFMono-Regular, Menlo, Consolas, monospace" font-size="6.5" fill="#354a5f">4 pages at a time</text>
+<text x="643" y="182" text-anchor="middle" font-family="SFMono-Regular, Menlo, Consolas, monospace" font-size="6.5" fill="#547596">dealbreakers, pay</text>
+<rect x="708" y="48" width="106" height="64" fill="#caecff" fill-opacity="1" stroke="#1d252d" stroke-opacity="0.35"/>
+<rect x="712" y="52" width="16" height="10" fill="#1d252d" fill-opacity="0.12"/>
+<text x="720" y="60" text-anchor="middle" font-family="SFMono-Regular, Menlo, Consolas, monospace" font-size="6" font-weight="600" fill="#1d252d">YOU</text>
+<text x="761" y="78" text-anchor="middle" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="9" font-weight="600" fill="#1d252d">Finds board</text>
+<text x="761" y="91" text-anchor="middle" font-family="SFMono-Regular, Menlo, Consolas, monospace" font-size="6.5" fill="#354a5f">pin, stage, notes</text>
+<text x="761" y="102" text-anchor="middle" font-family="SFMono-Regular, Menlo, Consolas, monospace" font-size="6.5" fill="#547596">not a fit: learns</text>
+<line x1="110" y1="302" x2="134" y2="302" stroke="#006ac0" stroke-width="1.2" marker-end="url(#ara)"/>
+<text x="142" y="305" font-family="SFMono-Regular, Menlo, Consolas, monospace" font-size="7" fill="#354a5f">the critical path</text>
+<text x="240" y="305" font-family="SFMono-Regular, Menlo, Consolas, monospace" font-size="7" fill="#354a5f">the last 12 &#x27;not a fit&#x27; reasons feed the next score</text>
+</svg>
