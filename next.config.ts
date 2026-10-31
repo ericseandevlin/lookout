@@ -32,6 +32,8 @@ const nextConfig: NextConfig = {
           ...(isProd ? [{ key: "Strict-Transport-Security", value: "max-age=31536000; includeSubDomains" }] : []),
         ],
       },
+      // Firefox only offers to install an add-on served with this type; otherwise it downloads a file (#172).
+      { source: "/ext/:file*.xpi", headers: [{ key: "Content-Type", value: "application/x-xpinstall" }] },
     ];
   },
 };
