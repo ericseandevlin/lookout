@@ -2,7 +2,7 @@ import "server-only";
 import { and, asc, desc, eq, inArray, max } from "drizzle-orm";
 import { z } from "zod";
 import { db, schema } from "@/lib/db";
-import type { ApplicationStatus } from "@/lib/db/schema";
+import type { ApplicationReport, ApplicationStatus } from "@/lib/db/schema";
 import { completeJSON, emptyUsage } from "@/lib/ai/llm";
 import { assertBudget } from "@/lib/ai/runs";
 import { HttpError } from "@/lib/api";
@@ -18,6 +18,7 @@ import { loadEeo, saveEeo } from "./eeoStore";
 import { masterForDrafts } from "./masterCheck";
 import { answerKey } from "./saved";
 import { canAutoSubmit } from "./submit";
+import { approvedFor, keywordRows } from "./evidence";
 
 /**
  * Auto-apply step 4 (#41): review, edit, revise with AI, approve; then the manual submit record (#42 part 1).
@@ -40,6 +41,23 @@ async function ownItem(appId: string, itemId: string) {
 
 const LOCKED: ApplicationStatus[] = ["submitting", "submitted", "canceled"];
 const REVIEWABLE: ApplicationStatus[] = ["needs_review", "manual", "approved", "failed"];
+
+/**
+ * The keyword list with evidence (#121), worked out from the person's current master resume and
+ * experience notes, so edits to either count the next time keywords are chosen.
+ */
+export async function keywordState(userId: string, a: { report: ApplicationReport }, posting: string) {
+  const [p] = await db.select({ m: schema.profiles.masterResume, notes: schema.profiles.skillNotes }).from(schema.profiles).where(eq(schema.profiles.userId, userId));
+  const [mat] = await db.select({ x: schema.materials.extracted }).from(schema.materials).where(and(eq(schema.materials.userId, userId), eq(schema.materials.kind, "resume")));
+  const resume = masterForDrafts(p?.m) ?? mat?.x?.text ?? "";
+  return { resume, rows: keywordRows(a.report, posting, resume, p?.notes ?? []) };
+}
+
+async function keywordDetail(userId: string, report: ApplicationReport, posting: string) {
+  if (!report.keywordPlan && !report.keywords) return { keywordRows: null, keywordsApproved: false };
+  const { rows } = await keywordState(userId, { report }, posting);
+  return { keywordRows: rows, keywordsApproved: approvedFor(report, rows) };
+}
 
 export async function getApplicationDetail(userId: string, id: string) {
   const a = await ownApplication(userId, id);
@@ -73,6 +91,7 @@ export async function getApplicationDetail(userId: string, id: string) {
     ats: a.ats,
     route: a.route,
     report: { ...a.report, postingText: undefined },
+    ...(await keywordDetail(userId, a.report, postingText)),
     autoSubmit: a.route === "browser" && canAutoSubmit(),
     submittedAt: a.submittedAt?.toISOString() ?? null,
     confirmation: a.confirmation,
