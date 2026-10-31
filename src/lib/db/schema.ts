@@ -191,7 +191,7 @@ export const opportunities = pgTable(
   (t) => [uniqueIndex("opportunities_fingerprint_idx").on(t.fingerprint), index("opportunities_url_idx").on(t.sourceUrl)],
 );
 
-export const STAGES = ["Not applied", "Applied", "Interview", "Offer", "Closed", "Ghosted", "Not selected", "Nope"] as const;
+export const STAGES = ["Not applied", "Auto-applying", "Applied", "Interview", "Offer", "Closed", "Ghosted", "Not selected", "Nope"] as const;
 export type Stage = (typeof STAGES)[number];
 
 export const userOpportunities = pgTable(
