@@ -6,6 +6,28 @@ Every production release of Lookout, newest first. The format follows [Keep a Ch
 
 Work merged to `main` (staging) and waiting for the weekly release.
 
+## [0.3.0] - 2026-10-31
+
+Auto-apply reaches production, switched on for admins only (Eric). Server-side submit stays off: applications end in the Firefox extension, where you press Submit.
+
+### Added
+- Auto-apply, end to end: read each application's form (Greenhouse, Ashby, any page via the model), draft every item with versions, notes and sources, then review, revise and approve (#39, #40, #41).
+- Lookout Autofill, a signed Firefox extension: fills an approved application on the job's own page, you press Submit, and it marks the application Submitted when the thank-you page shows (#169, #172). Handles "select any that apply" questions and Greenhouse's phone Country picker (#165, #167).
+- Manual submit: checklist, and resume and cover letter as ATS-safe Word files (#42).
+- Resume templates (Classic, Modern, Cool) with a 10-second layout, and a master resume rebuilt once from your upload, checked against the LinkedIn PDF, fixable on Materials (#129, #131, #137).
+- Keyword choices: include or leave out each keyword, with the posting line and your own line as evidence (#121).
+- Salary questions show a suggested ask inside the posted range, with the math in a tooltip (#139).
+- Saved application answers, reused on later forms and editable on the profile (#108).
+- Voluntary EEO answers, set once with consent, encrypted, never sent to an AI (#122).
+
+### Changed
+- Drafts keep your level of ownership, keep each accomplishment with its role, ignore posting boilerplate, and never claim the posting's title as yours (#114, #129).
+- Rate limits live in Postgres, so they survive restarts (#15).
+- CI on every PR: typecheck, lint, tests, npm audit, Semgrep and gitleaks (#17).
+
+### Security
+- Trap instructions in postings: hidden text removed, "include the word X" cut and shown to you, trap words in drafts flagged (#116).
+
 ## [0.2.0] - 2026-10-17
 
 ### Added
