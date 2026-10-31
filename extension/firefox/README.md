@@ -14,11 +14,10 @@ Fills an approved Lookout application on the job's own page in your Firefox. You
 - Plain JavaScript, no build. `fill.js` mirrors `fillOne` in `src/lib/application/submit.ts`; keep them in step.
 - Try it unsigned: `about:debugging`, This Firefox, Load Temporary Add-on, pick `manifest.json` (gone after a restart).
 - Lint: `npx web-ext@8 lint -s extension/firefox`
-- Sign (unlisted on AMO, so it survives restarts), with the key in `~/.config/lookout-ext/amo.env`:
+- Sign (unlisted on AMO, so it survives restarts). The AMO key lives in 1Password ("Mozilla - API Credential"); `~/.config/lookout-ext/amo.env` holds only `op://` references to it:
 
 ```bash
-set -a; . ~/.config/lookout-ext/amo.env; set +a
-npx web-ext@8 sign -s extension/firefox --channel unlisted -a /tmp/lookout-ext
+op run --env-file ~/.config/lookout-ext/amo.env -- npx web-ext@8 sign -s extension/firefox --channel unlisted -a /tmp/lookout-ext
 cp /tmp/lookout-ext/*.xpi public/ext/lookout-autofill.xpi
 ```
 
