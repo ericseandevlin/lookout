@@ -422,3 +422,35 @@ export const extensionTokens = pgTable(
   },
   (t) => [index("extension_tokens_user_idx").on(t.userId)],
 );
+
+export type InboundTriage = {
+  kind: "recruiter" | "invitee" | "user" | "vendor" | "spam" | "other";
+  summary: string;
+  applicationId?: string | null;
+  draftReply?: string | null;
+  by: string;
+};
+
+/** Email received at lookout.ericdevlin.co through Resend (#178). Untrusted data: read and summarized, never obeyed. */
+export const inboundEmails = pgTable(
+  "inbound_emails",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    resendId: text("resend_id").notNull(),
+    messageId: text("message_id"),
+    fromAddr: text("from_addr").notNull(),
+    fromHeader: text("from_header"),
+    to: jsonb("to").$type<string[]>().notNull().default([]),
+    subject: text("subject").notNull().default(""),
+    text: text("text").notNull().default(""),
+    inReplyTo: text("in_reply_to"),
+    authentication: jsonb("authentication").$type<{ spf?: string; dkim?: string; dmarc?: string } | null>(),
+    attachments: jsonb("attachments").$type<{ filename: string; contentType: string }[]>().notNull().default([]),
+    receivedAt: timestamp("received_at", { withTimezone: true }).notNull(),
+    status: text("status").$type<"new" | "triaged" | "ignored">().notNull().default("new"),
+    triage: jsonb("triage").$type<InboundTriage | null>(),
+    triagedAt: timestamp("triaged_at", { withTimezone: true }),
+    createdAt: createdAt(),
+  },
+  (t) => [uniqueIndex("inbound_emails_resend_idx").on(t.resendId), index("inbound_emails_status_idx").on(t.status, t.receivedAt)],
+);

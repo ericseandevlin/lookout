@@ -67,7 +67,14 @@ export const GET = adminRoute(async () => {
     .where(eq(schema.accessRequests.status, "pending"))
     .orderBy(desc(schema.accessRequests.createdAt));
 
+  const inbox = await db
+    .select({ id: schema.inboundEmails.id, from: schema.inboundEmails.fromAddr, subject: schema.inboundEmails.subject, receivedAt: schema.inboundEmails.receivedAt, status: schema.inboundEmails.status, triage: schema.inboundEmails.triage })
+    .from(schema.inboundEmails)
+    .orderBy(desc(schema.inboundEmails.receivedAt))
+    .limit(20);
+
   return json({
+    inbox,
     requests: requests.map((r) => ({ email: r.email, nextMove: NEXT_MOVES.find((m) => m.key === r.nextMove)?.label ?? null, createdAt: r.createdAt })),
     totals: { users: users.length, usdDay: Number(d.usd), usdWeek: Number(w.usd), usdMonth: Number(m.usd) },
     emailEnabled: !!env.smtpUrl,

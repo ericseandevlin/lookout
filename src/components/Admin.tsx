@@ -9,6 +9,7 @@ import { api } from "./store";
 import { useConfirm } from "./Confirm";
 
 type Overview = {
+  inbox: { id: string; from: string; subject: string; receivedAt: string; status: string; triage: { kind: string; summary: string; draftReply?: string | null } | null }[];
   requests: { email: string; nextMove: string | null; createdAt: string }[];
   totals: { users: number; usdDay: number; usdWeek: number; usdMonth: number };
   emailEnabled: boolean;
@@ -159,6 +160,23 @@ export function AdminPeople() {
                         <button onClick={() => copyResent(i.email)} style={{ ...btn("text"), height: 26, fontSize: 14 }}>{resent[i.email].copied ? "Copied" : "Copy link to send yourself"}</button>
                       </div>
                     )}
+                  </div>
+                ))}
+              </div>
+            </Row>
+          )}
+
+          {data.inbox.length > 0 && (
+            <Row title="Inbox" help="Email sent to any address at lookout.ericdevlin.co. The inbox agent reads each one and drafts a reply; nothing is sent without you.">
+              <div style={{ display: "flex", flexDirection: "column", gap: 6, maxWidth: 640 }}>
+                {data.inbox.map((m) => (
+                  <div key={m.id} style={{ display: "flex", flexDirection: "column", gap: 4, background: "#fff", border: "1.5px solid #E6E0D8", borderRadius: 10, padding: "8px 12px", fontSize: 14 }}>
+                    <div style={{ display: "flex", gap: 10 }}>
+                      <span style={{ flex: 1, minWidth: 0, fontWeight: 600, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{m.subject || "(no subject)"}</span>
+                      <span style={{ color: "#6B6358" }}>{when(m.receivedAt)}</span>
+                    </div>
+                    <span style={{ color: "#6B6358", overflow: "hidden", textOverflow: "ellipsis" }}>{m.from}{m.triage ? ` · ${m.triage.kind}` : " · not read yet"}</span>
+                    {m.triage && <span>{m.triage.summary}</span>}
                   </div>
                 ))}
               </div>
