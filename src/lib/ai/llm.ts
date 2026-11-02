@@ -79,6 +79,8 @@ async function openaiJSON<T extends z.ZodType>(req: JsonReq<T>, cfg: AiConfig) {
     { role: "user", content: req.user },
   ];
   let mode = cfg.jsonMode;
+  let maxTokens = req.maxTokens ?? 8000;
+  let cutOff = false;
   for (let attempt = 0; attempt < 3; attempt++) {
     const res = await fetch(`${cfg.baseUrl.replace(/\/$/, "")}/chat/completions`, {
       method: "POST",
@@ -91,8 +93,11 @@ async function openaiJSON<T extends z.ZodType>(req: JsonReq<T>, cfg: AiConfig) {
       body: JSON.stringify({
         model: cfg.model,
         messages,
-        max_tokens: req.maxTokens ?? 8000,
+        max_tokens: maxTokens,
         temperature: 0.2,
+        // These calls fill a fixed format, so the model's thinking only spends the reply budget: a reasoning model on
+        // OpenRouter counts its thinking against max_tokens and cut long replies off mid-JSON (#188).
+        ...(/openrouter\.ai/.test(cfg.baseUrl) && { reasoning: { enabled: false } }),
         response_format:
           mode === "schema"
             ? { type: "json_schema", json_schema: { name: req.name, schema: jsonSchema, strict: false } }
@@ -114,11 +119,17 @@ async function openaiJSON<T extends z.ZodType>(req: JsonReq<T>, cfg: AiConfig) {
       throw new Error(`${req.name}: model API ${res.status}: ${body}`);
     }
     const data = (await res.json()) as {
-      choices?: { message?: { content?: string | null } }[];
+      choices?: { finish_reason?: string; message?: { content?: string | null } }[];
       usage?: { prompt_tokens?: number; completion_tokens?: number };
     };
     charge(req.usage, cfg, data.usage?.prompt_tokens ?? 0, data.usage?.completion_tokens ?? 0);
     const text = data.choices?.[0]?.message?.content ?? "";
+    // A reply cut off at the token limit can't be fixed by asking again; ask again with more room.
+    if (data.choices?.[0]?.finish_reason === "length") {
+      cutOff = true;
+      maxTokens = Math.min(maxTokens * 2, 32000);
+      continue;
+    }
     let problem: string;
     try {
       const parsed = req.schema.safeParse(extractJson(text));
@@ -129,7 +140,7 @@ async function openaiJSON<T extends z.ZodType>(req: JsonReq<T>, cfg: AiConfig) {
     }
     messages.push({ role: "assistant", content: text.slice(0, 20_000) }, { role: "user", content: `That didn't match the schema (${problem}). Reply again with corrected JSON only.` });
   }
-  throw new Error(`${req.name}: model did not return valid JSON`);
+  throw new Error(cutOff ? `${req.name}: the model's reply was cut off at ${maxTokens} tokens` : `${req.name}: model did not return valid JSON`);
 }
 
 /** Small round trip used by the admin "Test" button. */
