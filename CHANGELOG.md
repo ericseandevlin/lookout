@@ -6,6 +6,19 @@ Every production release of Lookout, newest first. The format follows [Keep a Ch
 
 Work merged to `main` (staging) and waiting for the weekly release.
 
+## [0.4.0] - 2026-11-02
+
+### Added
+- Auto-applying stage: a find queued for auto-apply shows it on the board and in the spreadsheet export; canceling the application moves it back to Not applied. Finds with an open application were moved to it (#182).
+- Email to any address at lookout.ericdevlin.co can be received and stored for an agent to read; nothing is sent from it. Off on production until it is configured (#178).
+
+### Changed
+- Closed, Ghosted, Not selected and Nope archive the find automatically, from the board or anywhere else that sets the stage (#180).
+- Auto-apply page names the Firefox extension as the way to send (#188).
+
+### Fixed
+- Auto-apply failed at "master-resume: model did not return valid JSON": the model's thinking used up the reply budget and cut long answers off. JSON calls now turn thinking off, and a cut-off reply is retried with more room (#188).
+
 ## [0.3.0] - 2026-10-31
 
 Auto-apply reaches production, switched on for admins only (Eric). Server-side submit stays off: applications end in the Firefox extension, where you press Submit.
