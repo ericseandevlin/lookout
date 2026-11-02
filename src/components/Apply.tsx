@@ -34,7 +34,7 @@ const STEPS = [
   ["Drafts everything", "A resume tuned to the posting's keywords, a cover letter, every answer, your portfolio picks, and one or two people worth messaging."],
   ["Shows its work", "Each draft next to the posting, with its sources and what it changed. Anything it doesn't know becomes a question for you."],
   ["You edit and approve", "Edit directly or chat to revise. Every change is saved as a version with a note. You approve the exact versions that go out."],
-  ["It applies", "By the company's system, a browser worker, or a two-minute checklist when automation isn't allowed. It records exactly what was sent."],
+  ["It applies", "The Lookout extension fills the form in your Firefox and you press Submit, or you follow a two-minute checklist. It records exactly what was sent."],
 ] as const;
 
 const GROUPS: { title: string; help: string; statuses: ApplicationStatus[] }[] = [
@@ -207,7 +207,7 @@ export function ApplyPage() {
 
       {apps && apps.length > 0 && (
         <p style={{ margin: "4px 0 0", fontSize: 14, color: "#6B6358" }}>
-          Sending is a two-minute checklist for now. A browser worker that fills Greenhouse, Lever and Ashby forms for you comes next.{" "}
+          To send, open the job in Firefox with the Lookout extension: it fills the form and you press Submit. No extension? Each application has a two-minute checklist.{" "}
           <button onClick={() => setPanel(true)} style={{ ...btn("text"), height: "auto", padding: 0, fontSize: 14 }}>How it works</button>
         </p>
       )}

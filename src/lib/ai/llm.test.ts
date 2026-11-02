@@ -67,6 +67,25 @@ describe("completeJSON (OpenAI-compatible)", () => {
     expect(msgs.at(-1).content).toMatch(/didn't match the schema/);
   });
 
+  it("turns the model's thinking off on OpenRouter only (#188)", async () => {
+    const f = vi.fn().mockImplementation(async () => reply('{"ok":true}'));
+    vi.stubGlobal("fetch", f);
+    await completeJSON({ name: "t", schema, system: "s", user: "u", usage: emptyUsage(), cfg: { ...cfg, baseUrl: "https://openrouter.ai/api/v1" } });
+    await completeJSON({ name: "t", schema, system: "s", user: "u", usage: emptyUsage(), cfg });
+    expect(JSON.parse(f.mock.calls[0][1].body).reasoning).toEqual({ enabled: false });
+    expect(JSON.parse(f.mock.calls[1][1].body).reasoning).toBeUndefined();
+  });
+
+  it("retries a cut-off reply with more room, and says so if it stays cut off (#188)", async () => {
+    const cut = () => new Response(JSON.stringify({ choices: [{ finish_reason: "length", message: { content: '{"ok":tr' } }], usage: { prompt_tokens: 1, completion_tokens: 1 } }));
+    const f = vi.fn().mockResolvedValueOnce(cut()).mockResolvedValueOnce(reply('{"ok":true}'));
+    vi.stubGlobal("fetch", f);
+    expect(await completeJSON({ name: "t", schema, system: "s", user: "u", usage: emptyUsage(), cfg, maxTokens: 1000 })).toEqual({ ok: true });
+    expect(JSON.parse(f.mock.calls[1][1].body).max_tokens).toBe(2000);
+    vi.stubGlobal("fetch", vi.fn().mockImplementation(async () => cut()));
+    await expect(completeJSON({ name: "t", schema, system: "s", user: "u", usage: emptyUsage(), cfg, maxTokens: 1000 })).rejects.toThrow(/cut off at 8000 tokens/);
+  });
+
   it("refuses to run without a model", async () => {
     await expect(completeJSON({ name: "t", schema, system: "s", user: "u", usage: emptyUsage(), cfg: { ...cfg, model: "" } })).rejects.toThrow(/No AI model/);
   });
