@@ -41,7 +41,7 @@ const td: React.CSSProperties = { fontSize: 14, padding: "12px 14px", borderBott
 
 export function Tabs() {
   const path = usePathname();
-  const tabs = [["/admin", "People"], ["/admin/ai", "AI settings"], ["/admin/surveys", "Surveys"]] as const;
+  const tabs = [["/admin", "People"], ["/admin/ai", "AI settings"], ["/admin/surveys", "Surveys"], ["/admin/quality", "Finds quality"]] as const;
   return (
     <div style={{ display: "flex", gap: 8, marginTop: 18 }}>
       {tabs.map(([href, label]) => {
