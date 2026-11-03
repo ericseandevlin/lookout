@@ -30,6 +30,8 @@ Jobs are the first opportunity type. Type-specific pieces live in `src/lib/kinds
 
 `src/lib/agent/discover.ts`, built to work with small, cheap models:
 
+![A person answers five questions. Lookout writes queries, searches the web with SearXNG, reads each posting, scores it against the profile and rules, and puts matches on the Finds board.](docs/search-flow.svg)
+
 1. **Search profile.** `src/lib/agent/searchProfile.ts` builds a compact profile (summary, target titles, level, industries, strengths, results, where, pay, rules-out, keywords) from the answers, resume text, LinkedIn PDF text and link text. It's stored on `profiles.search_profile` with a hash of its inputs and rebuilt only when they change. Without a model it falls back to sending the raw text.
 2. **Queries.** The model writes 4 to 6 search queries.
 3. **Search.** SearXNG runs them; results are deduped against the board and job aggregators.
