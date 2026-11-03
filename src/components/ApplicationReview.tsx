@@ -61,7 +61,8 @@ const POLL: ApplicationStatus[] = [...WORKING, "submitting"];
 const SECTIONS: { title: string; kinds: string[]; help?: string }[] = [
   { title: "Resume", kinds: ["resume"] },
   { title: "Cover letter", kinds: ["cover_letter"] },
-  { title: "Questions", kinds: ["answer", "portfolio", "outreach"] },
+  { title: "People to reach", kinds: ["outreach"], help: "Drafts only. Lookout never sends these. Check the person and public source, then copy the message you want to send yourself." },
+  { title: "Questions", kinds: ["answer", "portfolio"] },
   { title: "Basic fields", kinds: ["field"], help: "Filled from your account, resume and saved answers. No approval needed; edit any of them." },
 ];
 const card: React.CSSProperties = { padding: 18, borderRadius: 14, background: "#fff", border: "1.5px solid #E6E0D8" };
@@ -475,7 +476,15 @@ function VersionNotes({ v }: { v: Version }) {
             <div style={{ fontWeight: 600 }}>Sources</div>
             <ul style={{ margin: "2px 0 0", paddingLeft: 18 }}>
               {sources.map((s, i) => (
-                <li key={i}>{s}</li>
+                <li key={i}>
+                  {/^https?:\/\//i.test(s) ? (
+                    <a href={s} target="_blank" rel="noreferrer" style={{ color: "#1D1A0F", overflowWrap: "anywhere" }}>
+                      {s} ↗
+                    </a>
+                  ) : (
+                    s
+                  )}
+                </li>
               ))}
             </ul>
           </div>
@@ -700,11 +709,18 @@ function ItemCard({ appId, item, locked, act, analysis, template, accent, header
     setText(shown?.content ?? "");
   }
 
-  const isApproved = !!shown && shown.id === item.approvedVersionId;
+  const outreach = item.kind === "outreach";
+  const isApproved = !outreach && !!shown && shown.id === item.approvedVersionId;
   const dirty = text !== (shown?.content ?? "");
   const doc = item.kind === "resume" || item.kind === "cover_letter";
   const [editing, setEditing] = useState(false);
-  const long = doc || (item.fieldType === "textarea" && item.kind !== "field");
+  const [copied, setCopied] = useState(false);
+  const long = doc || outreach || (item.fieldType === "textarea" && item.kind !== "field");
+  const copy = async () => {
+    await navigator.clipboard.writeText(text);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 1500);
+  };
   const run = async (kind: NonNullable<typeof busy>, payload: Record<string, unknown>, done: string) => {
     setBusy(kind);
     const ok = await act(item.id, payload, done);
@@ -718,7 +734,7 @@ function ItemCard({ appId, item, locked, act, analysis, template, accent, header
       <div style={{ display: "flex", alignItems: "baseline", gap: 8, flexWrap: "wrap" }}>
         <label htmlFor={`it-${item.id}`} style={{ flex: 1, minWidth: 0, fontSize: 15, fontWeight: 600 }}>
           {item.prompt}
-          {item.required ? <span style={{ color: "#99220F" }}> *</span> : <span style={{ ...muted, fontWeight: 400 }}> (optional)</span>}
+          {item.required ? <span style={{ color: "#99220F" }}> *</span> : !outreach && <span style={{ ...muted, fontWeight: 400 }}> (optional)</span>}
         </label>
         {isApproved && <span style={{ fontSize: 14, fontWeight: 600, color: "#35662A" }}>{item.kind === "field" ? "✓ Will be filled" : `✓ Approved v${shown.version}`}</span>}
       </div>
@@ -780,6 +796,11 @@ function ItemCard({ appId, item, locked, act, analysis, template, accent, header
       {!locked && (
         <>
           <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
+            {outreach && (
+              <button onClick={copy} disabled={!text.trim()} style={btn("solid")}>
+                {copied ? "Copied" : "Copy draft"}
+              </button>
+            )}
             {doc && (
               <button onClick={() => setEditing((e) => !e)} aria-pressed={editing} style={btn("outline")}>
                 {editing ? "Preview" : "Edit text"}
@@ -809,7 +830,7 @@ function ItemCard({ appId, item, locked, act, analysis, template, accent, header
               <button onClick={() => run("save", { action: "edit", content: text, note: "" }, "Saved as a new version.")} disabled={!!busy} style={btn("outline")}>
                 {busy === "save" ? "Saving…" : "Save as new version"}
               </button>
-            ) : item.kind === "field" ? null : isApproved ? (
+            ) : item.kind === "field" || outreach ? null : isApproved ? (
               <button onClick={() => run("approve", { action: "approve", versionId: null }, "Approval removed.")} disabled={!!busy} style={btn("text")}>
                 Unapprove
               </button>
@@ -834,7 +855,7 @@ function ItemCard({ appId, item, locked, act, analysis, template, accent, header
                 id={`rv-${item.id}`}
                 value={instr}
                 onChange={(e) => setInstr(e.target.value)}
-                placeholder={item.kind === "resume" ? "Ask Lookout: lead with the platform work, cut to one page…" : "Ask Lookout: shorter, more specific, mention…"}
+                placeholder={item.kind === "resume" ? "Ask Lookout: lead with the platform work, cut to one page…" : outreach ? "Ask Lookout: shorter, warmer, change the request…" : "Ask Lookout: shorter, more specific, mention…"}
                 style={{ flex: "1 1 260px", height: 38, borderRadius: 10, border: "1.5px solid #E0D9CF", padding: "0 12px", fontSize: 14 }}
               />
               <button type="submit" disabled={!instr.trim() || !!busy} style={btn("outline")}>
@@ -1001,7 +1022,7 @@ function Checklist({ d, onDone }: { d: Detail; onDone: () => void }) {
   const rows = locked
     ? (d.confirmation?.sent ?? []).map((s, n) => ({ key: String(n), prompt: s.prompt, kind: d.items.find((i) => i.prompt === s.prompt)?.kind ?? "answer", content: s.content }))
     : d.items
-        .filter((i) => i.approvedVersionId)
+        .filter((i) => i.kind !== "outreach" && i.approvedVersionId)
         .map((i) => ({ key: i.id, prompt: i.prompt, kind: i.kind, content: i.versions.find((v) => v.id === i.approvedVersionId)?.content ?? "" }));
   const copy = async (key: string, text: string) => {
     await navigator.clipboard.writeText(text);
