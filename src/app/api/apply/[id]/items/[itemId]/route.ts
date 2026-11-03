@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { authed, body, HttpError, json } from "@/lib/api";
 import { canUseAutoApply } from "@/lib/apply";
-import { approveItem, editItem, ownApplication, reviseItem } from "@/lib/application/review";
+import { analyzeItem, approveItem, editItem, ownApplication, reviseItem } from "@/lib/application/review";
 import { redraftLetter, redraftResume } from "@/lib/application/run";
 import { db, schema } from "@/lib/db";
 import { and, eq } from "drizzle-orm";
@@ -13,15 +13,17 @@ const Action = z.discriminatedUnion("action", [
   z.object({ action: z.literal("revise"), instruction: z.string().trim().min(2).max(2000) }),
   z.object({ action: z.literal("approve"), versionId: z.string().uuid().nullable() }),
   z.object({ action: z.literal("redraft") }),
+  z.object({ action: z.literal("analyze"), versionId: z.string().uuid() }),
 ]);
 
-/** Review actions on one item: save your own version, ask the AI for one, or approve an exact version. */
+/** Review actions on one item: save your own version, ask the AI for one, approve an exact version, or get a Recruiter Analysis. */
 export const POST = authed<Ctx>(async (req, { user, params }) => {
   if (!canUseAutoApply(user)) throw new HttpError(404, "Not found");
   const { id, itemId } = await params;
   const a = await body(req, Action);
   if (a.action === "edit") return json({ status: await editItem(user.id, id, itemId, a.content, a.note) });
   if (a.action === "revise") return json(await reviseItem(user.id, id, itemId, a.instruction));
+  if (a.action === "analyze") return json(await analyzeItem(user.id, id, itemId, a.versionId));
   if (a.action === "redraft") {
     const app = await ownApplication(user.id, id);
     if (app.status === "submitted" || app.status === "submitting") throw new HttpError(409, "This application was already sent.");
