@@ -15,6 +15,7 @@ import { KEYWORD_PLAN_SYSTEM, KeywordPlanDraft, approvedBlock, approvedFor, fina
 import { keywordState } from "./review";
 import { findTraps, removeTraps, stripBoilerplate, stripHidden, trapWordsIn } from "./posting";
 import { ensureMaster } from "./master";
+import { findOutreach, type OutreachItem } from "./outreach";
 import { roleSwaps } from "./masterCheck";
 import { asksBase, asksMinimum, isSalaryQuestion, rangeBasis, suggestSalary } from "./salary";
 import {
@@ -351,6 +352,14 @@ async function draftAll(id: string, userId: string, opp: typeof schema.opportuni
     }
   }
 
+  // Public people research is useful but optional: an outage must not cost the whole application.
+  let outreach: OutreachItem[] = [];
+  try {
+    outreach = await findOutreach(inp, usage);
+  } catch (e) {
+    console.error("[apply] people to reach unavailable", e);
+  }
+
   // Last check: a trap word in any draft (and not in the person's own materials) sends it back to them.
   for (const [itemId, d] of out) {
     const hits = trapWordsIn(d.content, inp.traps ?? [], `${inp.resume}\n${inp.brief}`);
@@ -370,6 +379,13 @@ async function draftAll(id: string, userId: string, opp: typeof schema.opportuni
       // Basic fields filled from the account, resume or saved answers need no approval (#108).
       const auto = it.kind === "field" && !!d.content.trim();
       await tx.update(schema.applicationItems).set({ question: d.question, approvedVersionId: auto ? v.id : null }).where(eq(schema.applicationItems.id, it.id));
+    }
+    for (const [index, person] of outreach.entries()) {
+      const [item] = await tx
+        .insert(schema.applicationItems)
+        .values({ applicationId: id, kind: "outreach", prompt: person.prompt, required: false, position: items.length + index })
+        .returning();
+      await tx.insert(schema.itemVersions).values({ itemId: item.id, version: 1, content: person.draft.content, note: person.draft.note, author: "ai", sources: person.draft.sources });
     }
   });
   return { keywordPlan, keywords: undefined, keywordsApproved: undefined, postingText: inp.posting.text, traps: inp.traps ?? [] };
