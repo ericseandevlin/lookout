@@ -44,7 +44,11 @@ export const AccessConfigSchema = z.object({
 });
 export type AccessConfig = z.infer<typeof AccessConfigSchema>;
 
-const SECRET_FIELDS: Record<string, string[]> = { ai: ["apiKey"], search: ["braveKey"], access: [] };
+/** One-question beta surveys (#5): how many days between questions for one person. */
+export const SurveyConfigSchema = z.object({ everyDays: z.number().int().min(1).max(90) });
+export type SurveyConfig = z.infer<typeof SurveyConfigSchema>;
+
+const SECRET_FIELDS: Record<string, string[]> = { ai: ["apiKey"], search: ["braveKey"], access: [], survey: [] };
 
 function defaults() {
   return {
@@ -69,6 +73,7 @@ function defaults() {
       dailyBudgetUsd: env.dailyBudgetUsd,
       userDailyBudgetUsd: env.userDailyBudgetUsd,
     } satisfies AccessConfig,
+    survey: { everyDays: 5 } satisfies SurveyConfig,
   };
 }
 
@@ -95,6 +100,7 @@ async function load<N extends Name>(name: N): Promise<Sections[N]> {
 export const getAiConfig = () => load("ai");
 export const getSearchConfig = () => load("search");
 export const getAccessConfig = () => load("access");
+export const getSurveyConfig = () => load("survey");
 
 /** Save a section. Empty secret fields keep the stored value, so the admin page never needs to see the key. */
 export async function saveConfig<N extends Name>(name: N, value: Sections[N]) {
