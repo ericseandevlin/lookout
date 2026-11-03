@@ -1,4 +1,5 @@
 // Shapes shared by the API and the client.
+import type { SubmitMode } from "@/lib/application/submitMode";
 import type { ApplicationStatus, Density, Freq, RunReport, SetupMode, Stage } from "@/lib/db/schema";
 
 export type { Density, Freq, SetupMode, Stage };
@@ -22,6 +23,8 @@ export type Find = {
   feedback: string | null;
   /** Auto-apply status for this role, when it's been queued. */
   application: { id: string; status: ApplicationStatus; queuedBy: "user" | "auto" } | null;
+  /** Whether Lookout would press Submit or the person does (#187), from the read form or the posting URL. */
+  submit: SubmitMode;
   seen: boolean;
   addedAt: string;
 };
