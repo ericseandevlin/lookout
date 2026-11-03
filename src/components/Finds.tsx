@@ -11,6 +11,7 @@ import { ArchiveIcon, ArrowUpRight, CheckIcon, ChevronDown, LinkIcon, PinIcon, P
 import { useCounts } from "./Shell";
 import { LastReport, SearchPanel } from "./SearchPanel";
 import { api, useStore } from "./store";
+import { NextStep } from "./Profile";
 import { applicationLabel } from "@/lib/applyLabels";
 
 type SortKey = "score" | "company" | "role" | "comp" | "listed" | "stage" | "location";
@@ -421,7 +422,9 @@ export function Finds() {
 function Empty({ hasAny, running }: { hasAny: boolean; running: boolean }) {
   return (
     <div style={{ padding: "48px 22px", textAlign: "center", color: "#6B6358", fontSize: 14 }}>
-      {hasAny ? "No roles match this view." : running ? "Searching now. New finds will show up here." : "No finds yet. Lookout starts searching once your profile and resume are in."}
+      {hasAny ? "No roles match this view." : running ? "Searching now. New finds will show up here." : (
+        <div style={{ maxWidth: 560, margin: "0 auto", textAlign: "left" }}><NextStep here="finds" /></div>
+      )}
     </div>
   );
 }
