@@ -8,7 +8,14 @@ import { btn, Row, Section, Seg } from "./Settings";
 import { api } from "./store";
 import { useConfirm } from "./Confirm";
 
+type FunnelStep = { key: string; label: string; reached: number };
+type Funnel = {
+  steps: FunnelStep[];
+  people: { id: string; email: string; name: string; isAdmin: boolean; steps: Record<string, string | null>; stuckAt: string | null; lastSeenAt: string | null }[];
+};
+
 type Overview = {
+  funnel: Funnel;
   inbox: { id: string; from: string; subject: string; receivedAt: string; status: string; triage: { kind: string; summary: string; draftReply?: string | null } | null }[];
   requests: { email: string; nextMove: string | null; createdAt: string }[];
   totals: { users: number; usdDay: number; usdWeek: number; usdMonth: number };
@@ -53,6 +60,53 @@ function Tabs() {
         );
       })}
     </div>
+  );
+}
+
+/** Where people stop during setup (#35). Counts leave out admins, so Eric's own testing doesn't move them. */
+function FunnelView({ funnel }: { funnel: Funnel }) {
+  const top = Math.max(1, funnel.steps[0]?.reached ?? 0);
+  const label = (key: string | null) => (key ? funnel.steps.find((s) => s.key === key)?.label ?? key : "Done");
+  // The last step a person reached, to show how long they've been sitting at the next one.
+  const since = (p: Funnel["people"][number]) =>
+    [...funnel.steps].reverse().map((s) => p.steps[s.key]).find(Boolean) ?? null;
+  const members = funnel.people.filter((p) => !p.isAdmin);
+  return (
+    <>
+      <div style={{ ...card, display: "flex", flexDirection: "column", gap: 8, marginTop: 8 }}>
+        {funnel.steps.map((s) => (
+          <div key={s.key} style={{ display: "grid", gridTemplateColumns: "minmax(140px,190px) 1fr 40px", gap: 12, alignItems: "center", fontSize: 14 }}>
+            <span>{s.label}</span>
+            <div style={{ height: 10, borderRadius: 5, background: "#F4F1EC", overflow: "hidden" }}>
+              <div style={{ width: `${(s.reached / top) * 100}%`, height: "100%", background: "#99220F" }} />
+            </div>
+            <span style={{ textAlign: "right", fontVariantNumeric: "tabular-nums" }}>{s.reached}</span>
+          </div>
+        ))}
+      </div>
+      {members.length > 0 && (
+        <div style={{ ...card, padding: 0, overflowX: "auto", marginTop: 8 }}>
+          <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 620 }}>
+            <thead>
+              <tr>{["Person", "Next step", "Last step done", "Last seen"].map((h) => <th key={h} style={th}>{h}</th>)}</tr>
+            </thead>
+            <tbody>
+              {members.map((p) => (
+                <tr key={p.id}>
+                  <td style={td}>
+                    <div style={{ fontWeight: 600 }}>{p.name || "No name yet"}</div>
+                    <div style={{ color: "#6B6358", fontSize: 14 }}>{p.email}</div>
+                  </td>
+                  <td style={{ ...td, color: p.stuckAt ? "#99220F" : "#35662A", fontWeight: 600 }}>{label(p.stuckAt)}</td>
+                  <td style={td}>{when(since(p))}</td>
+                  <td style={td}>{when(p.lastSeenAt)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </>
   );
 }
 
@@ -182,6 +236,9 @@ export function AdminPeople() {
               </div>
             </Row>
           )}
+
+          <Section>Onboarding funnel</Section>
+          <FunnelView funnel={data.funnel} />
 
           <Section>People</Section>
           <div style={{ ...card, padding: 0, overflowX: "auto", marginTop: 8 }}>

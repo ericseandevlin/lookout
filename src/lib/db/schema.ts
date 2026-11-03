@@ -454,3 +454,19 @@ export const inboundEmails = pgTable(
   },
   (t) => [uniqueIndex("inbound_emails_resend_idx").on(t.resendId), index("inbound_emails_status_idx").on(t.status, t.receivedAt)],
 );
+
+/** First-party product events (#35): the moments the funnel can't read from other tables. Never sent anywhere. */
+export type EventType = "signed_in" | "welcome_done" | "search_requested" | "auto_apply_on" | "auto_apply_off";
+
+export const events = pgTable(
+  "events",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    type: text("type").$type<EventType>().notNull(),
+    at: timestamp("at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index("events_user_at_idx").on(t.userId, t.at), index("events_type_at_idx").on(t.type, t.at)],
+);

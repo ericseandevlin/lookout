@@ -13,10 +13,10 @@ export default function Privacy() {
         <div style={{ padding: "28px 26px 34px", fontSize: 15, lineHeight: 1.6, color: "#3B362C" }}>
           <div style={{ fontSize: 14, fontWeight: 700, letterSpacing: ".14em", textTransform: "uppercase", color: "#99220F" }}>Privacy</div>
           <h1 style={{ margin: "8px 0 4px", fontSize: 30, fontWeight: 700, letterSpacing: "-0.02em", color: "#1D1A0F" }}>What Lookout keeps, and who sees it</h1>
-          <p style={{ color: "#6B6358", fontSize: 14, margin: 0 }}>Last updated October 11, 2026</p>
+          <p style={{ color: "#6B6358", fontSize: 14, margin: 0 }}>Last updated November 2, 2026</p>
 
           <H>The short version</H>
-          <p>Lookout is a small, invite-only tool run by Eric Devlin. It keeps what you give it so it can search for you. It doesn&apos;t sell your data, show ads or use tracking cookies. You can export your board and profile, or delete everything, from Settings.</p>
+          <p>Lookout is a small, invite-only tool run by Eric Devlin. It keeps what you give it so it can search for you. It doesn&apos;t sell your data, show ads, use tracking cookies or send what you do to an analytics company. You can export your board and profile, or delete everything, from Settings.</p>
 
           <H>What it keeps</H>
           <ul>
@@ -27,10 +27,11 @@ export default function Privacy() {
             <li>Your search profile: the summary Lookout builds from all of the above. You can see it under Profile, What Lookout sees.</li>
             <li>Your board: the roles found for you, plus your stages, notes, pins and &ldquo;Not a fit&rdquo; reasons.</li>
             <li>A log of each search: when it ran, what it searched for, and what it cost.</li>
+            <li>A short activity log: when you sign in, finish the welcome step, ask for a search, and turn auto-apply on or off. With the dates above (when you saved your profile, added a resume, got your first find and opened one), it shows Eric where people get stuck while setting up. It stays in Lookout&apos;s own database and is never sent anywhere.</li>
           </ul>
 
           <H>Who sees it</H>
-          <p>You. Eric, as the admin, sees the list of accounts with emails, sign-in dates, counts of finds and search costs. During the beta, he can also open a read-only view of your board to test Lookout and fix problems you run into. He can&apos;t change anything there, and each view is logged. He can also reach the database itself, so treat what you upload as something he could read. No one else gets access.</p>
+          <p>You. Eric, as the admin, sees the list of accounts with emails, sign-in dates, counts of finds, search costs, and how far each person got through setup. During the beta, he can also open a read-only view of your board to test Lookout and fix problems you run into. He can&apos;t change anything there, and each view is logged. He can also reach the database itself, so treat what you upload as something he could read. No one else gets access.</p>
 
           <H>Services it uses</H>
           <ul>
@@ -41,11 +42,11 @@ export default function Privacy() {
           </ul>
 
           <H>Cookies</H>
-          <p>One cookie keeps you signed in. It lasts 90 days and renews while you use Lookout. There are no analytics or advertising cookies.</p>
+          <p>One cookie keeps you signed in. It lasts 90 days and renews while you use Lookout. There are no analytics or advertising cookies, and no third-party scripts that watch what you do.</p>
 
           <H>Your controls</H>
           <ul>
-            <li><b>Export:</b> Settings, Export data downloads your board, stages, notes and profile answers.</li>
+            <li><b>Export:</b> Settings, Export data downloads your board, stages, notes, profile answers and activity log.</li>
             <li><b>Delete:</b> Settings, Delete everything removes your account and all of the above right away. Copies in encrypted backups age out within 60 days.</li>
             <li><b>Remove one thing:</b> delete your resume, LinkedIn PDF or any link on the Materials tab, and it stops being used.</li>
           </ul>

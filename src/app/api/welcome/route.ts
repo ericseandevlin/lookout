@@ -3,6 +3,7 @@ import { z } from "zod";
 import { authed, body, json } from "@/lib/api";
 import { db, schema } from "@/lib/db";
 import { SALARY_RANGES, WORK_MODES } from "@/lib/onboarding";
+import { track } from "@/lib/events";
 
 const Input = z.object({
   name: z.string().trim().min(1).max(120),
@@ -20,5 +21,6 @@ export const POST = authed(async (req, { user }) => {
   if (p.mode) answers.modes = [p.mode];
   await db.update(schema.profiles).set({ answers, updatedAt: new Date() }).where(eq(schema.profiles.userId, user.id));
   await db.update(schema.users).set({ name: p.name, onboardedAt: new Date() }).where(eq(schema.users.id, user.id));
+  await track(user.id, "welcome_done");
   return json({ ok: true });
 });

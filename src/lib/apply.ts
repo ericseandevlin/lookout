@@ -5,6 +5,7 @@ import type { ApplicationStatus, AutoApplySettings } from "@/lib/db/schema";
 import type { SessionUser } from "@/lib/auth/session";
 import { isAdmin } from "@/lib/users";
 import { kick } from "@/lib/application/run";
+import { track } from "@/lib/events";
 
 /** Auto-apply is a beta. For now only admins see it, so Eric can build it on his own account first. */
 // Staging-only until Eric releases it: off unless FEATURE_AUTO_APPLY=on in the server's .env.
@@ -18,11 +19,13 @@ export async function getAutoApplySettings(userId: string): Promise<AutoApplySet
 }
 
 export async function saveAutoApplySettings(userId: string, patch: Partial<AutoApplySettings>) {
-  const next = { ...(await getAutoApplySettings(userId)), ...patch };
+  const prev = await getAutoApplySettings(userId);
+  const next = { ...prev, ...patch };
   await db
     .insert(schema.settings)
     .values({ userId, autoApply: next })
     .onConflictDoUpdate({ target: schema.settings.userId, set: { autoApply: next } });
+  if (next.enabled !== prev.enabled) await track(userId, next.enabled ? "auto_apply_on" : "auto_apply_off");
   return next;
 }
 
