@@ -283,7 +283,7 @@ export async function sentRecord(appId: string) {
   const ids = items.map((i) => i.approvedVersionId).filter((v): v is string => !!v);
   const versions = ids.length ? await db.select().from(schema.itemVersions).where(inArray(schema.itemVersions.id, ids)) : [];
   return items
-    .filter((i) => i.approvedVersionId)
+    .filter((i) => i.kind !== "outreach" && i.approvedVersionId)
     .map((i) => {
       const v = versions.find((x) => x.id === i.approvedVersionId)!;
       return { prompt: i.prompt, kind: i.kind, version: v.version, content: v.content };

@@ -9,6 +9,8 @@ type ItemRow = { id: string; kind: ApplicationItemKind; prompt: string; required
 export function planFill(items: ItemRow[], versions: { id: string; content: string }[]): FillStep[] {
   const out: FillStep[] = [];
   for (const i of items) {
+    // Outreach is for the person to send themselves; it is never an application-form field.
+    if (i.kind === "outreach") continue;
     const v = versions.find((x) => x.id === i.approvedVersionId);
     if (!v) continue;
     const kind: FillStep["kind"] = i.kind === "resume" || i.kind === "cover_letter" || i.fieldType === "file" ? "file" : i.options?.length ? "choice" : "text";
