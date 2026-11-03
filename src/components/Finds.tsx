@@ -13,6 +13,7 @@ import { LastReport, SearchPanel } from "./SearchPanel";
 import { api, useStore } from "./store";
 import { NextStep } from "./Profile";
 import { applicationLabel } from "@/lib/applyLabels";
+import { SubmitModeNote } from "./SubmitModeNote";
 
 type SortKey = "score" | "company" | "role" | "comp" | "listed" | "stage" | "location";
 type Filter = "all" | "new" | "archived";
@@ -910,6 +911,7 @@ function Drawer({ f, close, toggle, setStage, enter, nav }: { f: Find; close: ()
                   <>
                     <span style={{ padding: "5px 11px", borderRadius: 999, fontSize: 14, fontWeight: 600, background: st.bg, color: st.ink }}>{st.label}</span>
                     <Link href={`/apply#app-${f.application.id}`} style={{ fontSize: 14, fontWeight: 600 }}>View application →</Link>
+                    {f.application.status !== "submitted" && f.application.status !== "canceled" && <SubmitModeNote submit={f.submit} compact />}
                   </>
                 );
               })()
@@ -919,6 +921,7 @@ function Drawer({ f, close, toggle, setStage, enter, nav }: { f: Find; close: ()
                   {applyMsg === "Queuing…" ? "Queuing…" : "Apply with Lookout"}
                 </button>
                 <span style={{ fontSize: 14, color: applyMsg ? "#99220F" : "#6B6358" }}>{applyMsg ?? "Beta. Drafts everything for your review first."}</span>
+                {!applyMsg && <SubmitModeNote submit={f.submit} />}
               </>
             )}
           </div>

@@ -18,6 +18,7 @@ import { loadEeo, saveEeo } from "./eeoStore";
 import { masterForDrafts, roleSwaps } from "./masterCheck";
 import { answerKey } from "./saved";
 import { canAutoSubmit } from "./submit";
+import { submitMode } from "./submitMode";
 import { approvedFor, keywordRows } from "./evidence";
 import { finishAnalysis, honestyFindings, RECRUITER_SYSTEM, RecruiterDraft, recruiterChecks, recruiterPrompt } from "./recruiter";
 
@@ -94,6 +95,7 @@ export async function getApplicationDetail(userId: string, id: string) {
     report: { ...a.report, postingText: undefined },
     ...(await keywordDetail(userId, a.report, postingText)),
     autoSubmit: a.route === "browser" && canAutoSubmit(),
+    submit: submitMode({ ats: a.ats, url: o?.sourceUrl, autoSubmit: canAutoSubmit(), captcha: a.report.fill?.captcha }),
     submittedAt: a.submittedAt?.toISOString() ?? null,
     confirmation: a.confirmation,
     company: o?.company ?? "",

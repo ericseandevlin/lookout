@@ -11,6 +11,8 @@ import { ACCENTS, contactParts, letterHeaderFrom, parseDraft, readable, rolePart
 import { parseNote } from "@/lib/application/notes";
 import { postingBlocks } from "@/lib/application/posting";
 import type { KeywordRow } from "@/lib/application/evidence";
+import type { SubmitMode } from "@/lib/application/submitMode";
+import { SubmitModeNote } from "./SubmitModeNote";
 import { DIMENSION_LABEL, DIMENSIONS, recruiterChecks, type Finding, type RecruiterAnalysis } from "@/lib/application/recruiter";
 
 type Version = { id: string; version: number; content: string; note: string; author: "user" | "ai"; sources: string[]; createdAt: string };
@@ -43,6 +45,8 @@ type Detail = {
   url: string | null;
   posting: string;
   autoSubmit: boolean;
+  /** Who presses Submit (#187), shown before approval. */
+  submit: SubmitMode;
   eeoConsent: boolean;
   template: Template;
   accent: string | null;
@@ -190,6 +194,9 @@ export function ApplicationReview({ id }: { id: string }) {
                     {approved} of {required.length} required items approved
                   </div>
                   <div style={muted}>{d.status === "manual" ? "Ready. Use the checklist at the bottom to send it." : d.status === "approved" ? "Ready. Lookout can send it for you, or use the checklist." : "Approve the exact version of each one you want sent. Editing makes a new version."}</div>
+                </div>
+                <div style={{ flexBasis: "100%" }}>
+                  <SubmitModeNote submit={d.submit} />
                 </div>
               </div>
             )}

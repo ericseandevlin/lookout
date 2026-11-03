@@ -5,6 +5,7 @@ import type { ApplicationStatus, AutoApplySettings } from "@/lib/db/schema";
 import type { SessionUser } from "@/lib/auth/session";
 import { isAdmin } from "@/lib/users";
 import { kick } from "@/lib/application/run";
+import { autoSubmitOn, submitMode, type SubmitMode } from "@/lib/application/submitMode";
 
 /** Auto-apply is a beta. For now only admins see it, so Eric can build it on his own account first. */
 // Staging-only until Eric releases it: off unless FEATURE_AUTO_APPLY=on in the server's .env.
@@ -36,6 +37,7 @@ export type ApplicationRow = {
   status: ApplicationStatus;
   queuedBy: "user" | "auto";
   ats: string | null;
+  submit: SubmitMode;
   createdAt: string;
   submittedAt: string | null;
   items: number;
@@ -70,6 +72,7 @@ export async function listApplications(userId: string): Promise<ApplicationRow[]
     status: a.status,
     queuedBy: a.queuedBy,
     ats: a.ats,
+    submit: submitMode({ ats: a.ats, url: o.sourceUrl, autoSubmit: autoSubmitOn(), captcha: a.report.fill?.captcha }),
     createdAt: a.createdAt.toISOString(),
     submittedAt: a.submittedAt?.toISOString() ?? null,
     items: n.get(a.id) ?? 0,

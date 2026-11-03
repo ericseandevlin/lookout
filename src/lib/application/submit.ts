@@ -10,6 +10,7 @@ import { letterHeaderFrom, type Template } from "./resumeLayout";
 import { getAutoApplySettings } from "@/lib/apply";
 import { resolve } from "./eeo";
 import { loadEeo } from "./eeoStore";
+import { autoSubmitOn, CAPTCHA_STOP } from "./submitMode";
 
 /**
  * Auto-apply step 5, browser half (#42): fill the real form with the approved versions in headless
@@ -19,13 +20,13 @@ import { loadEeo } from "./eeoStore";
  * manual checklist, with the reason.
  */
 
-export const canAutoSubmit = () => process.env.FEATURE_AUTO_SUBMIT === "on";
+export const canAutoSubmit = autoSubmitOn;
 const CHROMIUM = process.env.CHROMIUM_PATH || "/usr/bin/chromium-browser";
 export const shotDir = (appId: string) => path.resolve(env.dataDir, "apply", appId);
 
 type Log = { prompt: string; ok: boolean; how: string }[];
 
-export type FillReport = { mode: "test" | "submit"; at: string; log: Log; missing: string[]; stopped?: string; confirmation?: string; finalUrl?: string };
+export type FillReport = { mode: "test" | "submit"; at: string; log: Log; missing: string[]; stopped?: string; captcha?: boolean; confirmation?: string; finalUrl?: string };
 
 async function loadPacket(appId: string) {
   const [a] = await db.select().from(schema.applications).where(eq(schema.applications.id, appId));
@@ -118,7 +119,10 @@ export async function runFill(appId: string, mode: "test" | "submit"): Promise<F
     ]).catch(() => "unknown" as const);
     await page.screenshot({ path: path.join(dir, "after-submit.png"), fullPage: true });
     report.finalUrl = page.url();
-    if (outcome === "captcha") report.stopped = "The site asked for a captcha, so Lookout stopped. Finish it with the checklist.";
+    if (outcome === "captcha") {
+      report.stopped = CAPTCHA_STOP;
+      report.captcha = true;
+    }
     else if (outcome === "unknown") report.stopped = "Lookout clicked Submit but didn't see a confirmation. Check the screenshot and your email before sending again.";
     else report.confirmation = (await page.getByText(/thank you|application (has been )?(received|submitted)|we('ve| have) received/i).first().innerText().catch(() => "")).slice(0, 300);
     return report;
