@@ -15,10 +15,11 @@ import { bullets } from "./notes";
 import { resolve } from "./eeo";
 import { asksBase, asksMinimum, isSalaryQuestion, rangeBasis, suggestSalary } from "./salary";
 import { loadEeo, saveEeo } from "./eeoStore";
-import { masterForDrafts } from "./masterCheck";
+import { masterForDrafts, roleSwaps } from "./masterCheck";
 import { answerKey } from "./saved";
 import { canAutoSubmit } from "./submit";
 import { approvedFor, keywordRows } from "./evidence";
+import { finishAnalysis, honestyFindings, RECRUITER_SYSTEM, RecruiterDraft, recruiterChecks, recruiterPrompt } from "./recruiter";
 
 /**
  * Auto-apply step 4 (#41): review, edit, revise with AI, approve; then the manual submit record (#42 part 1).
@@ -234,6 +235,44 @@ export async function reviseItem(userId: string, appId: string, itemId: string, 
   const note = bullets([`You asked: "${instruction.slice(0, 160)}"`, r.note.trim(), ...shaped.fixed, invented.length > 0 && `Check these numbers, they aren't in your master resume: ${invented.join(", ")}`]);
   await insertVersion(itemId, { content: shaped.md, note, author: "ai", sources: ["your instruction", ...(cur ? [`version ${cur.version}`] : [])] });
   return { status: await settleStatus(appId), question: r.question.trim() || null };
+}
+
+/**
+ * Recruiter Analysis (#152) of the version on screen: the code-held checks plus one model call for
+ * the scores. Kept on the application by item, so it shows again until the next analysis.
+ */
+export async function analyzeItem(userId: string, appId: string, itemId: string, versionId: string) {
+  const a = await ownApplication(userId, appId);
+  const it = await ownItem(appId, itemId);
+  if (it.kind !== "resume" && it.kind !== "cover_letter") throw new HttpError(400, "Recruiter Analysis reads the resume and cover letter.");
+  const [v] = await db.select().from(schema.itemVersions).where(and(eq(schema.itemVersions.id, versionId), eq(schema.itemVersions.itemId, itemId)));
+  if (!v) throw new HttpError(404, "That version doesn't exist");
+  if (!v.content.trim()) throw new HttpError(400, "This one is empty.");
+  await assertBudget(userId);
+  const [o] = await db.select().from(schema.opportunities).where(eq(schema.opportunities.id, a.opportunityId));
+  const [p] = await db.select({ m: schema.profiles.masterResume, notes: schema.profiles.skillNotes }).from(schema.profiles).where(eq(schema.profiles.userId, userId));
+  const [mat] = await db.select({ x: schema.materials.extracted }).from(schema.materials).where(and(eq(schema.materials.userId, userId), eq(schema.materials.kind, "resume")));
+  const resume = masterForDrafts(p?.m) ?? mat?.x?.text ?? "";
+  const facts = resume + notesBlock(p?.notes ?? []);
+  const found = [...recruiterChecks(it.kind, v.content), ...honestyFindings(resume ? newNumbers(facts, v.content) : [], it.kind === "resume" && resume ? roleSwaps(resume, v.content) : [])];
+  const usage = emptyUsage();
+  const d = await completeJSON({
+    name: "apply-recruiter",
+    schema: RecruiterDraft,
+    system: RECRUITER_SYSTEM,
+    user: `Posting: ${o?.title} at ${o?.company}\n${recruiterPrompt(it.kind, v.content, a.report.postingText || o?.description || "", facts, found)}`,
+    maxTokens: 6000,
+    usage,
+  });
+  const analysis = finishAnalysis(v.id, v.content, d, found);
+  // Re-read the report so a keyword pick made while the model ran isn't lost.
+  const [cur] = await db.select({ report: schema.applications.report }).from(schema.applications).where(eq(schema.applications.id, appId));
+  const report = cur?.report ?? a.report;
+  await db
+    .update(schema.applications)
+    .set({ report: { ...report, usd: (report.usd ?? 0) + usage.usd, recruiter: { ...report.recruiter, [itemId]: analysis } } })
+    .where(eq(schema.applications.id, appId));
+  return { status: a.status, analysis };
 }
 
 /** Exactly what was approved, item by item: the record of what was sent. */
