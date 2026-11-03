@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { cleanUrl, hrefOf, LINK_KINDS, LINK_TILE, linkKind } from "@/lib/links";
 import { ChevronDown, PencilIcon, TrashIcon } from "./icons";
-import { PageHead, ProfileTabs } from "./Profile";
+import { NextStep, PageHead, ProfileTabs } from "./Profile";
 import { useStore } from "./store";
 import { useConfirm } from "./Confirm";
 import { DocPreview } from "./ApplicationReview";
@@ -283,6 +283,7 @@ export function Materials() {
           </div>
         </div>
       </div>
+      <NextStep here="materials" />
       {state.user.autoApply && resume && <MasterResumeSection />}
     </div>
   );
