@@ -1,19 +1,9 @@
 import type { NextConfig } from "next";
+import { API_CSP } from "./src/lib/csp";
 
 const isProd = process.env.NODE_ENV === "production";
 
-const csp = [
-  "default-src 'self'",
-  "script-src 'self' 'unsafe-inline'",
-  "style-src 'self' 'unsafe-inline'",
-  "img-src 'self' data:",
-  "font-src 'self'",
-  "connect-src 'self'",
-  "frame-ancestors 'none'",
-  "base-uri 'self'",
-  "form-action 'self'",
-  "object-src 'none'",
-].join("; ");
+// Pages get a per-request nonce CSP from src/proxy.ts (#14). API responses get one that allows nothing.
 
 const nextConfig: NextConfig = {
   output: "standalone",
@@ -24,7 +14,6 @@ const nextConfig: NextConfig = {
       {
         source: "/:path*",
         headers: [
-          ...(isProd ? [{ key: "Content-Security-Policy", value: csp }] : []),
           { key: "X-Content-Type-Options", value: "nosniff" },
           { key: "X-Frame-Options", value: "DENY" },
           { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
@@ -32,6 +21,7 @@ const nextConfig: NextConfig = {
           ...(isProd ? [{ key: "Strict-Transport-Security", value: "max-age=31536000; includeSubDomains" }] : []),
         ],
       },
+      { source: "/api/:path*", headers: [{ key: "Content-Security-Policy", value: API_CSP }] },
       // Firefox only offers to install an add-on served with this type; otherwise it downloads a file (#172).
       { source: "/ext/:file*.xpi", headers: [{ key: "Content-Type", value: "application/x-xpinstall" }] },
     ];

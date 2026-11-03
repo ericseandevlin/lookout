@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { Instrument_Sans, Syne } from "next/font/google";
+import { connection } from "next/server";
 import "./globals.css";
 
 const instrument = Instrument_Sans({ subsets: ["latin"], weight: ["400", "500", "600", "700"], variable: "--font-instrument" });
@@ -13,7 +14,9 @@ export const metadata: Metadata = {
 
 export const viewport: Viewport = { themeColor: "#1D1A0F", width: "device-width", initialScale: 1 };
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+export default async function RootLayout({ children }: { children: React.ReactNode }) {
+  // Every page renders per request so Next can put this request's CSP nonce on its scripts (#14).
+  await connection();
   return (
     <html lang="en" className={`${instrument.variable} ${syne.variable}`}>
       <body>{children}</body>
