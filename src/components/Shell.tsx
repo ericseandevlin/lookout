@@ -9,6 +9,7 @@ import { BoardIcon, FileIcon, ListIcon, PanelIcon, ShieldIcon } from "./icons";
 import { useStore } from "./store";
 import { TooltipLayer } from "./Tooltip";
 import { ConfirmProvider } from "./Confirm";
+import { SurveyDialog } from "./SurveyDialog";
 
 export function useCounts(s: AppState) {
   const answered = answeredCount(job, s.profile.answers);
@@ -180,6 +181,7 @@ export function Shell({ children }: { children: React.ReactNode }) {
         </div>
       )}
       <TooltipLayer />
+      <SurveyDialog />
     </div>
     </ConfirmProvider>
   );

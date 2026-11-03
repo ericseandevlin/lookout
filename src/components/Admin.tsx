@@ -39,9 +39,9 @@ const card: React.CSSProperties = { background: "#fff", borderRadius: 16, paddin
 const th: React.CSSProperties = { fontSize: 14, fontWeight: 600, letterSpacing: ".08em", textTransform: "uppercase", color: "#6B6358", textAlign: "left", padding: "12px 14px", borderBottom: "1px solid #EEEAE4", whiteSpace: "nowrap" };
 const td: React.CSSProperties = { fontSize: 14, padding: "12px 14px", borderBottom: "1px solid #F2EEE8", verticalAlign: "top" };
 
-function Tabs() {
+export function Tabs() {
   const path = usePathname();
-  const tabs = [["/admin", "People"], ["/admin/ai", "AI settings"]] as const;
+  const tabs = [["/admin", "People"], ["/admin/ai", "AI settings"], ["/admin/surveys", "Surveys"]] as const;
   return (
     <div style={{ display: "flex", gap: 8, marginTop: 18 }}>
       {tabs.map(([href, label]) => {
