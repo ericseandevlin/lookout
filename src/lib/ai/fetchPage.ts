@@ -12,25 +12,54 @@ import { findPay, payLine } from "./pay";
  * rebinding), only ports 80/443 are allowed, and redirects are re-checked.
  */
 
-export function isPublicIp(ip: string): boolean {
-  if (isIP(ip) === 4) {
-    const [a, b] = ip.split(".").map(Number);
-    if (a === 10 || a === 127 || a === 0) return false;
-    if (a === 169 && b === 254) return false;
-    if (a === 172 && b >= 16 && b <= 31) return false;
-    if (a === 192 && b === 168) return false;
-    if (a === 100 && b >= 64 && b <= 127) return false; // CGNAT
-    if (a >= 224) return false; // multicast + reserved
-    if (a === 192 && b === 0) return false;
-    if (a === 198 && (b === 18 || b === 19)) return false;
-    return true;
+function publicV4(ip: string): boolean {
+  const [a, b] = ip.split(".").map(Number);
+  if (a === 10 || a === 127 || a === 0) return false;
+  if (a === 169 && b === 254) return false;
+  if (a === 172 && b >= 16 && b <= 31) return false;
+  if (a === 192 && b === 168) return false;
+  if (a === 100 && b >= 64 && b <= 127) return false; // CGNAT
+  if (a >= 224) return false; // multicast + reserved
+  if (a === 192 && b === 0) return false;
+  if (a === 198 && (b === 18 || b === 19)) return false;
+  return true;
+}
+
+/** An IPv6 address as its eight 16-bit groups, with a trailing dotted IPv4 part folded in. */
+function groups(ip: string): number[] | null {
+  let s = ip.toLowerCase().replace(/%.*$/, "");
+  const v4 = s.match(/(\d+\.\d+\.\d+\.\d+)$/);
+  if (v4) {
+    if (isIP(v4[1]) !== 4) return null;
+    const [a, b, c, d] = v4[1].split(".").map(Number);
+    s = s.slice(0, -v4[1].length) + `${((a << 8) | b).toString(16)}:${((c << 8) | d).toString(16)}`;
   }
-  const v6 = ip.toLowerCase();
-  if (v6 === "::1" || v6 === "::") return false;
-  if (v6.startsWith("::ffff:")) return isPublicIp(v6.slice(7));
-  if (/^f[cd]/.test(v6)) return false; // unique local
-  if (/^fe[89ab]/.test(v6)) return false; // link-local
-  if (v6.startsWith("ff")) return false; // multicast
+  const [head, tail, extra] = s.split("::");
+  if (extra !== undefined) return null;
+  const h = head ? head.split(":") : [];
+  const t = tail === undefined ? [] : tail ? tail.split(":") : [];
+  const fill = tail === undefined ? 0 : 8 - h.length - t.length;
+  if (fill < 0) return null;
+  const all = [...h, ...Array(fill).fill("0"), ...t].map((x) => parseInt(x, 16));
+  return all.length === 8 && all.every((n) => n >= 0 && n <= 0xffff) ? all : null;
+}
+
+const v4From = (hi: number, lo: number) => `${hi >> 8}.${hi & 255}.${lo >> 8}.${lo & 255}`;
+
+export function isPublicIp(ip: string): boolean {
+  if (isIP(ip) === 4) return publicV4(ip);
+  if (isIP(ip) !== 6) return false;
+  const g = groups(ip);
+  if (!g) return false;
+  // IPv4 inside IPv6 is checked as the IPv4 address it reaches (#207). The URL parser writes
+  // [::ffff:127.0.0.1] as [::ffff:7f00:1], so the hex form has to count too.
+  if (g.slice(0, 5).every((x) => x === 0) && (g[5] === 0xffff || g[5] === 0)) return g[5] === 0 && g[6] === 0 && g[7] <= 1 ? false : publicV4(v4From(g[6], g[7])); // mapped, compatible, ::, ::1
+  if (g[0] === 0x64 && g[1] === 0xff9b) return g[2] === 0 && g.slice(3, 6).every((x) => x === 0) && publicV4(v4From(g[6], g[7])); // NAT64; 64:ff9b:1::/48 is local
+  if (g[0] === 0x2002) return publicV4(v4From(g[1], g[2])); // 6to4
+  if (g[0] === 0x2001 && (g[1] === 0 || g[1] === 0xdb8)) return false; // Teredo, documentation
+  if ((g[0] & 0xfe00) === 0xfc00) return false; // unique local
+  if ((g[0] & 0xffc0) === 0xfe80) return false; // link-local
+  if (g[0] >> 8 === 0xff) return false; // multicast
   return true;
 }
 
