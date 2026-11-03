@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useState } from "react";
 import { job } from "@/lib/kinds";
 import { togglePhrase } from "@/lib/phrases";
@@ -30,6 +30,56 @@ export function ProfileTabs() {
         );
       })}
     </nav>
+  );
+}
+
+/**
+ * The one next thing a new person has to do: answers, then resume, then a first search.
+ * Shown on the profile, materials and an empty board, so no step ends without a way forward.
+ */
+export function NextStep({ here }: { here: "profile" | "materials" | "finds" }) {
+  const { state, searchNow, saveProfile, fail } = useStore();
+  const { answered } = useCounts(state);
+  const router = useRouter();
+  const [busy, setBusy] = useState(false);
+  const rs = state.materials.resume?.status;
+  const go = (fn: () => Promise<unknown>) => async () => {
+    setBusy(true);
+    try {
+      await fn();
+    } catch (e) {
+      fail(e);
+    } finally {
+      setBusy(false);
+    }
+  };
+  let text = "";
+  let action: { label: string; run: () => Promise<unknown> } | null = null;
+  if (answered < 5) {
+    const left = 5 - answered;
+    text = `Answer ${left === 1 ? "the last question" : `the ${left} questions left`} so Lookout knows what to look for.`;
+    if (here !== "profile") action = { label: "Go to your answers", run: async () => router.push("/profile") };
+  } else if (rs !== "done") {
+    text = rs === "scanning" ? "Reading your resume. This takes about a minute." : rs === "failed" ? "Lookout couldn't read your resume. Try a PDF or Word file." : "Next, add your resume. Lookout reads it to know what you've done.";
+    if (here !== "materials" && rs !== "scanning")
+      action = { label: "Next: add your resume", run: async () => { if (here === "profile") await saveProfile(); router.push("/profile/materials"); } };
+  } else if (state.finds.length === 0) {
+    if (state.running) text = "Your first search is running. Finds show up on your board as they come in.";
+    else {
+      text = "You're set. Run your first search now; after that Lookout searches on your schedule.";
+      action = { label: "Run my first search", run: async () => { if (here === "profile") await saveProfile(); await searchNow(); if (here !== "finds") router.push("/finds"); } };
+    }
+  }
+  if (!text) return null;
+  return (
+    <div role="status" style={{ display: "flex", alignItems: "center", gap: 14, flexWrap: "wrap", padding: "14px 16px", borderRadius: 12, background: "#FFF4F1", border: "1.5px solid #F0C9BF" }}>
+      <div style={{ flex: "1 1 240px", fontSize: 14.5, lineHeight: 1.45, color: "#3B362C" }}>{text}</div>
+      {action && (
+        <button onClick={go(action.run)} disabled={busy} style={{ height: 42, padding: "0 20px", borderRadius: 10, border: 0, background: "#99220F", color: "#fff", fontSize: 14.5, fontWeight: 600, cursor: busy ? "default" : "pointer", opacity: busy ? 0.6 : 1 }}>
+          {busy ? "One moment…" : `${action.label} →`}
+        </button>
+      )}
+    </div>
   );
 }
 
@@ -186,6 +236,7 @@ export function Profile() {
           <button onClick={onSave} style={{ height: 46, padding: "0 28px", borderRadius: 12, border: 0, background: "#99220F", color: "#fff", fontSize: 14.5, fontWeight: 600, cursor: "pointer" }}>Save profile</button>
           {savedAt && <div aria-live="polite" style={{ fontSize: 14, color: "#6B6358" }}>Saved at {savedAt}. The next discovery run will use it.</div>}
         </div>
+        <NextStep here="profile" />
       </div>
     </div>
   );
