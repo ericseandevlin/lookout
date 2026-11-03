@@ -4,6 +4,7 @@ import { db, schema } from "@/lib/db";
 import type { SessionUser } from "@/lib/auth/session";
 import { isAdmin } from "@/lib/users";
 import { canUseAutoApply } from "@/lib/apply";
+import { autoSubmitOn, submitMode } from "@/lib/application/submitMode";
 import type { AppState, Find, Resume, RunInfo } from "@/lib/types";
 
 export function toFind(
@@ -28,6 +29,7 @@ export function toFind(
     notes: u.notes,
     feedback: u.feedback?.reason ?? null,
     application: a ? { id: a.id, status: a.status, queuedBy: a.queuedBy } : null,
+    submit: submitMode({ ats: a?.ats, url: o.sourceUrl, autoSubmit: autoSubmitOn(), captcha: a?.report.fill?.captcha }),
     seen: !!u.seenAt,
     addedAt: u.addedAt.toISOString(),
   };

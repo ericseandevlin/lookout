@@ -9,9 +9,12 @@ import { Seg, btn } from "./Settings";
 import { useConfirm } from "./Confirm";
 import { XIcon } from "./icons";
 import { api } from "./store";
+import { SubmitModeNote } from "./SubmitModeNote";
+import { ATS_NAME, type SubmitMode } from "@/lib/application/submitMode";
 
 type App = {
   id: string;
+  submit: SubmitMode;
   findId: string;
   company: string;
   role: string;
@@ -26,7 +29,6 @@ type App = {
   error: string | null;
 };
 
-const ATS_NAME: Record<string, string> = { greenhouse: "Greenhouse", lever: "Lever", ashby: "Ashby", workday: "Workday", smartrecruiters: "SmartRecruiters", other: "company site" };
 const WORKING: ApplicationStatus[] = ["queued", "scanning", "drafting", "submitting"];
 
 const STEPS = [
@@ -182,6 +184,11 @@ export function ApplyPage() {
                         {a.error && (
                           <div role="alert" style={{ fontSize: 14, color: "#99220F", marginTop: 4 }}>
                             {a.error}
+                          </div>
+                        )}
+                        {a.status !== "submitted" && a.status !== "canceled" && (
+                          <div style={{ marginTop: 6 }}>
+                            <SubmitModeNote submit={a.submit} compact />
                           </div>
                         )}
                       </div>
