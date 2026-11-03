@@ -6,6 +6,7 @@ import { hashToken } from "@/lib/auth/crypto";
 import { createSession } from "@/lib/auth/session";
 import { rateLimit } from "@/lib/ratelimit";
 import { ensureUser, findUserByEmail, touchLogin } from "@/lib/users";
+import { track } from "@/lib/events";
 
 const Input = z.object({ token: z.string().min(20).max(100) });
 
@@ -30,6 +31,7 @@ export const POST = publicRoute(async (req) => {
   if ((await findUserByEmail(row.email))?.disabled) throw new HttpError(403, "This email can't sign in.");
   const user = await ensureUser(row.email);
   await touchLogin(user.id);
+  await track(user.id, "signed_in");
   await createSession(user.id);
   return json({ ok: true });
 });

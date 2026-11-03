@@ -4,6 +4,7 @@ import { db, schema } from "@/lib/db";
 import { env } from "@/lib/env";
 import { isAdmin } from "@/lib/users";
 import { NEXT_MOVES } from "@/lib/onboarding";
+import { funnel } from "@/lib/funnel";
 
 /** Everything the admin page shows: totals, people, invites, recent runs. */
 export const GET = adminRoute(async () => {
@@ -74,6 +75,7 @@ export const GET = adminRoute(async () => {
     .limit(20);
 
   return json({
+    funnel: await funnel(),
     inbox,
     requests: requests.map((r) => ({ email: r.email, nextMove: NEXT_MOVES.find((m) => m.key === r.nextMove)?.label ?? null, createdAt: r.createdAt })),
     totals: { users: users.length, usdDay: Number(d.usd), usdWeek: Number(w.usd), usdMonth: Number(m.usd) },
