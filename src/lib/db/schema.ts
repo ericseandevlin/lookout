@@ -456,3 +456,37 @@ export const inboundEmails = pgTable(
   },
   (t) => [uniqueIndex("inbound_emails_resend_idx").on(t.resendId), index("inbound_emails_status_idx").on(t.status, t.receivedAt)],
 );
+
+// --- One-question beta surveys (#5) ---------------------------------------------
+
+export const SURVEY_KINDS = ["choice", "scale", "text"] as const;
+export type SurveyKind = (typeof SURVEY_KINDS)[number];
+
+/** A question Eric asks beta users, one at a time. Only active questions are shown. */
+export const surveyQuestions = pgTable("survey_questions", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  kind: text("kind").$type<SurveyKind>().notNull(),
+  prompt: text("prompt").notNull(),
+  /** Choices for "choice"; empty otherwise. A scale is always 1-5. */
+  options: jsonb("options").$type<string[]>().notNull().default([]),
+  active: boolean("active").notNull().default(true),
+  createdAt: createdAt(),
+});
+
+/** One person's reply to one question. Dismissing the dialog records a skip, so it isn't asked again. */
+export const surveyAnswers = pgTable(
+  "survey_answers",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    questionId: uuid("question_id")
+      .notNull()
+      .references(() => surveyQuestions.id, { onDelete: "cascade" }),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    /** Null when skipped. */
+    answer: text("answer"),
+    createdAt: createdAt(),
+  },
+  (t) => [uniqueIndex("survey_answers_question_user_idx").on(t.questionId, t.userId), index("survey_answers_user_idx").on(t.userId, t.createdAt)],
+);
