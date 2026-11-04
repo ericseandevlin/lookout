@@ -76,7 +76,12 @@ export function Settings() {
     await refresh().catch(() => {});
   };
   const signOut = async () => {
-    await api("/api/auth/logout", { method: "POST" }).catch(() => {});
+    // Only leave once the server has ended the session; otherwise say so and stay (#202).
+    try {
+      await api("/api/auth/logout", { method: "POST" });
+    } catch (e) {
+      return fail(e);
+    }
     window.location.replace(window.location.origin);
   };
   const runNow = async () => {
@@ -287,6 +292,7 @@ const ago = (iso: string, now: number) => {
 
 function Devices({ onSignOutHere }: { onSignOutHere: () => void }) {
   const ask = useConfirm();
+  const { fail } = useStore();
   const [list, setList] = useState<Device[] | null>(null);
   const load = useCallback(
     () =>
@@ -303,14 +309,15 @@ function Devices({ onSignOutHere }: { onSignOutHere: () => void }) {
   }, [load]);
   const signOut = async (d: Device) => {
     if (d.current) return onSignOutHere();
-    await api(`/api/account/sessions/${d.id}`, { method: "DELETE" }).catch(() => {});
+    // A failed sign-out must say so: the device would otherwise look signed out while it isn't (#202).
+    await api(`/api/account/sessions/${d.id}`, { method: "DELETE" }).catch(fail);
     load();
   };
   const others = (list ?? []).filter((d) => !d.current).length;
   const signOutOthers = async () => {
     const ok = await ask({ eyebrow: "Sign out", title: "Sign out everywhere else?", body: `${others} other ${others === 1 ? "device" : "devices"} will need a new sign-in link. You stay signed in here.`, confirmLabel: "Sign out others", danger: true });
     if (!ok) return;
-    await api("/api/account/sessions/others", { method: "DELETE" }).catch(() => {});
+    await api("/api/account/sessions/others", { method: "DELETE" }).catch(fail);
     load();
   };
   return (
