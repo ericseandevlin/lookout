@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { CLIENT_EVENTS, funnel, timeline, weeklyActives } from "./events";
+import { CLIENT_EVENTS, funnel, nextStep, timeline, weeklyActives, type FunnelPerson } from "./events";
 
 describe("weeklyActives", () => {
   it("counts people per week, ignoring heartbeats", () => {
@@ -39,12 +39,17 @@ describe("timeline", () => {
 
 describe("funnel", () => {
   it("each step only counts people who reached the earlier ones", () => {
-    const f = funnel([
-      { signedIn: true, answered: true, material: true, searched: true, acted: true },
-      { signedIn: true, answered: false, material: true, searched: true, acted: true },
-      { signedIn: false, answered: false, material: false, searched: false, acted: false },
-    ]);
-    expect(f.map((s) => s.count)).toEqual([3, 2, 1, 1, 1, 1]);
+    const all: FunnelPerson = { signedIn: true, welcome: true, answered: true, material: true, searchProfile: true, searched: true, found: true, acted: true };
+    const none: FunnelPerson = { signedIn: false, welcome: false, answered: false, material: false, searchProfile: false, searched: false, found: false, acted: false };
+    const f = funnel([all, { ...all, answered: false }, none]);
+    expect(f.map((s) => s.count)).toEqual([3, 2, 2, 1, 1, 1, 1, 1, 1]);
+  });
+
+  it("names the first step someone hasn't reached", () => {
+    const all: FunnelPerson = { signedIn: true, welcome: true, answered: true, material: true, searchProfile: true, searched: true, found: true, acted: true };
+    expect(nextStep({ ...all, searchProfile: false, found: false })).toBe("Search profile built");
+    expect(nextStep({ ...all, signedIn: false })).toBe("Signed in");
+    expect(nextStep(all)).toBeNull();
   });
 });
 
