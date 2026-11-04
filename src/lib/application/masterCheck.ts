@@ -151,7 +151,7 @@ export function confirmedMaster(m: MasterResume | null | undefined): MasterResum
 }
 
 /** Lines under "## Unplaced" have no job yet, so drafts leave them out until the person places them. */
-export const withoutUnplaced = (md: string) => md.replace(/\n*^##\s+Unplaced[^\n]*\n[\s\S]*?(?=^##\s|(?![\s\S]))/im, "\n").trimEnd();
+const withoutUnplaced = (md: string) => md.replace(/\n*^##\s+Unplaced[^\n]*\n[\s\S]*?(?=^##\s|(?![\s\S]))/im, "\n").trimEnd();
 
 export const masterForDrafts = (m: MasterResume | null | undefined) => {
   const md = confirmedMaster(m)?.md ?? m?.md;
