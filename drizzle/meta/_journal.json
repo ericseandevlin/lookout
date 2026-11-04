@@ -120,6 +120,13 @@
       "when": 1793702546124,
       "tag": "0016_beta_surveys",
       "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "7",
+      "when": 1793750592908,
+      "tag": "0017_digest_clicks",
+      "breakpoints": true
     }
   ]
 }

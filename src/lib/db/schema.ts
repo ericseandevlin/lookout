@@ -490,3 +490,35 @@ export const surveyAnswers = pgTable(
   },
   (t) => [uniqueIndex("survey_answers_question_user_idx").on(t.questionId, t.userId), index("survey_answers_user_idx").on(t.userId, t.createdAt)],
 );
+
+// --- Digest email clicks (#34) ----------------------------------------------------
+
+/** One digest email sent, for counting clicks against. */
+export const digests = pgTable(
+  "digests",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    /** The search that triggered it, when known. */
+    runId: uuid("run_id").references(() => runs.id, { onDelete: "set null" }),
+    finds: integer("finds").notNull(),
+    sentAt: timestamp("sent_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index("digests_user_sent_idx").on(t.userId, t.sentAt)],
+);
+
+/** A link clicked in a digest: a find's posting, or the board (opportunityId null). Counted once per link (the board link is checked in code: Postgres treats nulls as distinct). */
+export const digestClicks = pgTable(
+  "digest_clicks",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    digestId: uuid("digest_id")
+      .notNull()
+      .references(() => digests.id, { onDelete: "cascade" }),
+    opportunityId: uuid("opportunity_id").references(() => opportunities.id, { onDelete: "cascade" }),
+    at: timestamp("at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [uniqueIndex("digest_clicks_once_idx").on(t.digestId, t.opportunityId)],
+);
