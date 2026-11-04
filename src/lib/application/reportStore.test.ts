@@ -45,7 +45,8 @@ describe("patchReport (#200)", () => {
   });
 
   it("sets status alongside, inside a caller's transaction", async () => {
-    await db.transaction((tx) => patchReport(appId, (r) => ({ ...r, error: "x" }), { status: "needs_review" }, tx));
+    // PGlite's transaction type differs from the app driver's; the calls are the same.
+    await db.transaction((tx) => patchReport(appId, (r) => ({ ...r, error: "x" }), { status: "needs_review" }, tx as unknown as Parameters<typeof patchReport>[3]));
     const [a] = await db.select().from(schema.applications).where(eq(schema.applications.id, appId));
     expect(a.status).toBe("needs_review");
     expect(a.report.error).toBe("x");
