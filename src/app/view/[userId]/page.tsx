@@ -33,7 +33,9 @@ export default async function Page({ params }: { params: Promise<{ userId: strin
         </span>
         <Link href="/admin" style={{ marginLeft: "auto", color: "#F8A865", fontWeight: 600 }}>Exit</Link>
       </div>
-      <Finds />
+      <main>
+        <Finds />
+      </main>
     </StoreProvider>
   );
 }
