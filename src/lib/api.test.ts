@@ -5,7 +5,7 @@ vi.mock("@/lib/ai/llm", () => ({ AiConfigError: class AiConfigError extends Erro
 vi.mock("@/lib/ai/runs", () => ({ BudgetError: class BudgetError extends Error {} }));
 vi.mock("@/lib/ai/search", () => ({ SearchConfigError: class SearchConfigError extends Error {} }));
 
-const { errorResponse, HttpError } = await import("./api");
+const { allowedOrigins, errorResponse, HttpError } = await import("./api");
 const { AiConfigError } = await import("@/lib/ai/llm");
 const { BudgetError } = await import("@/lib/ai/runs");
 const { SearchConfigError } = await import("@/lib/ai/search");
@@ -32,5 +32,17 @@ describe("errorResponse (#201)", () => {
     expect(await read(errorResponse(new Error("db password in here")))).toEqual({ status: 500, body: { error: "Something went wrong" } });
     expect(log).toHaveBeenCalled();
     log.mockRestore();
+  });
+});
+
+describe("allowedOrigins (#209)", () => {
+  const app = "https://lookout.example";
+  it("production allows the app and EXTRA_ORIGINS, never localhost", () => {
+    const o = allowedOrigins(app, { NODE_ENV: "production", EXTRA_ORIGINS: "https://alias.example/, https://b.example" });
+    expect([...o]).toEqual([app, "https://alias.example", "https://b.example"]);
+    expect(o.has("http://localhost:3000")).toBe(false);
+  });
+  it("development also allows localhost on its port", () => {
+    expect(allowedOrigins(app, { NODE_ENV: "development", PORT: "4000" }).has("http://localhost:4000")).toBe(true);
   });
 });
