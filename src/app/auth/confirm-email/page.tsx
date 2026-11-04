@@ -4,5 +4,9 @@ export const metadata = { referrer: "no-referrer" as const, title: "Confirm emai
 
 export default async function Page({ searchParams }: { searchParams: Promise<{ token?: string }> }) {
   const { token } = await searchParams;
-  return <ConfirmEmail token={typeof token === "string" ? token : ""} />;
+  return (
+    <main>
+      <ConfirmEmail token={typeof token === "string" ? token : ""} />
+    </main>
+  );
 }

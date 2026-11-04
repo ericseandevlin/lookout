@@ -28,6 +28,9 @@ a:hover { color: #4b2310; }
 input, textarea, button, select { font-family: inherit; }
 button { -webkit-tap-highlight-color: transparent; }
 button:focus-visible, a:focus-visible, label:focus-within { outline: 2px solid var(--brick); outline-offset: 2px; }
+/* Skip link: off screen until it has keyboard focus (#214). */
+.skip-link { position: absolute; left: 12px; top: -100px; z-index: 100; padding: 10px 16px; border-radius: 10px; background: #1d1a0f; color: #fff; font-weight: 600; text-decoration: none; }
+.skip-link:focus { top: 12px; }
 /* Inputs drawn without their own border show focus on the box around them (#215). */
 div.board-search:has(input:focus-visible), .focus-box:has(input:focus-visible) { outline: 2px solid var(--brick); outline-offset: 2px; }
 ::placeholder { color: var(--muted); }
