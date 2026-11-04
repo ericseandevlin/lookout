@@ -11,7 +11,10 @@ import { hashToken } from "@/lib/auth/crypto";
 const pg = new PGlite();
 const db = drizzle(pg, { schema });
 vi.mock("@/lib/db", () => ({ db, schema }));
-vi.mock("@/lib/env", async (orig) => ({ env: { ...(await orig<typeof import("@/lib/env")>()).env, appUrl: "https://lookout.test" } }));
+// env.appUrl reads APP_URL; set it before the route loads (spreading env would trip its required DATABASE_URL getter).
+vi.hoisted(() => {
+  process.env.APP_URL = "https://lookout.test";
+});
 vi.mock("next/headers", () => ({ headers: async () => new Headers({ origin: "https://lookout.test", "x-forwarded-for": "10.0.0.1" }) }));
 const createSession = vi.fn();
 vi.mock("@/lib/auth/session", () => ({ createSession: (id: string) => createSession(id) }));
