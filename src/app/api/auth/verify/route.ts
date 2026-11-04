@@ -20,6 +20,8 @@ export const POST = publicRoute(async (req) => {
     .where(
       and(
         eq(schema.loginTokens.tokenHash, hashToken(token)),
+        // Email-change tokens share this table; they only work at confirm-email (#208).
+        eq(schema.loginTokens.purpose, "login"),
         isNull(schema.loginTokens.usedAt),
         gt(schema.loginTokens.expiresAt, new Date()),
       ),
