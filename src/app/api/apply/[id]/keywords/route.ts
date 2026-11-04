@@ -7,6 +7,7 @@ import { keywordState, ownApplication } from "@/lib/application/review";
 import { redraftResume } from "@/lib/application/run";
 import { choose, upsertNote } from "@/lib/application/skills";
 import { db, schema } from "@/lib/db";
+import { patchReport } from "@/lib/application/reportStore";
 
 type Ctx = { params: Promise<{ id: string }> };
 
@@ -31,16 +32,16 @@ export const POST = authed<Ctx>(async (req, { user, params }) => {
     const { rows } = await keywordState(user.id, a, posting);
     const terms = finalTerms(rows);
     if (!terms.length) throw new HttpError(409, "No keyword on the list is backed by your experience yet.");
-    await db.update(schema.applications).set({ report: { ...a.report, keywordsApproved: { terms, at: new Date().toISOString() } }, updatedAt: new Date() }).where(eq(schema.applications.id, a.id));
+    await patchReport(a.id, (r) => ({ ...r, keywordsApproved: { terms, at: new Date().toISOString() } }), { updatedAt: new Date() });
     await redraftResume(a.id);
     return json({ ok: true });
   }
 
-  const keywordChoices = p.action === "experience" ? a.report.keywordChoices : choose(a.report.keywordChoices, p.term, p.action === "remove" ? "exclude" : p.action === "add" ? "include" : "reset");
-  await db
-    .update(schema.applications)
-    .set({ report: { ...a.report, keywordChoices, keywordsApproved: undefined }, updatedAt: new Date() })
-    .where(eq(schema.applications.id, a.id));
+  await patchReport(
+    a.id,
+    (r) => ({ ...r, keywordChoices: p.action === "experience" ? r.keywordChoices : choose(r.keywordChoices, p.term, p.action === "remove" ? "exclude" : p.action === "add" ? "include" : "reset"), keywordsApproved: undefined }),
+    { updatedAt: new Date() },
+  );
   if (p.story) {
     const [prof] = await db.select({ notes: schema.profiles.skillNotes }).from(schema.profiles).where(eq(schema.profiles.userId, user.id));
     if (prof) await db.update(schema.profiles).set({ skillNotes: upsertNote(prof.notes, p.term, p.story) }).where(eq(schema.profiles.userId, user.id));

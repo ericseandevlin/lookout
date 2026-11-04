@@ -36,6 +36,7 @@ import {
   type Drafted,
 } from "./draft";
 import { ASHBY_QUERY, PAGE_SYSTEM, PageItems, applyUrlFor, boardFromHtml, boardGuesses, detectAts, fromPage, parseAshby, parseGreenhouse, routeFor, withBasics, type ScanResult } from "./scan";
+import { addUsd, patchReport } from "./reportStore";
 
 /**
  * The auto-apply pipeline for one application: queued -> scanning -> (drafting) -> needs_review.
@@ -278,7 +279,7 @@ export async function redraftLetter(appId: string) {
     });
     await tx.update(schema.applicationItems).set({ approvedVersionId: null, question: hits.length ? "This letter includes a word the posting planted to catch automated applications. Remove it unless you mean to include it." : d.question }).where(eq(schema.applicationItems.id, item.id));
     const status = a.status === "approved" || a.status === "manual" ? "needs_review" : a.status;
-    await tx.update(schema.applications).set({ status, updatedAt: new Date(), report: { ...a.report, usd: (a.report.usd ?? 0) + usage.usd } }).where(eq(schema.applications.id, appId));
+    await patchReport(appId, addUsd(usage.usd), { status, updatedAt: new Date() }, tx);
   });
 }
 
@@ -305,10 +306,7 @@ export async function redraftResume(appId: string) {
     await tx.insert(schema.itemVersions).values({ itemId: item.id, version: (n ?? 0) + 1, content: draft.content, note: `- Redrafted from the posting\n${draft.note}`, author: "ai", sources: draft.sources });
     await tx.update(schema.applicationItems).set({ approvedVersionId: null, question: draft.question }).where(eq(schema.applicationItems.id, item.id));
     const status = a.status === "approved" || a.status === "manual" ? "needs_review" : a.status;
-    await tx
-      .update(schema.applications)
-      .set({ status, updatedAt: new Date(), report: { ...a.report, keywords, postingText: inp.posting.text, traps: inp.traps ?? [], usd: (a.report.usd ?? 0) + usage.usd } })
-      .where(eq(schema.applications.id, appId));
+    await patchReport(appId, (r) => ({ ...addUsd(usage.usd)(r), keywords, postingText: inp.posting.text, traps: inp.traps ?? [] }), { status, updatedAt: new Date() }, tx);
   });
 }
 
