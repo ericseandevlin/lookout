@@ -320,10 +320,16 @@ function ExtensionSection() {
       setErr(e instanceof Error ? e.message : "Something went wrong");
     }
   };
+  // Show "not connected" only once the server has revoked the token (#202).
   const revoke = async () => {
-    await api("/api/ext/token", { method: "DELETE" }).catch(() => {});
-    setToken(null);
-    setStatus({ connected: false });
+    setErr("");
+    try {
+      await api("/api/ext/token", { method: "DELETE" });
+      setToken(null);
+      setStatus({ connected: false });
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : "Couldn't disconnect the extension. It's still connected; try again.");
+    }
   };
   const copy = async () => {
     if (!token) return;

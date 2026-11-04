@@ -92,7 +92,11 @@ export function AdminPeople() {
   };
   const revoke = async (email: string) => {
     if (!(await ask({ eyebrow: "Revoke invite", title: `Revoke ${email}?`, body: "Their unused sign-in links stop working. If they already have an account, it stays.", confirmLabel: "Revoke", danger: true }))) return;
-    await api(`/api/admin/invites/${encodeURIComponent(email)}`, { method: "DELETE" }).catch(() => {});
+    try {
+      await api(`/api/admin/invites/${encodeURIComponent(email)}`, { method: "DELETE" });
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : "Couldn't revoke the invite");
+    }
     await load();
   };
   // Resend mints a fresh 7-day link and emails it again; the link is also shown to copy and send yourself.
