@@ -16,15 +16,22 @@ export class HttpError extends Error {
 
 export const json = (data: unknown, init?: ResponseInit) => NextResponse.json(data, init);
 
+/**
+ * Origins allowed to make cookie-carrying writes: the app's own, any in EXTRA_ORIGINS, and in
+ * development only, localhost. Production never trusts localhost (#209).
+ */
+export function allowedOrigins(appUrl: string, e: { NODE_ENV?: string; PORT?: string; EXTRA_ORIGINS?: string } = process.env) {
+  const extra = (e.EXTRA_ORIGINS || "").split(",").map((o) => o.trim().replace(/\/$/, "")).filter(Boolean);
+  return new Set([appUrl, ...(e.NODE_ENV === "production" ? [] : [`http://localhost:${e.PORT || 3000}`]), ...extra]);
+}
+
 /** Reject cross-site writes. Cookies are SameSite=Lax; this closes the remaining gaps. */
 async function assertSameOrigin(method: string) {
   if (method === "GET" || method === "HEAD") return;
   const h = await headers();
   const origin = h.get("origin");
   if (!origin) throw new HttpError(403, "Missing origin");
-  const extra = (process.env.EXTRA_ORIGINS || "").split(",").map((o) => o.trim().replace(/\/$/, "")).filter(Boolean);
-  const allowed = new Set([env.appUrl, `http://localhost:${process.env.PORT || 3000}`, ...extra]);
-  if (!allowed.has(origin)) throw new HttpError(403, "Bad origin");
+  if (!allowedOrigins(env.appUrl).has(origin)) throw new HttpError(403, "Bad origin");
 }
 
 type Handler<C> = (req: Request, ctx: C & { user: SessionUser }) => Promise<Response>;
