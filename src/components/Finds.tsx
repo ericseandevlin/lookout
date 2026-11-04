@@ -326,7 +326,7 @@ export function Finds() {
                     </div>
                     <div style={{ fontSize: 14.5, fontWeight: 600, paddingRight: 16 }}>{f.company}</div>
                     <div style={{ fontSize: 14, paddingRight: 16, textWrap: "pretty" }}>{f.role}</div>
-                    <div style={{ fontSize: 14, fontWeight: f.comp ? 600 : 400, color: f.comp ? "#99220F" : "#A89F92", fontVariantNumeric: "tabular-nums" }}>{compText(f)}</div>
+                    <div style={{ fontSize: 14, fontWeight: f.comp ? 600 : 400, color: f.comp ? "#99220F" : "#6B6358", fontVariantNumeric: "tabular-nums" }}>{compText(f)}</div>
                     <div style={{ fontSize: 14, color: "#6B6358", fontStyle: f.postedAt ? "normal" : "italic" }}>{postedText(f)}</div>
                     <div style={{ position: "relative", paddingRight: 16 }}>
                       <button
@@ -370,7 +370,7 @@ export function Finds() {
                       <span style={{ flex: "none", fontSize: 14, color: "#6B6358", fontStyle: f.postedAt ? "normal" : "italic", whiteSpace: "nowrap", marginTop: 2 }}>{postedText(f)}</span>
                     </div>
                     <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, marginTop: 2 }}>
-                      <span style={{ minWidth: 0, fontSize: 14, fontWeight: f.comp ? 600 : 400, color: f.comp ? "#99220F" : "#A89F92", fontVariantNumeric: "tabular-nums", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{compText(f)}</span>
+                      <span style={{ minWidth: 0, fontSize: 14, fontWeight: f.comp ? 600 : 400, color: f.comp ? "#99220F" : "#6B6358", fontVariantNumeric: "tabular-nums", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{compText(f)}</span>
                       <div style={{ position: "relative", flex: "none" }}>
                         <button onClick={(e) => toggleStageMenu(e, f.id, "right")} style={{ display: "inline-flex", alignItems: "center", gap: 4, height: 26, padding: "0 8px 0 10px", borderRadius: 999, fontSize: 14, fontWeight: 600, border: "1.5px solid rgba(29,26,15,.14)", background: st.bg, color: st.ink, cursor: "pointer", whiteSpace: "nowrap" }}>
                           {f.stage}
@@ -710,7 +710,7 @@ const NOTES_IDLE_MS = 6000;
 // Row pin/archive buttons stay quiet so the match score is the loudest thing in the row: no box until hover,
 // and active is a brick-red icon rather than a fill.
 const iconState = (on: boolean): React.CSSProperties =>
-  on ? { border: "1px solid transparent", background: "transparent", color: "#99220F" } : { border: "1px solid transparent", background: "transparent", color: "#A89F92" };
+  on ? { border: "1px solid transparent", background: "transparent", color: "#99220F" } : { border: "1px solid transparent", background: "transparent", color: "#857C70" };
 const DRAWER_MS = 220;
 
 const NOT_A_FIT = ["Wrong level", "Wrong kind of role", "Wrong industry", "Location", "Pay", "Not that company", "Just not interested"];
@@ -846,7 +846,7 @@ function Drawer({ f, close, toggle, setStage, enter, nav }: { f: Find; close: ()
         </div>
         <div style={{ padding: "22px 26px", display: "flex", flexDirection: "column", gap: 22, overflowY: "auto", flex: 1 }}>
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "14px 18px" }}>
-            <div><Label>Comp</Label><div style={{ fontSize: 14.5, marginTop: 4, fontWeight: 600, color: f.comp ? "#99220F" : "#A89F92" }}>{compText(f)}</div></div>
+            <div><Label>Comp</Label><div style={{ fontSize: 14.5, marginTop: 4, fontWeight: 600, color: f.comp ? "#99220F" : "#6B6358" }}>{compText(f)}</div></div>
             <div><Label>Posted</Label><div style={{ fontSize: 14.5, marginTop: 4 }}>{postedText(f)}</div></div>
             <div style={{ gridColumn: "1 / -1" }}><Label>Location</Label><div style={{ fontSize: 14.5, marginTop: 4 }}>{f.location || "Not stated"}</div></div>
           </div>
