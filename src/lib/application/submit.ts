@@ -11,6 +11,7 @@ import { getAutoApplySettings } from "@/lib/apply";
 import { resolve } from "./eeo";
 import { loadEeo } from "./eeoStore";
 import { autoSubmitOn, CAPTCHA_STOP } from "./submitMode";
+import { patchReport } from "./reportStore";
 
 /**
  * Auto-apply step 5, browser half (#42): fill the real form with the approved versions in headless
@@ -213,11 +214,11 @@ export async function startFill(appId: string, mode: "test" | "submit") {
     }
     const [a] = await db.select().from(schema.applications).where(eq(schema.applications.id, appId));
     if (!a) return;
-    const report = { ...a.report, fill };
     if (mode === "test") {
-      await db.update(schema.applications).set({ report, updatedAt: new Date() }).where(eq(schema.applications.id, appId));
+      await patchReport(appId, (r) => ({ ...r, fill }), { updatedAt: new Date() });
       return;
     }
+    const report = { ...a.report, fill };
     if (fill.confirmation !== undefined && !fill.stopped) {
       const { sentRecord } = await import("./review");
       const now = new Date();
