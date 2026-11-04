@@ -4,6 +4,9 @@ import { headers } from "next/headers";
 import { z } from "zod";
 import { env } from "@/lib/env";
 import { getSessionUser, refreshSession, type SessionUser } from "@/lib/auth/session";
+import { AiConfigError } from "@/lib/ai/llm";
+import { BudgetError } from "@/lib/ai/runs";
+import { SearchConfigError } from "@/lib/ai/search";
 
 export class HttpError extends Error {
   constructor(public status: number, message: string) {
@@ -54,6 +57,9 @@ export function publicRoute<C = object>(fn: (req: Request, ctx: C) => Promise<Re
 
 export function errorResponse(e: unknown) {
   if (e instanceof HttpError) return json({ error: e.message }, { status: e.status });
+  // Known limits, not crashes: say what happened instead of "Something went wrong" (#201).
+  if (e instanceof BudgetError) return json({ error: e.message }, { status: 429 });
+  if (e instanceof AiConfigError || e instanceof SearchConfigError) return json({ error: e.message }, { status: 503 });
   if (e instanceof z.ZodError) return json({ error: "Invalid input", issues: e.issues }, { status: 400 });
   console.error(e);
   return json({ error: "Something went wrong" }, { status: 500 });
