@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { track } from "@/lib/eventStore";
 import { authed, body, HttpError, json } from "@/lib/api";
 import { BudgetError } from "@/lib/ai/runs";
 import { addByUrl, isRunning } from "@/lib/agent/discover";
@@ -14,6 +15,7 @@ export const POST = authed(async (req, { user }) => {
   const ai = await getAiConfig();
   if (ai.provider !== "agent" && !ai.model) throw new HttpError(503, "Adding links isn't set up yet: no AI model is configured.");
   if (await isRunning(user.id)) throw new HttpError(409, "Lookout is already working. Try again in a minute.");
+  await track(user.id, "find_added");
   void addByUrl(user.id, url).catch((e) => {
     if (!(e instanceof BudgetError)) console.error("addByUrl", e);
   });

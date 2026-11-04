@@ -1,4 +1,5 @@
 import { and, eq, isNull } from "drizzle-orm";
+import { track } from "@/lib/eventStore";
 import { z } from "zod";
 import { db, schema } from "@/lib/db";
 import { forwardTo } from "@/lib/digestLinks";
@@ -21,6 +22,7 @@ export async function GET(_req: Request, { params }: Ctx) {
     if (target === "board") {
       const [seen] = await db.select({ id: schema.digestClicks.id }).from(schema.digestClicks).where(and(eq(schema.digestClicks.digestId, d.id), isNull(schema.digestClicks.opportunityId)));
       if (!seen) await db.insert(schema.digestClicks).values({ digestId: d.id });
+      await track(d.userId, "email_click", "board");
       return Response.redirect(board, 302);
     }
     const [row] = await db
@@ -30,6 +32,7 @@ export async function GET(_req: Request, { params }: Ctx) {
       .where(and(eq(schema.userOpportunities.userId, d.userId), eq(schema.userOpportunities.opportunityId, target)));
     if (!row) return Response.redirect(board, 302);
     await db.insert(schema.digestClicks).values({ digestId: d.id, opportunityId: target }).onConflictDoNothing();
+    await track(d.userId, "email_click", target);
     if (!row.seenAt) await db.update(schema.userOpportunities).set({ seenAt: new Date() }).where(and(eq(schema.userOpportunities.userId, d.userId), eq(schema.userOpportunities.opportunityId, target)));
     return Response.redirect(forwardTo(row.url, env.appUrl), 302);
   } catch (e) {

@@ -522,3 +522,22 @@ export const digestClicks = pgTable(
   },
   (t) => [uniqueIndex("digest_clicks_once_idx").on(t.digestId, t.opportunityId)],
 );
+
+// --- First-party product events (#35) ---------------------------------------------
+
+/** What people do in Lookout, written by the app itself. No third-party scripts. */
+export const events = pgTable(
+  "events",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    type: text("type").notNull(),
+    /** What it was about: a find id, a page path, a material kind. */
+    target: text("target"),
+    meta: jsonb("meta").$type<Record<string, string | number | boolean>>(),
+    at: timestamp("at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index("events_user_at_idx").on(t.userId, t.at), index("events_type_at_idx").on(t.type, t.at)],
+);

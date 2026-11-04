@@ -28,6 +28,7 @@ export default function Privacy() {
             <li>Your board: the roles found for you, plus your stages, notes, pins and &ldquo;Not a fit&rdquo; reasons.</li>
             <li>Your application drafts and approved versions, including public people Lookout suggests you contact and your outreach message drafts. Lookout never sends those messages.</li>
             <li>A log of each search: when it ran, what it searched for, and what it cost.</li>
+            <li>What you do in Lookout: the pages you open and for how long, and actions like searching, pinning, moving a find or opening a posting. Lookout records this itself to see what&apos;s useful; no outside analytics or ad scripts are on the site.</li>
             <li>Which links you click in the finds email. Links in that email pass through Lookout first, so it can tell whether the finds are useful. It doesn&apos;t track whether you open the email.</li>
           </ul>
 

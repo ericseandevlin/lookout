@@ -1,4 +1,5 @@
 import { and, eq } from "drizzle-orm";
+import { track } from "@/lib/eventStore";
 import { authed, HttpError, json } from "@/lib/api";
 import { db, schema } from "@/lib/db";
 import { deleteUserFile, MAX_UPLOAD_BYTES, readUserFile, saveUserFile, sniff } from "@/lib/files";
@@ -38,6 +39,7 @@ export const POST = authed(async (req, { user }) => {
   } else {
     await db.insert(schema.materials).values({ userId: user.id, kind: "linkedin", ...values });
   }
+  await track(user.id, "material_upload", "linkedin");
   return json({ pdf: { name, uploadedAt } });
 });
 

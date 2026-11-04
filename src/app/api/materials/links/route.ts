@@ -1,4 +1,5 @@
 import { and, eq, sql } from "drizzle-orm";
+import { track } from "@/lib/eventStore";
 import { z } from "zod";
 import { authed, body, HttpError, json } from "@/lib/api";
 import { db, schema } from "@/lib/db";
@@ -17,5 +18,6 @@ export const POST = authed(async (req, { user }) => {
     .values({ userId: user.id, kind: "link", url, position: n })
     .returning();
   void readLink(row.id, url).catch((e) => console.error("link read failed", e));
+  await track(user.id, "material_upload", "link");
   return json({ link: { id: row.id, url, kind: null, status: "scanning", note: null } });
 });

@@ -134,6 +134,13 @@
       "when": 1793761646634,
       "tag": "0018_seed_survey_questions",
       "breakpoints": true
+    },
+    {
+      "idx": 19,
+      "version": "7",
+      "when": 1793795196918,
+      "tag": "0019_product_events",
+      "breakpoints": true
     }
   ]
 }
