@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useEffect } from "react";
 import { usePathname } from "next/navigation";
 import { answeredCount, job } from "@/lib/kinds";
 import { initialsOf, isNewFind } from "@/lib/board";
@@ -10,6 +11,8 @@ import { useStore } from "./store";
 import { TooltipLayer } from "./Tooltip";
 import { ConfirmProvider } from "./Confirm";
 import { SurveyDialog } from "./SurveyDialog";
+import { trackClient } from "./track";
+import { HEARTBEAT_SECONDS } from "@/lib/events";
 
 export function useCounts(s: AppState) {
   const answered = answeredCount(job, s.profile.answers);
@@ -30,6 +33,12 @@ export function Shell({ children }: { children: React.ReactNode }) {
   const { state, putSettings, error } = useStore();
   const path = usePathname();
   const { answered, sources, newCount } = useCounts(state);
+  // Page views and time on page (#35): a heartbeat every minute while the tab is in front.
+  useEffect(() => {
+    trackClient("page_view", path);
+    const t = setInterval(() => document.visibilityState === "visible" && trackClient("heartbeat", path), HEARTBEAT_SECONDS * 1000);
+    return () => clearInterval(t);
+  }, [path]);
   const closed = state.settings.railClosed;
   const name = state.user.name.trim();
   const initials = initialsOf(name || state.user.email);

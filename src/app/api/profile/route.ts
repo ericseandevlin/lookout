@@ -1,4 +1,6 @@
 import { eq } from "drizzle-orm";
+import { track } from "@/lib/eventStore";
+import { rateLimit } from "@/lib/ratelimit";
 import { z } from "zod";
 import { authed, body, json } from "@/lib/api";
 import { db, schema } from "@/lib/db";
@@ -22,5 +24,7 @@ export const PUT = authed(async (req, { user }) => {
     .insert(schema.profiles)
     .values({ userId: user.id, answers, autofilled: auto, savedAt })
     .onConflictDoUpdate({ target: schema.profiles.userId, set: { answers, autofilled: auto, savedAt, updatedAt: new Date() } });
+  // Answers autosave while typing: one event per ten minutes is enough.
+  if (await rateLimit(`ev-profile:${user.id}`, 1, 10 * 60_000)) await track(user.id, "profile_edit");
   return json({ ok: true, savedAt: savedAt?.toISOString() ?? null });
 });

@@ -1,4 +1,5 @@
 import { and, eq } from "drizzle-orm";
+import { track } from "@/lib/eventStore";
 import { z } from "zod";
 import { authed, body, HttpError, json } from "@/lib/api";
 import { ENDED_STAGES } from "@/lib/board";
@@ -31,5 +32,8 @@ export const PATCH = authed<Ctx>(async (req, { user, params }) => {
   const where = and(eq(schema.userOpportunities.userId, user.id), eq(schema.userOpportunities.opportunityId, id));
   const updated = await db.update(schema.userOpportunities).set(set).where(where).returning({ id: schema.userOpportunities.opportunityId });
   if (!updated.length) throw new HttpError(404, "Not found");
+  if (rest.pinned !== undefined) await track(user.id, "pin", id, { on: rest.pinned });
+  if (rest.stage) await track(user.id, "stage_change", id, { stage: rest.stage });
+  if (feedback) await track(user.id, "not_a_fit", id, { reason: feedback });
   return json({ ok: true });
 });

@@ -1,4 +1,5 @@
 import { and, eq, gt, isNull } from "drizzle-orm";
+import { track } from "@/lib/eventStore";
 import { z } from "zod";
 import { db, schema } from "@/lib/db";
 import { body, clientIp, HttpError, json, publicRoute } from "@/lib/api";
@@ -31,5 +32,6 @@ export const POST = publicRoute(async (req) => {
   const user = await ensureUser(row.email);
   await touchLogin(user.id);
   await createSession(user.id);
+  await track(user.id, "sign_in");
   return json({ ok: true });
 });

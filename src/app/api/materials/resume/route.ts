@@ -1,4 +1,5 @@
 import { and, eq } from "drizzle-orm";
+import { track } from "@/lib/eventStore";
 import { authed, HttpError, json } from "@/lib/api";
 import { db, schema } from "@/lib/db";
 import { deleteUserFile, MAX_UPLOAD_BYTES, readUserFile, saveUserFile, sniff } from "@/lib/files";
@@ -35,6 +36,7 @@ export const POST = authed(async (req, { user }) => {
   }
   // Scan in the background; the client polls /api/state for the result.
   void scanResume(user.id, row.id).catch((e) => console.error("resume scan failed", e));
+  await track(user.id, "material_upload", "resume");
   return json({ resume: toResume(row) });
 });
 

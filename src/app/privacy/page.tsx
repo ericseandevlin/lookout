@@ -13,7 +13,7 @@ export default function Privacy() {
         <div style={{ padding: "28px 26px 34px", fontSize: 15, lineHeight: 1.6, color: "#3B362C" }}>
           <div style={{ fontSize: 14, fontWeight: 700, letterSpacing: ".14em", textTransform: "uppercase", color: "#99220F" }}>Privacy</div>
           <h1 style={{ margin: "8px 0 4px", fontSize: 30, fontWeight: 700, letterSpacing: "-0.02em", color: "#1D1A0F" }}>What Lookout keeps, and who sees it</h1>
-          <p style={{ color: "#6B6358", fontSize: 14, margin: 0 }}>Last updated November 3, 2026</p>
+          <p style={{ color: "#6B6358", fontSize: 14, margin: 0 }}>Last updated November 4, 2026</p>
 
           <H>The short version</H>
           <p>Lookout is a small, invite-only tool run by Eric Devlin. It keeps what you give it so it can search for you. It doesn&apos;t sell your data, show ads or use tracking cookies. You can export your board and profile, or delete everything, from Settings.</p>
@@ -28,11 +28,12 @@ export default function Privacy() {
             <li>Your board: the roles found for you, plus your stages, notes, pins and &ldquo;Not a fit&rdquo; reasons.</li>
             <li>Your application drafts and approved versions, including public people Lookout suggests you contact and your outreach message drafts. Lookout never sends those messages.</li>
             <li>A log of each search: when it ran, what it searched for, and what it cost.</li>
+            <li>What you do in Lookout: the pages you open and for how long, and actions like finishing the welcome step, searching, pinning, moving a find, opening a posting or turning auto-apply on or off. Lookout records this itself to see what&apos;s useful; no outside analytics or ad scripts are on the site.</li>
             <li>Which links you click in the finds email. Links in that email pass through Lookout first, so it can tell whether the finds are useful. It doesn&apos;t track whether you open the email.</li>
           </ul>
 
           <H>Who sees it</H>
-          <p>You. Eric, as the admin, sees the list of accounts with emails, sign-in dates, counts of finds and search costs. During the beta, he can also open a read-only view of your board to test Lookout and fix problems you run into. He can&apos;t change anything there, and each view is logged. He can also reach the database itself, so treat what you upload as something he could read. No one else gets access.</p>
+          <p>You. Eric, as the admin, sees the list of accounts with emails, sign-in dates, counts of finds, search costs, how far each person got through setup, and what each person did in Lookout. During the beta, he can also open a read-only view of your board to test Lookout and fix problems you run into. He can&apos;t change anything there, and each view is logged. He can also reach the database itself, so treat what you upload as something he could read. No one else gets access.</p>
 
           <H>Services it uses</H>
           <ul>
@@ -47,7 +48,7 @@ export default function Privacy() {
 
           <H>Your controls</H>
           <ul>
-            <li><b>Export:</b> Settings, Export data downloads your board, stages, notes and profile answers.</li>
+            <li><b>Export:</b> Settings, Export data downloads your board, stages, notes, profile answers and what Lookout recorded you doing.</li>
             <li><b>Delete:</b> Settings, Delete everything removes your account and all of the above right away. Copies in encrypted backups age out within 60 days.</li>
             <li><b>Remove one thing:</b> delete your resume, LinkedIn PDF or any link on the Materials tab, and it stops being used.</li>
           </ul>
