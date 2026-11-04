@@ -49,6 +49,10 @@ export function Shell({ children }: { children: React.ReactNode }) {
 
   return (
     <ConfirmProvider>
+    {/* First stop for keyboard users: past the sidebar to the page (#214). */}
+    <a href="#main" className="skip-link">
+      Skip to content
+    </a>
     <div style={{ display: "flex", minHeight: "100vh" }}>
       <aside
         className="desk-only"
@@ -144,7 +148,7 @@ export function Shell({ children }: { children: React.ReactNode }) {
         </div>
       </aside>
 
-      <main className="lk-main" style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column" }}>
+      <main id="main" tabIndex={-1} className="lk-main" style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", outline: "none" }}>
         <div className="mob-only" style={{ position: "relative", zIndex: 8, height: 56, background: "#1D1A0F", color: "#fff", alignItems: "center", gap: 10, padding: "0 12px 0 16px" }}>
           <div className="mob-flex" style={{ display: "flex", alignItems: "center", height: "100%" }}>
             <div className="wordmark" style={{ flex: 1 }}>Lookout</div>

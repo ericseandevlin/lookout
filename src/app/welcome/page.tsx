@@ -9,5 +9,9 @@ export default async function WelcomePage() {
   const user = await getSessionUser();
   if (!user) redirect("/");
   if (user.onboardedAt) redirect("/finds");
-  return <Welcome initialName={user.name} />;
+  return (
+    <main>
+      <Welcome initialName={user.name} />
+    </main>
+  );
 }
