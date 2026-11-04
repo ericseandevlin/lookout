@@ -10,7 +10,7 @@ import { api } from "./store";
 type Data = {
   weeks: { week: string; active: number }[];
   funnel: { key: string; label: string; count: number }[];
-  people: { id: string; who: string; lastSeen: string | null; events: number }[];
+  people: { id: string; who: string; next: string | null; lastSeen: string | null; events: number }[];
 };
 type Row = { type: string; target: string | null; at: string; minutes?: number };
 
@@ -76,7 +76,7 @@ export function AdminActivity() {
           <Section>Funnel</Section>
           <div style={card}>
             <table style={{ width: "100%", borderCollapse: "collapse" }}>
-              <caption style={{ ...muted, textAlign: "left", padding: "12px 14px 0" }}>Everyone with an account, as of now. Each step counts people who also reached every step above it. Acted on means pinned or applied.</caption>
+              <caption style={{ ...muted, textAlign: "left", padding: "12px 14px 0" }}>Everyone with an account except admins and disabled accounts, as of now. Each step counts people who also reached every step above it. Acted on means pinned or applied.</caption>
               <thead>
                 <tr>
                   <th scope="col" style={th}>Step</th>
@@ -107,6 +107,7 @@ export function AdminActivity() {
                     style={{ width: "100%", textAlign: "left", border: 0, borderBottom: "1px solid #F2EEE8", background: who === p.id ? "#F4F1EC" : "#fff", padding: "10px 14px", cursor: "pointer", fontSize: 14 }}
                   >
                     <div style={{ fontWeight: 600 }}>{p.who}</div>
+                    <div style={muted}>{p.next ? `Next: ${p.next}` : "Done every step"}</div>
                     <div style={muted}>{p.lastSeen ? `Last seen ${when(p.lastSeen)} · ${p.events} events in 8 weeks` : "No events yet"}</div>
                   </button>
                 </li>

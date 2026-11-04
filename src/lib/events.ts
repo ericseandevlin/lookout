@@ -3,7 +3,7 @@
  * only the few things the server can't see, from a fixed list. No third-party scripts.
  */
 
-export const SERVER_EVENTS = ["sign_in", "search_run", "find_added", "pin", "stage_change", "not_a_fit", "profile_edit", "material_upload", "email_click"] as const;
+export const SERVER_EVENTS = ["sign_in", "welcome_done", "search_run", "find_added", "pin", "stage_change", "not_a_fit", "profile_edit", "material_upload", "email_click", "auto_apply_on", "auto_apply_off"] as const;
 /** The only types the browser may send. */
 export const CLIENT_EVENTS = ["page_view", "heartbeat", "find_opened", "posting_clicked", "report_opened", "tip_clicked"] as const;
 export type EventType = (typeof SERVER_EVENTS)[number] | (typeof CLIENT_EVENTS)[number];
@@ -14,6 +14,7 @@ export const HEARTBEAT_SECONDS = 60;
 
 export const EVENT_LABEL: Record<EventType, string> = {
   sign_in: "Signed in",
+  welcome_done: "Finished the welcome step",
   search_run: "Ran a search",
   find_added: "Added a link",
   pin: "Pinned",
@@ -22,6 +23,8 @@ export const EVENT_LABEL: Record<EventType, string> = {
   profile_edit: "Edited profile",
   material_upload: "Uploaded",
   email_click: "Clicked from email",
+  auto_apply_on: "Turned auto-apply on",
+  auto_apply_off: "Turned auto-apply off",
   page_view: "Opened page",
   heartbeat: "On page",
   find_opened: "Opened a find",
@@ -59,18 +62,37 @@ export function timeline(rows: { type: string; target: string | null; at: Date }
   return out.reverse();
 }
 
-export type FunnelPerson = { signedIn: boolean; answered: boolean; material: boolean; searched: boolean; acted: boolean };
-export const FUNNEL_STEPS: [keyof FunnelPerson | "accounts", string][] = [
+export type FunnelPerson = {
+  signedIn: boolean;
+  welcome: boolean;
+  answered: boolean;
+  material: boolean;
+  searchProfile: boolean;
+  searched: boolean;
+  found: boolean;
+  acted: boolean;
+};
+export type FunnelStep = keyof FunnelPerson;
+export const FUNNEL_STEPS: [FunnelStep | "accounts", string][] = [
   ["accounts", "Accounts"],
   ["signedIn", "Signed in"],
+  ["welcome", "Finished the welcome step"],
   ["answered", "Answered the 5 questions"],
   ["material", "Added a resume or LinkedIn PDF"],
+  ["searchProfile", "Search profile built"],
   ["searched", "Had a search run"],
+  ["found", "Got a first find"],
   ["acted", "Acted on a find"],
 ];
+const STEP_KEYS = FUNNEL_STEPS.slice(1).map(([k]) => k as FunnelStep);
 
 /** How many people reached each step. Each step counts only people who also reached the ones before it. */
 export function funnel(people: FunnelPerson[]) {
-  const keys = FUNNEL_STEPS.slice(1).map(([k]) => k as keyof FunnelPerson);
-  return FUNNEL_STEPS.map(([k, label], i) => ({ key: k, label, count: i === 0 ? people.length : people.filter((p) => keys.slice(0, i).every((s) => p[s])).length }));
+  return FUNNEL_STEPS.map(([k, label], i) => ({ key: k, label, count: i === 0 ? people.length : people.filter((p) => STEP_KEYS.slice(0, i).every((s) => p[s])).length }));
+}
+
+/** The first step someone hasn't reached, as its label: where they're stuck. Null once they've done them all. */
+export function nextStep(p: FunnelPerson) {
+  const i = STEP_KEYS.findIndex((s) => !p[s]);
+  return i < 0 ? null : FUNNEL_STEPS[i + 1][1];
 }
