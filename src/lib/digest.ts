@@ -3,11 +3,12 @@ import { and, desc, eq, gte } from "drizzle-orm";
 import { db, schema } from "@/lib/db";
 import { emailShell, escapeHtml, sendMail } from "@/lib/email";
 import { env } from "@/lib/env";
+import { goLink } from "./digestLinks";
 
 const money = (n: number) => "$" + n.toLocaleString("en-US");
 
-/** Email the finds added in the last day, if the user has the summary turned on. */
-export async function sendDigest(userId: string) {
+/** Email the finds added in the last day, if the user has the summary turned on. Links go through /go so clicks count (#34). */
+export async function sendDigest(userId: string, runId?: string) {
   const [u] = await db.select().from(schema.users).where(eq(schema.users.id, userId));
   const [s] = await db.select().from(schema.settings).where(eq(schema.settings.userId, userId));
   if (!u || !s?.digest) return;
@@ -23,24 +24,32 @@ export async function sendDigest(userId: string) {
     return { o, uo, comp };
   });
   const n = rows.length;
+  const [dg] = await db.insert(schema.digests).values({ userId, runId: runId ?? null, finds: n }).returning({ id: schema.digests.id });
+  const link = (target: string) => goLink(env.appUrl, dg.id, target);
   const html = emailShell(
     `${n} new ${n === 1 ? "find" : "finds"} this week`,
     `<table width="100%" cellpadding="0" cellspacing="0">${items
       .map(
         ({ o, uo, comp }) => `<tr><td style="padding:12px 0;border-top:1px solid #EEEAE4">
 <div style="font-size:14px;font-weight:700;color:#99220F">MATCH ${uo.score}/5</div>
-<div style="font-size:15px;font-weight:600;margin-top:2px">${escapeHtml(o.title)}</div>
+<div style="font-size:15px;font-weight:600;margin-top:2px"><a href="${link(o.id)}" style="color:#1D1A0F">${escapeHtml(o.title)}</a></div>
 <div style="font-size:14px;color:#6B6358">${escapeHtml(o.company)} · ${escapeHtml(o.location)}</div>
 <div style="font-size:14px;color:${o.compMax ? "#99220F" : "#A89F92"};margin-top:2px">${comp}</div></td></tr>`,
       )
       .join("")}</table>
-<a href="${env.appUrl}/finds" style="display:inline-block;margin-top:20px;background:#99220F;color:#fff;text-decoration:none;font-weight:600;font-size:14.5px;padding:13px 24px;border-radius:12px">Open your board</a>`,
+<a href="${link("board")}" style="display:inline-block;margin-top:20px;background:#99220F;color:#fff;text-decoration:none;font-weight:600;font-size:14.5px;padding:13px 24px;border-radius:12px">Open your board</a>`,
   );
-  const text = items.map(({ o, uo, comp }) => `${uo.score}/5  ${o.title}, ${o.company} (${o.location}) ${comp}`).join("\n");
-  await sendMail({
-    to: u.email,
-    subject: `Lookout: ${n} new ${n === 1 ? "find" : "finds"}`,
-    text: `${text}\n\nOpen your board: ${env.appUrl}/finds\n\nTurn this email off in Settings.`,
-    html,
-  });
+  const text = items.map(({ o, uo, comp }) => `${uo.score}/5  ${o.title}, ${o.company} (${o.location}) ${comp}\n${link(o.id)}`).join("\n\n");
+  try {
+    await sendMail({
+      to: u.email,
+      subject: `Lookout: ${n} new ${n === 1 ? "find" : "finds"}`,
+      text: `${text}\n\nOpen your board: ${link("board")}\n\nTurn this email off in Settings.`,
+      html,
+    });
+  } catch (e) {
+    // Not sent, so it doesn't count as sent.
+    await db.delete(schema.digests).where(eq(schema.digests.id, dg.id));
+    throw e;
+  }
 }

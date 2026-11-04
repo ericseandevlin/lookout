@@ -55,6 +55,6 @@ export const POST = agentRoute<Ctx>(async (req, { params }) => {
   const report =
     type === "url" ? undefined : makeReport(ctx, { queries: p.queries ?? [], results: p.results ?? finds.length, picked: p.read ?? finds.length, read: p.read ?? finds.length, tally });
   await finishRun(id, usage, { found, added, report });
-  if (added > 0 && run.trigger === "scheduled") await sendDigest(run.userId).catch(() => {});
+  if (added > 0 && run.trigger === "scheduled") await sendDigest(run.userId, id).catch(() => {});
   return json({ ok: true, found, added });
 });

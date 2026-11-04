@@ -366,7 +366,7 @@ export async function discover(userId: string, trigger: "scheduled" | "manual" =
     await progress(run.id, 100, added ? `Added ${added} new ${added === 1 ? "find" : "finds"}` : found ? "No new finds this time. Everything matching is already on your board" : "No matching open roles this time");
     const summary = makeReport(ctx, { queries, results: hits.length, picked: picks.length, read: pages.length, tally });
     await finishRun(run.id, usage, { found, added, report: summary });
-    return { found, added };
+    return { found, added, runId: run.id };
   } catch (e) {
     await finishRun(run.id, usage, { error: e instanceof Error ? e.message : String(e) });
     throw e;

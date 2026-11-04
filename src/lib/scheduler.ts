@@ -100,8 +100,8 @@ async function tick() {
     await sweepApplications().catch((e) => console.error("[scheduler] apply sweep", e));
     for (const userId of await dueUsers()) {
       try {
-        const { added } = await discover(userId, "scheduled");
-        if (added > 0) await sendDigest(userId);
+        const r = await discover(userId, "scheduled");
+        if (r.added > 0) await sendDigest(userId, "runId" in r ? r.runId : undefined);
       } catch (e) {
         // Caps and missing config affect everyone; stop this tick instead of failing user by user.
         if (e instanceof BudgetError || e instanceof AiConfigError || e instanceof SearchConfigError) break;

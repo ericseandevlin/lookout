@@ -14,6 +14,10 @@ type Data = {
   weeks: (Outcome & { week: string })[];
   reasons: { reason: string; count: number }[];
   searches: (Outcome & { id: string; who: string; trigger: string; at: string })[];
+  email: {
+    people: { id: string; who: string; sent: number; clicked: number; findClicks: number }[];
+    recent: { id: string; who: string; at: string; finds: number; findClicks: number; board: boolean }[];
+  };
 };
 
 const card: React.CSSProperties = { background: "#fff", borderRadius: 16, padding: 0, overflowX: "auto", marginTop: 8 };
@@ -134,6 +138,64 @@ export function AdminQuality() {
                 </tbody>
               </table>
             </div>
+          )}
+
+          <Section>Digest emails</Section>
+          {!d.email.people.length ? (
+            <div style={muted}>No digests sent in the last {d.days} days.</div>
+          ) : (
+            <>
+              <div style={card}>
+                <table style={{ width: "100%", borderCollapse: "collapse" }}>
+                  <caption style={{ ...muted, textAlign: "left", padding: "12px 14px 0" }}>
+                    Last {d.days} days. Clicks are counted, not opens: mail apps preload images, so opens overstate. Mail security scanners can also follow links, so a click now and then may not be a person.
+                  </caption>
+                  <thead>
+                    <tr>
+                      <th scope="col" style={{ ...th, ...first }}>Person</th>
+                      <th scope="col" style={th}>Sent</th>
+                      <th scope="col" style={th}>With a click</th>
+                      <th scope="col" style={th}>Finds clicked</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {d.email.people.map((p) => (
+                      <tr key={p.id}>
+                        <th scope="row" style={{ ...td, ...first, fontWeight: 600 }}>{p.who}</th>
+                        <td style={td}>{p.sent}</td>
+                        <td style={td}>{share(p.clicked, p.sent)}</td>
+                        <td style={td}>{p.findClicks}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+              <div style={card}>
+                <table style={{ width: "100%", borderCollapse: "collapse" }}>
+                  <caption style={{ ...muted, textAlign: "left", padding: "12px 14px 0" }}>The last 15 digests.</caption>
+                  <thead>
+                    <tr>
+                      <th scope="col" style={{ ...th, ...first }}>Digest</th>
+                      <th scope="col" style={th}>Finds in it</th>
+                      <th scope="col" style={th}>Finds clicked</th>
+                      <th scope="col" style={th}>Board link</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {d.email.recent.map((g) => (
+                      <tr key={g.id}>
+                        <th scope="row" style={{ ...td, ...first, fontWeight: 400 }}>
+                          {g.who} · {day(g.at)}
+                        </th>
+                        <td style={td}>{g.finds}</td>
+                        <td style={td}>{g.findClicks}</td>
+                        <td style={td}>{g.board ? "Clicked" : "–"}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </>
           )}
 
           <Section>&quot;Not a fit&quot; reasons</Section>
