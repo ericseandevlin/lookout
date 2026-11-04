@@ -22,6 +22,7 @@ import { submitMode } from "./submitMode";
 import { approvedFor, keywordRows } from "./evidence";
 import { finishAnalysis, honestyFindings, RECRUITER_SYSTEM, RecruiterDraft, recruiterChecks, recruiterPrompt } from "./recruiter";
 import { addUsd, patchReport } from "./reportStore";
+import { autoApproveField, optionAnswerAllowed, settledStatus } from "./flowRules";
 
 /**
  * Auto-apply step 4 (#41): review, edit, revise with AI, approve; then the manual submit record (#42 part 1).
@@ -126,8 +127,7 @@ async function settleStatus(appId: string) {
   const [a] = await db.select().from(schema.applications).where(eq(schema.applications.id, appId));
   if (!a || LOCKED.includes(a.status)) return a?.status;
   const items = await db.select().from(schema.applicationItems).where(eq(schema.applicationItems.applicationId, appId));
-  const ready = items.length > 0 && items.every((i) => !i.required || i.approvedVersionId);
-  const status: ApplicationStatus = !ready ? "needs_review" : a.route === "browser" && canAutoSubmit() ? "approved" : "manual";
+  const status = settledStatus(a.route, items, canAutoSubmit());
   if (status !== a.status) await db.update(schema.applications).set({ status, updatedAt: new Date() }).where(eq(schema.applications.id, appId));
   return status;
 }
@@ -157,7 +157,7 @@ export async function editItem(userId: string, appId: string, itemId: string, co
   const a = await ownApplication(userId, appId);
   assertEditable(a.status);
   const it = await ownItem(appId, itemId);
-  if (it.options?.length && content && !it.options.includes(content)) throw new HttpError(400, `Pick one of: ${it.options.join(", ")}`);
+  if (!optionAnswerAllowed(it.options, content)) throw new HttpError(400, `Pick one of: ${it.options!.join(", ")}`);
   if (it.kind === "eeo") {
     // Remembered for this exact wording, in the encrypted profile only.
     const { consent, profile } = await loadEeo(userId);
@@ -169,7 +169,7 @@ export async function editItem(userId: string, appId: string, itemId: string, co
   }
   const v = await insertVersion(itemId, { content, note: note.trim() || "Edited by you.", author: "user", sources: ["you"] });
   // Basic fields stay approved when you change them; there's nothing to review in a ZIP code.
-  if (it.kind === "field" && content.trim()) await db.update(schema.applicationItems).set({ approvedVersionId: v.id }).where(eq(schema.applicationItems.id, itemId));
+  if (autoApproveField(it.kind, content)) await db.update(schema.applicationItems).set({ approvedVersionId: v.id }).where(eq(schema.applicationItems.id, itemId));
   // Remember answers to the questions every application asks, for next time (#108).
   if ((it.kind === "field" || it.kind === "answer") && isCommon(it.prompt, content)) {
     const [p] = await db.select({ list: schema.profiles.applyAnswers }).from(schema.profiles).where(eq(schema.profiles.userId, userId));

@@ -1,7 +1,6 @@
 import type { Find, Stage } from "@/lib/types";
 
 export const STAGES: Stage[] = ["Not applied", "Auto-applying", "Applied", "Interview", "Offer", "Closed", "Ghosted", "Not selected", "Nope"];
-export const ACTIVE_STAGES: Stage[] = ["Applied", "Interview", "Offer"];
 /** Stages that end a find. Moving a find into one archives it (#180). */
 export const ENDED_STAGES: Stage[] = ["Closed", "Ghosted", "Not selected", "Nope"];
 export const STAGE_STYLE: Record<Stage, { bg: string; ink: string }> = {
