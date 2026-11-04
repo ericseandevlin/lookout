@@ -214,7 +214,7 @@ export function Materials() {
             const initial = ["Website", "Other", "Press"].includes(kind) ? (cleanUrl(lk.url)[0] || "W").toUpperCase() : kind[0];
             const editing = editId === lk.id;
             return (
-              <div key={lk.id} style={{ display: "flex", alignItems: "center", gap: 12, minHeight: 52, borderRadius: 12, background: "#fff", border: `1.5px solid ${editing ? "#99220F" : "#E6E0D8"}`, padding: "8px 8px 8px 10px" }}>
+              <div key={lk.id} className="focus-box" style={{ display: "flex", alignItems: "center", gap: 12, minHeight: 52, borderRadius: 12, background: "#fff", border: `1.5px solid ${editing ? "#99220F" : "#E6E0D8"}`, padding: "8px 8px 8px 10px" }}>
                 <div style={{ width: 34, height: 34, borderRadius: 8, background: t[0], color: t[1], display: "flex", alignItems: "center", justifyContent: "center", fontSize: 14, fontWeight: 700, flex: "none" }}>{initial}</div>
                 {editing ? (
                   <>

@@ -28,6 +28,8 @@ a:hover { color: #4b2310; }
 input, textarea, button, select { font-family: inherit; }
 button { -webkit-tap-highlight-color: transparent; }
 button:focus-visible, a:focus-visible, label:focus-within { outline: 2px solid var(--brick); outline-offset: 2px; }
+/* Inputs drawn without their own border show focus on the box around them (#215). */
+div.board-search:has(input:focus-visible), .focus-box:has(input:focus-visible) { outline: 2px solid var(--brick); outline-offset: 2px; }
 ::placeholder { color: var(--muted); }
 
 .wordmark { font-family: var(--wordmark); font-weight: 700; font-size: 19px; letter-spacing: -0.01em; line-height: 1; }
