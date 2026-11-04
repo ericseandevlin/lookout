@@ -1,5 +1,5 @@
 import "server-only";
-import { and, desc, eq, gte, inArray } from "drizzle-orm";
+import { and, count, countDistinct, desc, eq, gte, inArray } from "drizzle-orm";
 import { db, schema } from "@/lib/db";
 import { byWeek, findsOfRun, outcome, topReasons, type FindRow } from "./quality";
 
@@ -31,8 +31,34 @@ export async function findsQuality() {
   const who = new Map(users.map((u) => [u.id, u.name || u.email]));
   const mine = new Map<string, FindRow[]>();
   for (const r of rows) mine.set(r.userId, [...(mine.get(r.userId) ?? []), r]);
+  const digests = await db
+    .select({
+      id: schema.digests.id,
+      userId: schema.digests.userId,
+      sentAt: schema.digests.sentAt,
+      finds: schema.digests.finds,
+      clicks: count(schema.digestClicks.id),
+      findClicks: countDistinct(schema.digestClicks.opportunityId),
+    })
+    .from(schema.digests)
+    .leftJoin(schema.digestClicks, eq(schema.digestClicks.digestId, schema.digests.id))
+    .where(gte(schema.digests.sentAt, since))
+    .groupBy(schema.digests.id)
+    .orderBy(desc(schema.digests.sentAt));
+  const perPerson = new Map<string, { sent: number; clicked: number; findClicks: number }>();
+  for (const g of digests) {
+    const p = perPerson.get(g.userId) ?? { sent: 0, clicked: 0, findClicks: 0 };
+    p.sent++;
+    if (Number(g.clicks) > 0) p.clicked++;
+    p.findClicks += Number(g.findClicks);
+    perPerson.set(g.userId, p);
+  }
   return {
     days: DAYS,
+    email: {
+      people: [...perPerson].map(([id, p]) => ({ id, who: who.get(id) ?? "Deleted account", ...p })).sort((a, b) => b.sent - a.sent),
+      recent: digests.slice(0, 15).map((g) => ({ id: g.id, who: who.get(g.userId) ?? "Deleted account", at: g.sentAt.toISOString(), finds: g.finds, findClicks: Number(g.findClicks), board: Number(g.clicks) > Number(g.findClicks) })),
+    },
     total: outcome(rows),
     people: [...mine].map(([id, rs]) => ({ id, who: who.get(id) ?? "Deleted account", ...outcome(rs) })).sort((a, b) => b.added - a.added),
     weeks: byWeek(rows, 8),
