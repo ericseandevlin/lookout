@@ -21,6 +21,7 @@ import { canAutoSubmit } from "./submit";
 import { submitMode } from "./submitMode";
 import { approvedFor, keywordRows } from "./evidence";
 import { finishAnalysis, honestyFindings, RECRUITER_SYSTEM, RecruiterDraft, recruiterChecks, recruiterPrompt } from "./recruiter";
+import { addUsd, patchReport } from "./reportStore";
 
 /**
  * Auto-apply step 4 (#41): review, edit, revise with AI, approve; then the manual submit record (#42 part 1).
@@ -227,10 +228,7 @@ export async function reviseItem(userId: string, appId: string, itemId: string, 
     { applicationId: appId, role: "user", content: `[${it.prompt}] ${instruction}` },
     { applicationId: appId, role: "assistant", content: r.question.trim() || r.note.trim() },
   ]);
-  await db
-    .update(schema.applications)
-    .set({ report: { ...a.report, usd: (a.report.usd ?? 0) + usage.usd } })
-    .where(eq(schema.applications.id, appId));
+  await patchReport(appId, addUsd(usage.usd));
   if (!r.content.trim()) return { status: a.status, question: r.question.trim() || "Lookout needs more detail to make that change." };
   const invented = newNumbers(master, r.content).filter((n) => !newNumbers(master, cur?.content ?? "").includes(n) && !(cur?.content ?? "").includes(n));
   const shaped = it.kind === "resume" ? shapeResume(humanize(r.content.trim())) : { md: it.options?.length ? r.content.trim() : humanize(r.content.trim()), fixed: [] };
@@ -267,13 +265,7 @@ export async function analyzeItem(userId: string, appId: string, itemId: string,
     usage,
   });
   const analysis = finishAnalysis(v.id, v.content, d, found);
-  // Re-read the report so a keyword pick made while the model ran isn't lost.
-  const [cur] = await db.select({ report: schema.applications.report }).from(schema.applications).where(eq(schema.applications.id, appId));
-  const report = cur?.report ?? a.report;
-  await db
-    .update(schema.applications)
-    .set({ report: { ...report, usd: (report.usd ?? 0) + usage.usd, recruiter: { ...report.recruiter, [itemId]: analysis } } })
-    .where(eq(schema.applications.id, appId));
+  await patchReport(appId, (r) => ({ ...addUsd(usage.usd)(r), recruiter: { ...r.recruiter, [itemId]: analysis } }));
   return { status: a.status, analysis };
 }
 
