@@ -14,6 +14,7 @@ import { api, useStore } from "./store";
 import { NextStep } from "./Profile";
 import { applicationLabel } from "@/lib/applyLabels";
 import { SubmitModeNote } from "./SubmitModeNote";
+import { trackClient } from "./track";
 
 type SortKey = "score" | "company" | "role" | "comp" | "listed" | "stage" | "location";
 type Filter = "all" | "new" | "archived";
@@ -116,6 +117,7 @@ export function Finds() {
       setOpenId(id);
       setFitMenu(false);
       if (f && !f.seen) patchFind(f.id, { seen: true });
+      if (f) trackClient("find_opened", f.id);
     },
     [finds, patchFind],
   );
@@ -180,7 +182,7 @@ export function Finds() {
             <div style={{ display: "flex", alignItems: "baseline", gap: 8, flexWrap: "wrap", marginTop: 4 }}>
               <span className={state.running ? "pulse" : undefined} style={{ fontSize: 14, color: "#6B6358" }}>{sub}</span>
               {!state.running && state.lastReport && (
-                <button onClick={() => setShowReport((v) => !v)} aria-expanded={showReport} style={{ border: 0, background: "transparent", padding: 0, fontSize: 14, fontWeight: 600, color: "#99220F", cursor: "pointer", textDecoration: "underline", textUnderlineOffset: 3 }}>
+                <button onClick={() => { if (!showReport) trackClient("report_opened"); setShowReport(!showReport); }} aria-expanded={showReport} style={{ border: 0, background: "transparent", padding: 0, fontSize: 14, fontWeight: 600, color: "#99220F", cursor: "pointer", textDecoration: "underline", textUnderlineOffset: 3 }}>
                   {showReport ? "Hide search report" : "See search report"}
                 </button>
               )}
@@ -944,7 +946,7 @@ function Drawer({ f, close, toggle, setStage, enter, nav }: { f: Find; close: ()
           >
             {f.archived ? (f.feedback ? `Restore · was “${f.feedback}”` : "Restore") : asking ? "Cancel" : "Not a fit"}
           </button>
-          <a href={posting} target="_blank" rel="noopener noreferrer" style={{ flex: 1, height: 42, borderRadius: 10, background: "#99220F", fontSize: 14, fontWeight: 600, color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", gap: 7, textDecoration: "none" }}>
+          <a href={posting} target="_blank" rel="noopener noreferrer" onClick={() => trackClient("posting_clicked", f.id)} style={{ flex: 1, height: 42, borderRadius: 10, background: "#99220F", fontSize: 14, fontWeight: 600, color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", gap: 7, textDecoration: "none" }}>
             View posting
             <ArrowUpRight />
           </a>
