@@ -11,6 +11,7 @@ import { XIcon } from "./icons";
 import { api } from "./store";
 import { SubmitModeNote } from "./SubmitModeNote";
 import { ATS_NAME, type SubmitMode } from "@/lib/application/submitMode";
+import { useFocusTrap } from "./useFocusTrap";
 
 type App = {
   id: string;
@@ -241,6 +242,8 @@ function Switch({ on, onToggle }: { on: boolean; onToggle: () => void }) {
 /** Side panel: the switch, its two settings, and how the whole flow works. */
 function SettingsPanel({ settings, save, close }: { settings: AutoApplySettings; save: (p: Partial<AutoApplySettings>) => void; close: () => void }) {
   const closeRef = useRef<HTMLButtonElement>(null);
+  const box = useRef<HTMLElement>(null);
+  useFocusTrap(box);
   useEffect(() => {
     closeRef.current?.focus();
     const onKey = (e: KeyboardEvent) => e.key === "Escape" && close();
@@ -251,7 +254,7 @@ function SettingsPanel({ settings, save, close }: { settings: AutoApplySettings;
   return (
     <>
       <div onClick={close} style={{ position: "fixed", inset: 0, zIndex: 40, background: "rgba(29,26,15,.35)" }} />
-      <aside role="dialog" aria-modal="true" aria-labelledby="aa-panel-title" style={{ position: "fixed", top: 0, right: 0, bottom: 0, zIndex: 41, width: "min(440px, 100vw)", background: "#fff", boxShadow: "-12px 0 40px rgba(29,26,15,.18)", display: "flex", flexDirection: "column" }}>
+      <aside ref={box} role="dialog" aria-modal="true" aria-labelledby="aa-panel-title" style={{ position: "fixed", top: 0, right: 0, bottom: 0, zIndex: 41, width: "min(440px, 100vw)", background: "#fff", boxShadow: "-12px 0 40px rgba(29,26,15,.18)", display: "flex", flexDirection: "column" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "20px 22px", borderBottom: "1px solid #EEEAE4" }}>
           <h2 id="aa-panel-title" style={{ margin: 0, flex: 1, fontSize: 20, fontWeight: 700 }}>Auto-apply settings</h2>
           <button ref={closeRef} onClick={close} aria-label="Close" style={{ width: 36, height: 36, borderRadius: "50%", border: 0, background: "#F4F1EC", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>

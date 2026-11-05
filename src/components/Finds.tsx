@@ -15,6 +15,7 @@ import { NextStep } from "./Profile";
 import { applicationLabel } from "@/lib/applyLabels";
 import { SubmitModeNote } from "./SubmitModeNote";
 import { trackClient } from "./track";
+import { useFocusTrap } from "./useFocusTrap";
 
 type SortKey = "score" | "company" | "role" | "comp" | "listed" | "stage" | "location";
 type Filter = "all" | "new" | "archived";
@@ -641,10 +642,17 @@ function FilterSheet(p: {
   sortDir: "asc" | "desc"; setSortDir: (d: "asc" | "desc") => void;
   shown: number;
 }) {
+  const box = useRef<HTMLDivElement>(null);
+  useFocusTrap(box);
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => e.key === "Escape" && p.close();
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [p]);
   return (
     <>
       <div onClick={p.close} style={{ position: "fixed", inset: 0, background: "rgba(29,26,15,.32)", zIndex: 30 }} />
-      <div role="dialog" aria-label="Filter and sort" style={{ position: "fixed", left: 0, right: 0, bottom: 0, zIndex: 31, background: "#fff", borderRadius: "20px 20px 0 0", boxShadow: "0 -12px 40px rgba(29,26,15,.18)", padding: "10px 16px calc(16px + env(safe-area-inset-bottom))", display: "flex", flexDirection: "column", gap: 20, maxHeight: "85vh", overflowY: "auto" }}>
+      <div ref={box} role="dialog" aria-modal="true" aria-label="Filter and sort" style={{ position: "fixed", left: 0, right: 0, bottom: 0, zIndex: 31, background: "#fff", borderRadius: "20px 20px 0 0", boxShadow: "0 -12px 40px rgba(29,26,15,.18)", padding: "10px 16px calc(16px + env(safe-area-inset-bottom))", display: "flex", flexDirection: "column", gap: 20, maxHeight: "85vh", overflowY: "auto" }}>
         <div style={{ width: 36, height: 4, borderRadius: 999, background: "#E0D9CF", alignSelf: "center" }} />
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
           <div style={{ fontSize: 18, fontWeight: 700 }}>Filter &amp; sort</div>
@@ -737,6 +745,8 @@ function Drawer({ f, close, toggle, setStage, enter, nav }: { f: Find; close: ()
   const [leaving, setLeaving] = useState(false);
   const timers = useRef<{ save?: ReturnType<typeof setTimeout>; hide?: ReturnType<typeof setTimeout>; copy?: ReturnType<typeof setTimeout> }>({});
   const closeBtn = useRef<HTMLButtonElement>(null);
+  const panel = useRef<HTMLElement>(null);
+  useFocusTrap(panel);
   // Notes stay local while typing; they save after a long pause or when the drawer closes, so typing never stalls.
   const pending = useRef<string | null>(null);
   const navRef = useRef(nav);
@@ -815,7 +825,7 @@ function Drawer({ f, close, toggle, setStage, enter, nav }: { f: Find; close: ()
   return (
     <>
       <div onClick={animatedClose} className={leaving ? "drawer-scrim out" : enter ? "drawer-scrim" : undefined} style={{ position: "fixed", inset: 0, background: "rgba(29,26,15,.28)", zIndex: 20 }} />
-      <aside role="dialog" aria-modal="true" aria-label={`${f.role} at ${f.company}`} className={leaving ? "drawer-panel out" : enter ? "drawer-panel" : undefined} style={{ position: "fixed", top: 0, right: 0, bottom: 0, width: 440, maxWidth: "100vw", background: "#fff", zIndex: 21, display: "flex", flexDirection: "column", boxShadow: "-12px 0 40px rgba(29,26,15,.18)" }}>
+      <aside ref={panel} role="dialog" aria-modal="true" aria-label={`${f.role} at ${f.company}`} className={leaving ? "drawer-panel out" : enter ? "drawer-panel" : undefined} style={{ position: "fixed", top: 0, right: 0, bottom: 0, width: 440, maxWidth: "100vw", background: "#fff", zIndex: 21, display: "flex", flexDirection: "column", boxShadow: "-12px 0 40px rgba(29,26,15,.18)" }}>
         {nav.index >= 0 && nav.total > 1 && (
           <div className="drawer-nav" role="group" aria-label="Move between finds">
             <button onClick={nav.prev} disabled={!nav.prev} aria-label="Previous find" data-tip="Previous (←)" className="drawer-nav-btn">‹</button>

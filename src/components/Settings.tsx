@@ -1,13 +1,14 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { DAYS } from "@/lib/board";
 import type { Settings as S } from "@/lib/types";
 import { Switch } from "./Finds";
 import { PageHead } from "./Profile";
 import { api, useStore } from "./store";
 import { useConfirm } from "./Confirm";
+import { useFocusTrap } from "./useFocusTrap";
 
 const ORDER = Object.keys(DAYS);
 
@@ -181,6 +182,8 @@ export function Settings() {
 }
 
 function DeleteModal({ close }: { close: () => void }) {
+  const box = useRef<HTMLDivElement>(null);
+  useFocusTrap(box);
   const [text, setText] = useState("");
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
@@ -200,7 +203,7 @@ function DeleteModal({ close }: { close: () => void }) {
   return (
     <>
       <div onClick={close} style={{ position: "fixed", inset: 0, background: "rgba(29,26,15,.45)", zIndex: 30 }} />
-      <div role="dialog" aria-modal="true" aria-labelledby="del-title" style={{ position: "fixed", top: "50%", left: "50%", transform: "translate(-50%,-50%)", width: 460, maxWidth: "calc(100vw - 32px)", background: "#EFEEEC", borderRadius: 16, overflow: "hidden", zIndex: 31, boxShadow: "0 24px 60px rgba(29,26,15,.3)" }}>
+      <div ref={box} role="dialog" aria-modal="true" aria-labelledby="del-title" style={{ position: "fixed", top: "50%", left: "50%", transform: "translate(-50%,-50%)", width: 460, maxWidth: "calc(100vw - 32px)", background: "#EFEEEC", borderRadius: 16, overflow: "hidden", zIndex: 31, boxShadow: "0 24px 60px rgba(29,26,15,.3)" }}>
         <div style={{ background: "#1D1A0F", color: "#fff", padding: "22px 24px 20px", display: "flex", alignItems: "flex-start", gap: 12 }}>
           <div style={{ flex: 1, minWidth: 0 }}>
             <div style={{ fontSize: 14, fontWeight: 700, letterSpacing: ".14em", textTransform: "uppercase", color: "#F8A865" }}>Delete everything</div>
