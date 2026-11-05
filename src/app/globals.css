@@ -28,6 +28,8 @@ a:hover { color: #4b2310; }
 input, textarea, button, select { font-family: inherit; }
 button { -webkit-tap-highlight-color: transparent; }
 button:focus-visible, a:focus-visible, label:focus-within { outline: 2px solid var(--brick); outline-offset: 2px; }
+/* A row's title as a plain-looking button: the keyboard way into a find (#211). */
+.cell-link { border: 0; background: transparent; padding: 0; margin: 0; font: inherit; color: inherit; text-align: left; cursor: pointer; max-width: 100%; }
 /* Skip link: off screen until it has keyboard focus (#214). */
 .skip-link { position: absolute; left: 12px; top: -100px; z-index: 100; padding: 10px 16px; border-radius: 10px; background: #1d1a0f; color: #fff; font-weight: 600; text-decoration: none; }
 .skip-link:focus { top: 12px; }
