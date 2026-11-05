@@ -37,6 +37,7 @@ import {
 } from "./draft";
 import { ASHBY_QUERY, PAGE_SYSTEM, PageItems, applyUrlFor, boardFromHtml, boardGuesses, detectAts, fromPage, parseAshby, parseGreenhouse, routeFor, withBasics, type ScanResult } from "./scan";
 import { addUsd, patchReport } from "./reportStore";
+import { autoApproveField } from "./flowRules";
 
 /**
  * The auto-apply pipeline for one application: queued -> scanning -> (drafting) -> needs_review.
@@ -375,7 +376,7 @@ async function draftAll(id: string, userId: string, opp: typeof schema.opportuni
       await tx.delete(schema.itemVersions).where(eq(schema.itemVersions.itemId, it.id));
       const [v] = await tx.insert(schema.itemVersions).values({ itemId: it.id, version: 1, content: d.content, note: d.note, author: "ai", sources: d.sources }).returning();
       // Basic fields filled from the account, resume or saved answers need no approval (#108).
-      const auto = it.kind === "field" && !!d.content.trim();
+      const auto = autoApproveField(it.kind, d.content);
       await tx.update(schema.applicationItems).set({ question: d.question, approvedVersionId: auto ? v.id : null }).where(eq(schema.applicationItems.id, it.id));
     }
     for (const [index, person] of outreach.entries()) {

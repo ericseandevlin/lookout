@@ -17,7 +17,7 @@ export { looseDates } from "./masterDates";
  * person's exact words, and lets them fix it on Materials. Every draft starts from this.
  */
 
-export const MASTER_SYSTEM = `You rebuild a resume from text extracted from a PDF into clean structure. The extraction lost the layout:
+const MASTER_SYSTEM = `You rebuild a resume from text extracted from a PDF into clean structure. The extraction lost the layout:
 - columns can be interleaved, and a job's heading (title, company, dates) can appear AFTER its bullets instead of before them;
 - contact details can sit in the middle.
 If a LinkedIn profile is given, it is usually more current than the resume file: where LinkedIn has a newer role, title or dates (for example a promotion, or a contract that became full-time), use LinkedIn's version and its bullets, keep the resume's extra bullets under the matching role, and say in "uncertain" what you took from LinkedIn. Also trust it for which title, company and dates go together (a resume heading like "Freelance Web Development" may be the same job LinkedIn lists under the client's name).
@@ -39,7 +39,7 @@ const Out = z.object({
   uncertain: z.array(z.string()).describe("Each placement or date you weren't sure about, one short line each, speaking to the person as 'you', e.g. 'I left The Weather Company undated; the 01/2016 to 04/2016 dates could belong to it or to your Film Academy course.' Empty if none"),
 });
 
-export const sourceHash = (text: string) => createHash("sha256").update(text).digest("hex").slice(0, 16);
+const sourceHash = (text: string) => createHash("sha256").update(text).digest("hex").slice(0, 16);
 
 async function current(userId: string) {
   const [m] = await db.select().from(schema.materials).where(and(eq(schema.materials.userId, userId), eq(schema.materials.kind, "resume")));

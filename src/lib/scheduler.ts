@@ -30,7 +30,7 @@ function localNow() {
   return { day: get("weekday"), hour: Number(get("hour")) % 24, date: `${get("year")}-${get("month")}-${get("day")}` };
 }
 
-export function isRunDay(s: { freq: string; runDay: string; runDays: string[] }, day: string) {
+function isRunDay(s: { freq: string; runDay: string; runDays: string[] }, day: string) {
   if (s.freq === "Daily") return true;
   if (s.freq === "Twice a week") return s.runDays.includes(day);
   return s.runDay === day;

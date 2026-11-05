@@ -12,7 +12,7 @@ import { autoSubmitOn, submitMode, type SubmitMode } from "@/lib/application/sub
 // Staging-only until Eric releases it: off unless FEATURE_AUTO_APPLY=on in the server's .env.
 export const canUseAutoApply = (user: SessionUser) => process.env.FEATURE_AUTO_APPLY === "on" && isAdmin(user);
 
-export const DEFAULT_AUTO_APPLY: AutoApplySettings = { enabled: false, threshold: 5, dailyCap: 3 };
+const DEFAULT_AUTO_APPLY: AutoApplySettings = { enabled: false, threshold: 5, dailyCap: 3 };
 
 export async function getAutoApplySettings(userId: string): Promise<AutoApplySettings> {
   const [s] = await db.select({ a: schema.settings.autoApply }).from(schema.settings).where(eq(schema.settings.userId, userId));
