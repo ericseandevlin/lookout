@@ -12,6 +12,7 @@ import { resolve } from "./eeo";
 import { loadEeo } from "./eeoStore";
 import { autoSubmitOn, CAPTCHA_STOP } from "./submitMode";
 import { patchReport } from "./reportStore";
+import { statusAfterFill } from "./flowRules";
 
 /**
  * Auto-apply step 5, browser half (#42): fill the real form with the approved versions in headless
@@ -219,7 +220,7 @@ export async function startFill(appId: string, mode: "test" | "submit") {
       return;
     }
     const report = { ...a.report, fill };
-    if (fill.confirmation !== undefined && !fill.stopped) {
+    if (statusAfterFill(fill) === "submitted") {
       const { sentRecord } = await import("./review");
       const now = new Date();
       await db.transaction(async (tx) => {

@@ -7,7 +7,7 @@ import { canUseAutoApply } from "@/lib/apply";
 import { autoSubmitOn, submitMode } from "@/lib/application/submitMode";
 import type { AppState, Find, Resume, RunInfo } from "@/lib/types";
 
-export function toFind(
+function toFind(
   o: typeof schema.opportunities.$inferSelect,
   u: typeof schema.userOpportunities.$inferSelect,
   a?: typeof schema.applications.$inferSelect | null,
@@ -35,7 +35,7 @@ export function toFind(
   };
 }
 
-export async function getFinds(userId: string) {
+async function getFinds(userId: string) {
   const rows = await db
     .select()
     .from(schema.userOpportunities)
@@ -60,7 +60,7 @@ export function toResume(m: typeof schema.materials.$inferSelect | undefined): R
   };
 }
 
-export async function getMaterials(userId: string) {
+async function getMaterials(userId: string) {
   const rows = await db
     .select()
     .from(schema.materials)
