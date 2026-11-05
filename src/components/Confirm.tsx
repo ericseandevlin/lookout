@@ -1,6 +1,7 @@
 "use client";
 
 import { createContext, useCallback, useContext, useEffect, useRef, useState } from "react";
+import { useFocusTrap } from "./useFocusTrap";
 
 type Ask = { eyebrow?: string; title: string; body?: React.ReactNode; confirmLabel: string; danger?: boolean };
 type Pending = Ask & { resolve: (ok: boolean) => void };
@@ -27,6 +28,8 @@ export function ConfirmProvider({ children }: { children: React.ReactNode }) {
 
 function Dialog({ p, close }: { p: Pending; close: (ok: boolean) => void }) {
   const okRef = useRef<HTMLButtonElement>(null);
+  const box = useRef<HTMLDivElement>(null);
+  useFocusTrap(box);
   useEffect(() => {
     okRef.current?.focus();
     const onKey = (e: KeyboardEvent) => e.key === "Escape" && close(false);
@@ -36,7 +39,7 @@ function Dialog({ p, close }: { p: Pending; close: (ok: boolean) => void }) {
   return (
     <>
       <div onClick={() => close(false)} style={{ position: "fixed", inset: 0, background: "rgba(29,26,15,.45)", zIndex: 40 }} />
-      <div role="alertdialog" aria-modal="true" aria-labelledby="confirm-title" style={{ position: "fixed", top: "50%", left: "50%", transform: "translate(-50%,-50%)", width: 440, maxWidth: "calc(100vw - 32px)", background: "#EFEEEC", borderRadius: 16, overflow: "hidden", zIndex: 41, boxShadow: "0 24px 60px rgba(29,26,15,.3)" }}>
+      <div ref={box} role="alertdialog" aria-modal="true" aria-labelledby="confirm-title" style={{ position: "fixed", top: "50%", left: "50%", transform: "translate(-50%,-50%)", width: 440, maxWidth: "calc(100vw - 32px)", background: "#EFEEEC", borderRadius: 16, overflow: "hidden", zIndex: 41, boxShadow: "0 24px 60px rgba(29,26,15,.3)" }}>
         <div style={{ background: "#1D1A0F", color: "#fff", padding: "22px 24px 20px", display: "flex", alignItems: "flex-start", gap: 12 }}>
           <div style={{ flex: 1, minWidth: 0 }}>
             {p.eyebrow && <div style={{ fontSize: 14, fontWeight: 700, letterSpacing: ".14em", textTransform: "uppercase", color: "#F8A865" }}>{p.eyebrow}</div>}
