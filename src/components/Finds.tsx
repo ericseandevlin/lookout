@@ -284,6 +284,7 @@ export function Finds() {
           {/* Desktop table */}
           <div className="desk-only" style={{ overflowX: "auto" }}>
             <div style={{ minWidth: 1080 }} role="table" aria-label="Finds">
+              <div role="rowgroup">
               <div role="row" style={{ display: "grid", gridTemplateColumns: GRID, alignItems: "center", padding: "0 22px", height: 46, borderBottom: "1px solid #EEEAE4" }}>
                 {([["", null], ["Match", "score"], ["Company", "company"], ["Role", "role"], ["Comp", "comp"], ["Posted", "listed"], ["Stage", "stage"], ["Location", "location"]] as [string, SortKey | null][]).map(([label, key]) => {
                   const on = key && sortKey === key;
@@ -302,6 +303,8 @@ export function Finds() {
                   );
                 })}
               </div>
+              </div>
+              <div role="rowgroup">
               {rows.map((f, i) => {
                 const st = STAGE_STYLE[f.stage];
                 const sc = scoreStyle(f.score);
@@ -313,7 +316,7 @@ export function Finds() {
                     onClick={() => open(f.id)}
                     style={{ animationDelay: `${Math.min(i, 14) * 28}ms`, position: "relative", zIndex: stageMenu === f.id ? 6 : undefined, display: "grid", gridTemplateColumns: GRID, alignItems: "center", padding: `${dense ? 9 : 16}px 22px`, borderBottom: "1px solid #F2EEE8", cursor: "pointer", background: f.pinned ? "#FFFBF6" : "#fff" }}
                   >
-                    <div style={{ display: "flex", gap: 6, alignItems: "center", position: "relative" }}>
+                    <div role="cell" style={{ display: "flex", gap: 6, alignItems: "center", position: "relative" }}>
                       {isNew(f) && <span data-tip="New this week" style={{ position: "absolute", left: -15, top: "50%", marginTop: -4, width: 8, height: 8, borderRadius: "50%", background: "#427D33" }} />}
                       <IconBtn tip={f.pinned ? "Unpin" : "Pin"} onClick={() => toggle(f, "pinned")} pressed={f.pinned} style={iconState(f.pinned)}>
                         <PinIcon size={15} sw={f.pinned ? 2.4 : 1.8} />
@@ -322,14 +325,19 @@ export function Finds() {
                         <ArchiveIcon size={15} sw={f.archived ? 2.4 : 1.8} />
                       </IconBtn>
                     </div>
-                    <div style={{ paddingLeft: 13, width: 60 }}>
+                    <div role="cell" style={{ paddingLeft: 13, width: 60 }}>
                       <div style={{ width: 30, height: 30, borderRadius: "50%", background: sc.bg, color: sc.ink, border: `1.5px solid ${sc.border}`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 14, fontWeight: 700 }}>{f.score}</div>
                     </div>
-                    <div style={{ fontSize: 14.5, fontWeight: 600, paddingRight: 16 }}>{f.company}</div>
-                    <div style={{ fontSize: 14, paddingRight: 16, textWrap: "pretty" }}>{f.role}</div>
-                    <div style={{ fontSize: 14, fontWeight: f.comp ? 600 : 400, color: f.comp ? "#99220F" : "#6B6358", fontVariantNumeric: "tabular-nums" }}>{compText(f)}</div>
-                    <div style={{ fontSize: 14, color: "#6B6358", fontStyle: f.postedAt ? "normal" : "italic" }}>{postedText(f)}</div>
-                    <div style={{ position: "relative", paddingRight: 16 }}>
+                    <div role="rowheader" style={{ fontSize: 14.5, fontWeight: 600, paddingRight: 16 }}>
+                      {/* The keyboard and screen reader way into a find (#211); the row's click stays for pointers. */}
+                      <button className="cell-link" onClick={(e) => { e.stopPropagation(); open(f.id); }} aria-label={`${f.role} at ${f.company}`}>
+                        {f.company}
+                      </button>
+                    </div>
+                    <div role="cell" style={{ fontSize: 14, paddingRight: 16, textWrap: "pretty" }}>{f.role}</div>
+                    <div role="cell" style={{ fontSize: 14, fontWeight: f.comp ? 600 : 400, color: f.comp ? "#99220F" : "#6B6358", fontVariantNumeric: "tabular-nums" }}>{compText(f)}</div>
+                    <div role="cell" style={{ fontSize: 14, color: "#6B6358", fontStyle: f.postedAt ? "normal" : "italic" }}>{postedText(f)}</div>
+                    <div role="cell" style={{ position: "relative", paddingRight: 16 }}>
                       <button
                         data-tip="Change stage"
                         onClick={(e) => toggleStageMenu(e, f.id, "left")}
@@ -342,10 +350,11 @@ export function Finds() {
                         <StageMenu current={f.stage} style={{ ...menuAt, minWidth: 150 }} onPick={(s) => { setStage(f, s); setStageMenu(null); }} />
                       )}
                     </div>
-                    <div style={{ fontSize: 14, color: "#6B6358", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} data-tip={f.location}>{f.location}</div>
+                    <div role="cell" style={{ fontSize: 14, color: "#6B6358", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} data-tip={f.location}>{f.location}</div>
                   </div>
                 );
               })}
+              </div>
               {rows.length === 0 && <Empty hasAny={finds.length > 0} running={!!state.running} />}
             </div>
           </div>
@@ -363,7 +372,7 @@ export function Finds() {
                     <div style={{ display: "flex", alignItems: "flex-start", gap: 8 }}>
                       <div style={{ flex: 1, minWidth: 0 }}>
                         <div style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 14.5, fontWeight: 600, lineHeight: 1.3 }}>
-                          <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{f.company}</span>
+                          <button className="cell-link" onClick={(e) => { e.stopPropagation(); open(f.id); }} aria-label={`${f.role} at ${f.company}`} style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{f.company}</button>
                           {f.pinned && <PinIcon size={13} stroke="#99220F" sw={2} style={{ flex: "none" }} />}
                         </div>
                         <div style={{ fontSize: 14, lineHeight: 1.35, color: "#3A3428", marginTop: 1, display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>{f.role}</div>
