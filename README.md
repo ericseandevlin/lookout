@@ -46,6 +46,8 @@ Jobs are the first opportunity type. Type-specific pieces live in `src/lib/kinds
 
 `src/lib/scheduler.ts` ticks every 10 minutes under a Postgres advisory lock and starts due users' searches. Every run logs tokens, searches and cost; daily caps (global and per user) refuse new work once hit. In Claude agent mode, runs are queued and `~/Life-OS/scripts/lookout/poll.sh` (launchd, every 2 minutes) has Claude Code work them through `/api/agent/*` with a bearer token.
 
+Why it's built this way (open models, zero-retention routing, rules in code, staging first): [docs/decisions](docs/decisions/README.md).
+
 ## Local development
 
 ```bash
