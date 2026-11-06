@@ -35,10 +35,13 @@ Do these in order. Don't delete anything yet; logs and the database are evidence
    | `ANTHROPIC_API_KEY`, if set | `.env` | |
    | `AGENT_TOKEN` | `.env` and Eric's Mac (`~/Life-OS/scripts/lookout/poll.sh` config) | 32+ characters. Update both ends or Claude agent mode stops. |
    | Database password | `/opt/lookout/secrets/db_password` and `DATABASE_URL` in `.env` | Change it in Postgres first (`ALTER USER lookout PASSWORD ...`), then both files. |
-   | `APP_SECRET` | `.env` | Read the warning below before changing it. |
+   | `APP_SECRET` | `.env` | Needs the extra steps below. |
    | SSH keys and server logins | `~/.ssh/authorized_keys` for root and every user | Remove any key you don't recognize. Rotate the `hermes_vps` deploy key. |
 
-   **`APP_SECRET` warning.** It encrypts the stored model and search keys and every person's EEO answers (`profiles.eeo`). There is no re-encryption script yet, so after a change those can't be read. The stored keys don't matter (you're replacing them anyway). For EEO answers, either clear them (`UPDATE profiles SET eeo = NULL;`) and ask people to fill them in again, or keep the old secret if you're sure it didn't leak.
+   **Changing `APP_SECRET`.** It encrypts the stored model and search keys and every person's EEO answers (`profiles.eeo`), so those have to move to the new secret:
+   1. In `.env`, set `APP_SECRET_PREVIOUS` to the old value and `APP_SECRET` to a new one (32+ characters). Restart the app; it reads with either key meanwhile.
+   2. Run `docker compose exec app node scripts/reencrypt.mjs`. It prints counts only. Running it twice is safe.
+   3. Remove `APP_SECRET_PREVIOUS` from `.env` and restart again.
 
 5. **Restart** with `docker compose up -d app` (this is the Lookout stack in `/opt/lookout`, not Plane's), check `/api/health`, and sign in yourself to confirm.
 
@@ -67,7 +70,7 @@ The legal part, for orientation only. Check it with a lawyer (#22) before sendin
 
 - **Owner and decision maker:** Eric Devlin.
 - **Testers and users:** the `users` table (email).
-- **Providers:** OpenRouter (model calls), Resend (email), AWS (Route 53 DNS, S3 backups), the VPS host, GitHub (code). Their security contacts: [Eric to fill in, or link the subprocessor list from #25]. Practice run: #243. Safe `APP_SECRET` rotation: #244.
+- **Providers:** OpenRouter (model calls), Resend (email), AWS (Route 53 DNS, S3 backups), the VPS host, GitHub (code). Their security contacts: [Eric to fill in, or link the subprocessor list from #25]. Practice run: #243.
 - **Lawyer:** [Eric to fill in once #22 has one.]
 
 ## 6. After
