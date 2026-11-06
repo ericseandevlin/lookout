@@ -43,5 +43,35 @@ export function decrypt(blob: string) {
   }
 }
 
+// Files on disk (#16): "LKE1" + 12-byte IV + 16-byte tag + ciphertext, same keys as above.
+const FILE_MAGIC = Buffer.from("LKE1");
+
+export const isSealedFile = (buf: Buffer) => buf.length >= 32 && buf.subarray(0, 4).equals(FILE_MAGIC);
+
+export function sealFile(plain: Buffer) {
+  const iv = randomBytes(12);
+  const c = createCipheriv("aes-256-gcm", key(), iv);
+  const data = Buffer.concat([c.update(plain), c.final()]);
+  return Buffer.concat([FILE_MAGIC, iv, c.getAuthTag(), data]);
+}
+
+function openFileWith(buf: Buffer, k: Buffer) {
+  const d = createDecipheriv("aes-256-gcm", k, buf.subarray(4, 16), { authTagLength: 16 });
+  d.setAuthTag(buf.subarray(16, 32));
+  return Buffer.concat([d.update(buf.subarray(32)), d.final()]);
+}
+
+/** Decrypt a sealed file. Files saved before #16 are plain and come back as they are. */
+export function openFile(buf: Buffer) {
+  if (!isSealedFile(buf)) return buf;
+  try {
+    return openFileWith(buf, key());
+  } catch (e) {
+    const old = previousKey();
+    if (!old) throw e;
+    return openFileWith(buf, old);
+  }
+}
+
 /** Show only enough of a secret to recognize it. */
 export const mask = (s: string) => (s ? `${s.slice(0, 4)}…${s.slice(-4)}` : "");

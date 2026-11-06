@@ -1,21 +1,25 @@
-// Move every stored secret from the old APP_SECRET to the new one (#244). Runs inside the app container:
+// Bring every stored secret and uploaded file onto the current APP_SECRET (#244, #16). Runs inside the app container:
 //   docker compose exec app node scripts/reencrypt.mjs
-// Order: in .env set APP_SECRET to the new value and APP_SECRET_PREVIOUS to the old one, restart the app
-// (it reads with either key meanwhile), run this, then remove APP_SECRET_PREVIOUS and restart again. Safe to run twice: values already on the new key are skipped.
+// Rotation: in .env set APP_SECRET to the new value and APP_SECRET_PREVIOUS to the old one, restart the app
+// (it reads with either key meanwhile), run this, then remove APP_SECRET_PREVIOUS and restart again.
+// Without APP_SECRET_PREVIOUS it only encrypts uploads saved before #16. Safe to run twice: values already
+// on the current key are skipped.
 // Prints counts only, never values. Same format as src/lib/secrets.ts, repeated here because scripts
 // run without the app's build.
 import { createCipheriv, createDecipheriv, createHash, randomBytes } from "node:crypto";
+import { readdir, readFile, rename, writeFile } from "node:fs/promises";
+import path from "node:path";
 import postgres from "postgres";
 
 const keyOf = (s) => createHash("sha256").update(s).digest();
 const now = process.env.APP_SECRET || "";
 const old = process.env.APP_SECRET_PREVIOUS || "";
-if (now.length < 32 || old.length < 32) {
-  console.error("Set APP_SECRET (new) and APP_SECRET_PREVIOUS (old), both 32+ characters.");
+if (now.length < 32 || (old && old.length < 32)) {
+  console.error("APP_SECRET (and APP_SECRET_PREVIOUS, if set) must be 32+ characters.");
   process.exit(1);
 }
 const NEW = keyOf(now);
-const OLD = keyOf(old);
+const OLD = old ? keyOf(old) : null;
 
 function open(blob, k) {
   const [v, iv, tag, data] = blob.split(":");
@@ -41,7 +45,36 @@ function move(blob) {
     return "kept";
   } catch {}
   try {
+    if (!OLD) return "bad";
     return seal(open(blob, OLD));
+  } catch {
+    return "bad";
+  }
+}
+
+// Files: "LKE1" + 12-byte IV + 16-byte tag + ciphertext, as in src/lib/secrets.ts.
+const MAGIC = Buffer.from("LKE1");
+function openFile(buf, k) {
+  const d = createDecipheriv("aes-256-gcm", k, buf.subarray(4, 16), { authTagLength: 16 });
+  d.setAuthTag(buf.subarray(16, 32));
+  return Buffer.concat([d.update(buf.subarray(32)), d.final()]);
+}
+function sealFile(plain) {
+  const iv = randomBytes(12);
+  const c = createCipheriv("aes-256-gcm", NEW, iv);
+  const data = Buffer.concat([c.update(plain), c.final()]);
+  return Buffer.concat([MAGIC, iv, c.getAuthTag(), data]);
+}
+/** null if already on the new key, the sealed bytes to write, or "bad". Plain files (before #16) get sealed. */
+function moveFile(buf) {
+  if (!(buf.length >= 32 && buf.subarray(0, 4).equals(MAGIC))) return sealFile(buf);
+  try {
+    openFile(buf, NEW);
+    return null;
+  } catch {}
+  try {
+    if (!OLD) return "bad";
+    return sealFile(openFile(buf, OLD));
   } catch {
     return "bad";
   }
@@ -77,5 +110,27 @@ await sql.begin(async (tx) => {
   }
 });
 await sql.end();
-console.log(`Re-encrypted ${tally.moved}, already on the new key ${tally.kept}, unreadable with either key ${tally.bad}.`);
-if (tally.bad) console.log("Unreadable values were left as they are: re-enter API keys on the admin page; EEO answers need re-entering by that person.");
+
+const files = { moved: 0, kept: 0, bad: 0 };
+const uploads = path.resolve(process.env.DATA_DIR || "./data", "uploads");
+const users = await readdir(uploads, { withFileTypes: true }).catch(() => []);
+for (const u of users.filter((d) => d.isDirectory())) {
+  for (const f of await readdir(path.join(uploads, u.name), { withFileTypes: true })) {
+    if (!f.isFile() || f.name.endsWith(".tmp")) continue;
+    const p = path.join(uploads, u.name, f.name);
+    const r = moveFile(await readFile(p));
+    if (r === null) files.kept++;
+    else if (r === "bad") files.bad++;
+    else {
+      // Write next to it, then rename, so a crash never leaves a half-written file.
+      await writeFile(`${p}.tmp`, r, { mode: 0o600 });
+      await rename(`${p}.tmp`, p);
+      files.moved++;
+    }
+  }
+}
+
+console.log(`Secrets: re-encrypted ${tally.moved}, already on the current key ${tally.kept}, unreadable ${tally.bad}.`);
+console.log(`Uploads: encrypted ${files.moved}, already on the current key ${files.kept}, unreadable ${files.bad}.`);
+if (tally.bad) console.log("Unreadable secrets were left as they are: re-enter API keys on the admin page; EEO answers need re-entering by that person.");
+if (files.bad) console.log("Unreadable uploads were left as they are. If a rotation is under way, set APP_SECRET_PREVIOUS and run again; otherwise those people need to upload again.");
