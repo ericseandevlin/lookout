@@ -21,6 +21,7 @@ COPY --from=build --chown=app:app /app/.next/static ./.next/static
 COPY --from=build --chown=app:app /app/public ./public
 COPY --from=build --chown=app:app /app/drizzle ./drizzle
 COPY --from=build --chown=app:app /app/scripts/login-link.mjs ./scripts/login-link.mjs
+COPY --from=build --chown=app:app /app/scripts/reencrypt.mjs ./scripts/reencrypt.mjs
 # The standalone trace does not keep postgres as a plain package; give the CLI its own copy (it has no deps).
 COPY --from=deps --chown=app:app /app/node_modules/postgres ./scripts/node_modules/postgres
 # The standalone trace drops playwright-core's data files (browsers.json etc.); ship the whole package.
