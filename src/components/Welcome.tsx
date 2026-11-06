@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { SALARY_RANGES, WORK_MODES } from "@/lib/onboarding";
+import { SALARY_RANGES, WORK_MODE_LABEL, WORK_MODES } from "@/lib/onboarding";
 import { AuthCard, Eyebrow, h1, p, primary } from "./Login";
 
 const label: React.CSSProperties = { fontSize: 14, fontWeight: 600, letterSpacing: ".06em", textTransform: "uppercase", color: "#6B6358" };
@@ -52,7 +52,7 @@ export function Welcome({ initialName }: { initialName: string }) {
           <div style={{ fontSize: 14, color: "#6B6358" }}>Roles below the low end get marked down, not hidden.</div>
         </fieldset>
         <fieldset style={{ border: 0, padding: 0, margin: 0, display: "flex", flexDirection: "column", gap: 8 }}>
-          <legend style={{ ...label, marginBottom: 8 }}>How you want to work</legend>
+          <legend style={{ ...label, marginBottom: 8 }}>{WORK_MODE_LABEL}</legend>
           <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
             {WORK_MODES.map((m) => (
               <button type="button" key={m} aria-pressed={mode === m} onClick={() => setMode(mode === m ? null : m)} style={chip(mode === m)}>{m}</button>

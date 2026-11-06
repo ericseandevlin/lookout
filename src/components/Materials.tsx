@@ -15,7 +15,7 @@ const SectionLabel = ({ children }: { children: React.ReactNode }) => (
   <div style={{ fontSize: 14, fontWeight: 600, letterSpacing: ".08em", textTransform: "uppercase", color: "#6B6358" }}>{children}</div>
 );
 
-const FIELD_NAMES: Record<string, string> = { q1: "next role", area: "where you work", modes: "work modes", q4: "lead win" };
+const FIELD_NAMES: Record<string, string> = { q1: "next role", area: "where you work", modes: "workplace type", q4: "lead win" };
 
 function statusLine(note: string) {
   if (!note) return "Saved";
@@ -140,7 +140,7 @@ export function Materials() {
           <SectionLabel>Resume</SectionLabel>
           <p style={{ margin: "0 0 4px", fontSize: 14, lineHeight: 1.5, color: "#6B6358", textWrap: "pretty" }}>
             Lookout keeps the text of your resume with your account and uses it two ways. It fills any profile answers you left empty (next role,
-            where you work, work modes, your lead win); those get a &ldquo;Filled from resume&rdquo; tag and are yours to edit. And every search
+            where you work, workplace type, your lead win); those get a &ldquo;Filled from resume&rdquo; tag and are yours to edit. And every search
             reads it to judge fit. It never overwrites an answer you wrote. Deleting the resume removes the file and its text.
           </p>
           <label className="h-border" style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 4, padding: rs ? "14px" : "22px 14px", border: "1.5px dashed #D0C7BA", background: "#fff", borderRadius: 12, cursor: "pointer", textAlign: "center" }}>
