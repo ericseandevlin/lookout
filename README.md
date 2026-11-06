@@ -26,7 +26,7 @@ Jobs are the first opportunity type. Type-specific pieces live in `src/lib/kinds
   - **Materials** (`/profile/materials`): resume (PDF/DOCX, fills empty answers), LinkedIn PDF (LinkedIn has no usable API and blocks scraping, so people use its Save to PDF; steps are on the page), and other links, which Lookout reads and shows as Read / why it couldn't.
   - **What Lookout sees** (`/profile/sees`): the saved search profile every search uses, with links to edit each part and a Rebuild button.
 - **Settings** (`/settings`): schedule, digest, density, name, change email, signed-in devices, export, reset board, delete everything, privacy link.
-- **Admin** (`/admin`, admins only): people, access mode, spend caps, access requests, invites (with Resend and copy link), recent runs. **AI settings** (`/admin/ai`): provider presets (OpenRouter, OpenCode Zen/Go, DeepInfra, Together, Groq, Ollama, Custom), model pickers, encrypted keys, Test buttons. Everything autosaves.
+- **Admin** (`/admin`, admins only): people, access mode, spend caps, access requests, invites (with Resend and copy link), recent runs. **AI settings** (`/admin/ai`): provider presets (OpenRouter, OpenCode Zen/Go, DeepInfra, Together, Groq, Ollama, Custom), model pickers, encrypted keys, Test buttons. Everything autosaves. **Metrics** (`/admin/metrics`): the beta goals from ROADMAP > Goals (weekly actives, finds acted on per active person, interviews, week-4 retention, cost per active person) and where each stands.
 - **Privacy** (`/privacy`): what's kept, who sees it, services used, controls.
 
 ## How a search works
