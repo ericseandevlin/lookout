@@ -75,7 +75,8 @@ AI and search settings can live in env or be set in Admin > AI settings (the dat
 | `DATABASE_URL` | Postgres connection |
 | `APP_URL` | Public origin; used in emails and the same-origin check on writes |
 | `EXTRA_ORIGINS` | Other origins allowed to write (e.g. the paulfinds alias) |
-| `APP_SECRET` | 32+ chars; encrypts API keys stored in the database |
+| `APP_SECRET` | 32+ chars; encrypts API keys and EEO answers stored in the database |
+| `APP_SECRET_PREVIOUS` | Only while changing `APP_SECRET`: the old value, so stored secrets stay readable until `scripts/reencrypt.mjs` moves them |
 | `AI_PROVIDER`, `AI_BASE_URL`, `AI_MODEL`, `AI_API_KEY`, `AI_PRICE_IN`, `AI_PRICE_OUT`, `AI_JSON_MODE` | Default model settings (`openai`, `anthropic` or `agent`) |
 | `AGENT_TOKEN` | 32+ chars; bearer token for the Claude agent queue |
 | `SEARCH_PROVIDER`, `SEARXNG_URL`, `BRAVE_API_KEY`, `SEARCH_PRICE` | Web search |
