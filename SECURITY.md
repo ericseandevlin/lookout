@@ -17,3 +17,7 @@ The Lookout app and API (sign-in, sessions, the admin area, uploads, the page fe
 ## How it's protected
 
 The README's [Security notes](README.md#security-notes) describe the main protections: hashed single-use sign-in tokens, same-origin checks on every write, encrypted API keys, checked uploads, an SSRF-safe page fetcher and a per-request CSP. Known open items are GitHub issues labeled `security` or `hardening`.
+
+## If something goes wrong
+
+[docs/incident-response.md](docs/incident-response.md) is the plan for a breach: how we'd notice, what to do in the first hour, and how and when we tell people.
