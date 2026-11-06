@@ -67,7 +67,7 @@ The legal part, for orientation only. Check it with a lawyer (#22) before sendin
 
 - **Owner and decision maker:** Eric Devlin.
 - **Testers and users:** the `users` table (email).
-- **Providers:** OpenRouter (model calls), Resend (email), AWS (Route 53 DNS, S3 backups), the VPS host, GitHub (code). Their security contacts: [Eric to fill in, or link the subprocessor list from #25].
+- **Providers:** OpenRouter (model calls), Resend (email), AWS (Route 53 DNS, S3 backups), the VPS host, GitHub (code). Their security contacts: [Eric to fill in, or link the subprocessor list from #25]. Practice run: #243. Safe `APP_SECRET` rotation: #244.
 - **Lawyer:** [Eric to fill in once #22 has one.]
 
 ## 6. After
