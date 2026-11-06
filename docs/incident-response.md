@@ -38,7 +38,7 @@ Do these in order. Don't delete anything yet; logs and the database are evidence
    | `APP_SECRET` | `.env` | Needs the extra steps below. |
    | SSH keys and server logins | `~/.ssh/authorized_keys` for root and every user | Remove any key you don't recognize. Rotate the `hermes_vps` deploy key. |
 
-   **Changing `APP_SECRET`.** It encrypts the stored model and search keys and every person's EEO answers (`profiles.eeo`), so those have to move to the new secret:
+   **Changing `APP_SECRET`.** It encrypts the stored model and search keys, every person's EEO answers (`profiles.eeo`) and uploaded files, so those have to move to the new secret:
    1. In `.env`, set `APP_SECRET_PREVIOUS` to the old value and `APP_SECRET` to a new one (32+ characters). Restart the app; it reads with either key meanwhile.
    2. Run `docker compose exec app node scripts/reencrypt.mjs`. It prints counts only. Running it twice is safe.
    3. Remove `APP_SECRET_PREVIOUS` from `.env` and restart again.

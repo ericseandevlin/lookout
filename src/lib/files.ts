@@ -3,6 +3,7 @@ import { mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { randomUUID } from "node:crypto";
 import { env } from "@/lib/env";
+import { openFile, sealFile } from "@/lib/secrets";
 
 const root = () => path.resolve(env.dataDir, "uploads");
 
@@ -23,7 +24,8 @@ export async function saveUserFile(userId: string, buf: Buffer, ext: string) {
   const dir = path.join(root(), userId);
   await mkdir(dir, { recursive: true });
   const key = `${userId}/${randomUUID()}.${ext}`;
-  await writeFile(path.join(root(), key), buf, { mode: 0o600 });
+  // Encrypted at rest with a key from APP_SECRET (#16).
+  await writeFile(path.join(root(), key), sealFile(buf), { mode: 0o600 });
   return key;
 }
 
@@ -33,6 +35,6 @@ function resolveKey(key: string) {
   return p;
 }
 
-export const readUserFile = (key: string) => readFile(resolveKey(key));
+export const readUserFile = async (key: string) => openFile(await readFile(resolveKey(key)));
 export const deleteUserFile = (key: string) => rm(resolveKey(key), { force: true });
 export const deleteUserFiles = (userId: string) => rm(path.join(root(), userId), { recursive: true, force: true });
