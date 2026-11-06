@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useState } from "react";
 import { job } from "@/lib/kinds";
+import { WORK_MODE_LABEL } from "@/lib/onboarding";
 import { togglePhrase } from "@/lib/phrases";
 import { useCounts } from "./Shell";
 import { useStore } from "./store";
@@ -209,7 +210,8 @@ export function Profile() {
 
               {q.kind === "modes" && (
                 <>
-                  <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }} role="group" aria-label="Work modes">
+                  <div id={`q-${q.key}-modes`} style={{ fontSize: 14, fontWeight: 600, letterSpacing: ".06em", textTransform: "uppercase", color: "#6B6358" }}>{WORK_MODE_LABEL}</div>
+                  <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }} role="group" aria-labelledby={`q-${q.key}-modes`}>
                     {q.options.map((m) => {
                       const modes = arr(q.modesKey);
                       const on = modes.includes(m);
