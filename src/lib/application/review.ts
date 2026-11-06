@@ -47,14 +47,25 @@ const LOCKED: ApplicationStatus[] = ["submitting", "submitted", "canceled"];
 const REVIEWABLE: ApplicationStatus[] = ["needs_review", "manual", "approved", "failed"];
 
 /**
+ * What counts as fact when a draft is checked or revised (#203): the confirmed master resume, else
+ * the uploaded resume's text, plus experience notes (#121). One place, so a change to what counts
+ * as a fact applies everywhere.
+ */
+export async function draftFacts(userId: string) {
+  const [p] = await db.select({ m: schema.profiles.masterResume, notes: schema.profiles.skillNotes }).from(schema.profiles).where(eq(schema.profiles.userId, userId));
+  const [mat] = await db.select({ x: schema.materials.extracted }).from(schema.materials).where(and(eq(schema.materials.userId, userId), eq(schema.materials.kind, "resume")));
+  const resume = masterForDrafts(p?.m) ?? mat?.x?.text ?? "";
+  const notes = p?.notes ?? [];
+  return { resume, notes, facts: resume + notesBlock(notes) };
+}
+
+/**
  * The keyword list with evidence (#121), worked out from the person's current master resume and
  * experience notes, so edits to either count the next time keywords are chosen.
  */
 export async function keywordState(userId: string, a: { report: ApplicationReport }, posting: string) {
-  const [p] = await db.select({ m: schema.profiles.masterResume, notes: schema.profiles.skillNotes }).from(schema.profiles).where(eq(schema.profiles.userId, userId));
-  const [mat] = await db.select({ x: schema.materials.extracted }).from(schema.materials).where(and(eq(schema.materials.userId, userId), eq(schema.materials.kind, "resume")));
-  const resume = masterForDrafts(p?.m) ?? mat?.x?.text ?? "";
-  return { resume, rows: keywordRows(a.report, posting, resume, p?.notes ?? []) };
+  const { resume, notes } = await draftFacts(userId);
+  return { resume, rows: keywordRows(a.report, posting, resume, notes) };
 }
 
 async function keywordDetail(userId: string, report: ApplicationReport, posting: string) {
@@ -210,11 +221,8 @@ export async function reviseItem(userId: string, appId: string, itemId: string, 
   await assertBudget(userId);
   const [cur] = await db.select().from(schema.itemVersions).where(eq(schema.itemVersions.itemId, itemId)).orderBy(desc(schema.itemVersions.version)).limit(1);
   const [o] = await db.select().from(schema.opportunities).where(eq(schema.opportunities.id, a.opportunityId));
-  const [resume] = await db.select().from(schema.materials).where(and(eq(schema.materials.userId, userId), eq(schema.materials.kind, "resume")));
-  const [prof] = await db.select({ notes: schema.profiles.skillNotes }).from(schema.profiles).where(eq(schema.profiles.userId, userId));
   // Experience notes count as facts, same as the resume (#121).
-  const [mp] = await db.select({ m: schema.profiles.masterResume }).from(schema.profiles).where(eq(schema.profiles.userId, userId));
-  const master = (masterForDrafts(mp?.m) ?? resume?.extracted?.text ?? "") + notesBlock(prof?.notes ?? []);
+  const { facts: master } = await draftFacts(userId);
   const usage = emptyUsage();
   const r = await completeJSON({
     name: "apply-revise",
@@ -250,10 +258,7 @@ export async function analyzeItem(userId: string, appId: string, itemId: string,
   if (!v.content.trim()) throw new HttpError(400, "This one is empty.");
   await assertBudget(userId);
   const [o] = await db.select().from(schema.opportunities).where(eq(schema.opportunities.id, a.opportunityId));
-  const [p] = await db.select({ m: schema.profiles.masterResume, notes: schema.profiles.skillNotes }).from(schema.profiles).where(eq(schema.profiles.userId, userId));
-  const [mat] = await db.select({ x: schema.materials.extracted }).from(schema.materials).where(and(eq(schema.materials.userId, userId), eq(schema.materials.kind, "resume")));
-  const resume = masterForDrafts(p?.m) ?? mat?.x?.text ?? "";
-  const facts = resume + notesBlock(p?.notes ?? []);
+  const { resume, facts } = await draftFacts(userId);
   const found = [...recruiterChecks(it.kind, v.content), ...honestyFindings(resume ? newNumbers(facts, v.content) : [], it.kind === "resume" && resume ? roleSwaps(resume, v.content) : [])];
   const usage = emptyUsage();
   const d = await completeJSON({
