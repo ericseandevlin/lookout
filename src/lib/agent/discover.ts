@@ -15,6 +15,7 @@ import { webSearch, type SearchHit } from "@/lib/ai/search";
 import { getAiConfig } from "@/lib/config";
 import { applyRules, fingerprint, normUrl } from "./rules";
 import { closeGonePostings } from "./linkCheck";
+import { findEvents } from "./networking";
 
 /**
  * Discovery pipeline, built to work with small, cheap models:
@@ -29,7 +30,7 @@ const MAX_QUERIES = 6;
 const MAX_PICKS = 15;
 const BATCH = 4;
 
-type Context = {
+export type Context = {
   userId: string;
   brief: string;
   resume: string;
@@ -363,7 +364,10 @@ export async function discover(userId: string, trigger: "scheduled" | "manual" =
     await autoQueue(userId, newFinds).catch((e) => console.error("[auto-apply] queue failed", e));
     await report(98, "Checking that your open finds are still posted");
     tally.closed = await closeGonePostings(userId).catch((e) => (console.error("[links] check failed", e), 0));
-    await progress(run.id, 100, added ? `Added ${added} new ${added === 1 ? "find" : "finds"}` : found ? "No new finds this time. Everything matching is already on your board" : "No matching open roles this time");
+    // Networking events (#7): only for people who set event interests; never fails the job search.
+    const events = await findEvents(ctx, usage, (step) => report(99, step)).catch((e) => (console.error("[events] failed", e), null));
+    const eventsNote = events ? `, plus ${events} ${events === 1 ? "event" : "events"}` : "";
+    await progress(run.id, 100, (added ? `Added ${added} new ${added === 1 ? "find" : "finds"}` : found ? "No new finds this time. Everything matching is already on your board" : "No matching open roles this time") + eventsNote);
     const summary = makeReport(ctx, { queries, results: hits.length, picked: picks.length, read: pages.length, tally });
     await finishRun(run.id, usage, { found, added, report: summary });
     return { found, added, runId: run.id };

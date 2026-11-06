@@ -1,7 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { newNonce, pageCsp } from "@/lib/csp";
 
-const GATED = /^\/(finds|profile|settings|admin)(\/|$)/;
+const GATED = /^\/(finds|events|profile|settings|admin)(\/|$)/;
 
 /**
  * Every page gets a fresh CSP nonce (#14). Pages behind sign-in also get an optimistic gate: real
