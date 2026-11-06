@@ -1,5 +1,7 @@
 # Lookout
 
+[![CI](https://github.com/ericseandevlin/lookout/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/ericseandevlin/lookout/actions/workflows/ci.yml)
+
 A personal search agent. Each person answers five questions and adds their resume, LinkedIn PDF and links. On their schedule, Lookout searches the web, reads the postings, scores each one against their profile, and puts the matches on a board ("Finds"). There they pin, archive, take notes, move roles through stages, and mark things "Not a fit" so later searches learn.
 
 Jobs are the first opportunity type. Type-specific pieces live in `src/lib/kinds` so other types (RFPs next) can reuse the engine. See [ROADMAP.md](ROADMAP.md) for what's next and [CHANGELOG.md](CHANGELOG.md) for every release. Live at https://lookout.ericdevlin.co (alias: paulfinds.pauljustinscott.com). Invite only.
@@ -88,6 +90,8 @@ AI and search settings can live in env or be set in Admin > AI settings (the dat
 | `EMAIL_DEV_LOG` | `1` prints emails to the log instead of sending |
 
 ## How we work
+
+Contributing? Start with [CONTRIBUTING.md](CONTRIBUTING.md). Security problems go to [SECURITY.md](SECURITY.md), not an issue.
 
 - Every change starts as a GitHub issue. Branch from `main` as `feat/<issue>-<slug>` or `fix/<issue>-<slug>` (chores: `chore/...`).
 - Every commit message names its issue, e.g. `Drawer: previous/next on the edge (#48)`. One branch per issue; don't mix work.
