@@ -6,13 +6,19 @@ import { PageHead } from "./Profile";
 import { Section } from "./Settings";
 import { api } from "./store";
 
+type Rate = { eligible: number; rate: number | null };
 type Data = {
   goals: { weeklyActives: number; actedPerActive: number; interviews: number; week4Retention: number; costPerActiveMonth: number };
   lastWeek: string;
   weeklyActives: number;
   actedPerActive: number;
   interviews: number;
-  retention: { eligible: number; retained: number; rate: number | null };
+  retention: Rate & { retained: number };
+  week8: Rate & { retained: number };
+  activation: Rate & { activated: number };
+  offers: number;
+  quality: { days: number; added: number; acted: number; notFit: number; topReason: { reason: string; count: number } | null; score: { acted: number | null; ignored: number | null } };
+  search: { searches: number; succeeded: number; rate: number | null };
   costMonth: number;
   monthActives: number;
   costPerActiveMonth: number | null;
@@ -26,6 +32,8 @@ const muted: React.CSSProperties = { fontSize: 14, color: "#6B6358" };
 const day = (week: string) => new Date(`${week}T12:00:00Z`).toLocaleDateString("en-US", { month: "short", day: "numeric" });
 const one = (n: number) => (Math.round(n * 10) / 10).toString();
 const usd = (n: number) => `$${n.toFixed(2)}`;
+const percent = (r: number | null) => (r === null ? "–" : `${Math.round(r * 100)}%`);
+const share = (n: number, of: number) => (of ? `${Math.round((n / of) * 100)}%` : "–");
 
 /** /admin/metrics (#36): the beta goals from ROADMAP > Goals and where each one stands. */
 export function AdminMetrics() {
@@ -42,7 +50,7 @@ export function AdminMetrics() {
         { goal: "Interviews from a find", now: String(d.interviews), target: `${d.goals.interviews}+`, met: d.interviews >= d.goals.interviews, note: "Finds at Interview or Offer, all time" },
         {
           goal: "Week-4 retention",
-          now: d.retention.rate === null ? "–" : `${Math.round(d.retention.rate * 100)}%`,
+          now: percent(d.retention.rate),
           target: `${Math.round(d.goals.week4Retention * 100)}%+`,
           met: d.retention.rate === null ? null : d.retention.rate >= d.goals.week4Retention,
           note: d.retention.eligible ? `${d.retention.retained} of ${d.retention.eligible} people active in their 4th week` : "Nobody has reached week 4 yet",
@@ -54,6 +62,32 @@ export function AdminMetrics() {
           met: d.costPerActiveMonth === null ? null : d.costPerActiveMonth < d.goals.costPerActiveMonth,
           note: `${usd(d.costMonth)} over ${d.monthActives} active ${d.monthActives === 1 ? "person" : "people"}, last 30 days`,
         },
+      ]
+    : [];
+
+  const others = d
+    ? [
+        {
+          measure: "Activation",
+          now: percent(d.activation.rate),
+          note: d.activation.eligible
+            ? `${d.activation.activated} of ${d.activation.eligible} people who joined 7+ days ago have a saved profile and a resume, and a first search done within 7 days`
+            : "Nobody joined 7+ days ago",
+        },
+        { measure: "Week-8 retention", now: percent(d.week8.rate), note: d.week8.eligible ? `${d.week8.retained} of ${d.week8.eligible} people active in their 8th week` : "Nobody has reached week 8 yet" },
+        { measure: "Finds acted on", now: share(d.quality.acted, d.quality.added), note: `${d.quality.acted} of ${d.quality.added} finds Lookout added, last ${d.quality.days} days` },
+        {
+          measure: "Not a fit",
+          now: share(d.quality.notFit, d.quality.added),
+          note: d.quality.topReason ? `Top reason: ${d.quality.topReason.reason} (${d.quality.topReason.count}). All reasons in Finds quality.` : "No reasons given yet",
+        },
+        {
+          measure: "Match score, acted on vs. not",
+          now: d.quality.score.acted === null ? "–" : one(d.quality.score.acted),
+          note: d.quality.score.ignored === null ? "No finds left alone" : `${one(d.quality.score.ignored)} for finds nobody acted on`,
+        },
+        { measure: "Offers from a find", now: String(d.offers), note: "Finds at Offer, all time" },
+        { measure: "Searches that read a page", now: percent(d.search.rate), note: `${d.search.succeeded} of ${d.search.searches} finished searches, last 30 days` },
       ]
     : [];
 
@@ -94,6 +128,30 @@ export function AdminMetrics() {
             </table>
           </div>
 
+          <Section>Other measures</Section>
+          <div style={card}>
+            <table style={{ width: "100%", borderCollapse: "collapse" }}>
+              <caption style={{ ...muted, textAlign: "left", padding: "12px 14px 0" }}>No goal set for these yet. Disabled accounts are left out.</caption>
+              <thead>
+                <tr>
+                  <th scope="col" style={th}>Measure</th>
+                  <th scope="col" style={th}>Now</th>
+                </tr>
+              </thead>
+              <tbody>
+                {others.map((r) => (
+                  <tr key={r.measure}>
+                    <th scope="row" style={{ ...td, fontWeight: 400, textAlign: "left" }}>
+                      {r.measure}
+                      <div style={muted}>{r.note}</div>
+                    </th>
+                    <td style={{ ...td, fontWeight: 600 }}>{r.now}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
           <Section>By week</Section>
           <div style={card}>
             <table style={{ width: "100%", borderCollapse: "collapse" }}>
@@ -118,7 +176,7 @@ export function AdminMetrics() {
               </tbody>
             </table>
           </div>
-          <p style={muted}>Not measured here yet: zero data incidents, and the quality, outcome and growth numbers in #36.</p>
+          <p style={muted}>Not measured here yet: zero data incidents, outcomes people report in the beta survey, and growth (waitlist signups by channel, invite acceptance, referrals).</p>
         </>
       )}
     </div>
