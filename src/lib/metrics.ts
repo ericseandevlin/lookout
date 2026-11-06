@@ -46,10 +46,10 @@ export function weekly(events: MetricEvent[], weeks: number, now = new Date()) {
 }
 
 /**
- * Week-4 retention: of people whose fourth week (counting the week of their first event as week 1)
+ * Week-n retention: of people whose nth week (counting the week of their first event as week 1)
  * is over, the share who did anything in that week.
  */
-export function week4Retention(events: MetricEvent[], now = new Date()) {
+export function retention(events: MetricEvent[], n: number, now = new Date()) {
   const first = new Map<string, number>();
   const weeksOf = new Map<string, Set<string>>();
   for (const e of events) {
@@ -63,12 +63,46 @@ export function week4Retention(events: MetricEvent[], now = new Date()) {
   let eligible = 0;
   let retained = 0;
   for (const [user, start] of first) {
-    const w4 = start + 3 * WEEK;
-    if (w4 >= thisWeek) continue;
+    const wn = start + (n - 1) * WEEK;
+    if (wn >= thisWeek) continue;
     eligible++;
-    if (weeksOf.get(user)!.has(new Date(w4).toISOString().slice(0, 10))) retained++;
+    if (weeksOf.get(user)!.has(new Date(wn).toISOString().slice(0, 10))) retained++;
   }
   return { eligible, retained, rate: eligible ? retained / eligible : null };
+}
+
+export const week4Retention = (events: MetricEvent[], now = new Date()) => retention(events, 4, now);
+
+export type Joiner = { createdAt: Date; profileSaved: boolean; resume: boolean; firstSearchAt: Date | null };
+
+/**
+ * Activation: of people who joined at least 7 days ago, the share with a saved profile and a resume
+ * whose first search finished within 7 days of joining. Profile and resume are checked as they are now
+ * (they keep only the latest save), the search by its date.
+ */
+export function activation(people: Joiner[], now = new Date()) {
+  let eligible = 0;
+  let activated = 0;
+  for (const p of people) {
+    const by = p.createdAt.getTime() + 7 * 864e5;
+    if (by > now.getTime()) continue;
+    eligible++;
+    if (p.profileSaved && p.resume && p.firstSearchAt && p.firstSearchAt.getTime() <= by) activated++;
+  }
+  return { eligible, activated, rate: eligible ? activated / eligible : null };
+}
+
+/** Average match score of finds people acted on and of the rest, or null when a side is empty. */
+export function scoreSplit(finds: { score: number; acted: boolean }[]) {
+  const avg = (xs: number[]) => (xs.length ? xs.reduce((a, b) => a + b, 0) / xs.length : null);
+  return { acted: avg(finds.filter((f) => f.acted).map((f) => f.score)), ignored: avg(finds.filter((f) => !f.acted).map((f) => f.score)) };
+}
+
+/** Searches that read at least one page, of the ones that finished (done or failed). */
+export function searchSuccess(runs: { status: string; read: number | null }[]) {
+  const ended = runs.filter((r) => r.status === "done" || r.status === "failed");
+  const ok = ended.filter((r) => r.status === "done" && (r.read ?? 0) > 0).length;
+  return { searches: ended.length, succeeded: ok, rate: ended.length ? ok / ended.length : null };
 }
 
 /** Distinct people with any event (not heartbeats) since a date. */

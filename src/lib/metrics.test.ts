@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { actedOn, activeSince, week4Retention, weekly, type MetricEvent } from "./metrics";
+import { actedOn, activation, activeSince, retention, scoreSplit, searchSuccess, week4Retention, weekly, type MetricEvent } from "./metrics";
 
 const ev = (userId: string, type: string, at: string, target: string | null = null, meta: Record<string, unknown> | null = null): MetricEvent => ({ userId, type, target, meta, at: new Date(at) });
 
@@ -58,5 +58,56 @@ describe("activeSince", () => {
   it("counts distinct people, not heartbeats", () => {
     const rows = [ev("a", "sign_in", "2026-11-01T10:00:00Z"), ev("a", "pin", "2026-11-02T10:00:00Z", "f"), ev("b", "heartbeat", "2026-11-02T10:00:00Z"), ev("c", "sign_in", "2026-09-01T10:00:00Z")];
     expect(activeSince(rows, new Date("2026-10-07T00:00:00Z"))).toBe(1);
+  });
+});
+
+describe("retention", () => {
+  it("counts week 8 from the week of the first event", () => {
+    const now = new Date("2026-11-04T12:00:00Z");
+    const rows = [ev("a", "sign_in", "2026-09-08T10:00:00Z"), ev("a", "sign_in", "2026-10-27T10:00:00Z"), ev("b", "sign_in", "2026-09-08T10:00:00Z"), ev("c", "sign_in", "2026-09-15T10:00:00Z")];
+    expect(retention(rows, 8, now)).toEqual({ eligible: 2, retained: 1, rate: 0.5 });
+  });
+});
+
+describe("activation", () => {
+  const now = new Date("2026-11-20T12:00:00Z");
+  const joined = new Date("2026-11-01T12:00:00Z");
+  it("needs profile, resume and a first search within 7 days, and skips people who joined under 7 days ago", () => {
+    expect(
+      activation(
+        [
+          { createdAt: joined, profileSaved: true, resume: true, firstSearchAt: new Date("2026-11-03T12:00:00Z") },
+          { createdAt: joined, profileSaved: true, resume: true, firstSearchAt: new Date("2026-11-12T12:00:00Z") },
+          { createdAt: joined, profileSaved: false, resume: true, firstSearchAt: new Date("2026-11-03T12:00:00Z") },
+          { createdAt: joined, profileSaved: true, resume: true, firstSearchAt: null },
+          { createdAt: new Date("2026-11-18T12:00:00Z"), profileSaved: true, resume: true, firstSearchAt: new Date("2026-11-18T13:00:00Z") },
+        ],
+        now,
+      ),
+    ).toEqual({ eligible: 4, activated: 1, rate: 0.25 });
+  });
+  it("is null with nobody eligible", () => {
+    expect(activation([], now).rate).toBeNull();
+  });
+});
+
+describe("scoreSplit", () => {
+  it("averages acted-on and ignored finds separately", () => {
+    expect(scoreSplit([{ score: 5, acted: true }, { score: 4, acted: true }, { score: 3, acted: false }])).toEqual({ acted: 4.5, ignored: 3 });
+    expect(scoreSplit([{ score: 3, acted: false }])).toEqual({ acted: null, ignored: 3 });
+  });
+});
+
+describe("searchSuccess", () => {
+  it("counts finished searches that read a page; running ones are left out", () => {
+    expect(
+      searchSuccess([
+        { status: "done", read: 4 },
+        { status: "done", read: 0 },
+        { status: "failed", read: null },
+        { status: "running", read: null },
+      ]),
+    ).toEqual({ searches: 3, succeeded: 1, rate: 1 / 3 });
+    expect(searchSuccess([]).rate).toBeNull();
   });
 });
