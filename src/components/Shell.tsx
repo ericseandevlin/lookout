@@ -6,7 +6,7 @@ import { usePathname } from "next/navigation";
 import { answeredCount, job } from "@/lib/kinds";
 import { initialsOf, isNewFind } from "@/lib/board";
 import type { AppState } from "@/lib/types";
-import { BoardIcon, FileIcon, ListIcon, PanelIcon, ShieldIcon } from "./icons";
+import { BoardIcon, CalendarIcon, FileIcon, ListIcon, PanelIcon, ShieldIcon } from "./icons";
 import { useStore } from "./store";
 import { TooltipLayer } from "./Tooltip";
 import { ConfirmProvider } from "./Confirm";
@@ -24,6 +24,7 @@ export function useCounts(s: AppState) {
 
 const BASE_PAGES = [
   { href: "/finds", label: "Finds", mob: "Finds", Icon: BoardIcon },
+  { href: "/events", label: "Events", mob: "Events", Icon: CalendarIcon },
   { href: "/profile", label: "Search profile", mob: "Profile", Icon: ListIcon },
 ] as const;
 // Beta pages appear only for people who have the beta.

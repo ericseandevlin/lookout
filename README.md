@@ -18,6 +18,7 @@ Jobs are the first opportunity type. Type-specific pieces live in `src/lib/kinds
 - **Sign in / Request access** (`/`): email magic link only. In invite mode, strangers can request access by email plus one multiple-choice question; admins approve.
 - **Welcome** (`/welcome`): first sign-in quick picks (salary range, work mode) that prefill the profile.
 - **Finds** (`/finds`): the board. Header has **Search now**, **Add** (paste a posting link), and **See search report** for the last search. A dark panel shows live search progress and, after a search, a report: searches, results, pages read, job posts, added; where posts dropped out (already on board, dealbreaker, under pay floor, off on location); up to two tips that link to the field to change; and the queries it ran. The detail drawer has stages, notes, and **Not a fit** with a reason.
+- **Events** (`/events`): networking events (meetups, panels, conferences, talks) the search finds for your interests, nearby or online, on their own list. Set interests there; empty means no event search. Past events drop off.
 - **Profile** (`/profile`), three tabs:
   - **Your answers**: the five questions, with starter chips on Q1 (step-up phrases), Q4 (sentence starters) and Q5 (common dealbreakers).
   - **Materials** (`/profile/materials`): resume (PDF/DOCX, fills empty answers), LinkedIn PDF (LinkedIn has no usable API and blocks scraping, so people use its Save to PDF; steps are on the page), and other links, which Lookout reads and shows as Read / why it couldn't.

@@ -95,6 +95,11 @@ export const profiles = pgTable("profiles", {
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
   /** What searches use: built by the model from answers + materials, shown to the user as "What Lookout sees". */
   searchProfile: jsonb("search_profile").$type<SearchProfile>(),
+  /** Networking events (#7): what to look for. Empty means no event search, so it costs nothing. */
+  eventInterests: text("event_interests").notNull().default(""),
+  /** "nearby" (within eventMiles of where they live), "online", or "both". */
+  eventReach: text("event_reach").$type<"nearby" | "online" | "both">().notNull().default("both"),
+  eventMiles: integer("event_miles").notNull().default(25),
   searchProfileAt: timestamp("search_profile_at", { withTimezone: true }),
   /** Hash of the inputs it was built from; a mismatch means it's stale. */
   searchProfileHash: text("search_profile_hash"),
@@ -540,4 +545,35 @@ export const events = pgTable(
     at: timestamp("at", { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [index("events_user_at_idx").on(t.userId, t.at), index("events_type_at_idx").on(t.type, t.at)],
+);
+
+// --- Networking events (#7) -------------------------------------------------------
+
+/** Meetups, panels, talks and conferences the sweep found for one person. Kept apart from job finds; past ones are deleted. */
+export const networkingEvents = pgTable(
+  "networking_events",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    title: text("title").notNull(),
+    host: text("host").notNull().default(""),
+    startsOn: date("starts_on").notNull(),
+    endsOn: date("ends_on"),
+    /** As the page states it, e.g. "6:30 pm". */
+    time: text("time").notNull().default(""),
+    /** Venue and city, or "Online". */
+    place: text("place").notNull().default(""),
+    online: boolean("online").notNull().default(false),
+    /** "Free", "$25", "$450 early bird"; empty when the page doesn't say. */
+    cost: text("cost").notNull().default(""),
+    why: text("why").notNull().default(""),
+    url: text("url").notNull(),
+    /** Same event found again (another listing, same title and date) is not added twice. */
+    fingerprint: text("fingerprint").notNull(),
+    dismissed: boolean("dismissed").notNull().default(false),
+    addedAt: timestamp("added_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [uniqueIndex("networking_events_user_fp_idx").on(t.userId, t.fingerprint), index("networking_events_user_starts_idx").on(t.userId, t.startsOn)],
 );
