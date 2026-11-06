@@ -127,6 +127,7 @@ Sign someone in without email (on the server): `docker compose exec app node scr
 
 ## Security notes
 
+- Retention (`src/lib/retention.ts`, daily from the scheduler): expired sign-in links and sessions are deleted; run logs, reports and requests older than 12 months are cleared, keeping the run counts and cost.
 - Sign-in tokens and session IDs are stored only as SHA-256 hashes. Tokens are single use, expire in 15 minutes (invites 7 days), and are redeemed by POST so mail scanners can't burn them. Sessions roll for 90 days.
 - All writes require a same-origin `Origin` header; cookies are `HttpOnly`, `Secure`, `SameSite=Lax`. In-memory rate limits on sign-in, uploads and rebuilds.
 - API keys in the database are encrypted with AES-256-GCM keyed from `APP_SECRET`; the admin UI only ever shows the last four characters.

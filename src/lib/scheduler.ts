@@ -10,10 +10,12 @@ import { discover, isRunning } from "@/lib/agent/discover";
 import { sendDigest } from "@/lib/digest";
 import { getAiConfig } from "@/lib/config";
 import { sweepApplications } from "@/lib/application/run";
+import { cleanup } from "@/lib/retention";
 
 const TICK_MS = 10 * 60_000;
 const RUN_HOUR = 7; // local time
 const LOCK_ID = 7_431_001;
+let lastCleanup = 0;
 const DAY_KEYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
 function localNow() {
@@ -85,6 +87,13 @@ async function tick() {
   const [{ locked }] = await sqlClient`select pg_try_advisory_lock(${LOCK_ID}) as locked`;
   if (!locked) return;
   try {
+    // Retention (#26) once a day, before the model check so it runs even with no model set.
+    if (Date.now() - lastCleanup > 24 * 3600_000) {
+      lastCleanup = Date.now();
+      await cleanup()
+        .then((n) => console.log(`[scheduler] cleanup: ${n.loginTokens} sign-in links, ${n.sessions} sessions, ${n.runLogs} run logs`))
+        .catch((e) => console.error("[scheduler] cleanup", e));
+    }
     const ai = await getAiConfig();
     if (ai.provider !== "agent" && !ai.model) return; // Nothing to run with until an admin sets a model.
     // Runs orphaned by a restart never finish; close them out.
