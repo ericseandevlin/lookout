@@ -26,6 +26,7 @@ export default function Privacy() {
             <li>Links you add, and the text Lookout reads from those pages.</li>
             <li>Your search profile: the summary Lookout builds from all of the above. You can see it under Profile, What Lookout sees.</li>
             <li>Your board: the roles found for you, plus your stages, notes, pins and &ldquo;Not a fit&rdquo; reasons.</li>
+            <li>If you turn on events: your event interests, and the public events Lookout found for you. Past events are deleted.</li>
             <li>Your application drafts and approved versions, including public people Lookout suggests you contact and your outreach message drafts. Lookout never sends those messages.</li>
             <li>A log of each search: when it ran, what it searched for, and what it cost.</li>
             <li>What you do in Lookout: the pages you open and for how long, and actions like finishing the welcome step, searching, pinning, moving a find, opening a posting or turning auto-apply on or off. Lookout records this itself to see what&apos;s useful; no outside analytics or ad scripts are on the site.</li>
