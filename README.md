@@ -75,7 +75,7 @@ AI and search settings can live in env or be set in Admin > AI settings (the dat
 | `DATABASE_URL` | Postgres connection |
 | `APP_URL` | Public origin; used in emails and the same-origin check on writes |
 | `EXTRA_ORIGINS` | Other origins allowed to write (e.g. the paulfinds alias) |
-| `APP_SECRET` | 32+ chars; encrypts API keys and EEO answers stored in the database |
+| `APP_SECRET` | 32+ chars; encrypts API keys, EEO answers and uploaded files |
 | `APP_SECRET_PREVIOUS` | Only while changing `APP_SECRET`: the old value, so stored secrets stay readable until `scripts/reencrypt.mjs` moves them |
 | `AI_PROVIDER`, `AI_BASE_URL`, `AI_MODEL`, `AI_API_KEY`, `AI_PRICE_IN`, `AI_PRICE_OUT`, `AI_JSON_MODE` | Default model settings (`openai`, `anthropic` or `agent`) |
 | `AGENT_TOKEN` | 32+ chars; bearer token for the Claude agent queue |
@@ -114,7 +114,7 @@ Sign someone in without email (on the server): `docker compose exec app node scr
 
 ## Backups
 
-- **Server:** root cron at 07:15 UTC runs `/opt/lookout/backup.sh`: `pg_dump` of the whole database (13 tables: the 12 app tables plus Drizzle's migration log) and a tarball of uploaded files, into `/opt/lookout/backups`, kept 14 days. Log: `/opt/lookout/backups.log`.
+- **Server:** root cron at 07:15 UTC runs `/opt/lookout/backup.sh`: `pg_dump` of the whole database (13 tables: the 12 app tables plus Drizzle's migration log) and a tarball of uploaded files (encrypted with `APP_SECRET`, so a restore needs the same secret), into `/opt/lookout/backups`, kept 14 days. Log: `/opt/lookout/backups.log`.
 - **Off server:** Eric's Mac runs `~/Life-OS/scripts/lookout/pull-backup.sh` daily at 9:30 (launchd `co.ericdevlin.lookout-backup`, catches up on wake). It copies the backups to `~/Backups/lookout` (30 days) and uploads an encrypted copy to `s3://eric-site-backups/lookout` (60 days). Log: `~/Library/Logs/lookout-backup.log`.
 - **Key:** `~/.config/lookout/backup.key` (also in 1Password). Without it the S3 copies can't be read.
 - **Restore:**
@@ -131,7 +131,7 @@ Sign someone in without email (on the server): `docker compose exec app node scr
 - Sign-in tokens and session IDs are stored only as SHA-256 hashes. Tokens are single use, expire in 15 minutes (invites 7 days), and are redeemed by POST so mail scanners can't burn them. Sessions roll for 90 days.
 - All writes require a same-origin `Origin` header; cookies are `HttpOnly`, `Secure`, `SameSite=Lax`. In-memory rate limits on sign-in, uploads and rebuilds.
 - API keys in the database are encrypted with AES-256-GCM keyed from `APP_SECRET`; the admin UI only ever shows the last four characters.
-- Uploads are checked by magic bytes, capped at 5 MB, stored outside the web root, and served with a sandbox CSP.
+- Uploads are checked by magic bytes, capped at 5 MB, encrypted at rest (AES-256-GCM keyed from `APP_SECRET`), stored outside the web root, and served with a sandbox CSP. Files saved before encryption still read; `node scripts/reencrypt.mjs` in the app container encrypts them.
 - Pages the app fetches go through an SSRF-safe fetcher (see step 5 above). Fetched pages are untrusted input; model output is schema-bound and never executed.
 - The container runs as a non-root user on a read-only filesystem; Postgres is only on the internal Compose network.
 - Open items are tracked as GitHub issues labeled `security`, `hardening`, `accessibility` and `code-quality`.
