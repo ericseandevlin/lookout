@@ -6,6 +6,19 @@ function required(name: string): string {
   return v;
 }
 
+/**
+ * A non-negative number from the environment, or the fallback. A value like "$15" would
+ * otherwise become NaN, and `spent >= NaN` is always false, so a spend cap would never fire.
+ */
+export function envNumber(name: string, fallback: number): number {
+  const raw = process.env[name];
+  if (raw === undefined || raw.trim() === "") return fallback;
+  const n = Number(raw);
+  if (Number.isFinite(n) && n >= 0) return n;
+  console.warn(`[env] ${name}=${JSON.stringify(raw)} is not a number; using ${fallback}`);
+  return fallback;
+}
+
 export const env = {
   get databaseUrl() {
     return required("DATABASE_URL");
@@ -56,10 +69,10 @@ export const env = {
   },
   /** Spend caps. A run is refused when either cap would be crossed. */
   get dailyBudgetUsd() {
-    return Number(process.env.DAILY_BUDGET_USD || "15");
+    return envNumber("DAILY_BUDGET_USD", 15);
   },
   get userDailyBudgetUsd() {
-    return Number(process.env.USER_DAILY_BUDGET_USD || "3");
+    return envNumber("USER_DAILY_BUDGET_USD", 3);
   },
 };
 
