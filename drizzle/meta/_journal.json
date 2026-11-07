@@ -155,6 +155,13 @@
       "when": 1793993639909,
       "tag": "0021_access_request_kind",
       "breakpoints": true
+    },
+    {
+      "idx": 22,
+      "version": "7",
+      "when": 1794022042175,
+      "tag": "0022_events_board",
+      "breakpoints": true
     }
   ]
 }

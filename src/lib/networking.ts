@@ -9,6 +9,15 @@ import { z } from "zod";
 export type EventReach = "nearby" | "online" | "both";
 export const EVENT_REACH: EventReach[] = ["nearby", "online", "both"];
 export const MILES = [10, 25, 50, 100] as const;
+export type EventFreq = "weekly" | "monthly";
+export const EVENT_FREQS: EventFreq[] = ["weekly", "monthly"];
+const FREQ_DAYS: Record<EventFreq, number> = { weekly: 7, monthly: 30 };
+
+/** Whether an event search is due (#265): never searched, or a week or a month has passed. A little slack so a weekly job search on the same day still counts. */
+export function eventsDue(freq: EventFreq, lastAt: Date | null, now = new Date()) {
+  if (!lastAt) return true;
+  return now.getTime() - lastAt.getTime() >= FREQ_DAYS[freq] * 864e5 - 6 * 3600_000;
+}
 
 export type NetworkingEvent = {
   id: string;
@@ -22,6 +31,11 @@ export type NetworkingEvent = {
   cost: string;
   why: string;
   url: string;
+  /** Board fields (#265). */
+  pinned?: boolean;
+  archived?: boolean;
+  fit?: number | null;
+  miles?: number | null;
 };
 
 export const EventsDraft = z.object({
@@ -38,12 +52,17 @@ export const EventsDraft = z.object({
         cost: z.string().describe("As stated: 'Free', '$25'; empty if not stated"),
         why: z.string().describe("One sentence: why it fits this person's field and interests"),
         url: z.string().describe("The page the event is on, copied from the <page url>"),
+        fit: z.number().describe("1 to 5: how well it fits their field and interests (5 = a must-go)"),
+        miles: z.number().nullable().describe("Rough miles from where they live; null if online or you can't tell"),
       }),
     )
     .describe("Only real, upcoming, dated events that fit. An empty list is fine"),
 });
 
 const ISO = /^\d{4}-\d{2}-\d{2}$/;
+
+const fitOf = (n: unknown) => (typeof n === "number" && Number.isFinite(n) ? Math.min(5, Math.max(1, Math.round(n))) : null);
+const milesOf = (n: unknown) => (typeof n === "number" && Number.isFinite(n) && n >= 0 && n < 5000 ? Math.round(n) : null);
 
 /** Same event listed twice (two sites, same title and day) is one event. */
 export function eventFingerprint(title: string, startsOn: string) {
@@ -121,7 +140,7 @@ export function cleanEvents(drafts: z.infer<typeof EventsDraft>["events"], opts:
     const fingerprint = eventFingerprint(title, d.startsOn);
     if (seen.has(fingerprint)) continue;
     seen.add(fingerprint);
-    out.push({ title: title.slice(0, 200), host: d.host.trim().slice(0, 120), startsOn: d.startsOn, endsOn, time: d.time.trim().slice(0, 40), place: (d.online ? d.place || "Online" : d.place).trim().slice(0, 160), online: d.online, cost: d.cost.trim().slice(0, 60), why: d.why.trim().slice(0, 300), url: d.url, fingerprint });
+    out.push({ title: title.slice(0, 200), host: d.host.trim().slice(0, 120), startsOn: d.startsOn, endsOn, time: d.time.trim().slice(0, 40), place: (d.online ? d.place || "Online" : d.place).trim().slice(0, 160), online: d.online, cost: d.cost.trim().slice(0, 60), why: d.why.trim().slice(0, 300), url: d.url, fit: fitOf(d.fit), miles: d.online ? null : milesOf(d.miles), fingerprint });
   }
   return out;
 }

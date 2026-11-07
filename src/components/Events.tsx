@@ -1,12 +1,12 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { joinInterests, MILES, splitInterests, type EventReach, type NetworkingEvent } from "@/lib/networking";
+import { useCallback, useEffect, useState } from "react";
+import { joinInterests, MILES, splitInterests, type EventFreq, type EventReach, type NetworkingEvent } from "@/lib/networking";
 import { PageHead } from "./Profile";
 import { btn, Row, Section, Seg } from "./Settings";
 import { api } from "./store";
 
-type Prefs = { interests: string; reach: EventReach; miles: number };
+type Prefs = { interests: string; reach: EventReach; miles: number; freq: EventFreq };
 
 const card: React.CSSProperties = { background: "#fff", borderRadius: 14, border: "1.5px solid #E6E0D8", padding: "14px 16px", display: "flex", flexDirection: "column", gap: 6 };
 const muted: React.CSSProperties = { fontSize: 14, color: "#6B6358" };
@@ -28,16 +28,38 @@ export function Events() {
   const [suggestions, setSuggestions] = useState<string[]>([]);
   const [draft, setDraft] = useState("");
   const [msg, setMsg] = useState<{ text: string; ok: boolean } | null>(null);
+  const [searching, setSearching] = useState(false);
 
-  useEffect(() => {
-    api<{ events: NetworkingEvent[]; prefs: Prefs; suggestions: string[] }>("/api/networking-events")
+  const load = useCallback(
+    () =>
+      api<{ events: NetworkingEvent[]; prefs: Prefs; suggestions: string[]; searching: boolean }>("/api/networking-events")
       .then((r) => {
-        setEvents(r.events);
+        setEvents(r.events.filter((e) => !e.archived));
         setPrefs(r.prefs);
         setSuggestions(r.suggestions ?? []);
-      })
-      .catch((e) => setMsg({ text: e instanceof Error ? e.message : "Couldn't load", ok: false }));
-  }, []);
+        setSearching(r.searching);
+        return r;
+      }),
+    [],
+  );
+  useEffect(() => {
+    load().catch((e) => setMsg({ text: e instanceof Error ? e.message : "Couldn't load", ok: false }));
+  }, [load]);
+  // While an event search runs, check every few seconds and reload when it ends (#265).
+  useEffect(() => {
+    if (!searching) return;
+    const t = setInterval(() => void load().catch(() => {}), 4000);
+    return () => clearInterval(t);
+  }, [searching, load]);
+  const searchNow = async () => {
+    setMsg(null);
+    try {
+      await api("/api/networking-events/search", { method: "POST" });
+      setSearching(true);
+    } catch (e) {
+      setMsg({ text: e instanceof Error ? e.message : "Couldn't start the search", ok: false });
+    }
+  };
 
   const save = async (p: Prefs, done: string) => {
     setMsg(null);
@@ -117,6 +139,9 @@ export function Events() {
           <Row title="Where" help="In person near where you live (from your profile), online, or both.">
             <Seg opts={[["Nearby", "nearby"], ["Online", "online"], ["Both", "both"]]} cur={prefs.reach} pick={(v) => save({ ...prefs, reach: v as EventReach }, "Saved.")} />
           </Row>
+          <Row title="How often" help="Event searches run with your job search, at most this often.">
+            <Seg opts={[["Weekly", "weekly"], ["Monthly", "monthly"]]} cur={prefs.freq} pick={(v) => save({ ...prefs, freq: v as EventFreq }, "Saved.")} />
+          </Row>
           {prefs.reach !== "online" && (
             <Row title="How far" help="For in-person events.">
               <Seg opts={MILES.map((m) => [`${m} mi`, m] as [string, number])} cur={prefs.miles} pick={(v) => save({ ...prefs, miles: v }, "Saved.")} />
@@ -125,7 +150,14 @@ export function Events() {
         </>
       )}
 
-      <Section>Upcoming</Section>
+      <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
+        <Section>Upcoming</Section>
+        {prefs?.interests && (
+          <button onClick={searchNow} disabled={searching} style={{ ...btn("outline"), marginLeft: "auto" }}>
+            {searching ? "Searching for events…" : "Search now"}
+          </button>
+        )}
+      </div>
       {events === null && !msg && <div style={muted}>Loading…</div>}
       {events && !events.length && <div style={muted}>{prefs?.interests ? "Nothing yet. Events show up here after your next search." : "Pick an interest above and your searches will look for events too."}</div>}
       {events && events.length > 0 && (
