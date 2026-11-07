@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { LegalLinks } from "./LegalLinks";
 import { NEXT_MOVES } from "@/lib/onboarding";
 
 export function Login({ emailEnabled, inviteOnly, turnstileSiteKey = "" }: { emailEnabled: boolean; inviteOnly: boolean; turnstileSiteKey?: string }) {
@@ -249,7 +250,7 @@ export function AuthCard({ children }: { children: React.ReactNode }) {
         </div>
         <div style={{ padding: "28px 26px 30px" }}>{children}</div>
       </div>
-      <a href="/privacy" style={{ marginTop: 16, fontSize: 14, color: "#6B6358" }}>Privacy</a>
+      <LegalLinks style={{ marginTop: 16 }} />
     </div>
   );
 }

@@ -74,7 +74,7 @@ Candidate kinds, roughly by fit with the engine (rich personal context + a recur
 - [ ] Marketing pages and an email waitlist
 - [ ] Blog post on ericdevlin.co about building it
 - [ ] Brand, domain and pricing; billing (Stripe) metered on the runs table
-- [ ] Terms of service
+- [x] Terms of service (beta draft; lawyer review is #22)
 - [ ] Tailored resume per role
 
 ## Harden and secure
