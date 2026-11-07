@@ -1,12 +1,12 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect } from "react";
+import { Fragment, useEffect } from "react";
 import { usePathname } from "next/navigation";
 import { answeredCount, job } from "@/lib/kinds";
 import { initialsOf, isNewFind } from "@/lib/board";
 import type { AppState } from "@/lib/types";
-import { BoardIcon, CalendarIcon, FileIcon, ListIcon, PanelIcon, ShieldIcon } from "./icons";
+import { BoardIcon, CalendarIcon, CheckIcon, FileIcon, ListIcon, PanelIcon, ShieldIcon } from "./icons";
 import { useStore } from "./store";
 import { TooltipLayer } from "./Tooltip";
 import { ConfirmProvider } from "./Confirm";
@@ -33,7 +33,7 @@ const APPLY_PAGE = { href: "/apply", label: "Auto-apply", mob: "Apply", Icon: Fi
 export function Shell({ children }: { children: React.ReactNode }) {
   const { state, putSettings, error } = useStore();
   const path = usePathname();
-  const { answered, sources, newCount } = useCounts(state);
+  const { answered, newCount } = useCounts(state);
   // Page views and time on page (#35): a heartbeat every minute while the tab is in front.
   useEffect(() => {
     trackClient("page_view", path);
@@ -45,8 +45,12 @@ export function Shell({ children }: { children: React.ReactNode }) {
   const initials = initialsOf(name || state.user.email);
   const onSettings = path.startsWith("/settings");
   const PAGES = state.user.autoApply ? [...BASE_PAGES, APPLY_PAGE] : BASE_PAGES;
-  const meta = (href: string) =>
-    href === "/profile" ? (answered < 5 ? `${answered}/5` : sources === 0 ? "Add resume" : "") : "";
+  // Profile to-dos live on subpages with a done/todo mark, not as text squeezed beside the link (#255).
+  const subpages = [
+    { href: "/profile", label: "Questions", done: answered >= 5, on: path === "/profile" },
+    { href: "/profile/materials", label: "Resume and materials", done: state.materials.resume?.status === "done", on: path.startsWith("/profile/materials") },
+  ];
+  const profileTodo = subpages.some((p) => !p.done);
 
   return (
     <ConfirmProvider>
@@ -78,9 +82,10 @@ export function Shell({ children }: { children: React.ReactNode }) {
           {PAGES.map(({ href, label, Icon }) => {
             const active = path.startsWith(href);
             const isBoard = href === "/finds";
+            const isProfile = href === "/profile";
             return (
+              <Fragment key={href}>
               <Link
-                key={href}
                 href={href}
                 data-tip={closed ? label : undefined}
                 aria-label={label}
@@ -91,6 +96,7 @@ export function Shell({ children }: { children: React.ReactNode }) {
                 }}
               >
                 <span style={{ position: "relative", width: 18, height: 18, flex: "none", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                  {isProfile && closed && profileTodo && <TodoDot />}
                   {isBoard && closed && newCount > 0 && (
                     <span style={{ position: "absolute", top: -7, right: -10, minWidth: 16, height: 16, padding: "0 4px", borderRadius: 999, background: "#427D33", color: "#fff", fontSize: 14, fontWeight: 700, lineHeight: 1, display: "flex", alignItems: "center", justifyContent: "center", boxShadow: "0 0 0 2px #1D1A0F" }}>
                       {newCount}
@@ -106,10 +112,29 @@ export function Shell({ children }: { children: React.ReactNode }) {
                         {newCount}
                       </span>
                     )}
-                    <span style={{ fontSize: 14, fontWeight: 600, color: "#A89F92" }}>{meta(href)}</span>
                   </>
                 )}
               </Link>
+              {isProfile && !closed && (
+                <div role="list" aria-label="Search profile steps" style={{ display: "flex", flexDirection: "column", gap: 2, marginBottom: 4 }}>
+                  {subpages.map((p) => (
+                    <Link
+                      key={p.href}
+                      href={p.href}
+                      role="listitem"
+                      aria-current={p.on ? "page" : undefined}
+                      aria-label={`${p.label}, ${p.done ? "done" : "to do"}`}
+                      style={{ display: "flex", alignItems: "center", gap: 10, padding: "7px 8px 7px 12px", borderRadius: 10, color: p.on ? "#fff" : "#A89F92", fontSize: 14, fontWeight: 600, textDecoration: "none", lineHeight: 1.3 }}
+                    >
+                      <span aria-hidden style={{ width: 18, flex: "none", display: "flex", justifyContent: "center" }}>
+                        {p.done ? <CheckIcon size={13} stroke="#8FBF7F" /> : <span style={{ width: 9, height: 9, borderRadius: "50%", border: "1.5px solid #F8A865" }} />}
+                      </span>
+                      <span style={{ minWidth: 0 }}>{p.label}</span>
+                    </Link>
+                  ))}
+                </div>
+              )}
+              </Fragment>
             );
           })}
           {state.user.isAdmin && (
@@ -175,6 +200,7 @@ export function Shell({ children }: { children: React.ReactNode }) {
                 style={{ position: "relative", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 4, minHeight: 52, borderRadius: 10, color: active ? "#F8A865" : "#A89F92", fontSize: 14, fontWeight: 600, textDecoration: "none" }}
               >
                 <span style={{ position: "relative", width: 22, height: 22, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                  {href === "/profile" && profileTodo && <TodoDot />}
                   {href === "/finds" && newCount > 0 && (
                     <span style={{ position: "absolute", top: -6, right: -11, minWidth: 17, height: 17, padding: "0 4px", borderRadius: 999, background: "#427D33", color: "#fff", fontSize: 14, fontWeight: 700, lineHeight: 1, display: "flex", alignItems: "center", justifyContent: "center", boxShadow: "0 0 0 2px #1D1A0F" }}>
                       {newCount}
@@ -213,3 +239,8 @@ export function Avatar({ initials, ring }: { initials: string; ring?: boolean })
     </span>
   );
 }
+
+/** Something on the search profile is still to do; shown on the icon where the subpages don't fit (#255). */
+const TodoDot = () => (
+  <span aria-hidden style={{ position: "absolute", top: -3, right: -5, width: 8, height: 8, borderRadius: "50%", background: "#F8A865", boxShadow: "0 0 0 2px #1D1A0F" }} />
+);
