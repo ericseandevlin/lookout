@@ -3,6 +3,7 @@
 import { createPortal } from "react-dom";
 import { useEffect, useRef, useState } from "react";
 import { useStore } from "./store";
+import { color } from "@/lib/tokens";
 
 /** What a new search can hunt for (#8); same two options as the request-access kind picker. */
 const KIND_OPTIONS = [
@@ -154,7 +155,7 @@ export function SearchSwitcher({ variant }: { variant: "rail" | "bar" }) {
                         defaultValue={s.name}
                         maxLength={80}
                         className="f-brick"
-                        style={{ flex: 1, minWidth: 0, background: "#1D1A0F", border: "1px solid rgba(255,255,255,.15)", borderRadius: 8, padding: "6px 8px", color: "#fff", fontSize: 14 }}
+                        style={{ flex: 1, minWidth: 0, background: color.ink, border: "1px solid rgba(255,255,255,.15)", borderRadius: 8, padding: "6px 8px", color: "#fff", fontSize: 14 }}
                       />
                       <button type="submit" style={{ border: 0, background: "#427D33", color: "#fff", borderRadius: 8, padding: "6px 10px", fontSize: 13, fontWeight: 600, cursor: "pointer" }}>
                         Save
@@ -196,7 +197,7 @@ export function SearchSwitcher({ variant }: { variant: "rail" | "bar" }) {
                   onClick={() => setCreating(true)}
                   style={{
                     display: "flex", alignItems: "center", gap: 8, marginTop: 6, padding: "9px 10px", borderRadius: 8, border: 0,
-                    background: "transparent", color: "#F8A865", fontSize: 14, fontWeight: 600, cursor: "pointer", textAlign: "left",
+                    background: "transparent", color: color.orange, fontSize: 14, fontWeight: 600, cursor: "pointer", textAlign: "left",
                   }}
                 >
                   + New search
@@ -220,11 +221,11 @@ export function SearchSwitcher({ variant }: { variant: "rail" | "bar" }) {
                         onClick={() => setKind(k.id)}
                         style={{
                           display: "flex", alignItems: "center", gap: 10, minHeight: 40, padding: "0 12px", borderRadius: 10,
-                          border: `1.5px solid ${on ? "#F8A865" : "rgba(255,255,255,.15)"}`, background: on ? "rgba(248,168,101,.15)" : "transparent",
+                          border: `1.5px solid ${on ? color.orange : "rgba(255,255,255,.15)"}`, background: on ? "rgba(248,168,101,.15)" : "transparent",
                           color: on ? "#fff" : "#C9C1B5", fontSize: 14, fontWeight: 500, cursor: "pointer", textAlign: "left",
                         }}
                       >
-                        <span style={{ width: 14, height: 14, borderRadius: "50%", border: `1.5px solid ${on ? "#F8A865" : "#CFC6B9"}`, background: on ? "#F8A865" : "transparent", flex: "none" }} />
+                        <span style={{ width: 14, height: 14, borderRadius: "50%", border: `1.5px solid ${on ? color.orange : "#CFC6B9"}`, background: on ? color.orange : "transparent", flex: "none" }} />
                         <span>
                           {k.label}
                           <span style={{ display: "block", fontSize: 13, fontWeight: 400, opacity: 0.65 }}>{k.note}</span>
@@ -239,7 +240,7 @@ export function SearchSwitcher({ variant }: { variant: "rail" | "bar" }) {
                     placeholder="Name (optional)"
                     maxLength={80}
                     className="f-brick"
-                    style={{ background: "#1D1A0F", border: "1px solid rgba(255,255,255,.15)", borderRadius: 8, padding: "8px 10px", color: "#fff", fontSize: 14 }}
+                    style={{ background: color.ink, border: "1px solid rgba(255,255,255,.15)", borderRadius: 8, padding: "8px 10px", color: "#fff", fontSize: 14 }}
                   />
                   <div style={{ display: "flex", gap: 8 }}>
                     <button

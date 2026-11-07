@@ -6,6 +6,7 @@ import type { KeywordRow } from "@/lib/application/evidence";
 import { btn } from "../Settings";
 import { api } from "../store";
 import { card, muted, type Detail } from "./shared";
+import { color } from "@/lib/tokens";
 
 export function KeywordReport({ d, rows, reload, locked }: { d: Detail; rows: KeywordRow[]; reload: () => Promise<unknown>; locked: boolean }) {
   const [open, setOpen] = useState<string | null>(null);
@@ -50,13 +51,13 @@ export function KeywordReport({ d, rows, reload, locked }: { d: Detail; rows: Ke
         {rows.map((r) => {
           const editing = open === r.term;
           return (
-            <li key={r.term} style={{ padding: 12, borderRadius: 12, border: `1.5px solid ${r.removed ? "#E6E0D8" : r.support ? "#CFE3C6" : "#E8B4AA"}`, background: r.removed ? "#F4F1EC" : "#fff", display: "flex", flexDirection: "column", gap: 4 }}>
+            <li key={r.term} style={{ padding: 12, borderRadius: 12, border: `1.5px solid ${r.removed ? color.border : r.support ? "#CFE3C6" : "#E8B4AA"}`, background: r.removed ? "#F4F1EC" : "#fff", display: "flex", flexDirection: "column", gap: 4 }}>
               <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
-                <span style={{ fontWeight: 700, fontSize: 15, textDecoration: r.removed ? "line-through" : "none", color: r.removed ? "#6B6358" : "inherit" }}>{r.term}</span>
+                <span style={{ fontWeight: 700, fontSize: 15, textDecoration: r.removed ? "line-through" : "none", color: r.removed ? color.t2 : "inherit" }}>{r.term}</span>
                 {r.removed ? (
                   <span style={{ ...muted, fontSize: 13 }}>removed</span>
                 ) : !r.support ? (
-                  <span style={{ fontSize: 13, fontWeight: 600, color: "#99220F" }}>unsupported</span>
+                  <span style={{ fontSize: 13, fontWeight: 600, color: color.brick }}>unsupported</span>
                 ) : null}
                 {r.mine && <span style={{ ...muted, fontSize: 13 }}>added by you</span>}
                 {!locked && (
@@ -76,7 +77,7 @@ export function KeywordReport({ d, rows, reload, locked }: { d: Detail; rows: Ke
                     \u201c{r.support.line}\u201d <span style={muted}>({r.support.from === "notes" ? "your experience notes" : "your master resume"})</span>
                   </>
                 ) : (
-                  <span style={{ color: "#99220F" }}>Nothing in your resume or experience notes shows this, so it stays out of the resume unless you add the experience.</span>
+                  <span style={{ color: color.brick }}>Nothing in your resume or experience notes shows this, so it stays out of the resume unless you add the experience.</span>
                 )}
               </div>
               {!locked && !r.removed && !editing && (!r.support || r.support.from === "notes") && (
@@ -140,7 +141,7 @@ export function KeywordReport({ d, rows, reload, locked }: { d: Detail; rows: Ke
           )}
         </div>
       )}
-      {err && <div role="alert" style={{ fontSize: 14, color: "#99220F" }}>{err}</div>}
+      {err && <div role="alert" style={{ fontSize: 14, color: color.brick }}>{err}</div>}
     </div>
   );
 }

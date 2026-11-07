@@ -6,6 +6,7 @@ import { Tabs } from "./Admin";
 import { PageHead } from "./Profile";
 import { Section } from "./Settings";
 import { api } from "./store";
+import { color } from "@/lib/tokens";
 
 type Data = {
   days: number;
@@ -21,10 +22,10 @@ type Data = {
 };
 
 const card: React.CSSProperties = { background: "#fff", borderRadius: 16, padding: 0, overflowX: "auto", marginTop: 8 };
-const th: React.CSSProperties = { fontSize: 14, fontWeight: 600, color: "#6B6358", textAlign: "right", padding: "10px 14px", borderBottom: "1px solid #EEEAE4", whiteSpace: "nowrap" };
+const th: React.CSSProperties = { fontSize: 14, fontWeight: 600, color: color.t2, textAlign: "right", padding: "10px 14px", borderBottom: "1px solid #EEEAE4", whiteSpace: "nowrap" };
 const td: React.CSSProperties = { fontSize: 14, padding: "10px 14px", borderBottom: "1px solid #F2EEE8", textAlign: "right", fontVariantNumeric: "tabular-nums", whiteSpace: "nowrap" };
 const first: React.CSSProperties = { textAlign: "left" };
-const muted: React.CSSProperties = { fontSize: 14, color: "#6B6358" };
+const muted: React.CSSProperties = { fontSize: 14, color: color.t2 };
 const day = (iso: string) => new Date(iso).toLocaleDateString("en-US", { month: "short", day: "numeric" });
 const share = (n: number, of: number) => {
   const p = pct(n, of);
@@ -66,7 +67,7 @@ export function AdminQuality() {
       <PageHead eyebrow="Admin" title="Finds quality" intro="What people did with the finds Lookout added, so a model or prompt change can be judged by what happened after. Acted on means pinned, or applied (Applied, Interview, Offer, Not selected or Ghosted). Finds people added themselves don't count.">
         <Tabs />
       </PageHead>
-      {err && <div role="alert" style={{ fontSize: 14, color: "#99220F" }}>{err}</div>}
+      {err && <div role="alert" style={{ fontSize: 14, color: color.brick }}>{err}</div>}
       {!d && !err && <div style={muted}>Loading…</div>}
       {d && (
         <>
@@ -83,7 +84,7 @@ export function AdminQuality() {
                       <th scope="row" style={{ ...td, ...first, fontWeight: 400 }}>
                         <div>{day(`${w.week}T12:00:00Z`)}</div>
                         <div aria-hidden style={{ marginTop: 4, height: 6, width: 120, background: "#F2EEE8", borderRadius: 3 }}>
-                          <div style={{ height: 6, width: `${((p ?? 0) / best) * 100}%`, background: "#99220F", borderRadius: 3 }} />
+                          <div style={{ height: 6, width: `${((p ?? 0) / best) * 100}%`, background: color.brick, borderRadius: 3 }} />
                         </div>
                       </th>
                       {cells(w)}
@@ -205,7 +206,7 @@ export function AdminQuality() {
             <ul style={{ margin: "8px 0 0", paddingLeft: 18, fontSize: 14, display: "flex", flexDirection: "column", gap: 4 }}>
               {d.reasons.map((r) => (
                 <li key={r.reason}>
-                  {r.reason} <span style={{ color: "#6B6358" }}>· {r.count}</span>
+                  {r.reason} <span style={{ color: color.t2 }}>· {r.count}</span>
                 </li>
               ))}
             </ul>

@@ -12,6 +12,7 @@ import { api } from "./store";
 import { SubmitModeNote } from "./SubmitModeNote";
 import { ATS_NAME, type SubmitMode } from "@/lib/application/submitMode";
 import { useFocusTrap } from "./useFocusTrap";
+import { color } from "@/lib/tokens";
 
 type App = {
   id: string;
@@ -126,15 +127,15 @@ export function ApplyPage() {
           <span aria-hidden style={{ width: 10, height: 10, borderRadius: "50%", flex: "none", background: on ? "#427D33" : "#CFC6B9" }} />
           <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column" }}>
             <span style={{ fontSize: 15, fontWeight: 700 }}>Auto-apply {on ? "on" : "off"}</span>
-            <span style={{ fontSize: 14, color: "#6B6358", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{summary}</span>
+            <span style={{ fontSize: 14, color: color.t2, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{summary}</span>
           </div>
           <button onClick={() => setPanel(true)} style={{ ...btn("outline"), height: 38, flex: "none" }}>Settings</button>
           <Switch on={on} onToggle={() => save({ enabled: !on })} />
         </div>
       )}
 
-      {err && <div role="alert" style={{ fontSize: 14, color: "#99220F" }}>{err}</div>}
-      {!apps && !err && <div style={{ fontSize: 14, color: "#6B6358" }}>Loading…</div>}
+      {err && <div role="alert" style={{ fontSize: 14, color: color.brick }}>{err}</div>}
+      {!apps && !err && <div style={{ fontSize: 14, color: color.t2 }}>Loading…</div>}
 
       {apps && apps.length === 0 && (
         <div style={{ padding: 22, borderRadius: 14, background: "#fff", border: "1.5px solid #E6E0D8", display: "flex", flexDirection: "column", gap: 12 }}>
@@ -154,9 +155,9 @@ export function ApplyPage() {
             <section key={g.title} aria-labelledby={`grp-${g.title}`} style={{ display: "flex", flexDirection: "column", gap: 8 }}>
               <div style={{ display: "flex", alignItems: "baseline", gap: 10, marginTop: 6 }}>
                 <h2 id={`grp-${g.title}`} style={{ margin: 0, fontSize: 16, fontWeight: 700 }}>
-                  {g.title} <span style={{ color: "#6B6358", fontWeight: 600 }}>{list.length}</span>
+                  {g.title} <span style={{ color: color.t2, fontWeight: 600 }}>{list.length}</span>
                 </h2>
-                <span style={{ fontSize: 14, color: "#6B6358" }}>{g.help}</span>
+                <span style={{ fontSize: 14, color: color.t2 }}>{g.help}</span>
               </div>
               <ul style={{ listStyle: "none", margin: 0, padding: 0, display: "flex", flexDirection: "column", gap: 8 }}>
                 {list.map((a) => {
@@ -165,25 +166,25 @@ export function ApplyPage() {
                     <li
                       key={a.id}
                       id={`app-${a.id}`}
-                      style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap", padding: "12px 14px", borderRadius: 12, background: focusId === a.id ? "#FDF3E8" : "#fff", border: `1.5px solid ${focusId === a.id ? "#F8A865" : "#E6E0D8"}`, transition: "background-color .4s ease, border-color .4s ease", scrollMarginTop: 120 }}
+                      style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap", padding: "12px 14px", borderRadius: 12, background: focusId === a.id ? "#FDF3E8" : "#fff", border: `1.5px solid ${focusId === a.id ? color.orange : color.border}`, transition: "background-color .4s ease, border-color .4s ease", scrollMarginTop: 120 }}
                     >
                       <div style={{ flex: "1 1 260px", minWidth: 0 }}>
                         <div style={{ fontSize: 15, fontWeight: 600, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                           {a.items > 0 ? (
-                            <Link href={`/apply/${a.id}`} style={{ color: "#1D1A0F" }}>
+                            <Link href={`/apply/${a.id}`} style={{ color: color.ink }}>
                               {a.role}
                             </Link>
                           ) : (
                             a.role
                           )}
                         </div>
-                        <div style={{ fontSize: 14, color: "#6B6358" }}>
+                        <div style={{ fontSize: 14, color: color.t2 }}>
                           {a.company}
                           {a.score ? ` · match ${a.score}/5` : ""}
                           {a.items > 0 ? ` · ${a.items} things to fill${a.ats ? ` on ${ATS_NAME[a.ats] ?? a.ats}` : ""}` : ""}
                         </div>
                         {a.error && (
-                          <div role="alert" style={{ fontSize: 14, color: "#99220F", marginTop: 4 }}>
+                          <div role="alert" style={{ fontSize: 14, color: color.brick, marginTop: 4 }}>
                             {a.error}
                           </div>
                         )}
@@ -214,7 +215,7 @@ export function ApplyPage() {
         })}
 
       {apps && apps.length > 0 && (
-        <p style={{ margin: "4px 0 0", fontSize: 14, color: "#6B6358" }}>
+        <p style={{ margin: "4px 0 0", fontSize: 14, color: color.t2 }}>
           To send, open the job in Firefox with the Lookout extension: it fills the form and you press Submit. No extension? Each application has a two-minute checklist.{" "}
           <button onClick={() => setPanel(true)} style={{ ...btn("text"), height: "auto", padding: 0, fontSize: 14 }}>How it works</button>
         </p>
@@ -265,7 +266,7 @@ function SettingsPanel({ settings, save, close }: { settings: AutoApplySettings;
           <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
             <div style={{ flex: 1 }}>
               <div style={{ fontSize: 15, fontWeight: 700 }}>Queue strong matches automatically</div>
-              <div style={{ fontSize: 14, lineHeight: 1.5, color: "#6B6358" }}>You can always queue any role yourself from its detail panel. Nothing is sent until you approve it.</div>
+              <div style={{ fontSize: 14, lineHeight: 1.5, color: color.t2 }}>You can always queue any role yourself from its detail panel. Nothing is sent until you approve it.</div>
             </div>
             <Switch on={on} onToggle={() => save({ enabled: !on })} />
           </div>
@@ -277,7 +278,7 @@ function SettingsPanel({ settings, save, close }: { settings: AutoApplySettings;
             <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
               <div style={{ fontSize: 15, fontWeight: 600 }}>How many a day</div>
               <Seg opts={[["1", 1], ["3", 3], ["5", 5]]} cur={settings.dailyCap} pick={(v) => save({ dailyCap: v })} />
-              <div style={{ fontSize: 14, color: "#6B6358" }}>A cap so review never piles up.</div>
+              <div style={{ fontSize: 14, color: color.t2 }}>A cap so review never piles up.</div>
             </div>
           </fieldset>
           <ExtensionSection />
@@ -286,10 +287,10 @@ function SettingsPanel({ settings, save, close }: { settings: AutoApplySettings;
             <ol style={{ listStyle: "none", margin: 0, padding: 0, display: "flex", flexDirection: "column", gap: 12 }}>
               {STEPS.map(([title, body], i) => (
                 <li key={title} style={{ display: "grid", gridTemplateColumns: "28px minmax(0,1fr)", gap: 8 }}>
-                  <span style={{ fontSize: 16, fontWeight: 700, color: "#99220F" }}>{i + 1}</span>
+                  <span style={{ fontSize: 16, fontWeight: 700, color: color.brick }}>{i + 1}</span>
                   <span style={{ display: "flex", flexDirection: "column", gap: 2 }}>
                     <span style={{ fontSize: 15, fontWeight: 600 }}>{title}</span>
-                    <span style={{ fontSize: 14, lineHeight: 1.5, color: "#6B6358" }}>{body}</span>
+                    <span style={{ fontSize: 14, lineHeight: 1.5, color: color.t2 }}>{body}</span>
                   </span>
                 </li>
               ))}
@@ -343,9 +344,9 @@ function ExtensionSection() {
   return (
     <div style={{ borderTop: "1px solid #EEEAE4", paddingTop: 18, display: "flex", flexDirection: "column", gap: 10 }}>
       <h3 style={{ margin: 0, fontSize: 16, fontWeight: 700 }}>Firefox extension</h3>
-      <div style={{ fontSize: 14, lineHeight: 1.5, color: "#6B6358" }}>
+      <div style={{ fontSize: 14, lineHeight: 1.5, color: color.t2 }}>
         Fills an approved application on the job&apos;s own page in your Firefox. You check it and press Submit. When the thank-you page shows, Lookout marks it Applied.{" "}
-        <a href="/ext/lookout-autofill.xpi" style={{ color: "#99220F" }}>Install the extension</a>
+        <a href="/ext/lookout-autofill.xpi" style={{ color: color.brick }}>Install the extension</a>
       </div>
       {token ? (
         <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
@@ -360,13 +361,13 @@ function ExtensionSection() {
           <button onClick={make} style={btn(status?.connected ? "outline" : "solid")}>{status?.connected ? "Make a new token" : "Connect the extension"}</button>
           {status?.connected && (
             <>
-              <span style={{ fontSize: 13.5, color: "#6B6358" }}>Connected. {used}.</span>
+              <span style={{ fontSize: 13.5, color: color.t2 }}>Connected. {used}.</span>
               <button onClick={revoke} style={btn("text")}>Disconnect</button>
             </>
           )}
         </div>
       )}
-      {err && <div role="alert" style={{ fontSize: 14, color: "#99220F" }}>{err}</div>}
+      {err && <div role="alert" style={{ fontSize: 14, color: color.brick }}>{err}</div>}
     </div>
   );
 }

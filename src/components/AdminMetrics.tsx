@@ -5,6 +5,7 @@ import { Tabs } from "./Admin";
 import { PageHead } from "./Profile";
 import { Section } from "./Settings";
 import { api } from "./store";
+import { color } from "@/lib/tokens";
 
 type Rate = { eligible: number; rate: number | null };
 type Data = {
@@ -26,9 +27,9 @@ type Data = {
 };
 
 const card: React.CSSProperties = { background: "#fff", borderRadius: 16, overflowX: "auto", marginTop: 8 };
-const th: React.CSSProperties = { fontSize: 14, fontWeight: 600, color: "#6B6358", textAlign: "left", padding: "10px 14px", borderBottom: "1px solid #EEEAE4", whiteSpace: "nowrap" };
+const th: React.CSSProperties = { fontSize: 14, fontWeight: 600, color: color.t2, textAlign: "left", padding: "10px 14px", borderBottom: "1px solid #EEEAE4", whiteSpace: "nowrap" };
 const td: React.CSSProperties = { fontSize: 14, padding: "10px 14px", borderBottom: "1px solid #F2EEE8", fontVariantNumeric: "tabular-nums" };
-const muted: React.CSSProperties = { fontSize: 14, color: "#6B6358" };
+const muted: React.CSSProperties = { fontSize: 14, color: color.t2 };
 const day = (week: string) => new Date(`${week}T12:00:00Z`).toLocaleDateString("en-US", { month: "short", day: "numeric" });
 const one = (n: number) => (Math.round(n * 10) / 10).toString();
 const usd = (n: number) => `$${n.toFixed(2)}`;
@@ -96,7 +97,7 @@ export function AdminMetrics() {
       <PageHead eyebrow="Admin" title="Metrics" intro="The beta goals (through January 10, 2027) and where each one stands. Built from Lookout's own events, so numbers start the day events shipped. Disabled accounts are left out.">
         <Tabs />
       </PageHead>
-      {err && <div role="alert" style={{ fontSize: 14, color: "#99220F" }}>{err}</div>}
+      {err && <div role="alert" style={{ fontSize: 14, color: color.brick }}>{err}</div>}
       {!d && !err && <div style={muted}>Loading…</div>}
       {d && (
         <>

@@ -7,14 +7,15 @@ import { ArchiveIcon, PinIcon, SearchIcon } from "../icons";
 import { IconBtn } from "../finds/Controls";
 import { chip, seg } from "../finds/shared";
 import { btn } from "../Settings";
+import { color } from "@/lib/tokens";
 
-const muted: React.CSSProperties = { fontSize: 14, color: "#6B6358" };
+const muted: React.CSSProperties = { fontSize: 14, color: color.t2 };
 const GRID = "34px 36px 130px minmax(220px,2fr) minmax(150px,1fr) 124px 74px minmax(80px,.6fr)";
 const pill = (on: boolean): React.CSSProperties => {
   const c = chip(on);
   return { display: "flex", alignItems: "center", gap: 7, height: 34, padding: "0 15px", borderRadius: 999, border: `1.5px solid ${c.border}`, background: c.bg, color: c.ink, fontSize: 14, fontWeight: 600, cursor: "pointer" };
 };
-const dateField: React.CSSProperties = { height: 34, border: "1.5px solid #E6E0D8", borderRadius: 10, padding: "0 10px", fontSize: 14, color: "#1D1A0F", background: "#fff" };
+const dateField: React.CSSProperties = { height: 34, border: "1.5px solid #E6E0D8", borderRadius: 10, padding: "0 10px", fontSize: 14, color: color.ink, background: "#fff" };
 
 const day = (s: string) => new Date(`${s}T12:00:00Z`).toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric", timeZone: "UTC" });
 const when = (e: NetworkingEvent) => `${day(e.startsOn)}${e.endsOn && e.endsOn !== e.startsOn ? ` to ${day(e.endsOn)}` : ""}`;
@@ -83,8 +84,8 @@ export function EventsBoard({ events, searching, canSearch, onSearch, onPatch, o
           To <input type="date" value={f.to} onChange={(e) => set({ to: e.target.value })} style={dateField} />
         </label>
         <div style={{ display: "flex", alignItems: "center", gap: 6, height: 34, padding: "0 10px", border: "1.5px solid #E6E0D8", borderRadius: 10, flex: "1 1 180px", minWidth: 160 }}>
-          <SearchIcon size={15} stroke="#6B6358" />
-          <input value={f.q} onChange={(e) => set({ q: e.target.value })} placeholder="Search events" aria-label="Search events" style={{ flex: 1, minWidth: 0, border: 0, outline: "none", background: "transparent", fontSize: 14, color: "#1D1A0F" }} />
+          <SearchIcon size={15} stroke={color.t2} />
+          <input value={f.q} onChange={(e) => set({ q: e.target.value })} placeholder="Search events" aria-label="Search events" style={{ flex: 1, minWidth: 0, border: 0, outline: "none", background: "transparent", fontSize: 14, color: color.ink }} />
         </div>
         {canSearch && (
           <button onClick={onSearch} disabled={searching} style={btn("outline")}>
@@ -133,11 +134,11 @@ export function EventsBoard({ events, searching, canSearch, onSearch, onPatch, o
               {([["Date", "date"], ["Event", null], ["Where", null], ["Distance", "distance"], ["Fit", "fit"], ["Cost", null]] as [string, EventSort | null][]).map(([label, k]) => (
                 <div key={label} role="columnheader" aria-sort={k && sort === k ? (dir === "asc" ? "ascending" : "descending") : undefined}>
                   {k ? (
-                    <button className="no-tint" onClick={() => sortBy(k)} style={{ display: "flex", gap: 5, border: 0, background: "transparent", padding: 0, fontSize: 14, fontWeight: 600, letterSpacing: ".08em", textTransform: "uppercase", color: sort === k ? "#1D1A0F" : "#6B6358", cursor: "pointer" }}>
-                      {label} <span style={{ color: sort === k ? "#99220F" : "#CFC6B9" }}>{arrow(k)}</span>
+                    <button className="no-tint" onClick={() => sortBy(k)} style={{ display: "flex", gap: 5, border: 0, background: "transparent", padding: 0, fontSize: 14, fontWeight: 600, letterSpacing: ".08em", textTransform: "uppercase", color: sort === k ? color.ink : color.t2, cursor: "pointer" }}>
+                      {label} <span style={{ color: sort === k ? color.brick : "#CFC6B9" }}>{arrow(k)}</span>
                     </button>
                   ) : (
-                    <span style={{ fontSize: 14, fontWeight: 600, letterSpacing: ".08em", textTransform: "uppercase", color: "#6B6358" }}>{label}</span>
+                    <span style={{ fontSize: 14, fontWeight: 600, letterSpacing: ".08em", textTransform: "uppercase", color: color.t2 }}>{label}</span>
                   )}
                 </div>
               ))}
@@ -163,10 +164,10 @@ export function EventsBoard({ events, searching, canSearch, onSearch, onPatch, o
                     </div>
                     <div role="cell">
                       <IconBtn tip={e.pinned ? "Unpin" : "Pin"} pressed={!!e.pinned} onClick={() => void onPatch([e.id], { pinned: !e.pinned })} style={{ border: 0, background: "transparent" }}>
-                        <PinIcon size={15} stroke={e.pinned ? "#99220F" : "#6B6358"} />
+                        <PinIcon size={15} stroke={e.pinned ? color.brick : color.t2} />
                       </IconBtn>
                     </div>
-                    <div role="cell" style={{ fontSize: 14, fontWeight: 600, color: "#99220F" }}>{when(e)}</div>
+                    <div role="cell" style={{ fontSize: 14, fontWeight: 600, color: color.brick }}>{when(e)}</div>
                     <div role="cell" style={{ fontSize: 14, fontWeight: 600, padding: "8px 12px 8px 0" }}>{e.title}{e.host && <div style={{ ...muted, fontWeight: 400 }}>{e.host}</div>}</div>
                     <div role="cell" style={{ ...muted, paddingRight: 12 }}>{e.online ? "Online" : e.place || "–"}</div>
                     <div role="cell" style={{ fontSize: 14, fontVariantNumeric: "tabular-nums" }}>{distance(e)}</div>

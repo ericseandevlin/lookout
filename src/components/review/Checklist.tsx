@@ -4,6 +4,7 @@ import { useState } from "react";
 import { toPlain as toPlainText } from "@/lib/application/resumeLayout";
 import { btn } from "../Settings";
 import { card, muted, type Detail } from "./shared";
+import { color } from "@/lib/tokens";
 
 export function Checklist({ d, onDone }: { d: Detail; onDone: () => void }) {
   const [copied, setCopied] = useState<string | null>(null);
@@ -27,7 +28,7 @@ export function Checklist({ d, onDone }: { d: Detail; onDone: () => void }) {
     URL.revokeObjectURL(url);
   };
   return (
-    <section aria-labelledby="send" style={{ ...card, borderColor: locked ? "#9CC68E" : "#1D1A0F", display: "flex", flexDirection: "column", gap: 12 }}>
+    <section aria-labelledby="send" style={{ ...card, borderColor: locked ? "#9CC68E" : color.ink, display: "flex", flexDirection: "column", gap: 12 }}>
       <h2 id="send" style={{ margin: 0, fontSize: 18, fontWeight: 700 }}>{locked ? "What you sent" : "Send it"}</h2>
       {locked ? (
         <p style={{ ...muted, margin: 0 }}>Applied {d.submittedAt ? new Date(d.submittedAt).toLocaleString() : ""}. This is the exact text you approved.</p>

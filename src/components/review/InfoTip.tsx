@@ -1,6 +1,7 @@
 "use client";
 
 import { useId, useState } from "react";
+import { color } from "@/lib/tokens";
 
 /** An (i) icon with an explanation: shows on hover, keyboard focus or tap; Escape closes it. */
 export function InfoTip({ label, text }: { label: string; text: string }) {
@@ -32,7 +33,7 @@ export function InfoTip({ label, text }: { label: string; text: string }) {
         i
       </button>
       {show && (
-        <span role="tooltip" id={id} style={{ position: "absolute", top: "calc(100% + 8px)", left: -12, zIndex: 20, width: "min(340px, 80vw)", padding: "10px 12px", borderRadius: 10, background: "#1D1A0F", color: "#fff", fontSize: 14, lineHeight: 1.5, whiteSpace: "pre-line", boxShadow: "0 6px 20px rgba(0,0,0,.2)" }}>
+        <span role="tooltip" id={id} style={{ position: "absolute", top: "calc(100% + 8px)", left: -12, zIndex: 20, width: "min(340px, 80vw)", padding: "10px 12px", borderRadius: 10, background: color.ink, color: "#fff", fontSize: 14, lineHeight: 1.5, whiteSpace: "pre-line", boxShadow: "0 6px 20px rgba(0,0,0,.2)" }}>
           {text}
         </span>
       )}
