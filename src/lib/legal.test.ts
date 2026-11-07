@@ -3,18 +3,14 @@ import { needsConsent, versionDate } from "./legal";
 
 describe("needsConsent (#21)", () => {
   it("asks accounts that never agreed", () => {
-    expect(needsConsent({ termsVersion: null, privacyVersion: null }, null, "2026-11-07")).toBe(true);
-  });
-
-  it("passes once the current privacy version is agreed, while there are no Terms", () => {
-    expect(needsConsent({ termsVersion: null, privacyVersion: "2026-11-07" }, null, "2026-11-07")).toBe(false);
+    expect(needsConsent({ termsVersion: null, privacyVersion: null }, "t1", "p1")).toBe(true);
   });
 
   it("asks again when the privacy version changes", () => {
-    expect(needsConsent({ termsVersion: null, privacyVersion: "2026-11-07" }, null, "2026-12-01")).toBe(true);
+    expect(needsConsent({ termsVersion: "t1", privacyVersion: "p1" }, "t1", "p2")).toBe(true);
   });
 
-  it("asks again when Terms appear or change", () => {
+  it("asks accounts that agreed before Terms existed, and again when Terms change (#20)", () => {
     expect(needsConsent({ termsVersion: null, privacyVersion: "p1" }, "t1", "p1")).toBe(true);
     expect(needsConsent({ termsVersion: "t1", privacyVersion: "p1" }, "t2", "p1")).toBe(true);
     expect(needsConsent({ termsVersion: "t1", privacyVersion: "p1" }, "t1", "p1")).toBe(false);

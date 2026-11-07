@@ -4,14 +4,14 @@
 /** The privacy page's "Last updated" date (YYYY-MM-DD). The page shows this date. */
 export const PRIVACY_VERSION = "2026-11-07";
 
-/** Terms of Service version. null until the Terms page exists (#20); setting it asks everyone again. */
-export const TERMS_VERSION: string | null = null;
+/** The Terms page's "Last updated" date (YYYY-MM-DD, #20). The page shows this date. */
+export const TERMS_VERSION = "2026-11-07";
 
 type Accepted = { termsVersion: string | null; privacyVersion: string | null };
 
 /** True when the person hasn't agreed to the current version of every document. */
 export function needsConsent(u: Accepted, terms = TERMS_VERSION, privacy = PRIVACY_VERSION) {
-  return u.privacyVersion !== privacy || (terms !== null && u.termsVersion !== terms);
+  return u.privacyVersion !== privacy || u.termsVersion !== terms;
 }
 
 /** What gets stored when someone ticks the box. */
