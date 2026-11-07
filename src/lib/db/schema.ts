@@ -32,6 +32,10 @@ export const users = pgTable(
     termsVersion: text("terms_version"),
     privacyVersion: text("privacy_version"),
     acceptedAt: timestamp("accepted_at", { withTimezone: true }),
+    /** Last request on a session the daily cleanup has since deleted (#26). Live sessions keep their own lastSeenAt. */
+    lastActiveAt: timestamp("last_active_at", { withTimezone: true }),
+    /** When the 12-month inactivity email went out (#26). Deleting the account after that is by hand. */
+    inactiveWarnedAt: timestamp("inactive_warned_at", { withTimezone: true }),
   },
   (t) => [uniqueIndex("users_email_idx").on(sql`lower(${t.email})`)],
 );

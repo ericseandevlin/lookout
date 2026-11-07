@@ -30,6 +30,16 @@ export default function Privacy() {
         <li>Which links you click in the finds email. Links in that email pass through Lookout first, so it can tell whether the finds are useful. It doesn&apos;t track whether you open the email.</li>
       </ul>
 
+      <H>How long it keeps it</H>
+      <ul>
+        <li><b>Sign-in links:</b> deleted once they expire.</li>
+        <li><b>Signed-in devices:</b> deleted 90 days after you last used them.</li>
+        <li><b>Search logs:</b> the details of each search are deleted after 12 months. Only the counts and cost stay.</li>
+        <li><b>Your account:</b> kept while you use it. If you don&apos;t use Lookout for 12 months, it emails you once. If you still don&apos;t sign in, Eric may delete the account by hand after 18 months. Nothing is deleted automatically.</li>
+        <li><b>Deleted accounts:</b> removed right away. Copies in encrypted backups age out within 60 days.</li>
+      </ul>
+      <p>A daily job on the server does the deleting, so these limits hold without anyone remembering to.</p>
+
       <H>Who sees it</H>
       <p>You. Eric, as the admin, sees the list of accounts with emails, sign-in dates, counts of finds, search costs, how far each person got through setup, and what each person did in Lookout. During the beta, he can also open a read-only view of your board to test Lookout and fix problems you run into. He can&apos;t change anything there, and each view is logged. He can also reach the database itself, so treat what you upload as something he could read. No one else gets access.</p>
 
@@ -38,7 +48,7 @@ export default function Privacy() {
       <ul>
         <li><b>Hostinger (server host).</b> Gets: everything above. The app and its database run on a private server rented from Hostinger. Hostinger runs the machine; it doesn&apos;t use what&apos;s on it.</li>
         <li><b>OpenRouter, and the AI model host it picks.</b> Gets: your profile answers, the text of your resume, LinkedIn PDF and links, your search profile, and the postings being scored or drafted for. Why: to build your search profile, score finds and draft applications. Lookout tells OpenRouter to use only hosts that don&apos;t keep your data or train on it, and to try US hosts first. Lookout doesn&apos;t train any models on your data either.</li>
-        <li><b>Resend (email).</b> Gets: your email address and the emails Lookout sends you: sign-in links, invites and the finds email. It also receives mail sent to Lookout&apos;s own addresses, like the one at the bottom of this page, and tells Lookout whether each email was delivered.</li>
+        <li><b>Resend (email).</b> Gets: your email address and the emails Lookout sends you: sign-in links, invites, the finds email and account notices, like the one-year inactivity email. It also receives mail sent to Lookout&apos;s own addresses, like the one at the bottom of this page, and tells Lookout whether each email was delivered.</li>
         <li><b>Amazon S3 (backups).</b> Gets: a nightly copy of the database and uploaded files, encrypted before upload, so Amazon can&apos;t read it. Copies are kept for up to 60 days. Before upload, the server keeps 14 days of copies and Eric&apos;s own computer keeps 30.</li>
         <li><b>Cloudflare Turnstile (bot check).</b> Gets: your IP address and the browser details its check reads, only when you fill in the request-access form. Why: to keep bots off that form.</li>
         <li><b>Search engines, through Lookout&apos;s own relay.</b> Get: search queries only: job titles, company names, places and keywords. Never your name, email or resume. Queries come from Lookout&apos;s server, not your browser.</li>
@@ -53,7 +63,7 @@ export default function Privacy() {
       <ul>
         <li><b>Export:</b> Settings, Export data downloads your board, stages, notes, profile answers and what Lookout recorded you doing.</li>
         <li><b>Delete:</b> Settings, Delete everything removes your account and all of the above right away. Copies in encrypted backups age out within 60 days.</li>
-        <li><b>Unsubscribe:</b> every email except sign-in links and invites has an unsubscribe link at the bottom. It works at once and needs no sign-in.</li>
+        <li><b>Unsubscribe:</b> every email except sign-in links, invites and account notices has an unsubscribe link at the bottom. It works at once and needs no sign-in.</li>
         <li><b>Remove one thing:</b> delete your resume, LinkedIn PDF or any link on the Materials tab, and it stops being used.</li>
       </ul>
 
