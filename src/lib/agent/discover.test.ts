@@ -1,0 +1,173 @@
+import { PGlite } from "@electric-sql/pglite";
+import { eq } from "drizzle-orm";
+import { drizzle } from "drizzle-orm/pglite";
+import { migrate } from "drizzle-orm/pglite/migrator";
+import path from "node:path";
+import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
+import * as schema from "@/lib/db/schema";
+
+// An in-process Postgres with the real migrations, standing in for the app database.
+const pg = new PGlite();
+const db = drizzle(pg, { schema });
+vi.mock("@/lib/db", () => ({ db, schema }));
+
+const { loadContext, save } = await import("./discover");
+type Ctx = Awaited<ReturnType<typeof loadContext>>;
+type Find = Parameters<typeof save>[1][number];
+
+let userId = "";
+let searchId = "";
+
+const find = (over: Partial<Find> = {}): Find => ({
+  index: 0,
+  url: "https://jobs.example.com/acme/123",
+  is_open_job_posting: true,
+  company: "Acme",
+  title: "Director of Design",
+  location: "New York, NY (hybrid)",
+  work_mode: "Hybrid",
+  comp_min: 200000,
+  comp_max: 250000,
+  posted_at: "2026-11-01",
+  description: "Lead the design team.",
+  score: 5,
+  reasons_match: ["You led a team this size"],
+  reasons_gap: [],
+  location_fit: true,
+  dealbreaker: false,
+  ...over,
+});
+
+const ctx = (over: Partial<Ctx> = {}): Ctx => ({
+  searchId,
+  kind: "job",
+  userId,
+  brief: "",
+  resume: "",
+  linkedin: "",
+  links: [],
+  searchProfile: null,
+  rejected: [],
+  floor: null,
+  knownUrls: [],
+  answers: {},
+  hasResume: false,
+  ...over,
+});
+
+const board = (sid = searchId) =>
+  db
+    .select({ title: schema.opportunities.title, company: schema.opportunities.company, score: schema.userOpportunities.score, via: schema.userOpportunities.addedVia, gap: schema.userOpportunities.reasonsGap })
+    .from(schema.userOpportunities)
+    .innerJoin(schema.opportunities, eq(schema.opportunities.id, schema.userOpportunities.opportunityId))
+    .where(eq(schema.userOpportunities.searchId, sid));
+
+beforeAll(async () => {
+  await migrate(db, { migrationsFolder: path.resolve(__dirname, "../../../drizzle") });
+});
+afterAll(async () => {
+  await pg.close();
+});
+beforeEach(async () => {
+  await db.delete(schema.users);
+  await db.delete(schema.opportunities);
+  const [u] = await db.insert(schema.users).values({ email: "a@example.com" }).returning();
+  const [s] = await db.insert(schema.searches).values({ userId: u.id, name: "Job search", answers: { floor: "$180k" } }).returning();
+  userId = u.id;
+  searchId = s.id;
+});
+
+describe("save", () => {
+  it("adds a posting and reports it as new", async () => {
+    const r = await save(ctx(), [find()], "agent");
+    expect(r).toMatchObject({ postings: 1, added: 1, known: 0, notPostings: 0 });
+    expect(r.newFinds).toHaveLength(1);
+    expect(await board()).toEqual([{ title: "Director of Design", company: "Acme", score: 5, via: "agent", gap: [] }]);
+  });
+
+  it("skips pages that are not one open posting, or lack a company or title", async () => {
+    const r = await save(ctx(), [find({ is_open_job_posting: false }), find({ company: "" }), find({ title: "" })], "agent");
+    expect(r).toMatchObject({ notPostings: 3, postings: 0, added: 0 });
+    expect(await board()).toHaveLength(0);
+  });
+
+  it("on a search, skips URLs already on the board, ignoring tracking params and www", async () => {
+    const r = await save(ctx({ knownUrls: ["https://www.jobs.example.com/acme/123/?utm_source=x"] }), [find()], "agent");
+    expect(r).toMatchObject({ postings: 1, known: 1, added: 0 });
+    expect(await board()).toHaveLength(0);
+  });
+
+  it("counts the same URL twice in one search once", async () => {
+    const r = await save(ctx(), [find(), find({ title: "Director, Design" })], "agent");
+    expect(r).toMatchObject({ added: 1, known: 1 });
+  });
+
+  it("counts the same posting at a different URL as known when it is already on the board", async () => {
+    await save(ctx(), [find()], "agent");
+    const r = await save(ctx(), [find({ url: "https://boards.example.org/acme-director" })], "agent");
+    expect(r).toMatchObject({ added: 0, known: 1 });
+    expect(await board()).toHaveLength(1);
+  });
+
+  it("drops dealbreakers on a search but keeps them when the person adds the link", async () => {
+    expect(await save(ctx(), [find({ dealbreaker: true })], "agent")).toMatchObject({ dealbreaker: 1, added: 0 });
+    const manual = await save(ctx({ knownUrls: ["https://jobs.example.com/acme/123"] }), [find({ dealbreaker: true })], "manual");
+    expect(manual).toMatchObject({ dealbreaker: 0, added: 1, known: 0 });
+    expect((await board())[0].via).toBe("manual");
+  });
+
+  it("marks down pay under the floor and off-location roles but still adds them", async () => {
+    const r = await save(
+      ctx({ floor: 180000 }),
+      [find({ comp_min: 120000, comp_max: 150000 }), find({ url: "https://jobs.example.com/b", company: "Beta", location_fit: false })],
+      "agent",
+    );
+    expect(r).toMatchObject({ added: 2, belowFloor: 1, offLocation: 1 });
+    const rows = await board();
+    expect(rows.map((x) => x.score)).toEqual([3, 3]);
+    expect(rows.find((x) => x.company === "Acme")?.gap[0]).toMatch(/below your floor/);
+  });
+
+  it("stores bad dates and Unknown work mode as empty, and rounds pay", async () => {
+    await save(ctx(), [find({ posted_at: "last week", work_mode: "Unknown", comp_min: 199999.6, comp_max: null })], "agent");
+    const [o] = await db.select().from(schema.opportunities);
+    expect(o).toMatchObject({ postedAt: null, workMode: null, compMin: 200000, compMax: null });
+  });
+
+  it("keeps one shared posting when two people find it", async () => {
+    const [u2] = await db.insert(schema.users).values({ email: "b@example.com" }).returning();
+    const [s2] = await db.insert(schema.searches).values({ userId: u2.id, name: "Job search", answers: {} }).returning();
+    await save(ctx(), [find()], "agent");
+    const r = await save(ctx({ userId: u2.id, searchId: s2.id }), [find({ url: "https://boards.example.org/acme-director" })], "agent");
+    expect(r.added).toBe(1);
+    expect(await db.select().from(schema.opportunities)).toHaveLength(1);
+    expect(await board(s2.id)).toHaveLength(1);
+  });
+});
+
+describe("loadContext", () => {
+  it("returns this search's URLs, the floor, and the 12 newest Not a fit reasons", async () => {
+    const [other] = await db.insert(schema.searches).values({ userId, name: "Other", answers: {} }).returning();
+    await save(ctx({ searchId: other.id }), [find({ url: "https://jobs.example.com/other", company: "Other Co" })], "agent");
+    const finds = Array.from({ length: 14 }, (_, i) => find({ url: `https://jobs.example.com/${i}`, company: `Co ${i}` }));
+    await save(ctx(), finds, "agent");
+    const rows = await db.select().from(schema.userOpportunities).where(eq(schema.userOpportunities.searchId, searchId));
+    const opps = await db.select().from(schema.opportunities);
+    for (const row of rows) {
+      const i = Number(opps.find((o) => o.id === row.opportunityId)!.company.split(" ")[1]);
+      const at = new Date(Date.UTC(2026, 10, 1 + i)).toISOString();
+      await db
+        .update(schema.userOpportunities)
+        .set({ feedback: { reason: `reason ${i}`, at } })
+        .where(eq(schema.userOpportunities.opportunityId, row.opportunityId));
+    }
+
+    const c = await loadContext(searchId);
+    expect(c).toMatchObject({ userId, searchId, kind: "job", floor: 180000, hasResume: false });
+    expect(c.knownUrls).toHaveLength(14);
+    expect(c.knownUrls).not.toContain("https://jobs.example.com/other");
+    expect(c.rejected).toHaveLength(12);
+    expect(c.rejected[0]).toBe("Director of Design at Co 13: reason 13");
+    expect(c.rejected[11]).toBe("Director of Design at Co 2: reason 2");
+  });
+});
