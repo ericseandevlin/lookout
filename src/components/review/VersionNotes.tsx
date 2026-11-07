@@ -2,6 +2,7 @@
 
 import { parseNote } from "@/lib/application/notes";
 import { muted, type Version } from "./shared";
+import { color } from "@/lib/tokens";
 
 /**
  * What changed in a version and where its facts came from. Reading it is optional, so anything
@@ -34,7 +35,7 @@ export function VersionNotes({ v }: { v: Version }) {
               {sources.map((s, i) => (
                 <li key={i}>
                   {/^https?:\/\//i.test(s) ? (
-                    <a href={s} target="_blank" rel="noreferrer" style={{ color: "#1D1A0F", overflowWrap: "anywhere" }}>
+                    <a href={s} target="_blank" rel="noreferrer" style={{ color: color.ink, overflowWrap: "anywhere" }}>
                       {s} ↗
                     </a>
                   ) : (

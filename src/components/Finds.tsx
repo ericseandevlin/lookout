@@ -20,6 +20,7 @@ import { SearchNowButton } from "./finds/SearchNowButton";
 import { AddLink } from "./finds/AddLink";
 import { FilterSheet } from "./finds/FilterSheet";
 import { Drawer } from "./finds/Drawer";
+import { color } from "@/lib/tokens";
 
 export { Switch } from "./finds/Controls";
 
@@ -198,9 +199,9 @@ export function Finds() {
           <div style={{ flex: 1, minWidth: 260 }}>
             <h1 style={{ margin: 0, fontSize: 27, fontWeight: 700, letterSpacing: "-0.02em", lineHeight: "32px" }}>Finds</h1>
             <div style={{ display: "flex", alignItems: "baseline", gap: 8, flexWrap: "wrap", marginTop: 4 }}>
-              <span className={state.running ? "pulse" : undefined} style={{ fontSize: 14, color: "#6B6358" }}>{sub}</span>
+              <span className={state.running ? "pulse" : undefined} style={{ fontSize: 14, color: color.t2 }}>{sub}</span>
               {!state.running && state.lastReport && (
-                <button onClick={() => { if (!showReport) trackClient("report_opened"); setShowReport(!showReport); }} aria-expanded={showReport} style={{ border: 0, background: "transparent", padding: 0, fontSize: 14, fontWeight: 600, color: "#99220F", cursor: "pointer", textDecoration: "underline", textUnderlineOffset: 3 }}>
+                <button onClick={() => { if (!showReport) trackClient("report_opened"); setShowReport(!showReport); }} aria-expanded={showReport} style={{ border: 0, background: "transparent", padding: 0, fontSize: 14, fontWeight: 600, color: color.brick, cursor: "pointer", textDecoration: "underline", textUnderlineOffset: 3 }}>
                   {showReport ? "Hide search report" : "See search report"}
                 </button>
               )}
@@ -214,7 +215,7 @@ export function Finds() {
                 onChange={(e) => setQ(e.target.value)}
                 placeholder="Search company, role, notes..."
                 aria-label="Search finds"
-                style={{ flex: 1, minWidth: 0, background: "transparent", border: 0, outline: "none", color: "#1D1A0F", fontSize: 14 }}
+                style={{ flex: 1, minWidth: 0, background: "transparent", border: 0, outline: "none", color: color.ink, fontSize: 14 }}
               />
             </div>
             {!store.readOnly && (cfg.discovery || state.canSearch) && <SearchNowButton />}
@@ -240,7 +241,7 @@ export function Finds() {
                 </button>
               );
             })}
-            <div style={{ width: 1, height: 22, background: "#E6E0D8", margin: "0 4px" }} />
+            <div style={{ width: 1, height: 22, background: color.border, margin: "0 4px" }} />
             <div style={{ position: "relative" }}>
               {(() => {
                 const c = chip(!!fit);
@@ -254,15 +255,15 @@ export function Finds() {
               {fitMenu && (
                 <Menu style={{ top: 40, left: 0, minWidth: 150 }}>
                   {([["Any match", 0], ["5 only", 5], ["4 and up", 4], ["3 and up", 3]] as const).map(([label, k]) => (
-                    <button key={k} className="h-menu" onClick={() => { setFit(k); setFitMenu(false); }} style={{ display: "flex", justifyContent: "space-between", padding: "9px 12px", border: 0, borderRadius: 8, background: fit === k ? "#F6F2EC" : "transparent", fontSize: 14, fontWeight: 500, color: "#1D1A0F", cursor: "pointer", textAlign: "left" }}>
+                    <button key={k} className="h-menu" onClick={() => { setFit(k); setFitMenu(false); }} style={{ display: "flex", justifyContent: "space-between", padding: "9px 12px", border: 0, borderRadius: 8, background: fit === k ? "#F6F2EC" : "transparent", fontSize: 14, fontWeight: 500, color: color.ink, cursor: "pointer", textAlign: "left" }}>
                       {label}
-                      <span style={{ color: "#6B6358" }}>{fitCount(k)}</span>
+                      <span style={{ color: color.t2 }}>{fitCount(k)}</span>
                     </button>
                   ))}
                 </Menu>
               )}
             </div>
-            <div className="wide-only" style={{ marginLeft: "auto", fontSize: 14, color: "#6B6358" }}>Click a row for details · click a stage to change it</div>
+            <div className="wide-only" style={{ marginLeft: "auto", fontSize: 14, color: color.t2 }}>Click a row for details · click a stage to change it</div>
           </div>
 
           {/* Mobile toolbar */}
@@ -280,14 +281,14 @@ export function Finds() {
                 })}
               </div>
               <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                <div style={{ flex: 1, minWidth: 0, fontSize: 14, color: "#6B6358", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                <div style={{ flex: 1, minWidth: 0, fontSize: 14, color: color.t2, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
                   {rows.length} shown · Sorted by {sortLabel} {arrow}
                 </div>
-                <button onClick={() => setSheetOpen(true)} style={{ display: "flex", alignItems: "center", gap: 8, height: 40, padding: "0 14px", borderRadius: 999, border: `1.5px solid ${filterCount ? "#1D1A0F" : "#E0D9CF"}`, background: filterCount ? "#FBF8F4" : "#fff", color: "#1D1A0F", fontSize: 14, fontWeight: 600, cursor: "pointer", flex: "none" }}>
+                <button onClick={() => setSheetOpen(true)} style={{ display: "flex", alignItems: "center", gap: 8, height: 40, padding: "0 14px", borderRadius: 999, border: `1.5px solid ${filterCount ? color.ink : "#E0D9CF"}`, background: filterCount ? "#FBF8F4" : "#fff", color: color.ink, fontSize: 14, fontWeight: 600, cursor: "pointer", flex: "none" }}>
                   <SlidersIcon />
                   Filter &amp; sort
                   {filterCount > 0 && (
-                    <span style={{ minWidth: 20, height: 20, padding: "0 6px", borderRadius: 999, background: "#99220F", color: "#fff", fontSize: 14, fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center" }}>{filterCount}</span>
+                    <span style={{ minWidth: 20, height: 20, padding: "0 6px", borderRadius: 999, background: color.brick, color: "#fff", fontSize: 14, fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center" }}>{filterCount}</span>
                   )}
                 </button>
               </div>
@@ -306,10 +307,10 @@ export function Finds() {
                       <button
                         className="no-tint"
                         onClick={() => key && (setSortDir(sortKey === key && sortDir === "desc" ? "asc" : "desc"), setSortKey(key))}
-                        style={{ display: "flex", alignItems: "center", gap: 5, border: 0, background: "transparent", padding: 0, fontSize: 14, fontWeight: 600, letterSpacing: ".08em", textTransform: "uppercase", color: on ? "#1D1A0F" : "#6B6358", cursor: key ? "pointer" : "default", textAlign: "left" }}
+                        style={{ display: "flex", alignItems: "center", gap: 5, border: 0, background: "transparent", padding: 0, fontSize: 14, fontWeight: 600, letterSpacing: ".08em", textTransform: "uppercase", color: on ? color.ink : color.t2, cursor: key ? "pointer" : "default", textAlign: "left" }}
                       >
                         {label}
-                        <span style={{ color: on ? "#99220F" : "#CFC6B9", marginRight: 16 }}>{key ? (on ? arrow : "↕") : ""}</span>
+                        <span style={{ color: on ? color.brick : "#CFC6B9", marginRight: 16 }}>{key ? (on ? arrow : "↕") : ""}</span>
                       </button>
                       {key === "comp" && <Switch small on={compOnly} onClick={() => setCompOnly((v) => !v)} tip={compOnly ? "Showing only roles with posted comp. Click to show all." : "Hide roles with no comp posted"} />}
                     </div>
@@ -350,13 +351,13 @@ export function Finds() {
                           </button>
                         </div>
                       ) : (
-                        <div role="cell" key={c.key} style={{ fontSize: 14, fontWeight: c.key === "comp" || c.key === "value" ? 600 : 400, color: cellQuiet(f, c.key) ? "#6B6358" : c.key === "comp" || c.key === "value" ? "#99220F" : "#1D1A0F", fontVariantNumeric: "tabular-nums", paddingRight: 16, textWrap: "pretty" }}>
+                        <div role="cell" key={c.key} style={{ fontSize: 14, fontWeight: c.key === "comp" || c.key === "value" ? 600 : 400, color: cellQuiet(f, c.key) ? color.t2 : c.key === "comp" || c.key === "value" ? color.brick : color.ink, fontVariantNumeric: "tabular-nums", paddingRight: 16, textWrap: "pretty" }}>
                           {cellText(f, c.key)}
                           {c.key === "comp" && <CompCompare f={f} current={currentComp} style={{ marginTop: 2 }} />}
                         </div>
                       ),
                     )}
-                    <div role="cell" style={{ fontSize: 14, color: "#6B6358", fontStyle: cellQuiet(f, cfg.board.preStage.key) ? "italic" : "normal" }}>{cellText(f, cfg.board.preStage.key)}</div>
+                    <div role="cell" style={{ fontSize: 14, color: color.t2, fontStyle: cellQuiet(f, cfg.board.preStage.key) ? "italic" : "normal" }}>{cellText(f, cfg.board.preStage.key)}</div>
                     <div role="cell" style={{ position: "relative", paddingRight: 16 }}>
                       <button
                         data-tip="Change stage"
@@ -370,7 +371,7 @@ export function Finds() {
                         <StageMenu stages={kindOf(f.type).stages} ended={kindOf(f.type).endedStages} current={f.stage} style={{ ...menuAt, minWidth: 150 }} onPick={(s) => { setStage(f, s); setStageMenu(null); }} />
                       )}
                     </div>
-                    <div role="cell" style={{ fontSize: 14, color: "#6B6358", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} data-tip={cellText(f, cfg.board.tail.key)}>{cellText(f, cfg.board.tail.key)}</div>
+                    <div role="cell" style={{ fontSize: 14, color: color.t2, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} data-tip={cellText(f, cfg.board.tail.key)}>{cellText(f, cfg.board.tail.key)}</div>
                   </div>
                 );
               })}
@@ -393,15 +394,15 @@ export function Finds() {
                       <div style={{ flex: 1, minWidth: 0 }}>
                         <div style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 14.5, fontWeight: 600, lineHeight: 1.3 }}>
                           <button className="cell-link" onClick={(e) => { e.stopPropagation(); open(f.id); }} aria-label={`${f.role} at ${f.company}`} style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{f.company}</button>
-                          {f.pinned && <PinIcon size={13} stroke="#99220F" sw={2} style={{ flex: "none" }} />}
+                          {f.pinned && <PinIcon size={13} stroke=color.brick sw={2} style={{ flex: "none" }} />}
                         </div>
                         <div style={{ fontSize: 14, lineHeight: 1.35, color: "#3A3428", marginTop: 1, display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>{f.role}</div>
                       </div>
-                      <span style={{ flex: "none", fontSize: 14, color: "#6B6358", fontStyle: cellQuiet(f, cfg.board.preStage.key) ? "italic" : "normal", whiteSpace: "nowrap", marginTop: 2 }}>{cellText(f, cfg.board.preStage.key)}</span>
+                      <span style={{ flex: "none", fontSize: 14, color: color.t2, fontStyle: cellQuiet(f, cfg.board.preStage.key) ? "italic" : "normal", whiteSpace: "nowrap", marginTop: 2 }}>{cellText(f, cfg.board.preStage.key)}</span>
                     </div>
                     <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, marginTop: 2 }}>
                       <div style={{ minWidth: 0 }}>
-                        <div style={{ fontSize: 14, fontWeight: 600, color: "#99220F", fontVariantNumeric: "tabular-nums", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{cellText(f, cfg.board.columns[2].key)}</div>
+                        <div style={{ fontSize: 14, fontWeight: 600, color: color.brick, fontVariantNumeric: "tabular-nums", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{cellText(f, cfg.board.columns[2].key)}</div>
                         {cfg.board.columns[2].key === "comp" && <CompCompare f={f} current={currentComp} />}
                       </div>
                       <div style={{ position: "relative", flex: "none" }}>
@@ -458,7 +459,7 @@ export function Finds() {
 
 function Empty({ hasAny, running }: { hasAny: boolean; running: boolean }) {
   return (
-    <div style={{ padding: "48px 22px", textAlign: "center", color: "#6B6358", fontSize: 14 }}>
+    <div style={{ padding: "48px 22px", textAlign: "center", color: color.t2, fontSize: 14 }}>
       {hasAny ? "No roles match this view." : running ? "Searching now. New finds will show up here." : (
         <div style={{ maxWidth: 560, margin: "0 auto", textAlign: "left" }}><NextStep here="finds" /></div>
       )}
@@ -469,4 +470,4 @@ function Empty({ hasAny, running }: { hasAny: boolean; running: boolean }) {
 // Row pin/archive buttons stay quiet so the match score is the loudest thing in the row: no box until hover,
 // and active is a brick-red icon rather than a fill.
 const iconState = (on: boolean): React.CSSProperties =>
-  on ? { border: "1px solid transparent", background: "transparent", color: "#99220F" } : { border: "1px solid transparent", background: "transparent", color: "#857C70" };
+  on ? { border: "1px solid transparent", background: "transparent", color: color.brick } : { border: "1px solid transparent", background: "transparent", color: "#857C70" };

@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useState } from "react";
 import { AuthCard, Eyebrow, h1, p, primary } from "./Login";
+import { color } from "@/lib/tokens";
 
 /** Confirm on click, not on load, so mail scanners can't use the link up. */
 export function ConfirmEmail({ token }: { token: string }) {
@@ -24,7 +25,7 @@ export function ConfirmEmail({ token }: { token: string }) {
       <Eyebrow>Change email</Eyebrow>
       <h1 style={h1}>{state === "done" ? "Your email is updated" : state === "error" ? "That link didn't work" : "Confirm your new email"}</h1>
       <p style={p}>
-        {state === "done" ? <>You&apos;ll sign in with <strong style={{ color: "#1D1A0F" }}>{msg}</strong> from now on.</> : state === "error" ? msg : "Make this the email you sign in with."}
+        {state === "done" ? <>You&apos;ll sign in with <strong style={{ color: color.ink }}>{msg}</strong> from now on.</> : state === "error" ? msg : "Make this the email you sign in with."}
       </p>
       {state === "done" || state === "error" ? (
         <Link href="/settings" style={{ ...primary, display: "flex", alignItems: "center", justifyContent: "center", textDecoration: "none", marginTop: 22 }}>Back to settings</Link>

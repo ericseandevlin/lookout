@@ -4,11 +4,12 @@ import { useState } from "react";
 import { SALARY_RANGES, WORK_MODE_LABEL, WORK_MODES } from "@/lib/onboarding";
 import { ConsentCheck } from "./ConsentCheck";
 import { AuthCard, Eyebrow, h1, p, primary } from "./Login";
+import { color } from "@/lib/tokens";
 
-const label: React.CSSProperties = { fontSize: 14, fontWeight: 600, letterSpacing: ".06em", textTransform: "uppercase", color: "#6B6358" };
+const label: React.CSSProperties = { fontSize: 14, fontWeight: 600, letterSpacing: ".06em", textTransform: "uppercase", color: color.t2 };
 const chip = (on: boolean): React.CSSProperties => ({
-  minHeight: 40, padding: "0 14px", borderRadius: 999, border: `1.5px solid ${on ? "#1D1A0F" : "#E0D9CF"}`,
-  background: on ? "#1D1A0F" : "#fff", color: on ? "#fff" : "#1D1A0F", fontSize: 14, fontWeight: 600, cursor: "pointer",
+  minHeight: 40, padding: "0 14px", borderRadius: 999, border: `1.5px solid ${on ? color.ink : "#E0D9CF"}`,
+  background: on ? color.ink : "#fff", color: on ? "#fff" : color.ink, fontSize: 14, fontWeight: 600, cursor: "pointer",
 });
 
 /** First sign-in: name plus two quick picks that pre-fill profile questions 2 and 3 (job only, #8). */
@@ -42,7 +43,7 @@ export function Welcome({ initialName, kind = "job" }: { initialName: string; ki
       <form onSubmit={submit} style={{ display: "flex", flexDirection: "column", gap: 22, marginTop: 24 }}>
         <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
           <label htmlFor="name" style={label}>Your name</label>
-          <input id="name" required autoComplete="name" value={name} onChange={(e) => setName(e.target.value)} placeholder="Full name" maxLength={120} className="f-brick" style={{ height: 46, border: "1.5px solid #E6E0D8", background: "#fff", borderRadius: 10, padding: "0 14px", fontSize: 15, outline: "none", color: "#1D1A0F" }} />
+          <input id="name" required autoComplete="name" value={name} onChange={(e) => setName(e.target.value)} placeholder="Full name" maxLength={120} className="f-brick" style={{ height: 46, border: "1.5px solid #E6E0D8", background: "#fff", borderRadius: 10, padding: "0 14px", fontSize: 15, outline: "none", color: color.ink }} />
         </div>
         {kind !== "rfp" && (
         <fieldset style={{ border: 0, padding: 0, margin: 0, display: "flex", flexDirection: "column", gap: 8 }}>
@@ -52,7 +53,7 @@ export function Welcome({ initialName, kind = "job" }: { initialName: string; ki
               <button type="button" key={r.key} aria-pressed={salary === r.key} onClick={() => setSalary(salary === r.key ? null : r.key)} style={chip(salary === r.key)}>{r.label}</button>
             ))}
           </div>
-          <div style={{ fontSize: 14, color: "#6B6358" }}>Roles below the low end get marked down, not hidden.</div>
+          <div style={{ fontSize: 14, color: color.t2 }}>Roles below the low end get marked down, not hidden.</div>
         </fieldset>
         )}
         {kind !== "rfp" && (
@@ -67,7 +68,7 @@ export function Welcome({ initialName, kind = "job" }: { initialName: string; ki
         )}
         <ConsentCheck checked={agree} onChange={setAgree} />
         <button type="submit" disabled={busy || !name.trim() || !agree} style={{ ...primary, opacity: name.trim() && agree ? 1 : 0.6 }}>{busy ? "Saving…" : "Continue to your profile"}</button>
-        {err && <div role="alert" style={{ fontSize: 14, color: "#99220F" }}>{err}</div>}
+        {err && <div role="alert" style={{ fontSize: 14, color: color.brick }}>{err}</div>}
       </form>
     </AuthCard>
   );

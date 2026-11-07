@@ -6,6 +6,7 @@ import type { SearchProfile } from "@/lib/db/schema";
 import { PageHead, ProfileTabs } from "./Profile";
 import { btn } from "./Settings";
 import { api } from "./store";
+import { color } from "@/lib/tokens";
 
 type Data = {
   profile: SearchProfile | null;
@@ -65,12 +66,12 @@ export function SearchProfileView() {
         <div style={{ ...card, display: "flex", flexDirection: "column", gap: 10 }}>
           <div style={{ fontSize: 14, fontWeight: 600 }}>Reading your answers and materials…</div>
           <div style={{ height: 4, borderRadius: 999, background: "#F4F1EC", overflow: "hidden" }}>
-            <div className="scan-bar" style={{ height: "100%", width: "40%", background: "#F8A865", borderRadius: 999 }} />
+            <div className="scan-bar" style={{ height: "100%", width: "40%", background: color.orange, borderRadius: 999 }} />
           </div>
-          <div style={{ fontSize: 14, color: "#6B6358" }}>This takes a few seconds the first time, and after you change something.</div>
+          <div style={{ fontSize: 14, color: color.t2 }}>This takes a few seconds the first time, and after you change something.</div>
         </div>
       )}
-      {err && <div role="alert" style={{ fontSize: 14, color: "#99220F" }}>{err}</div>}
+      {err && <div role="alert" style={{ fontSize: 14, color: color.brick }}>{err}</div>}
 
       {data && !p && (
         <div style={{ ...card, fontSize: 14, lineHeight: 1.5, color: "#3B362C" }}>
@@ -78,8 +79,8 @@ export function SearchProfileView() {
             data.canBuild ? "Lookout couldn't build your profile just now. Try Rebuild in a minute." : "Lookout builds this with its AI model, which isn't set up yet. Your answers and materials are still used on every search."
           ) : (
             <>
-              Nothing to work from yet. <Link href="/profile" style={{ color: "#99220F" }}>Answer the five questions</Link> or{" "}
-              <Link href="/profile/materials" style={{ color: "#99220F" }}>add your resume</Link>, and this fills in.
+              Nothing to work from yet. <Link href="/profile" style={{ color: color.brick }}>Answer the five questions</Link> or{" "}
+              <Link href="/profile/materials" style={{ color: color.brick }}>add your resume</Link>, and this fills in.
             </>
           )}
         </div>
@@ -87,7 +88,7 @@ export function SearchProfileView() {
 
       {data && p && (
         <>
-          <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap", fontSize: 14, color: "#6B6358" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap", fontSize: 14, color: color.t2 }}>
             <span>
               Built {when} from {sourceLine(data.sources)}.
               {data.stale && " Your changes since then will be picked up on the next search."}
@@ -103,7 +104,7 @@ export function SearchProfileView() {
 
             <Part title="Searches for" edit={["/profile#q-q1", "Edit your next role"]}>
               <Chips items={p.targetTitles} strong />
-              <div style={{ fontSize: 14, color: "#6B6358", marginTop: 8 }}>Level: {p.seniority}</div>
+              <div style={{ fontSize: 14, color: color.t2, marginTop: 8 }}>Level: {p.seniority}</div>
             </Part>
             {p.industries.length > 0 && (
               <Part title="Industries" edit={["/profile#q-q1", "Edit your next role"]}>
@@ -152,9 +153,9 @@ function Part({ title, edit, children }: { title: string; edit?: [string, string
   return (
     <section style={{ display: "flex", flexDirection: "column", gap: 8 }}>
       <div style={{ display: "flex", alignItems: "baseline", gap: 10 }}>
-        <h2 style={{ margin: 0, fontSize: 14, fontWeight: 700, letterSpacing: ".12em", textTransform: "uppercase", color: "#6B6358" }}>{title}</h2>
+        <h2 style={{ margin: 0, fontSize: 14, fontWeight: 700, letterSpacing: ".12em", textTransform: "uppercase", color: color.t2 }}>{title}</h2>
         {edit && (
-          <Link href={edit[0]} style={{ marginLeft: "auto", fontSize: 14, fontWeight: 600, color: "#99220F", textDecoration: "none", whiteSpace: "nowrap" }}>{edit[1]} →</Link>
+          <Link href={edit[0]} style={{ marginLeft: "auto", fontSize: 14, fontWeight: 600, color: color.brick, textDecoration: "none", whiteSpace: "nowrap" }}>{edit[1]} →</Link>
         )}
       </div>
       {children}
@@ -166,7 +167,7 @@ function Chips({ items, strong, muted }: { items: string[]; strong?: boolean; mu
   return (
     <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
       {items.map((t) => (
-        <span key={t} style={{ padding: "5px 11px", borderRadius: 999, fontSize: 14, fontWeight: strong ? 600 : 500, background: strong ? "#1D1A0F" : muted ? "#F4F1EC" : "#FDE7D3", color: strong ? "#fff" : muted ? "#3B362C" : "#7A3A10" }}>{t}</span>
+        <span key={t} style={{ padding: "5px 11px", borderRadius: 999, fontSize: 14, fontWeight: strong ? 600 : 500, background: strong ? color.ink : muted ? "#F4F1EC" : "#FDE7D3", color: strong ? "#fff" : muted ? "#3B362C" : "#7A3A10" }}>{t}</span>
       ))}
     </div>
   );

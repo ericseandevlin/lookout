@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { MAX_TEXT, SCALE, type SurveyQuestion } from "@/lib/survey";
 import { api } from "./store";
+import { color } from "@/lib/tokens";
 
 const FOCUSABLE = 'button:not([disabled]), input:not([disabled]), textarea:not([disabled]), [href], [tabindex]:not([tabindex="-1"])';
 
@@ -71,15 +72,15 @@ export function SurveyDialog() {
 
   if (!q) return null;
   const choices = q.kind === "choice" ? q.options : q.kind === "scale" ? [...SCALE] : null;
-  const pill = (on: boolean): React.CSSProperties => ({ minWidth: 44, height: 44, padding: "0 14px", borderRadius: 10, border: `1.5px solid ${on ? "#1D1A0F" : "#E0D9CF"}`, background: on ? "#1D1A0F" : "#fff", color: on ? "#fff" : "#1D1A0F", fontSize: 15, fontWeight: 600, cursor: "pointer" });
+  const pill = (on: boolean): React.CSSProperties => ({ minWidth: 44, height: 44, padding: "0 14px", borderRadius: 10, border: `1.5px solid ${on ? color.ink : "#E0D9CF"}`, background: on ? color.ink : "#fff", color: on ? "#fff" : color.ink, fontSize: 15, fontWeight: 600, cursor: "pointer" });
 
   return (
     <>
       <div onClick={skip} style={{ position: "fixed", inset: 0, background: "rgba(29,26,15,.45)", zIndex: 50 }} />
       <div style={{ position: "fixed", inset: 0, zIndex: 51, display: "flex", alignItems: "center", justifyContent: "center", padding: 16, pointerEvents: "none" }}>
         <div ref={box} role="dialog" aria-modal="true" aria-labelledby="survey-from" aria-describedby="survey-q" className="lk-in" style={{ pointerEvents: "auto", width: 460, maxWidth: "100%", background: "#EFEEEC", borderRadius: 16, overflow: "hidden", boxShadow: "0 24px 60px rgba(29,26,15,.3)" }}>
-          <div style={{ background: "#1D1A0F", color: "#fff", padding: "20px 24px 18px" }}>
-            <div id="survey-from" style={{ fontSize: 14, fontWeight: 700, letterSpacing: ".14em", textTransform: "uppercase", color: "#F8A865" }}>
+          <div style={{ background: color.ink, color: "#fff", padding: "20px 24px 18px" }}>
+            <div id="survey-from" style={{ fontSize: 14, fontWeight: 700, letterSpacing: ".14em", textTransform: "uppercase", color: color.orange }}>
               Quick question from Eric
             </div>
             <div id="survey-q" style={{ fontSize: 19, fontWeight: 700, marginTop: 6, lineHeight: 1.3, textWrap: "pretty" }}>{q.prompt}</div>
@@ -105,17 +106,17 @@ export function SurveyDialog() {
               ) : (
                 <textarea aria-labelledby="survey-q" value={value} onChange={(e) => setValue(e.target.value)} maxLength={MAX_TEXT} rows={3} className="f-brick" style={{ borderRadius: 10, border: "1.5px solid #E6E0D8", padding: 10, fontSize: 15, fontFamily: "inherit", resize: "vertical" }} />
               )}
-              {q.kind === "scale" && <div style={{ fontSize: 14, color: "#6B6358", marginTop: -6 }}>1 is not at all, 5 is very.</div>}
+              {q.kind === "scale" && <div style={{ fontSize: 14, color: color.t2, marginTop: -6 }}>1 is not at all, 5 is very.</div>}
               {err && (
-                <div role="alert" style={{ fontSize: 14, color: "#99220F" }}>
+                <div role="alert" style={{ fontSize: 14, color: color.brick }}>
                   {err}
                 </div>
               )}
               <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
-                <button type="button" onClick={skip} disabled={busy} style={{ height: 42, padding: "0 18px", borderRadius: 10, border: "1.5px solid #1D1A0F", background: "#fff", fontSize: 14, fontWeight: 600, color: "#1D1A0F", cursor: "pointer" }}>
+                <button type="button" onClick={skip} disabled={busy} style={{ height: 42, padding: "0 18px", borderRadius: 10, border: "1.5px solid #1D1A0F", background: "#fff", fontSize: 14, fontWeight: 600, color: color.ink, cursor: "pointer" }}>
                   Skip
                 </button>
-                <button type="submit" disabled={busy || !value.trim()} style={{ height: 42, padding: "0 18px", borderRadius: 10, border: 0, background: "#99220F", fontSize: 14, fontWeight: 600, color: "#fff", cursor: "pointer", opacity: busy || !value.trim() ? 0.6 : 1 }}>
+                <button type="submit" disabled={busy || !value.trim()} style={{ height: 42, padding: "0 18px", borderRadius: 10, border: 0, background: color.brick, fontSize: 14, fontWeight: 600, color: "#fff", cursor: "pointer", opacity: busy || !value.trim() ? 0.6 : 1 }}>
                   {busy ? "Sending…" : "Send"}
                 </button>
               </div>

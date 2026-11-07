@@ -5,6 +5,7 @@ import { DAYS } from "@/lib/board";
 import { kindOf } from "@/lib/kinds";
 import { CheckIcon } from "../icons";
 import { useStore } from "../store";
+import { color } from "@/lib/tokens";
 
 export function SetupPanel({ answered, sources }: { answered: number; sources: number }) {
   const { state } = useStore();
@@ -26,9 +27,9 @@ export function SetupPanel({ answered, sources }: { answered: number; sources: n
     { n: 3, done: false, status: s3, title: "Lookout gets to work", body: "New matches land here each week with a green dot. Pin, archive and move them through stages as you go." },
   ];
   return (
-    <div className="setup board-sec lk-in" style={{ background: "#1D1A0F", color: "#fff", display: "flex", flexDirection: "column" }}>
+    <div className="setup board-sec lk-in" style={{ background: color.ink, color: "#fff", display: "flex", flexDirection: "column" }}>
       <div>
-        <div style={{ fontSize: 14, fontWeight: 700, letterSpacing: ".14em", textTransform: "uppercase", color: "#F8A865" }}>Getting started</div>
+        <div style={{ fontSize: 14, fontWeight: 700, letterSpacing: ".14em", textTransform: "uppercase", color: color.orange }}>Getting started</div>
         <div className="setup-title" style={{ fontWeight: 700, letterSpacing: "-0.01em", marginTop: 6, textWrap: "pretty" }}>Tell Lookout what you&apos;re looking for</div>
         <div style={{ fontSize: 14, lineHeight: 1.5, color: "#C9C1B5", marginTop: 6, maxWidth: 620, textWrap: "pretty" }}>
           Lookout searches for new roles every week and scores each one against your profile. The more it knows about you, the better the matches on this board.
@@ -40,15 +41,15 @@ export function SetupPanel({ answered, sources }: { answered: number; sources: n
           <div key={t.n} className={`setup-tile${t.n === now ? " now" : ""}${t.n === 3 ? " plain" : ""}`} aria-current={t.n === now ? "step" : undefined} style={{ display: "flex", flexDirection: "column", gap: 10 }}>
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10 }}>
               <div style={{ display: "flex", alignItems: "baseline", gap: 10 }}>
-                <div style={{ fontSize: 30, fontWeight: 700, lineHeight: 1, letterSpacing: "-0.02em", color: "#F8A865" }}>{t.n}</div>
-                {t.done && <span style={{ fontSize: 14, fontWeight: 700, letterSpacing: ".12em", color: "#F8A865" }}>COMPLETE</span>}
+                <div style={{ fontSize: 30, fontWeight: 700, lineHeight: 1, letterSpacing: "-0.02em", color: color.orange }}>{t.n}</div>
+                {t.done && <span style={{ fontSize: 14, fontWeight: 700, letterSpacing: ".12em", color: color.orange }}>COMPLETE</span>}
               </div>
-              {t.done ? <CheckIcon stroke="#F8A865" /> : <div style={{ fontSize: 14, fontWeight: 600, color: "#A89F92" }}>{t.status}</div>}
+              {t.done ? <CheckIcon stroke=color.orange /> : <div style={{ fontSize: 14, fontWeight: 600, color: "#A89F92" }}>{t.status}</div>}
             </div>
             <div style={{ fontSize: 15.5, fontWeight: 600 }}>{t.title}</div>
             <div style={{ fontSize: 14, lineHeight: 1.5, color: "#C9C1B5", textWrap: "pretty", flex: 1 }}>{t.body}</div>
             {t.href && (
-              <Link href={t.href} style={{ alignSelf: "flex-start", height: 34, padding: "0 14px", borderRadius: 999, background: t.done ? "rgba(255,255,255,.1)" : "#F8A865", color: t.done ? "#fff" : "#1D1A0F", fontSize: 14, fontWeight: 600, marginTop: 4, display: "inline-flex", alignItems: "center", textDecoration: "none" }}>
+              <Link href={t.href} style={{ alignSelf: "flex-start", height: 34, padding: "0 14px", borderRadius: 999, background: t.done ? "rgba(255,255,255,.1)" : color.orange, color: t.done ? "#fff" : color.ink, fontSize: 14, fontWeight: 600, marginTop: 4, display: "inline-flex", alignItems: "center", textDecoration: "none" }}>
                 {t.btn}
               </Link>
             )}

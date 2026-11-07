@@ -7,6 +7,7 @@ import { btn } from "./Settings";
 import { api } from "./store";
 import { EEO_CATEGORIES, EEO_CHOICES, type EeoCategory } from "@/lib/application/eeo";
 import { useConfirm } from "./Confirm";
+import { color } from "@/lib/tokens";
 
 /** /profile/application: the answers auto-apply reuses on every form (#108). */
 export function SavedAnswers() {
@@ -36,8 +37,8 @@ export function SavedAnswers() {
         title="Application answers"
         intro="What Lookout reuses on every application: answers to questions most forms ask, and experience notes behind your skills. Change one here when it's no longer true, like a move or a new name."
       />
-      <div aria-live="polite" style={{ fontSize: 14, color: "#6B6358", minHeight: 20 }}>{said}</div>
-      {err && <div role="alert" style={{ fontSize: 14, color: "#99220F" }}>{err}</div>}
+      <div aria-live="polite" style={{ fontSize: 14, color: color.t2, minHeight: 20 }}>{said}</div>
+      {err && <div role="alert" style={{ fontSize: 14, color: color.brick }}>{err}</div>}
       {list && list.length === 0 && (
         <div style={{ padding: 20, borderRadius: 14, background: "#fff", border: "1.5px solid #E6E0D8", fontSize: 14, lineHeight: 1.55, color: "#3B362C" }}>
           Nothing saved yet. When you answer a question like work authorization or ZIP code on an application, it shows up here.
@@ -79,11 +80,11 @@ function ExperienceNotes() {
   return (
     <section aria-labelledby="xp-notes" style={{ display: "flex", flexDirection: "column", gap: 10, marginTop: 18 }}>
       <h2 id="xp-notes" style={{ margin: 0, fontSize: 20, fontWeight: 700 }}>Experience notes</h2>
-      <p style={{ margin: 0, fontSize: 14, lineHeight: 1.55, color: "#6B6358" }}>
+      <p style={{ margin: 0, fontSize: 14, lineHeight: 1.55, color: color.t2 }}>
         Skills you told Lookout you have, and where they come from. Your resume can&apos;t hold everything; these count as facts in every resume, cover letter and answer Lookout drafts.
       </p>
-      <div aria-live="polite" style={{ fontSize: 14, color: "#6B6358", minHeight: 20 }}>{said}</div>
-      {err && <div role="alert" style={{ fontSize: 14, color: "#99220F" }}>{err}</div>}
+      <div aria-live="polite" style={{ fontSize: 14, color: color.t2, minHeight: 20 }}>{said}</div>
+      {err && <div role="alert" style={{ fontSize: 14, color: color.brick }}>{err}</div>}
       {notes && notes.length === 0 && (
         <div style={{ padding: 20, borderRadius: 14, background: "#fff", border: "1.5px solid #E6E0D8", fontSize: 14, lineHeight: 1.55, color: "#3B362C" }}>
           None yet. On an application&apos;s keyword list, click a struck-through keyword you do have and tell Lookout where it comes from.
@@ -126,7 +127,7 @@ function Row({ s, save }: { s: SavedAnswer; save: (q: string, a: string) => Prom
         <button onClick={() => save(s.question, v)} disabled={!v.trim() || v === s.answer} style={btn("outline")}>Save</button>
         <button onClick={() => save(s.question, "")} style={btn("text")}>Forget</button>
       </div>
-      <div style={{ fontSize: 14, color: "#6B6358" }}>Last changed {new Date(s.updatedAt).toLocaleDateString()}</div>
+      <div style={{ fontSize: 14, color: color.t2 }}>Last changed {new Date(s.updatedAt).toLocaleDateString()}</div>
     </li>
   );
 }
@@ -166,18 +167,18 @@ function EeoAnswers() {
   return (
     <section aria-labelledby="eeo-h" style={{ display: "flex", flexDirection: "column", gap: 10, marginTop: 18 }}>
       <h2 id="eeo-h" style={{ margin: 0, fontSize: 20, fontWeight: 700 }}>Voluntary self-identification (EEO)</h2>
-      <p style={{ margin: 0, fontSize: 14, lineHeight: 1.55, color: "#6B6358" }}>
+      <p style={{ margin: 0, fontSize: 14, lineHeight: 1.55, color: color.t2 }}>
         Many applications ask optional questions about gender, race, veteran and disability status. If you want, Lookout can answer them the same way every time. Your answers are encrypted, matched to each form in code, and never shared with an AI. Leave any blank, or pick &ldquo;Decline to self-identify&rdquo;.
       </p>
-      <div aria-live="polite" style={{ fontSize: 14, color: "#6B6358", minHeight: 20 }}>{said}</div>
-      {err && <div role="alert" style={{ fontSize: 14, color: "#99220F" }}>{err}</div>}
+      <div aria-live="polite" style={{ fontSize: 14, color: color.t2, minHeight: 20 }}>{said}</div>
+      {err && <div role="alert" style={{ fontSize: 14, color: color.brick }}>{err}</div>}
       {st && (
         <div style={{ padding: 18, borderRadius: 14, background: "#fff", border: "1.5px solid #E6E0D8", display: "flex", flexDirection: "column", gap: 14 }}>
           <label style={{ display: "flex", gap: 10, alignItems: "flex-start", fontSize: 15, fontWeight: 600, cursor: "pointer" }}>
             <input type="checkbox" checked={st.consent} onChange={(e) => put({ consent: e.target.checked }, e.target.checked ? "Lookout will fill EEO questions with these answers." : "Lookout will leave EEO questions blank.")} style={{ width: 20, height: 20, marginTop: 1 }} />
             <span>
               Let Lookout fill EEO questions with these answers
-              <span style={{ display: "block", fontSize: 14, fontWeight: 400, color: "#6B6358" }}>Off: Lookout leaves every EEO question blank for you to answer, or skip, yourself.</span>
+              <span style={{ display: "block", fontSize: 14, fontWeight: 400, color: color.t2 }}>Off: Lookout leaves every EEO question blank for you to answer, or skip, yourself.</span>
             </span>
           </label>
           {EEO_CATEGORIES.map((c) => (
@@ -191,7 +192,7 @@ function EeoAnswers() {
               </select>
             </div>
           ))}
-          {st.saved > 0 && <div style={{ fontSize: 14, color: "#6B6358" }}>Plus {st.saved} answer{st.saved === 1 ? "" : "s"} you picked for specific form wordings.</div>}
+          {st.saved > 0 && <div style={{ fontSize: 14, color: color.t2 }}>Plus {st.saved} answer{st.saved === 1 ? "" : "s"} you picked for specific form wordings.</div>}
           <button onClick={wipe} style={{ ...btn("danger"), alignSelf: "flex-start" }}>Delete all EEO answers</button>
         </div>
       )}

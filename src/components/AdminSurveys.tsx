@@ -6,6 +6,7 @@ import { Tabs } from "./Admin";
 import { PageHead } from "./Profile";
 import { btn, Row, Section, Seg } from "./Settings";
 import { api } from "./store";
+import { color } from "@/lib/tokens";
 
 type Question = { id: string; kind: SurveyKind; prompt: string; options: string[]; active: boolean; createdAt: string; answers: number; skipped: number };
 type State = { questions: Question[]; config: { everyDays: number } };
@@ -13,7 +14,7 @@ type Reply = { email: string; name: string; answer: string | null; at: string };
 
 const KIND_LABEL: Record<SurveyKind, string> = { choice: "Multiple choice", scale: "1 to 5", text: "Short text" };
 const card: React.CSSProperties = { background: "#fff", borderRadius: 16, padding: "16px 18px", display: "flex", flexDirection: "column", gap: 8 };
-const field: React.CSSProperties = { width: "100%", maxWidth: 520, border: "1.5px solid #E6E0D8", background: "#fff", borderRadius: 10, padding: "10px 13px", fontSize: 14, color: "#1D1A0F", fontFamily: "inherit" };
+const field: React.CSSProperties = { width: "100%", maxWidth: 520, border: "1.5px solid #E6E0D8", background: "#fff", borderRadius: 10, padding: "10px 13px", fontSize: 14, color: color.ink, fontFamily: "inherit" };
 const day = (iso: string) => new Date(iso).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
 
 /** /admin/surveys: one-question beta surveys from Eric (#5). */
@@ -73,7 +74,7 @@ export function AdminSurveys() {
         <Tabs />
       </PageHead>
       {msg && (
-        <div aria-live="polite" style={{ fontSize: 14, color: msg.ok ? "#35662A" : "#99220F" }}>
+        <div aria-live="polite" style={{ fontSize: 14, color: msg.ok ? "#35662A" : color.brick }}>
           {msg.text}
         </div>
       )}
@@ -105,15 +106,15 @@ export function AdminSurveys() {
           </form>
 
           <Section>Questions</Section>
-          {!s.questions.length && <div style={{ fontSize: 14, color: "#6B6358" }}>No questions yet.</div>}
+          {!s.questions.length && <div style={{ fontSize: 14, color: color.t2 }}>No questions yet.</div>}
           <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
             {s.questions.map((q) => (
               <div key={q.id} style={card}>
                 <div style={{ display: "flex", gap: 10, alignItems: "baseline", flexWrap: "wrap" }}>
                   <div style={{ flex: "1 1 300px", fontSize: 15, fontWeight: 600 }}>{q.prompt}</div>
-                  <span style={{ fontSize: 14, fontWeight: 600, color: q.active ? "#35662A" : "#6B6358" }}>{q.active ? "On" : "Off"}</span>
+                  <span style={{ fontSize: 14, fontWeight: 600, color: q.active ? "#35662A" : color.t2 }}>{q.active ? "On" : "Off"}</span>
                 </div>
-                <div style={{ fontSize: 14, color: "#6B6358" }}>
+                <div style={{ fontSize: 14, color: color.t2 }}>
                   {KIND_LABEL[q.kind]}
                   {q.options.length ? `: ${q.options.join(" · ")}` : ""} · added {day(q.createdAt)} · {q.answers} {q.answers === 1 ? "answer" : "answers"}, {q.skipped} skipped
                 </div>
@@ -132,15 +133,15 @@ export function AdminSurveys() {
                 </div>
                 {open === q.id &&
                   (replies === null ? (
-                    <div style={{ fontSize: 14, color: "#6B6358" }}>Loading…</div>
+                    <div style={{ fontSize: 14, color: color.t2 }}>Loading…</div>
                   ) : !replies.length ? (
-                    <div style={{ fontSize: 14, color: "#6B6358" }}>No answers yet.</div>
+                    <div style={{ fontSize: 14, color: color.t2 }}>No answers yet.</div>
                   ) : (
                     <ul style={{ listStyle: "none", margin: 0, padding: 0, display: "flex", flexDirection: "column", gap: 6 }}>
                       {replies.map((r, i) => (
                         <li key={i} style={{ fontSize: 14, borderTop: "1px solid #F2EEE8", paddingTop: 6 }}>
-                          <strong>{r.answer ?? <span style={{ color: "#6B6358", fontWeight: 400 }}>Skipped</span>}</strong>
-                          <span style={{ color: "#6B6358" }}>
+                          <strong>{r.answer ?? <span style={{ color: color.t2, fontWeight: 400 }}>Skipped</span>}</strong>
+                          <span style={{ color: color.t2 }}>
                             {" "}
                             · {r.name || r.email} · {day(r.at)}
                           </span>

@@ -3,6 +3,7 @@
 import { useEffect, useRef } from "react";
 import { useFocusTrap } from "../useFocusTrap";
 import { chip, seg, type SortKey } from "./shared";
+import { color } from "@/lib/tokens";
 
 export function FilterSheet(p: {
   close: () => void;
@@ -30,7 +31,7 @@ export function FilterSheet(p: {
         <div style={{ width: 36, height: 4, borderRadius: 999, background: "#E0D9CF", alignSelf: "center" }} />
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
           <div style={{ fontSize: 18, fontWeight: 700 }}>Filter &amp; sort</div>
-          <button onClick={() => { p.setFit(0); p.setCompOnly(false); p.setSortKey("score"); p.setSortDir("desc"); }} style={{ border: 0, background: "transparent", padding: "8px 0 8px 12px", fontSize: 14, fontWeight: 600, color: "#99220F", cursor: "pointer" }}>Reset</button>
+          <button onClick={() => { p.setFit(0); p.setCompOnly(false); p.setSortKey("score"); p.setSortDir("desc"); }} style={{ border: 0, background: "transparent", padding: "8px 0 8px 12px", fontSize: 14, fontWeight: 600, color: color.brick, cursor: "pointer" }}>Reset</button>
         </div>
         <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
           <SheetLabel>Match</SheetLabel>
@@ -49,10 +50,10 @@ export function FilterSheet(p: {
         {p.hasComp && (
         <button onClick={() => p.setCompOnly(!p.compOnly)} role="switch" aria-checked={p.compOnly} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, minHeight: 48, padding: 0, border: 0, background: "transparent", cursor: "pointer", textAlign: "left" }}>
           <span style={{ display: "flex", flexDirection: "column", gap: 2 }}>
-            <span style={{ fontSize: 14.5, fontWeight: 600, color: "#1D1A0F" }}>Only roles with comp posted</span>
-            <span style={{ fontSize: 14, color: "#6B6358" }}>Hides listings with no pay range</span>
+            <span style={{ fontSize: 14.5, fontWeight: 600, color: color.ink }}>Only roles with comp posted</span>
+            <span style={{ fontSize: 14, color: color.t2 }}>Hides listings with no pay range</span>
           </span>
-          <span style={{ width: 44, height: 26, borderRadius: 999, background: p.compOnly ? "#99220F" : "#D8D0C4", display: "flex", justifyContent: p.compOnly ? "flex-end" : "flex-start", padding: 3, flex: "none" }}>
+          <span style={{ width: 44, height: 26, borderRadius: 999, background: p.compOnly ? color.brick : "#D8D0C4", display: "flex", justifyContent: p.compOnly ? "flex-end" : "flex-start", padding: 3, flex: "none" }}>
             <span style={{ width: 20, height: 20, borderRadius: "50%", background: "#fff", boxShadow: "0 1px 3px rgba(29,26,15,.25)" }} />
           </span>
         </button>
@@ -76,12 +77,12 @@ export function FilterSheet(p: {
             })}
           </div>
         </div>
-        <button onClick={p.close} style={{ height: 48, borderRadius: 12, border: 0, background: "#99220F", color: "#fff", fontSize: 15, fontWeight: 600, cursor: "pointer" }}>Show {p.shown} {p.hasComp ? "roles" : "finds"}</button>
+        <button onClick={p.close} style={{ height: 48, borderRadius: 12, border: 0, background: color.brick, color: "#fff", fontSize: 15, fontWeight: 600, cursor: "pointer" }}>Show {p.shown} {p.hasComp ? "roles" : "finds"}</button>
       </div>
     </>
   );
 }
 
 const SheetLabel = ({ children }: { children: React.ReactNode }) => (
-  <div style={{ fontSize: 14, fontWeight: 700, letterSpacing: ".1em", textTransform: "uppercase", color: "#1D1A0F" }}>{children}</div>
+  <div style={{ fontSize: 14, fontWeight: 700, letterSpacing: ".1em", textTransform: "uppercase", color: color.ink }}>{children}</div>
 );

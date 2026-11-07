@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { COMPARE_INK, compareComp, compareText, parseCurrentComp } from "@/lib/currentComp";
 import type { Find } from "@/lib/types";
 import { api, useStore } from "./store";
+import { color } from "@/lib/tokens";
 
 /** The person's own current pay (#109). Not part of the app state, so it never reaches exports or the admin view. */
 export function useCurrentComp() {
@@ -33,7 +34,7 @@ export function CompCompare({ f, current, style }: { f: Find; current: number | 
 }
 
 const inputStyle: React.CSSProperties = {
-  border: "1.5px solid #E6E0D8", background: "#fff", borderRadius: 10, fontSize: 14.5, outline: "none", color: "#1D1A0F", height: 42, padding: "0 13px",
+  border: "1.5px solid #E6E0D8", background: "#fff", borderRadius: 10, fontSize: 14.5, outline: "none", color: color.ink, height: 42, padding: "0 13px",
 };
 
 /** Profile section: set, change or delete current pay. Saved on its own, apart from the five answers. */
@@ -65,7 +66,7 @@ export function CurrentCompField() {
   return (
     <section aria-labelledby="current-comp" style={{ padding: "18px 0", borderTop: "1px solid #F2EEE8", display: "flex", flexDirection: "column", gap: 10 }}>
       <label id="current-comp" htmlFor="current-comp-input" style={{ fontSize: 17, fontWeight: 600 }}>Current pay</label>
-      <div style={{ fontSize: 14, color: "#6B6358", lineHeight: 1.5, maxWidth: 560 }}>
+      <div style={{ fontSize: 14, color: color.t2, lineHeight: 1.5, maxWidth: 560 }}>
         Optional. Your current yearly base pay in USD. Posted ranges are usually base pay, so use base here. Your board shows each posted range against it. Only you see it: it is stored encrypted, never shared with the AI that writes your drafts, and left out of exports.
       </div>
       <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
@@ -83,17 +84,17 @@ export function CurrentCompField() {
           aria-invalid={!!value && !parsed}
           style={{ ...inputStyle, flex: "0 1 220px" }}
         />
-        <button onClick={save} disabled={busy || !parsed || parsed === amount} style={{ height: 42, padding: "0 20px", borderRadius: 10, border: 0, background: "#99220F", color: "#fff", fontSize: 14.5, fontWeight: 600, cursor: "pointer", opacity: busy || !parsed || parsed === amount ? 0.5 : 1 }}>
+        <button onClick={save} disabled={busy || !parsed || parsed === amount} style={{ height: 42, padding: "0 20px", borderRadius: 10, border: 0, background: color.brick, color: "#fff", fontSize: 14.5, fontWeight: 600, cursor: "pointer", opacity: busy || !parsed || parsed === amount ? 0.5 : 1 }}>
           Save pay
         </button>
         {amount !== null && (
-          <button onClick={remove} disabled={busy} style={{ height: 42, padding: "0 16px", borderRadius: 10, border: "1.5px solid #E0D9CF", background: "#fff", color: "#1D1A0F", fontSize: 14.5, fontWeight: 600, cursor: "pointer" }}>
+          <button onClick={remove} disabled={busy} style={{ height: 42, padding: "0 16px", borderRadius: 10, border: "1.5px solid #E0D9CF", background: "#fff", color: color.ink, fontSize: 14.5, fontWeight: 600, cursor: "pointer" }}>
             Delete
           </button>
         )}
       </div>
-      {value && !parsed && <div style={{ fontSize: 14, color: "#99220F" }}>Enter one yearly amount, like 100000 or $100k.</div>}
-      {msg && <div aria-live="polite" style={{ fontSize: 14, color: "#6B6358" }}>{msg}</div>}
+      {value && !parsed && <div style={{ fontSize: 14, color: color.brick }}>Enter one yearly amount, like 100000 or $100k.</div>}
+      {msg && <div aria-live="polite" style={{ fontSize: 14, color: color.t2 }}>{msg}</div>}
     </section>
   );
 }

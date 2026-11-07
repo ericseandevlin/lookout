@@ -4,6 +4,7 @@ import type { ApplicationReport, ApplicationStatus } from "@/lib/db/schema";
 import type { Template } from "@/lib/application/resumeLayout";
 import type { KeywordRow } from "@/lib/application/evidence";
 import type { SubmitMode } from "@/lib/application/submitMode";
+import { color } from "@/lib/tokens";
 
 /** Shared by the review page parts: the response types, the card styles and the resume lookup. */
 
@@ -49,7 +50,7 @@ export type Detail = {
 };
 
 export const card: React.CSSProperties = { padding: 18, borderRadius: 14, background: "#fff", border: "1.5px solid #E6E0D8" };
-export const muted: React.CSSProperties = { fontSize: 14, color: "#6B6358" };
+export const muted: React.CSSProperties = { fontSize: 14, color: color.t2 };
 
 export type Act = (itemId: string, payload: Record<string, unknown>, done: string) => Promise<boolean>;
 

@@ -7,6 +7,7 @@ import { api } from "../store";
 import { useConfirm } from "../Confirm";
 import { usd, when, input, card, th, td, Tabs, Msg } from "./shared";
 import type { Overview, Config } from "./shared";
+import { color } from "@/lib/tokens";
 
 // --- People ---------------------------------------------------------------------
 
@@ -75,7 +76,7 @@ export function AdminPeople() {
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(160px,1fr))", gap: 12, marginTop: 14 }}>
             {[["People", String(data.totals.users)], ["Spend, 24 hours", usd(data.totals.usdDay)], ["Spend, 7 days", usd(data.totals.usdWeek)], ["Spend, 30 days", usd(data.totals.usdMonth)]].map(([k, v]) => (
               <div key={k} style={card}>
-                <div style={{ fontSize: 14, fontWeight: 600, letterSpacing: ".06em", textTransform: "uppercase", color: "#6B6358" }}>{k}</div>
+                <div style={{ fontSize: 14, fontWeight: 600, letterSpacing: ".06em", textTransform: "uppercase", color: color.t2 }}>{k}</div>
                 <div style={{ fontSize: 27, fontWeight: 700, letterSpacing: "-0.02em", marginTop: 6, fontVariantNumeric: "tabular-nums" }}>{v}</div>
               </div>
             ))}
@@ -101,7 +102,7 @@ export function AdminPeople() {
                   <div key={i.email} style={{ display: "flex", flexDirection: "column", gap: 8, background: "#fff", border: "1.5px solid #E6E0D8", borderRadius: 10, padding: "8px 8px 8px 12px" }}>
                     <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
                       <span style={{ flex: 1, minWidth: 0, fontSize: 14, overflow: "hidden", textOverflow: "ellipsis" }}>{i.email}</span>
-                      <span style={{ fontSize: 14, color: "#6B6358" }}>{when(i.createdAt)}</span>
+                      <span style={{ fontSize: 14, color: color.t2 }}>{when(i.createdAt)}</span>
                       <button onClick={() => resend(i.email)} style={{ ...btn("outline"), height: 30, padding: "0 10px", fontSize: 14 }}>{data.emailEnabled ? "Resend" : "New link"}</button>
                       <button onClick={() => revoke(i.email)} className="h-danger" style={{ ...btn("danger"), height: 30, padding: "0 10px", fontSize: 14 }}>Revoke</button>
                     </div>
@@ -124,9 +125,9 @@ export function AdminPeople() {
                   <div key={m.id} style={{ display: "flex", flexDirection: "column", gap: 4, background: "#fff", border: "1.5px solid #E6E0D8", borderRadius: 10, padding: "8px 12px", fontSize: 14 }}>
                     <div style={{ display: "flex", gap: 10 }}>
                       <span style={{ flex: 1, minWidth: 0, fontWeight: 600, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{m.subject || "(no subject)"}</span>
-                      <span style={{ color: "#6B6358" }}>{when(m.receivedAt)}</span>
+                      <span style={{ color: color.t2 }}>{when(m.receivedAt)}</span>
                     </div>
-                    <span style={{ color: "#6B6358", overflow: "hidden", textOverflow: "ellipsis" }}>{m.from}{m.triage ? ` · ${m.triage.kind}` : " · not read yet"}</span>
+                    <span style={{ color: color.t2, overflow: "hidden", textOverflow: "ellipsis" }}>{m.from}{m.triage ? ` · ${m.triage.kind}` : " · not read yet"}</span>
                     {m.triage && <span>{m.triage.summary}</span>}
                   </div>
                 ))}
@@ -145,7 +146,7 @@ export function AdminPeople() {
                   <tr key={u.id}>
                     <td style={td}>
                       <div style={{ fontWeight: 600 }}>{u.name || "No name yet"}</div>
-                      <div style={{ color: "#6B6358", fontSize: 14 }}>{u.email}</div>
+                      <div style={{ color: color.t2, fontSize: 14 }}>{u.email}</div>
                     </td>
                     <td style={td}>{when(u.createdAt)}</td>
                     <td style={td}>{when(u.lastLoginAt)}</td>
@@ -153,7 +154,7 @@ export function AdminPeople() {
                     <td style={{ ...td, fontVariantNumeric: "tabular-nums" }}>{u.runs30}</td>
                     <td style={{ ...td, fontVariantNumeric: "tabular-nums" }}>{usd(u.usd30)}</td>
                     <td style={td}>
-                      <span style={{ fontSize: 14, fontWeight: 600, padding: "3px 8px", borderRadius: 6, background: u.disabled ? "#FBEDEA" : u.isAdmin ? "#FDE7D3" : "#F4F1EC", color: u.disabled ? "#99220F" : u.isAdmin ? "#7A3A10" : "#6B6358" }}>
+                      <span style={{ fontSize: 14, fontWeight: 600, padding: "3px 8px", borderRadius: 6, background: u.disabled ? "#FBEDEA" : u.isAdmin ? "#FDE7D3" : "#F4F1EC", color: u.disabled ? color.brick : u.isAdmin ? "#7A3A10" : color.t2 }}>
                         {u.disabled ? "Disabled" : u.isAdmin ? "Admin" : "Member"}
                       </span>
                     </td>
@@ -176,7 +177,7 @@ export function AdminPeople() {
               </thead>
               <tbody>
                 {data.runs.length === 0 && (
-                  <tr><td style={{ ...td, color: "#6B6358" }} colSpan={7}>No searches yet.</td></tr>
+                  <tr><td style={{ ...td, color: color.t2 }} colSpan={7}>No searches yet.</td></tr>
                 )}
                 {data.runs.map((r) => (
                   <tr key={r.id}>
@@ -184,10 +185,10 @@ export function AdminPeople() {
                     <td style={td}>{r.email}</td>
                     <td style={td}>{({ scheduled: "Scheduled", manual: "Search now", url: "Added link", resume: "Resume scan" } as Record<string, string>)[r.trigger] ?? r.trigger}</td>
                     <td style={td}>
-                      <span data-tip={r.error ?? undefined} style={{ fontWeight: 600, color: r.status === "failed" ? "#99220F" : r.status === "running" ? "#7A3A10" : "#35662A" }}>
+                      <span data-tip={r.error ?? undefined} style={{ fontWeight: 600, color: r.status === "failed" ? color.brick : r.status === "running" ? "#7A3A10" : "#35662A" }}>
                         {r.status === "failed" ? "Failed" : r.status === "running" ? "Running" : "Done"}
                       </span>
-                      {r.error && <div style={{ fontSize: 14, color: "#6B6358", maxWidth: 320, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{r.error}</div>}
+                      {r.error && <div style={{ fontSize: 14, color: color.t2, maxWidth: 320, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{r.error}</div>}
                     </td>
                     <td style={{ ...td, fontVariantNumeric: "tabular-nums" }}>{r.found} / {r.added}</td>
                     <td style={{ ...td, fontVariantNumeric: "tabular-nums" }}>{r.searches}</td>
@@ -211,7 +212,7 @@ function MoneyInput({ label, value, onSave }: { label: string; value: number; on
     else setV(String(value));
   };
   return (
-    <label style={{ display: "flex", flexDirection: "column", gap: 6, fontSize: 14, fontWeight: 600, letterSpacing: ".06em", textTransform: "uppercase", color: "#6B6358" }}>
+    <label style={{ display: "flex", flexDirection: "column", gap: 6, fontSize: 14, fontWeight: 600, letterSpacing: ".06em", textTransform: "uppercase", color: color.t2 }}>
       {label}
       <input inputMode="decimal" value={v} onChange={(e) => setV(e.target.value)} onBlur={commit} onKeyDown={(e) => e.key === "Enter" && commit()} className="f-brick" style={{ ...input, width: 140, textTransform: "none", letterSpacing: 0, fontWeight: 500 }} />
     </label>
@@ -243,16 +244,16 @@ function Invite({ emailEnabled, onDone }: { emailEnabled: boolean; onDone: () =>
           <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} onKeyDown={(e) => e.key === "Enter" && create()} placeholder="their@email.com" aria-label="Email to invite" className="f-brick" style={{ ...input, flex: 1, minWidth: 0 }} />
           <button onClick={create} style={btn("solid")}>Invite</button>
         </div>
-        <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 14, color: emailEnabled ? "#1D1A0F" : "#A89F92" }}>
+        <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 14, color: emailEnabled ? color.ink : "#A89F92" }}>
           <input type="checkbox" checked={send && emailEnabled} disabled={!emailEnabled} onChange={(e) => setSend(e.target.checked)} />
           {emailEnabled ? "Also email them the link" : "Email isn't set up yet, so copy the link and send it yourself"}
         </label>
         <Msg text={err} />
         {res && (
           <div style={{ display: "flex", flexDirection: "column", gap: 8, padding: 12, borderRadius: 10, background: "#fff", border: "1.5px solid #E6E0D8" }}>
-            <span style={{ fontSize: 14, color: "#6B6358" }}>
+            <span style={{ fontSize: 14, color: color.t2 }}>
               {res.emailed ? "Emailed to " : "Sign-in link for "}
-              <strong style={{ color: "#1D1A0F" }}>{res.email}</strong>
+              <strong style={{ color: color.ink }}>{res.email}</strong>
             </span>
             <code style={{ fontSize: 14, wordBreak: "break-all" }}>{res.link}</code>
             <button onClick={() => navigator.clipboard?.writeText(res.link).then(() => setCopied(true)).catch(() => {})} style={{ ...btn("outline"), alignSelf: "flex-start", height: 34 }}>{copied ? "Copied" : "Copy link"}</button>
@@ -283,7 +284,7 @@ function Requests({ requests, emailEnabled, onDone }: { requests: Overview["requ
   if (!pending.length && !approved.length) {
     return (
       <Row title="Access requests" help="People who asked to join from the sign-in page.">
-        <span style={{ fontSize: 14, color: "#6B6358" }}>No requests waiting.</span>
+        <span style={{ fontSize: 14, color: color.t2 }}>No requests waiting.</span>
       </Row>
     );
   }
@@ -306,7 +307,7 @@ function Requests({ requests, emailEnabled, onDone }: { requests: Overview["requ
           <div key={r.email} style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 10px 10px 12px", borderRadius: 10, background: "#fff", border: "1.5px solid #E6E0D8", flexWrap: "wrap" }}>
             <div style={{ flex: 1, minWidth: 180 }}>
               <div style={{ fontSize: 14, fontWeight: 600, overflow: "hidden", textOverflow: "ellipsis" }}>{r.email}</div>
-              <div style={{ fontSize: 14, color: "#6B6358" }}>{r.nextMove ?? "No answer"} · {when(r.createdAt)}</div>
+              <div style={{ fontSize: 14, color: color.t2 }}>{r.nextMove ?? "No answer"} · {when(r.createdAt)}</div>
             </div>
             <button onClick={() => decide(r.email, "decline")} className="h-danger" style={{ ...btn("danger"), height: 32, padding: "0 12px", fontSize: 14 }}>Decline</button>
             <button onClick={() => decide(r.email, "approve")} style={{ ...btn("solid"), height: 32, padding: "0 12px", fontSize: 14 }}>Approve</button>
