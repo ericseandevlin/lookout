@@ -1,10 +1,12 @@
+import { featureOn } from "@/lib/features";
 import { z } from "zod";
-import { authed, body, json } from "@/lib/api";
+import { authed, body, json, HttpError } from "@/lib/api";
 import { eventSearchRunning, getEventPrefs, getInterestSuggestions, listEvents, saveEventPrefs } from "@/lib/agent/networking";
 import { EVENT_FREQS, EVENT_REACH, MILES, type NetworkingEvent } from "@/lib/networking";
 
 /** Networking events for the Events page (#7, #265): pinned and archived flags included. Past ones are cleared on read. */
 export const GET = authed(async (_req, { user }) => {
+  if (!featureOn("EVENTS")) throw new HttpError(404, "Not found");
   const rows = await listEvents(user.id);
   const events: NetworkingEvent[] = rows.map((r) => ({
     id: r.id,
@@ -35,6 +37,7 @@ const Prefs = z.object({
 
 /** What to look for. Empty interests turn event search off. */
 export const PUT = authed(async (req, { user }) => {
+  if (!featureOn("EVENTS")) throw new HttpError(404, "Not found");
   await saveEventPrefs(user.id, await body(req, Prefs));
   return json({ prefs: await getEventPrefs(user.id) });
 });

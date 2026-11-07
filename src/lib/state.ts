@@ -1,4 +1,5 @@
 import "server-only";
+import { featureOn } from "@/lib/features";
 import { and, asc, desc, eq, inArray } from "drizzle-orm";
 import { db, schema } from "@/lib/db";
 import type { SessionUser } from "@/lib/auth/session";
@@ -99,7 +100,7 @@ export async function getState(user: SessionUser): Promise<AppState> {
   const running = run && (run.status === "running" || run.status === "queued") ? run : null;
   const s = settingsRow;
   return {
-    user: { name: user.name, email: user.email, isAdmin: isAdmin(user), autoApply: canUseAutoApply(user) },
+    user: { name: user.name, email: user.email, isAdmin: isAdmin(user), autoApply: canUseAutoApply(user), events: featureOn("EVENTS"), searches: featureOn("SEARCHES") },
     settings: {
       freq: s?.freq ?? "Weekly",
       day: s?.runDay ?? "Mon",

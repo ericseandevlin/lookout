@@ -21,7 +21,7 @@ export default async function Page({ params }: { params: Promise<{ userId: strin
   if (!person) notFound();
   const state = await getState(person);
   // Strip anything that would make the client poll or offer actions on the viewer's own account.
-  const viewState = { ...state, user: { ...state.user, isAdmin: false, autoApply: false }, running: null, run: null };
+  const viewState = { ...state, user: { ...state.user, isAdmin: false, autoApply: false, events: false, searches: false }, running: null, run: null };
   console.info(`admin view: ${viewer.id} viewed board of ${person.id}`);
   const who = person.name || person.email;
   return (
