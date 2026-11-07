@@ -12,7 +12,7 @@ const pg = new PGlite();
 const db = drizzle(pg, { schema });
 vi.mock("@/lib/db", () => ({ db, schema }));
 // Real email shell and escaping; only the send is caught.
-const sendMail = vi.fn(async (_m: Mail) => {});
+const sendMail = vi.fn<(m: Mail) => Promise<void>>(async () => {});
 vi.mock("@/lib/email", async (orig) => ({ ...(await orig<typeof import("@/lib/email")>()), sendMail }));
 
 const { sendDigest } = await import("./digest");
