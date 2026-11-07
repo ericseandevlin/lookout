@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { SALARY_RANGES, WORK_MODE_LABEL, WORK_MODES } from "@/lib/onboarding";
+import { ConsentCheck } from "./ConsentCheck";
 import { AuthCard, Eyebrow, h1, p, primary } from "./Login";
 
 const label: React.CSSProperties = { fontSize: 14, fontWeight: 600, letterSpacing: ".06em", textTransform: "uppercase", color: "#6B6358" };
@@ -15,6 +16,7 @@ export function Welcome({ initialName, kind = "job" }: { initialName: string; ki
   const [name, setName] = useState(initialName);
   const [salary, setSalary] = useState<string | null>(null);
   const [mode, setMode] = useState<string | null>(null);
+  const [agree, setAgree] = useState(false);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
 
@@ -25,7 +27,7 @@ export function Welcome({ initialName, kind = "job" }: { initialName: string; ki
     const res = await fetch("/api/welcome", {
       method: "POST",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify({ name, salary: salary ?? undefined, mode: mode ?? undefined }),
+      body: JSON.stringify({ name, salary: salary ?? undefined, mode: mode ?? undefined, agree }),
     }).catch(() => null);
     if (res?.ok) return window.location.replace(new URL("/profile", window.location.origin));
     setErr("Couldn't save that. Try again.");
@@ -63,7 +65,8 @@ export function Welcome({ initialName, kind = "job" }: { initialName: string; ki
           </div>
         </fieldset>
         )}
-        <button type="submit" disabled={busy || !name.trim()} style={{ ...primary, opacity: name.trim() ? 1 : 0.6 }}>{busy ? "Saving…" : "Continue to your profile"}</button>
+        <ConsentCheck checked={agree} onChange={setAgree} />
+        <button type="submit" disabled={busy || !name.trim() || !agree} style={{ ...primary, opacity: name.trim() && agree ? 1 : 0.6 }}>{busy ? "Saving…" : "Continue to your profile"}</button>
         {err && <div role="alert" style={{ fontSize: 14, color: "#99220F" }}>{err}</div>}
       </form>
     </AuthCard>
