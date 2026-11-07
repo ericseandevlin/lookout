@@ -1,9 +1,9 @@
 import { z } from "zod";
 import { authed, body, json } from "@/lib/api";
-import { getEventPrefs, getInterestSuggestions, listEvents, saveEventPrefs } from "@/lib/agent/networking";
-import { EVENT_REACH, MILES, type NetworkingEvent } from "@/lib/networking";
+import { eventSearchRunning, getEventPrefs, getInterestSuggestions, listEvents, saveEventPrefs } from "@/lib/agent/networking";
+import { EVENT_FREQS, EVENT_REACH, MILES, type NetworkingEvent } from "@/lib/networking";
 
-/** Upcoming networking events for the Events page (#7). Past ones are cleared on read. */
+/** Networking events for the Events page (#7, #265): pinned and archived flags included. Past ones are cleared on read. */
 export const GET = authed(async (_req, { user }) => {
   const rows = await listEvents(user.id);
   const events: NetworkingEvent[] = rows.map((r) => ({
@@ -18,14 +18,19 @@ export const GET = authed(async (_req, { user }) => {
     cost: r.cost,
     why: r.why,
     url: r.url,
+    pinned: r.pinned,
+    archived: r.archived,
+    fit: r.fit,
+    miles: r.miles,
   }));
-  return json({ events, prefs: await getEventPrefs(user.id), suggestions: await getInterestSuggestions(user.id) });
+  return json({ events, prefs: await getEventPrefs(user.id), suggestions: await getInterestSuggestions(user.id), searching: await eventSearchRunning(user.id) });
 });
 
 const Prefs = z.object({
   interests: z.string().trim().max(300),
   reach: z.enum(EVENT_REACH as ["nearby", "online", "both"]),
   miles: z.number().int().refine((n) => (MILES as readonly number[]).includes(n)),
+  freq: z.enum(EVENT_FREQS as ["weekly", "monthly"]).default("weekly"),
 });
 
 /** What to look for. Empty interests turn event search off. */
