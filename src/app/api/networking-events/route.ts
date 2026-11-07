@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { authed, body, json } from "@/lib/api";
-import { getEventPrefs, listEvents, saveEventPrefs } from "@/lib/agent/networking";
+import { getEventPrefs, getInterestSuggestions, listEvents, saveEventPrefs } from "@/lib/agent/networking";
 import { EVENT_REACH, MILES, type NetworkingEvent } from "@/lib/networking";
 
 /** Upcoming networking events for the Events page (#7). Past ones are cleared on read. */
@@ -19,7 +19,7 @@ export const GET = authed(async (_req, { user }) => {
     why: r.why,
     url: r.url,
   }));
-  return json({ events, prefs: await getEventPrefs(user.id) });
+  return json({ events, prefs: await getEventPrefs(user.id), suggestions: await getInterestSuggestions(user.id) });
 });
 
 const Prefs = z.object({
