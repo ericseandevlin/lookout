@@ -142,6 +142,8 @@ export const profiles = pgTable("profiles", {
   eeoConsent: boolean("eeo_consent").notNull().default(false),
   /** The resume rebuilt once from the uploaded file into clean structure (#131); drafts start from this. */
   masterResume: jsonb("master_resume").$type<MasterResume>(),
+  /** Current yearly pay (#109), AES-GCM encrypted. Only for the board's range comparison: never sent to a model, never exported. */
+  currentComp: text("current_comp"),
 });
 
 export type SavedAnswer = { key: string; question: string; answer: string; updatedAt: string };
