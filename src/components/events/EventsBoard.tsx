@@ -9,7 +9,7 @@ import { chip, seg } from "../finds/shared";
 import { btn } from "../Settings";
 
 const muted: React.CSSProperties = { fontSize: 14, color: "#6B6358" };
-const GRID = "34px 36px 130px minmax(220px,2fr) minmax(150px,1fr) 90px 70px minmax(80px,.6fr)";
+const GRID = "34px 36px 130px minmax(220px,2fr) minmax(150px,1fr) 124px 74px minmax(80px,.6fr)";
 const pill = (on: boolean): React.CSSProperties => {
   const c = chip(on);
   return { display: "flex", alignItems: "center", gap: 7, height: 34, padding: "0 15px", borderRadius: 999, border: `1.5px solid ${c.border}`, background: c.bg, color: c.ink, fontSize: 14, fontWeight: 600, cursor: "pointer" };
@@ -123,7 +123,7 @@ export function EventsBoard({ events, searching, canSearch, onSearch, onPatch, o
       </div>
 
       <div style={{ overflowX: "auto" }}>
-        <div role="table" aria-label="Events" style={{ minWidth: 860 }}>
+        <div role="table" aria-label="Events" style={{ minWidth: 900 }}>
           <div role="rowgroup">
             <div role="row" style={{ display: "grid", gridTemplateColumns: GRID, alignItems: "center", padding: "0 18px", height: 44, borderBottom: "1px solid #EEEAE4" }}>
               <div role="columnheader">

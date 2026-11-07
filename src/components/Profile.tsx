@@ -34,11 +34,12 @@ export function ProfileTabs() {
   };
   const anyOn = tabs.some(([href]) => href === path);
   return (
-    <div role="tablist" aria-label="Profile sections" onKeyDown={onKey} style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 18 }}>
+    // Drawn as tabs, not pills: one baseline, the open page underlined (#277).
+    <div role="tablist" aria-label="Profile sections" onKeyDown={onKey} style={{ display: "flex", gap: 24, overflowX: "auto", borderBottom: "1px solid #E0D9CF", marginBottom: 22 }}>
       {tabs.map(([href, label]) => {
         const on = path === href;
         return (
-          <Link key={href} href={href} role="tab" aria-selected={on} tabIndex={on || (!anyOn && href === tabs[0][0]) ? 0 : -1} style={{ display: "flex", alignItems: "center", height: 34, padding: "0 15px", borderRadius: 999, border: `1.5px solid ${on ? "#1D1A0F" : "#E0D9CF"}`, background: on ? "#1D1A0F" : "#fff", color: on ? "#fff" : "#1D1A0F", fontSize: 14, fontWeight: 600, textDecoration: "none" }}>
+          <Link key={href} href={href} role="tab" aria-selected={on} tabIndex={on || (!anyOn && href === tabs[0][0]) ? 0 : -1} style={{ display: "flex", alignItems: "center", flex: "none", height: 42, padding: "0 2px", marginBottom: -1, borderBottom: `2.5px solid ${on ? "#99220F" : "transparent"}`, color: on ? "#1D1A0F" : "#6B6358", fontSize: 15, fontWeight: on ? 700 : 600, whiteSpace: "nowrap", textDecoration: "none" }}>
             {label}
           </Link>
         );
