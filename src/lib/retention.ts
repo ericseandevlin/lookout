@@ -16,7 +16,7 @@ export async function cleanup(now = new Date()) {
   const tokens = await db.delete(schema.loginTokens).where(lt(schema.loginTokens.expiresAt, now)).returning({ h: schema.loginTokens.tokenHash });
   // Keep when each expiring session was last used, so a long idle stretch is measured from real use.
   await db.execute(sql`update ${schema.users} u set last_active_at = greatest(u.last_active_at, s.seen)
-    from (select user_id, max(last_seen_at) as seen from ${schema.sessions} where expires_at < ${now} group by user_id) s
+    from (select user_id, max(last_seen_at) as seen from ${schema.sessions} where expires_at < ${now.toISOString()}::timestamptz group by user_id) s
     where u.id = s.user_id and s.seen is not null`);
   const sessions = await db.delete(schema.sessions).where(lt(schema.sessions.expiresAt, now)).returning({ h: schema.sessions.idHash });
   const cutoff = new Date(now.getTime() - RUN_LOG_DAYS * 86_400_000);
@@ -46,7 +46,7 @@ export async function warnInactive(now = new Date()) {
   const idle = await db
     .select({ id: u.id, email: u.email })
     .from(u)
-    .where(and(eq(u.disabled, false), sql`${lastUsed} < ${cutoff}`, or(sql`${u.inactiveWarnedAt} is null`, sql`${u.inactiveWarnedAt} < ${lastUsed}`)));
+    .where(and(eq(u.disabled, false), sql`${lastUsed} < ${cutoff.toISOString()}::timestamptz`, or(sql`${u.inactiveWarnedAt} is null`, sql`${u.inactiveWarnedAt} < ${lastUsed}`)));
   let sent = 0;
   for (const a of idle) {
     try {
