@@ -12,6 +12,8 @@ export function pageCsp(nonce: string) {
     "img-src 'self' data: blob:",
     "font-src 'self'",
     "connect-src 'self'",
+    // Cloudflare Turnstile's widget runs in a frame on the request-access form (#13).
+    "frame-src https://challenges.cloudflare.com",
     "frame-ancestors 'none'",
     "base-uri 'self'",
     "form-action 'self'",

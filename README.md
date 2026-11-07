@@ -81,6 +81,7 @@ AI and search settings can live in env or be set in Admin > AI settings (the dat
 | `AGENT_TOKEN` | 32+ chars; bearer token for the Claude agent queue |
 | `SEARCH_PROVIDER`, `SEARXNG_URL`, `BRAVE_API_KEY`, `SEARCH_PRICE` | Web search |
 | `SAM_API_KEY` | Free key from a SAM.gov account; turns on RFP searches (federal solicitations). RFP search stays off without it |
+| `TURNSTILE_SITE_KEY`, `TURNSTILE_SECRET_KEY` | Cloudflare Turnstile keys; with both set, Request access shows a bot check and the server verifies it (#13). Off without them |
 | `SIGNUP_MODE` | `invite` (default) or `open` |
 | `ADMIN_EMAILS`, `ALLOWED_EMAILS` | Comma lists; admins can always sign in |
 | `SMTP_URL`, `MAIL_FROM` | Outgoing email, e.g. `smtps://resend:KEY@smtp.resend.com:465`. The From address only sends |
