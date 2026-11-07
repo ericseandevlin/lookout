@@ -39,6 +39,9 @@ export const ChevronDown = (p: P) => (
 export const CheckIcon = (p: P) => (
   <Svg size={18} sw={2.6} {...p}><path d="M20 6 9 17l-5-5" /></Svg>
 );
+export const EyeIcon = (p: P) => (
+  <Svg {...p}><path d="M2.06 12.35a1 1 0 0 1 0-.7 10.75 10.75 0 0 1 19.88 0 1 1 0 0 1 0 .7 10.75 10.75 0 0 1-19.88 0" /><circle cx="12" cy="12" r="3" /></Svg>
+);
 export const XIcon = (p: P) => (
   <Svg size={14} sw={2.6} {...p}><path d="M18 6 6 18" /><path d="m6 6 12 12" /></Svg>
 );

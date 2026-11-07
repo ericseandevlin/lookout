@@ -6,7 +6,7 @@ import { usePathname } from "next/navigation";
 import { answeredCount, kindOf } from "@/lib/kinds";
 import { initialsOf, isNewFind } from "@/lib/board";
 import type { AppState } from "@/lib/types";
-import { BoardIcon, CalendarIcon, CheckIcon, FileIcon, ListIcon, PanelIcon, ShieldIcon } from "./icons";
+import { BoardIcon, CalendarIcon, CheckIcon, EyeIcon, FileIcon, ListIcon, PanelIcon, ShieldIcon } from "./icons";
 import { useStore } from "./store";
 import { TooltipLayer } from "./Tooltip";
 import { ConfirmProvider } from "./Confirm";
@@ -47,11 +47,13 @@ export function Shell({ children }: { children: React.ReactNode }) {
   const onSettings = path.startsWith("/settings");
   const PAGES = state.user.autoApply ? [...BASE_PAGES, APPLY_PAGE] : BASE_PAGES;
   // Profile to-dos live on subpages with a done/todo mark, not as text squeezed beside the link (#255).
-  const subpages = [
+  // What Lookout sees is a view, not a step, so it gets an eye instead of a mark (#266).
+  const subpages: { href: string; label: string; done?: boolean; on: boolean }[] = [
     { href: "/profile", label: "Questions", done: answered >= total, on: path === "/profile" },
     { href: "/profile/materials", label: "Resume and materials", done: state.materials.resume?.status === "done", on: path.startsWith("/profile/materials") },
+    { href: "/profile/sees", label: "What Lookout sees", on: path.startsWith("/profile/sees") },
   ];
-  const profileTodo = subpages.some((p) => !p.done);
+  const profileTodo = subpages.some((p) => p.done === false);
 
   return (
     <ConfirmProvider>
@@ -117,18 +119,18 @@ export function Shell({ children }: { children: React.ReactNode }) {
                 )}
               </Link>
               {isProfile && !closed && (
-                <div role="list" aria-label="Search profile steps" style={{ display: "flex", flexDirection: "column", gap: 2, marginBottom: 4 }}>
+                <div role="list" aria-label="Search profile pages" style={{ display: "flex", flexDirection: "column", gap: 2, marginBottom: 4 }}>
                   {subpages.map((p) => (
                     <Link
                       key={p.href}
                       href={p.href}
                       role="listitem"
                       aria-current={p.on ? "page" : undefined}
-                      aria-label={`${p.label}, ${p.done ? "done" : "to do"}`}
+                      aria-label={p.done === undefined ? p.label : `${p.label}, ${p.done ? "done" : "to do"}`}
                       style={{ display: "flex", alignItems: "center", gap: 10, padding: "7px 8px 7px 12px", borderRadius: 10, color: p.on ? "#fff" : "#A89F92", fontSize: 14, fontWeight: 600, textDecoration: "none", lineHeight: 1.3 }}
                     >
                       <span aria-hidden style={{ width: 18, flex: "none", display: "flex", justifyContent: "center" }}>
-                        {p.done ? <CheckIcon size={13} stroke="#8FBF7F" /> : <span style={{ width: 9, height: 9, borderRadius: "50%", border: "1.5px solid #F8A865" }} />}
+                        {p.done === undefined ? <EyeIcon size={14} /> : p.done ? <CheckIcon size={13} stroke="#8FBF7F" /> : <span style={{ width: 9, height: 9, borderRadius: "50%", border: "1.5px solid #F8A865" }} />}
                       </span>
                       <span style={{ minWidth: 0 }}>{p.label}</span>
                     </Link>
