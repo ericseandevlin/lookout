@@ -1,19 +1,15 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { joinInterests, MILES, splitInterests, type EventFreq, type EventReach, type NetworkingEvent } from "@/lib/networking";
 import { PageHead } from "./Profile";
-import { btn, Row, Section, Seg } from "./Settings";
+import { Row, Section, Seg } from "./Settings";
 import { api } from "./store";
 import { EventsBoard } from "./events/EventsBoard";
 
 type Prefs = { interests: string; reach: EventReach; miles: number; freq: EventFreq };
 
 const muted: React.CSSProperties = { fontSize: 14, color: "#6B6358" };
-const chip = (on: boolean): React.CSSProperties => ({
-  minHeight: 36, padding: "0 14px", borderRadius: 999, border: `1.5px solid ${on ? "#1D1A0F" : "#E0D9CF"}`,
-  background: on ? "#1D1A0F" : "#fff", color: on ? "#fff" : "#1D1A0F", fontSize: 14, fontWeight: 600, cursor: "pointer",
-});
 const field: React.CSSProperties = { width: "100%", maxWidth: 520, height: 42, border: "1.5px solid #E6E0D8", background: "#fff", borderRadius: 10, padding: "0 13px", fontSize: 14, color: "#1D1A0F" };
 
 
@@ -22,7 +18,6 @@ export function Events() {
   const [events, setEvents] = useState<NetworkingEvent[] | null>(null);
   const [prefs, setPrefs] = useState<Prefs | null>(null);
   const [suggestions, setSuggestions] = useState<string[]>([]);
-  const [draft, setDraft] = useState("");
   const [msg, setMsg] = useState<{ text: string; ok: boolean } | null>(null);
   const [searching, setSearching] = useState(false);
 
@@ -69,8 +64,6 @@ export function Events() {
   };
   const chosen = splitInterests(prefs?.interests ?? "");
   const has = (t: string) => chosen.some((c) => c.toLowerCase() === t.toLowerCase());
-  // Suggestions first, then anything they added themselves.
-  const chips = [...suggestions, ...chosen.filter((c) => !suggestions.some((s) => s.toLowerCase() === c.toLowerCase()))];
   const setInterests = (list: string[]) => {
     if (!prefs) return;
     const interests = joinInterests(list);
@@ -110,39 +103,8 @@ export function Events() {
       {prefs && (
         <>
           <Section>What to look for</Section>
-          <Row title="Interests" help="Tap the topics you want events for. Suggestions come from what Lookout sees in your profile and get better as it fills in. Your first three picks go into each search.">
-            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-              {chips.length > 0 ? (
-                <div role="group" aria-label="Event interests" style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-                  {chips.map((t) => (
-                    <button type="button" key={t} aria-pressed={has(t)} onClick={() => toggle(t)} style={chip(has(t))}>
-                      {t}
-                    </button>
-                  ))}
-                </div>
-              ) : (
-                <div style={muted}>Suggestions show up here once Lookout has read your profile. You can add your own now.</div>
-              )}
-              <form
-                onSubmit={(e) => {
-                  e.preventDefault();
-                  const add = splitInterests(draft);
-                  if (!add.length) return;
-                  setDraft("");
-                  setInterests([...chosen, ...add]);
-                }}
-                style={{ display: "flex", gap: 8, flexWrap: "wrap" }}
-              >
-                <label htmlFor="ev-interests" style={{ position: "absolute", width: 1, height: 1, overflow: "hidden", clip: "rect(0 0 0 0)" }}>
-                  Add your own interest
-                </label>
-                <input id="ev-interests" value={draft} onChange={(e) => setDraft(e.target.value)} maxLength={120} placeholder="Add your own, e.g. accessibility" className="f-brick" style={{ ...field, flex: "1 1 260px" }} />
-                <button type="submit" disabled={!draft.trim()} style={btn("outline")}>
-                  Add
-                </button>
-              </form>
-              {!chosen.length && <div style={muted}>Event search is off. Pick an interest to turn it on.</div>}
-            </div>
+          <Row title="Interests" help="The topics you want events for. Suggestions come from what Lookout sees in your profile. Your first three go into each search.">
+            <InterestPicker chosen={chosen} suggestions={suggestions} onToggle={toggle} onAdd={(add) => setInterests([...chosen, ...add])} />
           </Row>
           <Row title="Where" help="In person near where you live (from your profile), online, or both.">
             <Seg opts={[["Nearby", "nearby"], ["Online", "online"], ["Both", "both"]]} cur={prefs.reach} pick={(v) => save({ ...prefs, reach: v as EventReach }, "Saved.")} />
@@ -163,6 +125,81 @@ export function Events() {
       {events && !events.length && <div style={muted}>{prefs?.interests ? "Nothing yet. Events show up here after your next search, or press Search now." : "Pick an interest above and your searches will look for events too."}</div>}
       {events && (events.length > 0 || !!prefs?.interests) && (
         <EventsBoard events={events} searching={searching} canSearch={!!prefs?.interests} onSearch={searchNow} onPatch={patchEvents} onClear={clearEvents} />
+      )}
+    </div>
+  );
+}
+
+/**
+ * Event interests without a wall of chips (#277): the picked ones stay in view, small and removable;
+ * suggestions and your own topics live in one menu behind "Add interest".
+ */
+function InterestPicker({ chosen, suggestions, onToggle, onAdd }: { chosen: string[]; suggestions: string[]; onToggle: (t: string) => void; onAdd: (add: string[]) => void }) {
+  const [open, setOpen] = useState(false);
+  const [q, setQ] = useState("");
+  const box = useRef<HTMLDivElement>(null);
+  const has = (t: string) => chosen.some((c) => c.toLowerCase() === t.toLowerCase());
+  useEffect(() => {
+    if (!open) return;
+    const away = (e: MouseEvent) => !box.current?.contains(e.target as Node) && setOpen(false);
+    document.addEventListener("mousedown", away);
+    return () => document.removeEventListener("mousedown", away);
+  }, [open]);
+  const needle = q.trim().toLowerCase();
+  const list = suggestions.filter((t) => !needle || t.toLowerCase().includes(needle));
+  const isNew = !!needle && ![...suggestions, ...chosen].some((t) => t.toLowerCase() === needle);
+  const addTyped = () => {
+    const add = splitInterests(q);
+    if (!add.length) return;
+    setQ("");
+    onAdd(add.filter((t) => !has(t)));
+  };
+  return (
+    <div ref={box} style={{ position: "relative", display: "flex", flexWrap: "wrap", alignItems: "center", gap: 8 }} onKeyDown={(e) => e.key === "Escape" && setOpen(false)}>
+      {chosen.map((t) => (
+        <span key={t} style={{ display: "inline-flex", alignItems: "center", gap: 4, height: 32, padding: "0 6px 0 12px", borderRadius: 999, background: "#1D1A0F", color: "#fff", fontSize: 14, fontWeight: 600 }}>
+          {t}
+          <button type="button" onClick={() => onToggle(t)} aria-label={`Remove ${t}`} style={{ width: 22, height: 22, border: 0, borderRadius: "50%", background: "rgba(255,255,255,.14)", color: "#fff", fontSize: 14, lineHeight: 1, cursor: "pointer" }}>×</button>
+        </span>
+      ))}
+      <button type="button" aria-expanded={open} aria-haspopup="true" onClick={() => setOpen((o) => !o)} style={{ height: 32, padding: "0 12px", borderRadius: 999, border: "1.5px dashed #B9AE9F", background: "transparent", color: "#1D1A0F", fontSize: 14, fontWeight: 600, cursor: "pointer" }}>
+        + Add interest
+      </button>
+      {!chosen.length && <span style={muted}>Event search is off until you pick one.</span>}
+      {open && (
+        <div role="dialog" aria-label="Add interests" style={{ position: "absolute", top: "calc(100% + 6px)", left: 0, zIndex: 20, width: "min(340px, 100%)", background: "#fff", border: "1px solid #E6E0D8", borderRadius: 12, boxShadow: "0 16px 40px rgba(29,26,15,.14)", padding: 10, display: "flex", flexDirection: "column", gap: 8 }}>
+          <input
+            autoFocus
+            value={q}
+            onChange={(e) => setQ(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") {
+                e.preventDefault();
+                if (isNew) addTyped();
+                else if (list.length === 1) onToggle(list[0]);
+              }
+            }}
+            maxLength={120}
+            placeholder="Filter, or type your own"
+            aria-label="Filter suggestions or type your own interest"
+            className="f-brick"
+            style={{ ...field, maxWidth: "none", height: 38 }}
+          />
+          <div style={{ maxHeight: 240, overflowY: "auto", display: "flex", flexDirection: "column" }}>
+            {isNew && (
+              <button type="button" onClick={addTyped} style={{ textAlign: "left", padding: "8px 6px", border: 0, background: "transparent", fontSize: 14, fontWeight: 600, color: "#99220F", cursor: "pointer" }}>
+                + Add &ldquo;{q.trim()}&rdquo;
+              </button>
+            )}
+            {list.map((t) => (
+              <label key={t} style={{ display: "flex", alignItems: "center", gap: 10, padding: "7px 6px", borderRadius: 8, fontSize: 14, color: "#1D1A0F", cursor: "pointer" }}>
+                <input type="checkbox" checked={has(t)} onChange={() => onToggle(t)} />
+                {t}
+              </label>
+            ))}
+            {!list.length && !isNew && <div style={{ ...muted, padding: "6px" }}>{suggestions.length ? "No match." : "Suggestions show up once Lookout has read your profile. Type your own above."}</div>}
+          </div>
+        </div>
       )}
     </div>
   );
