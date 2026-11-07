@@ -62,10 +62,44 @@ export type Freq = "Weekly" | "Twice a week" | "Daily";
 export type Density = "Comfortable" | "Compact";
 export type SetupMode = "Until complete" | "Always" | "Never";
 
+/** Answers to the opportunity type's profile questions. Keys come from the kind config. */
+export type ProfileAnswers = Record<string, string | string[]>;
+
+/**
+ * One standing search (#8). An account can hold several: each has its own kind,
+ * profile answers, board and runs. The board (user_opportunities) is keyed to it.
+ */
+export const searches = pgTable(
+  "searches",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    /** Shown in the search switcher; defaults to the kind's name ("Job search"). */
+    name: text("name").notNull(),
+    kind: text("kind").notNull().default("job"),
+    answers: jsonb("answers").$type<ProfileAnswers>().notNull().default({}),
+    /** field key -> source label ("resume", "LinkedIn") for answers filled automatically */
+    autofilled: jsonb("autofilled").$type<Record<string, string>>().notNull().default({}),
+    savedAt: timestamp("saved_at", { withTimezone: true }),
+    /** What searches use: built by the model from answers + materials, shown to the user as "What Lookout sees". */
+    searchProfile: jsonb("search_profile").$type<SearchProfile>(),
+    searchProfileAt: timestamp("search_profile_at", { withTimezone: true }),
+    /** Hash of the inputs it was built from; a mismatch means it's stale. */
+    searchProfileHash: text("search_profile_hash"),
+    createdAt: createdAt(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index("searches_user_idx").on(t.userId)],
+);
+
 export const settings = pgTable("settings", {
   userId: uuid("user_id")
     .primaryKey()
     .references(() => users.id, { onDelete: "cascade" }),
+  /** Which of the account's searches the board, profile and runs are about (#8). */
+  activeSearchId: uuid("active_search_id").references(() => searches.id, { onDelete: "set null" }),
   freq: text("freq").$type<Freq>().notNull().default("Weekly"),
   runDay: text("run_day").notNull().default("Mon"),
   runDays: text("run_days").array().notNull().default(sql`ARRAY['Mon','Thu']::text[]`),
@@ -80,21 +114,12 @@ export const settings = pgTable("settings", {
 
 export type AutoApplySettings = { enabled: boolean; threshold: 4 | 5; dailyCap: number; /** Resume and cover letter design (#129). */ template?: "classic" | "modern" | "cool"; /** Cool's highlight color, hex without # (#137). */ accent?: string };
 
-/** Answers to the opportunity type's profile questions. Keys come from the kind config. */
-export type ProfileAnswers = Record<string, string | string[]>;
-
+/** Per-account profile pieces that every search shares (#8): apply answers, skill notes, EEO, master resume, event interests. */
 export const profiles = pgTable("profiles", {
   userId: uuid("user_id")
     .primaryKey()
     .references(() => users.id, { onDelete: "cascade" }),
-  kind: text("kind").notNull().default("job"),
-  answers: jsonb("answers").$type<ProfileAnswers>().notNull().default({}),
-  /** field key -> source label ("resume", "LinkedIn") for answers filled automatically */
-  autofilled: jsonb("autofilled").$type<Record<string, string>>().notNull().default({}),
-  savedAt: timestamp("saved_at", { withTimezone: true }),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
-  /** What searches use: built by the model from answers + materials, shown to the user as "What Lookout sees". */
-  searchProfile: jsonb("search_profile").$type<SearchProfile>(),
   /** Networking events (#7): what to look for. Empty means no event search, so it costs nothing. */
   eventInterests: text("event_interests").notNull().default(""),
   /** "nearby" (within eventMiles of where they live), "online", or "both". */
@@ -103,9 +128,6 @@ export const profiles = pgTable("profiles", {
   /** How often event searches run (#265). They ride along with a job search once this much time has passed. */
   eventFreq: text("event_freq").$type<"weekly" | "monthly">().notNull().default("weekly"),
   eventsSearchedAt: timestamp("events_searched_at", { withTimezone: true }),
-  searchProfileAt: timestamp("search_profile_at", { withTimezone: true }),
-  /** Hash of the inputs it was built from; a mismatch means it's stale. */
-  searchProfileHash: text("search_profile_hash"),
   /** Answers to questions most applications ask (work authorization, ZIP...), reused on the next one. Editable on the profile. */
   applyAnswers: jsonb("apply_answers").$type<SavedAnswer[]>().notNull().default([]),
   /** Skills the person says they have, with the experience behind them (#121). Editable on the profile. */
@@ -208,6 +230,10 @@ export const userOpportunities = pgTable(
     userId: uuid("user_id")
       .notNull()
       .references(() => users.id, { onDelete: "cascade" }),
+    /** The board is per search (#8); user_id stays for account-wide queries. */
+    searchId: uuid("search_id")
+      .notNull()
+      .references(() => searches.id, { onDelete: "cascade" }),
     opportunityId: uuid("opportunity_id")
       .notNull()
       .references(() => opportunities.id, { onDelete: "cascade" }),
@@ -225,7 +251,7 @@ export const userOpportunities = pgTable(
     addedAt: timestamp("added_at", { withTimezone: true }).notNull().defaultNow(),
     addedVia: text("added_via").$type<"agent" | "manual" | "import">().notNull().default("agent"),
   },
-  (t) => [primaryKey({ columns: [t.userId, t.opportunityId] })],
+  (t) => [primaryKey({ columns: [t.searchId, t.opportunityId] }), index("user_opportunities_user_idx").on(t.userId)],
 );
 
 export type RunProgress = { pct: number; step: string; log: { at: string; text: string }[] };
@@ -242,6 +268,8 @@ export const runs = pgTable(
     userId: uuid("user_id")
       .notNull()
       .references(() => users.id, { onDelete: "cascade" }),
+    /** The search this run searched (#8); null for account-level runs (resume scans, events). */
+    searchId: uuid("search_id").references(() => searches.id, { onDelete: "set null" }),
     trigger: text("trigger").$type<"scheduled" | "manual" | "url" | "resume" | "events">().notNull(),
     status: text("status").$type<"queued" | "running" | "done" | "failed">().notNull().default("running"),
     /** Live progress for the UI: percent, current step, and a short log of steps */

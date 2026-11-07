@@ -35,7 +35,7 @@ export async function metrics(now = new Date()) {
   const joiners = await db
     .select({
       createdAt: schema.users.createdAt,
-      profileSaved: sql<boolean>`exists (select 1 from ${schema.profiles} p where p.user_id = ${schema.users.id} and p.saved_at is not null)`,
+      profileSaved: sql<boolean>`exists (select 1 from ${schema.searches} s where s.user_id = ${schema.users.id} and s.saved_at is not null)`,
       resume: sql<boolean>`exists (select 1 from ${schema.materials} m where m.user_id = ${schema.users.id} and m.kind = 'resume')`,
       firstSearchAt: sql<Date | null>`(select min(r.finished_at) from ${schema.runs} r where r.user_id = ${schema.users.id} and r.status = 'done' and r.trigger in ('scheduled', 'manual'))`,
     })

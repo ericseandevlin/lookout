@@ -36,13 +36,15 @@ const notesBlock = (notes: string[]) =>
     ? `\n<their_notes_on_finds>\n${notes.join("\n---\n")}\n</their_notes_on_finds>`
     : "";
 
-export async function loadRawInputs(userId: string): Promise<RawInputs & { stored: typeof schema.profiles.$inferSelect | undefined }> {
-  const [p] = await db.select().from(schema.profiles).where(eq(schema.profiles.userId, userId));
+export async function loadRawInputs(searchId: string): Promise<RawInputs & { stored: typeof schema.searches.$inferSelect | undefined }> {
+  const [s] = await db.select().from(schema.searches).where(eq(schema.searches.id, searchId));
+  if (!s) throw new Error("Search not found");
+  const userId = s.userId;
   const mats = await db.select().from(schema.materials).where(eq(schema.materials.userId, userId));
   const resume = mats.find((m) => m.kind === "resume");
   const li = mats.find((m) => m.kind === "linkedin");
-  const answers = p?.answers ?? {};
-  const kind = kinds[p?.kind ?? "job"];
+  const answers = s.answers ?? {};
+  const kind = kinds[s.kind ?? "job"];
   // Use the resume text even when the AI summary step never ran.
   const resumeText = [resume?.extracted?.summary, (resume?.extracted?.text ?? "").slice(0, 6000)].filter(Boolean).join("\n\n");
   const linkedin = (li?.extracted?.text ?? "").slice(0, 5000);
@@ -60,7 +62,7 @@ export async function loadRawInputs(userId: string): Promise<RawInputs & { store
     })
     .from(schema.userOpportunities)
     .innerJoin(schema.opportunities, eq(schema.opportunities.id, schema.userOpportunities.opportunityId))
-    .where(and(eq(schema.userOpportunities.userId, userId), ne(schema.userOpportunities.notes, "")))
+    .where(and(eq(schema.userOpportunities.searchId, searchId), ne(schema.userOpportunities.notes, "")))
     .orderBy(desc(schema.userOpportunities.addedAt))
     .limit(15);
   // Each note travels with the bullets Lookout showed on that find, so the model can tell when a note is correcting one.
@@ -81,7 +83,7 @@ export async function loadRawInputs(userId: string): Promise<RawInputs & { store
     notes,
     sources: { answers: answered, resume: !!resumeText, linkedin: !!linkedin, links: links.length, notes: notes.length },
     hash,
-    stored: p,
+    stored: s,
   };
 }
 
@@ -127,11 +129,11 @@ export async function canBuild() {
 }
 
 /**
- * Return the user's search profile, rebuilding it first when its inputs changed
+ * Return the search's profile, rebuilding it first when its inputs changed
  * (or when forced). On failure, falls back to whatever is stored.
  */
-export async function ensureSearchProfile(userId: string, usage: Usage, opts: { force?: boolean; build?: boolean } = {}) {
-  const raw = await loadRawInputs(userId);
+export async function ensureSearchProfile(searchId: string, usage: Usage, opts: { force?: boolean; build?: boolean } = {}) {
+  const raw = await loadRawInputs(searchId);
   const stored = raw.stored;
   const fresh = !!stored?.searchProfile && stored.searchProfileHash === raw.hash;
   if (fresh && !opts.force) return { profile: stored!.searchProfile!, rebuilt: false, raw };
@@ -161,11 +163,10 @@ export async function ensureSearchProfile(userId: string, usage: Usage, opts: { 
       corrections: out.corrections.slice(0, 8),
     };
     const at = new Date();
-    if (stored) {
-      await db.update(schema.profiles).set({ searchProfile: profile, searchProfileAt: at, searchProfileHash: raw.hash }).where(eq(schema.profiles.userId, userId));
-    } else {
-      await db.insert(schema.profiles).values({ userId, searchProfile: profile, searchProfileAt: at, searchProfileHash: raw.hash });
-    }
+    await db
+      .update(schema.searches)
+      .set({ searchProfile: profile, searchProfileAt: at, searchProfileHash: raw.hash })
+      .where(eq(schema.searches.id, searchId));
     return { profile, rebuilt: true, raw };
   } catch (e) {
     if (e instanceof AiConfigError) return { profile: stored?.searchProfile ?? null, rebuilt: false, raw };

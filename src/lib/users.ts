@@ -30,7 +30,7 @@ export async function mayLogIn(email: string) {
   return !!inv;
 }
 
-/** Create the user plus default settings/profile rows. Idempotent on email. */
+/** Create the user plus default settings/profile/search rows. Idempotent on email. */
 export async function ensureUser(email: string) {
   const e = normalizeEmail(email);
   const existing = await findUserByEmail(e);
@@ -41,14 +41,17 @@ export async function ensureUser(email: string) {
       .values({ email: e, isAdmin: env.adminEmails.includes(e) })
       .returning();
     await tx.insert(schema.settings).values({ userId: user.id });
-    // The kind picked at request-access (#8) decides which profile they get. Job
-    // requests also seed question 1 from the next-move answer.
+    // The kind picked at request-access (#8) decides which profile their first
+    // search gets. Job requests also seed question 1 from the next-move answer.
     const [req] = await tx.select().from(schema.accessRequests).where(eq(schema.accessRequests.email, e));
     const kind = req?.kind && kinds[req.kind] ? req.kind : "job";
     const move = kind === "job" ? NEXT_MOVES.find((m) => m.key === req?.nextMove) : undefined;
-    await tx
-      .insert(schema.profiles)
-      .values({ userId: user.id, kind, ...(move ? { answers: { q1: move.q1 }, autofilled: { q1: "sign-up" } } : {}) });
+    const [search] = await tx
+      .insert(schema.searches)
+      .values({ userId: user.id, kind, name: kind === "rfp" ? "RFP search" : "Job search", ...(move ? { answers: { q1: move.q1 }, autofilled: { q1: "sign-up" } } : {}) })
+      .returning();
+    await tx.update(schema.settings).set({ activeSearchId: search.id }).where(eq(schema.settings.userId, user.id));
+    await tx.insert(schema.profiles).values({ userId: user.id });
     return user;
   });
 }

@@ -11,6 +11,7 @@ import { useStore } from "./store";
 import { TooltipLayer } from "./Tooltip";
 import { ConfirmProvider } from "./Confirm";
 import { SurveyDialog } from "./SurveyDialog";
+import { SearchSwitcher } from "./SearchSwitcher";
 import { trackClient } from "./track";
 import { HEARTBEAT_SECONDS } from "@/lib/events";
 
@@ -80,6 +81,10 @@ export function Shell({ children }: { children: React.ReactNode }) {
           >
             <PanelIcon open={!closed} />
           </button>
+        </div>
+        {/* One account can hold several searches (#8); this picks which board the app shows. */}
+        <div style={{ padding: `0 0 16px` }}>
+          <SearchSwitcher variant="rail" />
         </div>
         <nav style={{ display: "flex", flexDirection: "column", gap: 4 }}>
           {PAGES.map(({ href, label, Icon }) => {
@@ -180,7 +185,8 @@ export function Shell({ children }: { children: React.ReactNode }) {
       <main id="main" tabIndex={-1} className="lk-main" style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", outline: "none" }}>
         <div className="mob-only" style={{ position: "relative", zIndex: 8, height: 56, background: "#1D1A0F", color: "#fff", alignItems: "center", gap: 10, padding: "0 12px 0 16px" }}>
           <div className="mob-flex" style={{ display: "flex", alignItems: "center", height: "100%" }}>
-            <div className="wordmark" style={{ flex: 1 }}>Lookout</div>
+            <div className="wordmark">Lookout</div>
+            <SearchSwitcher variant="bar" />
             <Link href="/settings" aria-label="Settings" style={{ width: 44, height: 44, display: "flex", alignItems: "center", justifyContent: "center" }}>
               <Avatar initials={initials} ring={onSettings} />
             </Link>
