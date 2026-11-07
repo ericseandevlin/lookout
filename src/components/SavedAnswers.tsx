@@ -29,7 +29,7 @@ export function SavedAnswers() {
     }
   };
   return (
-    <div className="page-pad lk-page" style={{ display: "flex", flexDirection: "column", gap: 16, maxWidth: 760 }}>
+    <div className="page-pad lk-page w-page" style={{ display: "flex", flexDirection: "column", gap: 16 }}>
       <ProfileTabs />
       <PageHead
         eyebrow="Search profile"

@@ -53,7 +53,7 @@ export function SearchProfileView() {
   const when = data?.builtAt ? new Date(data.builtAt).toLocaleString("en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" }) : "";
 
   return (
-    <div className="page-pad lk-page" style={{ display: "flex", flexDirection: "column", gap: 16, maxWidth: 720 }}>
+    <div className="page-pad lk-page w-page" style={{ display: "flex", flexDirection: "column", gap: 16 }}>
       <ProfileTabs />
       <PageHead
         eyebrow="Search profile"

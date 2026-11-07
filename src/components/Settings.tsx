@@ -99,7 +99,7 @@ export function Settings() {
   };
 
   return (
-    <div className="page-pad settings lk-page" style={{ display: "flex", flexDirection: "column", maxWidth: 820 }}>
+    <div className="page-pad settings lk-page w-page" style={{ display: "flex", flexDirection: "column" }}>
       <PageHead eyebrow="Settings" title="Account and preferences" intro="Changes save automatically." />
 
       <Section>Profile</Section>

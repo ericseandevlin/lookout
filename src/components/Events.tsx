@@ -94,7 +94,7 @@ export function Events() {
 
 
   return (
-    <div className="page-pad settings lk-page" style={{ display: "flex", flexDirection: "column", maxWidth: 820, gap: 4 }}>
+    <div className="page-pad settings lk-page w-page" style={{ display: "flex", flexDirection: "column", gap: 4 }}>
       <PageHead eyebrow="Networking" title="Events" intro="Meetups, panels, industry nights, conferences and talks that fit your field, found with each search. Kept apart from your job finds. Past events drop off on their own." />
       {msg && (
         <div role={msg.ok ? "status" : "alert"} style={{ fontSize: 14, color: msg.ok ? "#35662A" : "#99220F" }}>
