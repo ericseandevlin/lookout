@@ -34,6 +34,8 @@ const BATCH = 4;
 export type Context = {
   /** The search being run (#8); its kind decides what the queries hunt for. */
   searchId: string;
+  /** The search's kind id ("job", "rfp"); report tips word themselves by it (#300). */
+  kind: string;
   userId: string;
   brief: string;
   resume: string;
@@ -66,6 +68,7 @@ export async function loadContext(searchId: string): Promise<Context> {
     .map((r) => `${r.title} at ${r.company}: ${r.feedback!.reason}`);
   return {
     searchId,
+    kind: raw.stored!.kind,
     userId,
     brief: raw.brief,
     resume: raw.resume,
@@ -334,7 +337,7 @@ export async function save(ctx: Context, finds: ScoredT[], via: "agent" | "manua
 /** The funnel, queries and tips shown after a search. */
 export function makeReport(ctx: Context, r: Omit<RunReport, "tips">): RunReport {
   const floor = typeof ctx.answers.floor === "string" ? ctx.answers.floor.trim() : "";
-  return { ...r, tips: buildTips(r, { answers: ctx.answers, hasResume: ctx.hasResume, floor }) };
+  return { ...r, tips: buildTips(r, { answers: ctx.answers, hasResume: ctx.hasResume, floor, kind: ctx.kind }) };
 }
 
 // --- entry points ----------------------------------------------------------------
