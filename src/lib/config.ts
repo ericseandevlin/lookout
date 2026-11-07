@@ -2,7 +2,7 @@ import "server-only";
 import { eq } from "drizzle-orm";
 import { z } from "zod";
 import { db, schema } from "@/lib/db";
-import { env } from "@/lib/env";
+import { env, envNumber } from "@/lib/env";
 import { decrypt, encrypt, mask } from "@/lib/secrets";
 import { nextSecret, openSecretFields } from "@/lib/secretFields";
 
@@ -58,8 +58,8 @@ function defaults() {
       baseUrl: process.env.AI_BASE_URL || "https://openrouter.ai/api/v1",
       model: process.env.AI_MODEL || "",
       apiKey: process.env.AI_API_KEY || (process.env.AI_PROVIDER === "anthropic" ? process.env.ANTHROPIC_API_KEY || "" : ""),
-      priceIn: Number(process.env.AI_PRICE_IN || "0.5"),
-      priceOut: Number(process.env.AI_PRICE_OUT || "1.5"),
+      priceIn: envNumber("AI_PRICE_IN", 0.5),
+      priceOut: envNumber("AI_PRICE_OUT", 1.5),
       jsonMode: (process.env.AI_JSON_MODE === "object" ? "object" : "schema") as AiConfig["jsonMode"],
       privacy: "strict" as AiConfig["privacy"],
     } satisfies AiConfig,
@@ -67,7 +67,7 @@ function defaults() {
       provider: (process.env.SEARCH_PROVIDER as SearchConfig["provider"]) || "searxng",
       searxngUrl: process.env.SEARXNG_URL || "http://searxng:8080",
       braveKey: process.env.BRAVE_API_KEY || "",
-      pricePerQuery: Number(process.env.SEARCH_PRICE || "0"),
+      pricePerQuery: envNumber("SEARCH_PRICE", 0),
     } satisfies SearchConfig,
     access: {
       signupMode: env.signupMode,
