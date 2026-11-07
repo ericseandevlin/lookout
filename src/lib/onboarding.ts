@@ -13,11 +13,22 @@ export type NextMoveKey = (typeof NEXT_MOVES)[number]["key"];
 /** Base salary ranges. The low end becomes the floor, the high end what they'd jump for. */
 export const SALARY_RANGES = [
   { key: "lt80", label: "Under $80K", floor: "$60,000", target: "$80,000" },
-  { key: "80_120", label: "$80K – $120K", floor: "$80,000", target: "$120,000" },
-  { key: "120_160", label: "$120K – $160K", floor: "$120,000", target: "$160,000" },
-  { key: "160_220", label: "$160K – $220K", floor: "$160,000", target: "$220,000" },
-  { key: "220p", label: "$220K and up", floor: "$220,000", target: "$280,000" },
+  { key: "80_120", label: "$80K to $120K", floor: "$80,000", target: "$120,000" },
+  { key: "120_170", label: "$120K to $170K", floor: "$120,000", target: "$170,000" },
+  { key: "170_250", label: "$170K to $250K", floor: "$170,000", target: "$250,000" },
+  { key: "250p", label: "$250K and up", floor: "$250,000", target: "$320,000" },
 ] as const;
 export type SalaryKey = (typeof SALARY_RANGES)[number]["key"];
+
+/** Keys from before the bands widened (#252), mapped to the nearest new band so an open tab still saves. */
+export const OLD_SALARY_KEYS: Record<string, SalaryKey> = { "120_160": "120_170", "160_220": "170_250", "220p": "250p" };
+
+export function salaryRange(key: string | undefined) {
+  const k = key && (OLD_SALARY_KEYS[key] ?? key);
+  return SALARY_RANGES.find((r) => r.key === k);
+}
+
+/** Label for the On-site / Hybrid / Remote choice, as LinkedIn and Indeed name it. */
+export const WORK_MODE_LABEL = "Workplace type";
 
 export const WORK_MODES = ["On-site", "Hybrid", "Remote"] as const;
