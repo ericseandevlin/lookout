@@ -53,13 +53,46 @@ export function eventFingerprint(title: string, startsOn: string) {
 /** An event is past once its last day is before today. */
 export const isPast = (e: { startsOn: string; endsOn: string | null }, today: string) => (e.endsOn && ISO.test(e.endsOn) ? e.endsOn : e.startsOn) < today;
 
-/** Up to three search queries from the person's interests, place and reach. No model call. */
-export function eventQueries(interests: string, where: string, reach: EventReach, now = new Date()) {
-  const topics = interests
+/** The saved interests string as a list: split on commas, semicolons or lines, trimmed, no repeats. */
+export function splitInterests(interests: string) {
+  const seen = new Set<string>();
+  return interests
     .split(/[,;\n]/)
     .map((t) => t.trim())
-    .filter(Boolean)
-    .slice(0, 3);
+    .filter((t) => t && !seen.has(t.toLowerCase()) && seen.add(t.toLowerCase()));
+}
+
+/** Back to the one string event search reads (#264), so saved prefs stay compatible. */
+export const joinInterests = (list: string[]) => splitInterests(list.join(", ")).join(", ");
+
+// "VP of UX Engineering" -> "UX Engineering", "Senior Product Designer" -> "Product Designer".
+const LEVEL = /^(?:(?:senior|sr\.?|junior|jr\.?|lead|principal|staff|chief|head|director|vp|svp|evp|avp|vice president|associate|executive|managing|group)\b[\s,]*(?:of\b|for\b)?[\s,]*)+/i;
+const role = (title: string) => title.replace(LEVEL, "").replace(/\s*\(.*\)$/, "").trim();
+
+/**
+ * Interest chips for the Events page (#264), from the search profile: their role, industries,
+ * skills and search terms, in that order. No model call, so they follow the profile whenever it's
+ * rebuilt and fill in as it does. Commas would split a chip, so those are dropped.
+ */
+export function suggestInterests(p: { targetTitles: string[]; industries: string[]; strengths: string[]; searchTerms: string[] } | null | undefined, max = 12) {
+  if (!p) return [];
+  const pool = [...p.targetTitles.slice(0, 2).map(role), ...p.industries, ...p.strengths, ...p.searchTerms];
+  const seen = new Set<string>();
+  const out: string[] = [];
+  for (const raw of pool) {
+    const t = raw.trim();
+    const k = t.toLowerCase();
+    if (!t || t.length > 40 || /[,;\n]/.test(t) || k === "open" || seen.has(k)) continue;
+    seen.add(k);
+    out.push(t);
+    if (out.length >= max) break;
+  }
+  return out;
+}
+
+/** Up to three search queries from the person's interests, place and reach. No model call. */
+export function eventQueries(interests: string, where: string, reach: EventReach, now = new Date()) {
+  const topics = splitInterests(interests).slice(0, 3);
   if (!topics.length) return [];
   const month = now.toLocaleString("en-US", { month: "long", year: "numeric", timeZone: "UTC" });
   const city = where.split(/[;(]/)[0].replace(/\b(remote|hybrid|onsite|on-site)\b/gi, "").replace(/[,\s]+$/, "").trim();
