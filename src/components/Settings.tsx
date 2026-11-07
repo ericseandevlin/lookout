@@ -166,6 +166,9 @@ export function Settings() {
       )}
 
       <Section>Your data</Section>
+      <Row title="Terms" help="The rules for using Lookout during the beta.">
+        <a href="/terms" target="_blank" rel="noopener" style={{ ...btn("outline"), display: "inline-flex", alignItems: "center", textDecoration: "none" }}>Read the terms</a>
+      </Row>
       <Row title="Privacy" help="What Lookout keeps, who sees it, and the services it uses.">
         <a href="/privacy" target="_blank" rel="noopener" style={{ ...btn("outline"), display: "inline-flex", alignItems: "center", textDecoration: "none" }}>Read the privacy page</a>
       </Row>
