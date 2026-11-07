@@ -86,7 +86,7 @@ Must be done before opening sign-up beyond friends. Each item is an issue labele
 - [x] Signed-in devices and "sign out everywhere"
 - [ ] Persist VPS firewall rules; confirm Postgres is unreachable from outside
 - [ ] Uptime check and alerting on `/api/health`; error tracking
-- [ ] Bot protection on request access (Cloudflare Turnstile)
+- [x] Bot protection on request access (Cloudflare Turnstile) (#13)
 - [ ] CSP with nonces instead of `'unsafe-inline'`
 - [ ] Rate limits in Postgres so they survive restarts
 - [ ] Prompt-injection review of fetched pages and link text
