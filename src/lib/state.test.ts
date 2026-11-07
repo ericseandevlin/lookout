@@ -79,10 +79,10 @@ describe("getState", () => {
   it("maps a find: one-sided pay becomes a range, Not a fit shows its reason, seen and application come through", async () => {
     const o = await addFind(jobs, "Acme", { feedback: { reason: "Too junior", at: at(4).toISOString() }, seenAt: at(4), notes: "Ask Sam" }, { compMin: 180000 });
     await addFind(jobs, "Beta", { addedAt: at(1) });
-    await db.insert(schema.applications).values({ userId: user.id, opportunityId: o.id, status: "ready" });
+    await db.insert(schema.applications).values({ userId: user.id, opportunityId: o.id, status: "needs_review" });
     const [acme, beta] = (await getState(user)).finds;
     expect(acme).toMatchObject({ company: "Acme", role: "Director of Design", comp: [180000, 180000], feedback: "Too junior", seen: true, notes: "Ask Sam", stage: "Not applied" });
-    expect(acme.application).toMatchObject({ status: "ready", queuedBy: "user" });
+    expect(acme.application).toMatchObject({ status: "needs_review", queuedBy: "user" });
     expect(beta).toMatchObject({ comp: null, feedback: null, seen: false, application: null });
   });
 
