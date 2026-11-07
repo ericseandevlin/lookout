@@ -8,6 +8,7 @@ Work merged to `main` (staging) and waiting for the weekly release.
 
 ### Added
 - Several searches per account: a `searches` table holds each search's kind, profile answers and built search profile, and every account's board and runs belong to one search. The sidebar (and the mobile top bar) gets a search switcher: pick which search the app shows, rename one, or start a new one from the kind picker (#8).
+- Bot check on Request access: with Cloudflare Turnstile keys set, the form shows Turnstile's widget and the server verifies the token before saving the request. Off until `TURNSTILE_SITE_KEY` and `TURNSTILE_SECRET_KEY` are set (#13).
 
 ## [0.4.0] - 2026-11-02
 

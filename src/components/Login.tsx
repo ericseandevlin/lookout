@@ -1,16 +1,16 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { NEXT_MOVES } from "@/lib/onboarding";
 
-export function Login({ emailEnabled, inviteOnly }: { emailEnabled: boolean; inviteOnly: boolean }) {
+export function Login({ emailEnabled, inviteOnly, turnstileSiteKey = "" }: { emailEnabled: boolean; inviteOnly: boolean; turnstileSiteKey?: string }) {
   const [mode, setMode] = useState<"signin" | "request">(inviteOnly && !emailEnabled ? "request" : "signin");
   return (
     <AuthCard>
       {mode === "signin" ? (
         <SignIn emailEnabled={emailEnabled} inviteOnly={inviteOnly} onRequest={() => setMode("request")} />
       ) : (
-        <RequestAccess emailEnabled={emailEnabled} onSignIn={() => setMode("signin")} />
+        <RequestAccess emailEnabled={emailEnabled} turnstileSiteKey={turnstileSiteKey} onSignIn={() => setMode("signin")} />
       )}
     </AuthCard>
   );
@@ -76,12 +76,14 @@ function SignIn({ emailEnabled, inviteOnly, onRequest }: { emailEnabled: boolean
   );
 }
 
-function RequestAccess({ emailEnabled, onSignIn }: { emailEnabled: boolean; onSignIn: () => void }) {
+function RequestAccess({ emailEnabled, turnstileSiteKey, onSignIn }: { emailEnabled: boolean; turnstileSiteKey: string; onSignIn: () => void }) {
   const [email, setEmail] = useState("");
   const [kind, setKind] = useState<string>("job");
   const [move, setMove] = useState<string | null>(null);
   const [state, setState] = useState<"idle" | "sending" | "sent" | "error">("idle");
   const [msg, setMsg] = useState("");
+  const [token, setToken] = useState("");
+  const [resetKey, setResetKey] = useState(0);
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -89,11 +91,16 @@ function RequestAccess({ emailEnabled, onSignIn }: { emailEnabled: boolean; onSi
     const res = await fetch("/api/auth/request-access", {
       method: "POST",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify({ email, kind, nextMove: kind === "job" ? move ?? undefined : undefined }),
+      body: JSON.stringify({ email, kind, nextMove: kind === "job" ? move ?? undefined : undefined, turnstileToken: token || undefined }),
     }).catch(() => null);
     if (res?.ok) return setState("sent");
     const data = await res?.json().catch(() => ({}));
     setMsg(data?.error === "Invalid input" ? "Enter a valid email address." : data?.error || "Couldn't send your request. Try again.");
+    // A Turnstile token works once, so a retry needs a fresh one.
+    if (turnstileSiteKey) {
+      setToken("");
+      setResetKey((k) => k + 1);
+    }
     setState("error");
   };
 
@@ -160,12 +167,75 @@ function RequestAccess({ emailEnabled, onSignIn }: { emailEnabled: boolean; onSi
           })}
         </fieldset>
         )}
-        <button type="submit" disabled={state === "sending"} style={primary}>{state === "sending" ? "Sending…" : "Request access"}</button>
+        {turnstileSiteKey && <Turnstile siteKey={turnstileSiteKey} resetKey={resetKey} onToken={setToken} />}
+        <button type="submit" disabled={state === "sending" || (!!turnstileSiteKey && !token)} style={primary}>{state === "sending" ? "Sending…" : "Request access"}</button>
         {state === "error" && <div role="alert" style={{ fontSize: 14, color: "#99220F" }}>{msg}</div>}
       </form>
       <div style={{ fontSize: 14, color: "#6B6358", marginTop: 18 }}>
         Already have an account? <button onClick={onSignIn} style={linkBtn}>Sign in</button>
       </div>
+    </>
+  );
+}
+
+type TurnstileApi = {
+  render: (el: HTMLElement, opts: Record<string, unknown>) => string;
+  remove: (id: string) => void;
+};
+declare global {
+  interface Window {
+    turnstile?: TurnstileApi;
+  }
+}
+
+const TURNSTILE_SRC = "https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit";
+let turnstileScript: Promise<TurnstileApi> | null = null;
+
+/** Loads Cloudflare's script once. Added from code, so the page CSP's 'strict-dynamic' lets it run (#13). */
+function loadTurnstile() {
+  turnstileScript ??= new Promise<TurnstileApi>((resolve, reject) => {
+    if (window.turnstile) return resolve(window.turnstile);
+    const s = document.createElement("script");
+    s.src = TURNSTILE_SRC;
+    s.async = true;
+    s.onload = () => (window.turnstile ? resolve(window.turnstile) : reject(new Error("turnstile missing")));
+    s.onerror = () => {
+      turnstileScript = null;
+      reject(new Error("turnstile failed to load"));
+    };
+    document.head.appendChild(s);
+  });
+  return turnstileScript;
+}
+
+/** Cloudflare Turnstile widget (#13). Reports a token when the check passes, "" when it expires or fails. */
+function Turnstile({ siteKey, resetKey, onToken }: { siteKey: string; resetKey: number; onToken: (token: string) => void }) {
+  const box = useRef<HTMLDivElement>(null);
+  const [failed, setFailed] = useState(false);
+  useEffect(() => {
+    let id: string | null = null;
+    let gone = false;
+    loadTurnstile()
+      .then((api) => {
+        if (gone || !box.current) return;
+        id = api.render(box.current, {
+          sitekey: siteKey,
+          action: "request-access",
+          callback: (t: string) => onToken(t),
+          "expired-callback": () => onToken(""),
+          "error-callback": () => onToken(""),
+        });
+      })
+      .catch(() => !gone && setFailed(true));
+    return () => {
+      gone = true;
+      if (id && window.turnstile) window.turnstile.remove(id);
+    };
+  }, [siteKey, resetKey, onToken]);
+  return (
+    <>
+      <div ref={box} style={{ minHeight: 65, marginTop: 4 }} />
+      {failed && <div role="alert" style={{ fontSize: 14, color: "#99220F" }}>The bot check didn&apos;t load. Check your connection and reload the page.</div>}
     </>
   );
 }

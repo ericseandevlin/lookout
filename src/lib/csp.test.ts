@@ -10,6 +10,8 @@ describe("pageCsp", () => {
     expect(dir("script-src")).not.toMatch(/unsafe/);
   });
 
+  it("frames only Cloudflare Turnstile (#13)", () => expect(dir("frame-src")).toBe("frame-src https://challenges.cloudflare.com"));
+
   it("keeps the other locks", () => {
     for (const d of ["frame-ancestors 'none'", "object-src 'none'", "base-uri 'self'", "form-action 'self'", "default-src 'self'"]) expect(csp).toContain(d);
   });
