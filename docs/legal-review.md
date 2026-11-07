@@ -10,7 +10,7 @@ The packet for a flat-fee review of Lookout's Terms and Privacy Policy by a tech
 | Privacy Policy (version 2026-11-07) | `/privacy`, source `src/app/privacy/page.tsx` |
 | How consent is collected | Clickwrap box at sign-up; the accepted versions and time are stored per user, and everyone is asked again when a version changes (`src/lib/legal.ts`, #21) |
 | Data inventory | README, "Product, page by page", and the "What it keeps" list on the privacy page |
-| Subprocessors | Privacy page, "Services it uses": OpenRouter and the model host, Resend, the hosting provider, AWS S3. Full list with DPAs is #25 |
+| Subprocessors | Privacy page, "Services that handle your data", and `docs/subprocessors.md` (what each gets, DPA status, #25) |
 | Auto-apply design | `docs/auto-apply.md`, plus #29 |
 | Retention and backups | README "Backups", `deploy/backup.sh`, `src/lib/retention.ts`, #26 |
 | Breach plan | `docs/incident-response.md` |

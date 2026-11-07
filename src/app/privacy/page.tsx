@@ -31,13 +31,18 @@ export default function Privacy() {
       <H>Who sees it</H>
       <p>You. Eric, as the admin, sees the list of accounts with emails, sign-in dates, counts of finds, search costs, how far each person got through setup, and what each person did in Lookout. During the beta, he can also open a read-only view of your board to test Lookout and fix problems you run into. He can&apos;t change anything there, and each view is logged. He can also reach the database itself, so treat what you upload as something he could read. No one else gets access.</p>
 
-      <H>Services it uses</H>
+      <H>Services that handle your data</H>
+      <p>This is every outside service that touches your data, and what each one gets. Lookout adds to this list before it starts using a new one.</p>
       <ul>
-        <li><b>An AI model.</b> To build your search profile and score postings, Lookout sends your profile answers and the text of your resume, LinkedIn PDF and links to an AI model through OpenRouter. Lookout tells OpenRouter to use only hosts that don&apos;t keep your data or train on it, and to try US hosts first. Lookout doesn&apos;t train any models on your data either.</li>
-        <li><b>Web search.</b> Lookout runs its own search engine relay. The queries it sends are job titles, company names, places and keywords, never your name, email or resume. RFP searches also ask SAM.gov, the US government&apos;s public contracts site, using the same kind of keywords.</li>
-        <li><b>Email.</b> Sign-in links and invites go out through Resend.</li>
-        <li><b>Hosting and backups.</b> The app and its database run on a private server. A backup is taken every night, encrypted, and kept for up to 60 days in Amazon S3.</li>
+        <li><b>Hostinger (server host).</b> Gets: everything above. The app and its database run on a private server rented from Hostinger. Hostinger runs the machine; it doesn&apos;t use what&apos;s on it.</li>
+        <li><b>OpenRouter, and the AI model host it picks.</b> Gets: your profile answers, the text of your resume, LinkedIn PDF and links, your search profile, and the postings being scored or drafted for. Why: to build your search profile, score finds and draft applications. Lookout tells OpenRouter to use only hosts that don&apos;t keep your data or train on it, and to try US hosts first. Lookout doesn&apos;t train any models on your data either.</li>
+        <li><b>Resend (email).</b> Gets: your email address and the emails Lookout sends you: sign-in links, invites and the finds email. It also receives mail sent to Lookout&apos;s own addresses, like the one at the bottom of this page, and tells Lookout whether each email was delivered.</li>
+        <li><b>Amazon S3 (backups).</b> Gets: a nightly copy of the database and uploaded files, encrypted before upload, so Amazon can&apos;t read it. Copies are kept for up to 60 days. Before upload, the server keeps 14 days of copies and Eric&apos;s own computer keeps 30.</li>
+        <li><b>Cloudflare Turnstile (bot check).</b> Gets: your IP address and the browser details its check reads, only when you fill in the request-access form. Why: to keep bots off that form.</li>
+        <li><b>Search engines, through Lookout&apos;s own relay.</b> Get: search queries only: job titles, company names, places and keywords. Never your name, email or resume. Queries come from Lookout&apos;s server, not your browser.</li>
+        <li><b>SAM.gov.</b> Gets: the same kind of keywords, for RFP searches only. It&apos;s the US government&apos;s public contracts site.</li>
       </ul>
+      <p>Lookout also reads public pages, such as job postings and the links you add. Those sites see a visit from Lookout&apos;s server, nothing about you. If you use auto-apply, an application goes to that employer&apos;s site only after you approve the exact version that goes out.</p>
 
       <H>Cookies</H>
       <p>One cookie keeps you signed in. It lasts 90 days and renews while you use Lookout. There are no analytics or advertising cookies.</p>
