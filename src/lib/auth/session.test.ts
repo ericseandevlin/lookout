@@ -50,7 +50,7 @@ beforeEach(async () => {
 });
 
 describe("createSession", () => {
-  it("stores only the token's hash and sets an httpOnly cookie 90 days out", async () => {
+  it("stores only the token's hash and sets an httpOnly cookie 30 days out", async () => {
     await createSession(userId);
     const c = jar.get(SESSION_COOKIE)!;
     expect(c.value).toMatch(/^[\w-]{43}$/);
@@ -59,7 +59,7 @@ describe("createSession", () => {
     expect(rows[0].idHash).toBe(hashToken(c.value));
     expect(rows[0].idHash).not.toBe(c.value);
     expect(rows[0]).toMatchObject({ userId, userAgent: "TestBrowser/1.0" });
-    expect(Math.abs(rows[0].expiresAt.getTime() - (Date.now() + 90 * DAY))).toBeLessThan(60_000);
+    expect(Math.abs(rows[0].expiresAt.getTime() - (Date.now() + 30 * DAY))).toBeLessThan(60_000);
     expect(c.opts).toMatchObject({ httpOnly: true, sameSite: "lax", path: "/", expires: rows[0].expiresAt });
   });
 
@@ -105,17 +105,17 @@ describe("getSessionUser", () => {
 });
 
 describe("refreshSession", () => {
-  it("slides an older session back out to 90 days and resets the cookie", async () => {
-    await signIn("tok", new Date(Date.now() + 30 * DAY));
+  it("slides an older session back out to 30 days and resets the cookie", async () => {
+    await signIn("tok", new Date(Date.now() + 10 * DAY));
     await refreshSession();
     const row = await sessionRow("tok");
-    expect(Math.abs(row.expiresAt.getTime() - (Date.now() + 90 * DAY))).toBeLessThan(60_000);
+    expect(Math.abs(row.expiresAt.getTime() - (Date.now() + 30 * DAY))).toBeLessThan(60_000);
     expect(row.lastSeenAt).not.toBeNull();
     expect(jar.get(SESSION_COOKIE)!.opts.expires).toEqual(row.expiresAt);
   });
 
   it("does nothing when it was already pushed out within the last day", async () => {
-    const recent = new Date(Date.now() + 90 * DAY - 3600_000);
+    const recent = new Date(Date.now() + 30 * DAY - 3600_000);
     await signIn("tok", recent);
     await refreshSession();
     expect((await sessionRow("tok")).expiresAt).toEqual(recent);
