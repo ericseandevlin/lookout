@@ -98,6 +98,7 @@ AI and search settings can live in env or be set in Admin > AI settings (the dat
 | `SIGNUP_MODE` | `invite` (default) or `open` |
 | `ADMIN_EMAILS`, `ALLOWED_EMAILS` | Comma lists; admins can always sign in |
 | `SMTP_URL`, `MAIL_FROM` | Outgoing email, e.g. `smtps://resend:KEY@smtp.resend.com:465`. The From address only sends |
+| `MAIL_POSTAL_ADDRESS` | Postal address in the footer of the finds email and of news and waitlist mail (#28). News and waitlist mail won't send without it. Rules: `docs/email-rules.md` |
 | `RESEND_API_KEY`, `RESEND_WEBHOOK_SECRET` | Incoming email at lookout.ericdevlin.co (#178): a Resend key that can read received email (the SMTP key only sends) and the `whsec_` secret of the email.received webhook pointed at `/api/inbound/resend`. Agents read new mail at `/api/agent/inbox` with `AGENT_TOKEN` |
 | `MAIL_REPLY_TO` | Where replies go (default: the first `ADMIN_EMAILS` address) |
 | `DAILY_BUDGET_USD`, `USER_DAILY_BUDGET_USD` | Rolling 24h spend caps (also editable in Admin) |

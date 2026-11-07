@@ -320,6 +320,17 @@ export const accessRequests = pgTable("access_requests", {
   createdAt: createdAt(),
   decidedAt: timestamp("decided_at", { withTimezone: true }),
   decidedBy: uuid("decided_by").references(() => users.id, { onDelete: "set null" }),
+  /** Which version of the form's email notice they saw, and when they sent it (#28). See lib/emailRules.ts. */
+  consentVersion: text("consent_version"),
+  consentAt: timestamp("consent_at", { withTimezone: true }),
+});
+
+/** Addresses that unsubscribed from news and waitlist mail (#28). Kept after account deletion on purpose. */
+export const emailOptOuts = pgTable("email_opt_outs", {
+  email: text("email").primaryKey(),
+  /** How they opted out, e.g. "link". */
+  source: text("source").notNull(),
+  createdAt: createdAt(),
 });
 
 // --- Auto-apply (beta). Spec: docs/auto-apply.md ---------------------------------

@@ -14,6 +14,8 @@ export default function Privacy() {
       <H>What it keeps</H>
       <ul>
         <li>Your email, name, and the devices you&apos;re signed in on.</li>
+        <li>If you asked for an invite: your email, your answers on that form, and which version of its email notice you saw and when.</li>
+        <li>If you unsubscribe: your email on a do-not-email list. It stays even after you delete your account, so Lookout never emails you news again.</li>
         <li>Which versions of the Terms and this page you agreed to, and when.</li>
         <li>Your answers to the five profile questions.</li>
         <li>Your resume and LinkedIn PDF, if you upload them: the files and the text pulled from them. Uploaded files are stored encrypted.</li>
@@ -51,6 +53,7 @@ export default function Privacy() {
       <ul>
         <li><b>Export:</b> Settings, Export data downloads your board, stages, notes, profile answers and what Lookout recorded you doing.</li>
         <li><b>Delete:</b> Settings, Delete everything removes your account and all of the above right away. Copies in encrypted backups age out within 60 days.</li>
+        <li><b>Unsubscribe:</b> every email except sign-in links and invites has an unsubscribe link at the bottom. It works at once and needs no sign-in.</li>
         <li><b>Remove one thing:</b> delete your resume, LinkedIn PDF or any link on the Materials tab, and it stops being used.</li>
       </ul>
 
