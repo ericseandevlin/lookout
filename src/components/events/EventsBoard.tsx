@@ -84,7 +84,7 @@ export function EventsBoard({ events, searching, canSearch, onSearch, onPatch, o
           To <input type="date" value={f.to} onChange={(e) => set({ to: e.target.value })} style={dateField} />
         </label>
         <div style={{ display: "flex", alignItems: "center", gap: 6, height: 34, padding: "0 10px", border: "1.5px solid #E6E0D8", borderRadius: 10, flex: "1 1 180px", minWidth: 160 }}>
-          <SearchIcon size={15} stroke=color.t2 />
+          <SearchIcon size={15} stroke={color.t2} />
           <input value={f.q} onChange={(e) => set({ q: e.target.value })} placeholder="Search events" aria-label="Search events" style={{ flex: 1, minWidth: 0, border: 0, outline: "none", background: "transparent", fontSize: 14, color: color.ink }} />
         </div>
         {canSearch && (
