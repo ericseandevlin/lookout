@@ -1,0 +1,74 @@
+# Build and ship. A push to release/stage or release/prod runs the CI checks, builds the image here
+# (not on a laptop or the VPS), scans it, and pushes it to the private registry ghcr.io/ericseandevlin/lookout.
+# The VPS pulls new images itself (deploy/pull-deploy.sh, root cron), so GitHub holds no key to the server.
+# Tags: sha-<commit> (every build) and the channel, stage or prod (what the server follows).
+# Plain docker commands instead of third-party build actions: fewer things that can be hijacked.
+name: Release
+
+on:
+  push:
+    branches: [release/stage, release/prod]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  checks:
+    if: startsWith(github.ref, 'refs/heads/release/')
+    uses: ./.github/workflows/ci.yml
+
+  image:
+    name: Build, scan, push image
+    needs: checks
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+      packages: write
+    env:
+      IMAGE: ghcr.io/ericseandevlin/lookout
+      CHANNEL: ${{ github.ref == 'refs/heads/release/prod' && 'prod' || 'stage' }}
+      TRIVY: aquasec/trivy:0.76.2
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - name: Log in to ghcr.io
+        env:
+          TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: echo "$TOKEN" | docker login ghcr.io -u "$GITHUB_ACTOR" --password-stdin
+      - name: Build
+        run: |
+          docker buildx create --use --driver docker-container >/dev/null
+          docker buildx build --platform linux/amd64 --load \
+            --cache-from "type=registry,ref=$IMAGE:buildcache" \
+            --cache-to "type=registry,ref=$IMAGE:buildcache,mode=max" \
+            --label "co.ericdevlin.commit=${GITHUB_SHA::7}" \
+            --label "org.opencontainers.image.revision=$GITHUB_SHA" \
+            --label "org.opencontainers.image.source=https://github.com/$GITHUB_REPOSITORY" \
+            -t "$IMAGE:sha-${GITHUB_SHA::7}" .
+      # Report every high and critical finding; fail only on critical ones that have a fix.
+      - name: Scan image (Trivy)
+        run: |
+          mkdir -p out
+          scan() { docker run --rm -v /var/run/docker.sock:/var/run/docker.sock -v "$PWD/out:/out" "$TRIVY" image --quiet "$@" "$IMAGE:sha-${GITHUB_SHA::7}"; }
+          scan --scanners vuln --severity HIGH,CRITICAL --format table --output /out/trivy.txt
+          scan --format cyclonedx --output /out/sbom.cdx.json
+          { echo '### Image scan'; echo '```'; cat out/trivy.txt; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
+          scan --scanners vuln --severity CRITICAL --ignore-unfixed --exit-code 1 --format table
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
+        if: always()
+        with:
+          name: image-scan-${{ github.sha }}
+          path: out/
+          retention-days: 30
+      - name: Push
+        run: |
+          docker push -q "$IMAGE:sha-${GITHUB_SHA::7}"
+          docker tag "$IMAGE:sha-${GITHUB_SHA::7}" "$IMAGE:$CHANNEL"
+          docker push -q "$IMAGE:$CHANNEL"
+          digest=$(docker image inspect -f '{{index .RepoDigests 0}}' "$IMAGE:$CHANNEL")
+          { echo "### Pushed"; echo "\`$IMAGE:$CHANNEL\` = \`sha-${GITHUB_SHA::7}\`"; echo; echo "\`$digest\`"; echo; echo "The VPS pulls it within a few minutes."; } >> "$GITHUB_STEP_SUMMARY"
