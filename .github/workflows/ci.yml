@@ -1,4 +1,4 @@
-# Checks on every pull request and every push to main and prod.
+# Checks on every pull request, every push to main and prod, and every release build (release.yml).
 # "checks" (typecheck, lint, tests) must pass before a PR can merge. See README > How we work.
 name: CI
 
@@ -6,6 +6,7 @@ on:
   pull_request:
   push:
     branches: [main, prod]
+  workflow_call:
 
 permissions:
   contents: read
