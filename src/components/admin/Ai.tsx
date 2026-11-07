@@ -202,7 +202,7 @@ export function AdminAi() {
           )}
         </div>
       </Row>
-      <Row title="API key" help={ai.apiKeyHint ? "Saved and encrypted. Replace it to use a different key." : "Not set. Local servers like Ollama don't need one."}>
+      <Row title="API key" help={ai.apiKeyUnreadable ? "The saved key can't be read (the app secret changed). Searches won't use it or fall back to another key. Re-enter it." : ai.apiKeyHint ? "Saved and encrypted. Replace it to use a different key." : "Not set. Local servers like Ollama don't need one."}>
         <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
           <SecretField label="API key" hint={ai.apiKeyHint} value={ai.apiKey} onChange={(v) => setAi({ apiKey: v }, TYPING)} action={<button onClick={() => test("ai")} style={{ ...btn("text"), height: 42, flex: "none" }}>Test</button>} />
           {aiMsg && <Msg text={aiMsg.text} ok={aiMsg.ok} />}
@@ -262,7 +262,7 @@ export function AdminAi() {
       )}
       {search.provider === "brave" && (
         <>
-          <Row title="Brave API key" help={search.braveKeyHint ? "Saved and encrypted. Replace it to use a different key." : "From api.search.brave.com."}>
+          <Row title="Brave API key" help={search.braveKeyUnreadable ? "The saved key can't be read (the app secret changed). Re-enter it." : search.braveKeyHint ? "Saved and encrypted. Replace it to use a different key." : "From api.search.brave.com."}>
             <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
               <SecretField label="Brave API key" hint={search.braveKeyHint} value={search.braveKey} onChange={(v) => setSearch({ braveKey: v }, TYPING)} action={searchTest} />
               {searchMsg && <Msg text={searchMsg.text} ok={searchMsg.ok} />}
