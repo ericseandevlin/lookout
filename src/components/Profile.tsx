@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useState } from "react";
+import { fillTemplate, parseTemplate, type Chunk } from "@/lib/blanks";
 import { job } from "@/lib/kinds";
 import { togglePhrase } from "@/lib/phrases";
 import { useCounts } from "./Shell";
@@ -99,42 +100,88 @@ const AutoTag = ({ src }: { src?: string }) =>
     <span style={{ fontSize: 14, fontWeight: 600, padding: "3px 8px", borderRadius: 6, background: "#FDE7D3", color: "#7A3A10" }}>Filled from {src}</span>
   ) : null;
 
-const focusEnd = (id: string) => {
-  const el = document.getElementById(id) as HTMLTextAreaElement | null;
-  if (!el) return;
-  el.focus();
-  el.setSelectionRange(el.value.length, el.value.length);
-};
-
 const splitList = (v: string) => v.split(/\s*[,;\n]\s*/).map((x) => x.trim()).filter(Boolean);
 
-/** Chips that get someone started: drop in a sentence to finish, or toggle common items in a list. */
+const addLine = (base: string, line: string) => (!line ? base : base.trim() ? `${base.trimEnd()}\n${line}` : line);
+
+const blankWidth = { n: "4.5em", s: "11em", t: "16em" } as const;
+
+/**
+ * A starter sentence with small inputs where the blanks are (#254). Each keystroke writes the finished
+ * sentence into the answer; empty optional blanks drop out, and nothing is written until the required ones are filled.
+ */
+function BlankSentence({ chunks, fills, onFill, onDone }: { chunks: Chunk[]; fills: string[]; onFill: (i: number, v: string) => void; onDone: () => void }) {
+  return (
+    <div
+      onKeyDown={(e) => { if (e.key === "Enter" || e.key === "Escape") { e.preventDefault(); onDone(); } }}
+      style={{ display: "flex", alignItems: "center", gap: "6px 10px", flexWrap: "wrap", padding: "10px 12px", borderRadius: 10, background: "#FBF8F4", border: "1.5px dashed #E0D9CF" }}
+    >
+      <div style={{ display: "flex", alignItems: "baseline", flexWrap: "wrap", gap: "6px 0", fontSize: 14.5, lineHeight: 1.5, flex: "1 1 auto" }}>
+        {chunks.flatMap((ch, c) =>
+          ch.parts.map((p, j) =>
+            "blank" in p ? (
+              <input
+                key={`${c}-${j}`}
+                autoFocus={p.blank === 0}
+                value={fills[p.blank] ?? ""}
+                onChange={(e) => onFill(p.blank, e.target.value)}
+                inputMode={p.kind === "n" ? "decimal" : undefined}
+                placeholder={p.placeholder}
+                aria-label={`Blank ${p.blank + 1}${ch.optional ? " (optional)" : ""}, for example ${p.placeholder}`}
+                maxLength={p.kind === "t" ? 200 : 60}
+                style={{ ...inputBase, width: blankWidth[p.kind], maxWidth: "100%", height: 30, padding: "0 8px", margin: "0 4px" }}
+              />
+            ) : (
+              <span key={`${c}-${j}`} style={{ whiteSpace: "pre-wrap" }}>{p.text}</span>
+            ),
+          ),
+        )}
+      </div>
+      <button type="button" onClick={onDone} style={{ height: 30, padding: "0 12px", borderRadius: 999, border: "1.5px solid #1D1A0F", background: "#1D1A0F", color: "#fff", fontSize: 14, fontWeight: 600, cursor: "pointer" }}>Done</button>
+    </div>
+  );
+}
+
+/** Chips that get someone started: fill in a sentence with blanks, or toggle common items in a list. */
 function Starters({ mode, options, value, onChange }: { mode: "insert" | "toggle" | "append"; options: { label: string; text: string }[]; value: string; onChange: (v: string) => void }) {
+  const [draft, setDraft] = useState<{ chunks: Chunk[]; base: string; fills: string[] } | null>(null);
   const items = splitList(value);
   const has = (t: string) =>
     mode === "append" ? value.toLowerCase().includes(t.toLowerCase()) : items.some((x) => x.toLowerCase() === t.toLowerCase());
+  // Typing in the answer box itself ends the draft, so the blanks never overwrite a hand edit.
+  const open = draft && value === addLine(draft.base, fillTemplate(draft.chunks, draft.fills)) ? draft : null;
+  const fill = (i: number, v: string) => {
+    if (!open) return;
+    const fills = [...open.fills];
+    fills[i] = v;
+    setDraft({ ...open, fills });
+    onChange(addLine(open.base, fillTemplate(open.chunks, fills)));
+  };
   const pick = (t: string) => {
-    if (mode === "insert") return onChange(value.trim() ? `${value.trimEnd()}\n${t}` : t);
+    if (mode === "insert") return setDraft({ chunks: parseTemplate(t), base: value, fills: [] });
     if (mode === "append") return onChange(togglePhrase(value, t));
     onChange((has(t) ? items.filter((x) => x.toLowerCase() !== t.toLowerCase()) : [...items, t]).join(", "));
   };
   return (
-    <div role="group" aria-label={mode === "insert" ? "Sentence starters" : "Common answers"} style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-      {options.map((o) => {
-        const on = mode !== "insert" && has(o.text);
-        return (
-          <button
-            key={o.label}
-            type="button"
-            onClick={() => pick(o.text)}
-            aria-pressed={mode !== "insert" ? on : undefined}
-            style={{ height: 32, padding: "0 12px", borderRadius: 999, border: `1.5px solid ${on ? "#1D1A0F" : "#E0D9CF"}`, background: on ? "#1D1A0F" : "#fff", color: on ? "#fff" : "#1D1A0F", fontSize: 14, fontWeight: 600, cursor: "pointer" }}
-          >
-            {mode === "insert" ? `+ ${o.label}` : on ? `✓ ${o.label}` : o.label}
-          </button>
-        );
-      })}
-    </div>
+    <>
+      <div role="group" aria-label={mode === "insert" ? "Sentence starters" : "Common answers"} style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+        {options.map((o) => {
+          const on = mode !== "insert" && has(o.text);
+          return (
+            <button
+              key={o.label}
+              type="button"
+              onClick={() => pick(o.text)}
+              aria-pressed={mode !== "insert" ? on : undefined}
+              style={{ height: 32, padding: "0 12px", borderRadius: 999, border: `1.5px solid ${on ? "#1D1A0F" : "#E0D9CF"}`, background: on ? "#1D1A0F" : "#fff", color: on ? "#fff" : "#1D1A0F", fontSize: 14, fontWeight: 600, cursor: "pointer" }}
+            >
+              {mode === "insert" ? `+ ${o.label}` : on ? `✓ ${o.label}` : o.label}
+            </button>
+          );
+        })}
+      </div>
+      {open && <BlankSentence chunks={open.chunks} fills={open.fills} onFill={fill} onDone={() => setDraft(null)} />}
+    </>
   );
 }
 
@@ -186,10 +233,7 @@ export function Profile() {
                   mode={q.starters.mode}
                   options={q.starters.options}
                   value={str(q.key)}
-                  onChange={(v) => {
-                    editAnswers({ [q.key]: v }, [q.key]);
-                    if (q.starters!.mode === "insert") requestAnimationFrame(() => focusEnd(`q-${q.key}`));
-                  }}
+                  onChange={(v) => editAnswers({ [q.key]: v }, [q.key])}
                 />
               )}
               {q.kind === "text" && (
