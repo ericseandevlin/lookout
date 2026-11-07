@@ -13,7 +13,9 @@ export async function readLink(materialId: string, url: string) {
   try {
     const { html } = await fetchPage(url);
     const text = pageToText(html, 4000);
-    const body = text.replace(/^TITLE:.*$/m, "").replace(/TEXT:\s*/, "").trim();
+    // The <title> also shows up in the page text; a page with only a title isn't enough to use.
+    const title = text.match(/^TITLE: (.*)$/m)?.[1] ?? "";
+    const body = text.replace(/^TITLE:.*$/m, "").replace(/TEXT:\s*/, "").replace(title, "").trim();
     if (body.length < 200) throw new Error("There wasn't enough text on the page to use");
     await db
       .update(schema.materials)
