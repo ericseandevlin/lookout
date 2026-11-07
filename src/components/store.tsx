@@ -1,7 +1,7 @@
 "use client";
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
-import type { Answers, AppState, Find, Link, RunInfo, Settings } from "@/lib/types";
+import type { Answers, AppState, Find, Link, RunInfo, SearchInfo, Settings } from "@/lib/types";
 import { latestOnly, nextPoll } from "@/lib/runState";
 
 export async function api<T = unknown>(path: string, init?: RequestInit & { json?: unknown }): Promise<T> {
@@ -75,7 +75,8 @@ function useStoreValue(initial: AppState) {
         ...s,
         finds: s.finds.map((f) => (f.id === id ? { ...f, ...patch, seen: true } : f)),
       }));
-      return api(`/api/finds/${id}`, { method: "PATCH", json: patch }).catch(fail);
+      // The board is per search (#8): say which one so the same posting on two boards isn't moved twice.
+      return api(`/api/finds/${id}`, { method: "PATCH", json: { ...patch, searchId: stateRef.current.searchId || undefined } }).catch(fail);
     },
     [fail],
   );
@@ -207,6 +208,37 @@ function useStoreValue(initial: AppState) {
     setState((s) => ({ ...s, running: "manual", run: startedRun("manual") }));
   }, []);
 
+  // --- searches (#8) -----------------------------------------------------------
+
+  /** Switch the account to another of its searches; the board, profile and runs reload with it. */
+  const switchSearch = useCallback(
+    async (id: string) => {
+      if (id === stateRef.current.searchId) return;
+      await api("/api/searches/current", { method: "PUT", json: { id } });
+      await refresh();
+    },
+    [refresh],
+  );
+
+  /** Create a search (it becomes the active one) and reload. */
+  const createSearch = useCallback(
+    async (kind: string, name?: string): Promise<SearchInfo> => {
+      const { search } = await api<{ search: SearchInfo }>("/api/searches", { method: "POST", json: { kind, name } });
+      await refresh();
+      return search;
+    },
+    [refresh],
+  );
+
+  /** Rename one of the account's searches. */
+  const renameSearch = useCallback(
+    async (id: string, name: string) => {
+      await api(`/api/searches/${id}`, { method: "PATCH", json: { name } }).catch(fail);
+      setState((s) => ({ ...s, searches: s.searches.map((x) => (x.id === id ? { ...x, name } : x)) }));
+    },
+    [fail],
+  );
+
   return {
     state,
     error,
@@ -220,6 +252,9 @@ function useStoreValue(initial: AppState) {
     materials,
     addFindByUrl,
     searchNow,
+    switchSearch,
+    createSearch,
+    renameSearch,
   };
 }
 
@@ -240,6 +275,9 @@ export function StoreProvider({ initial, readOnly = false, children }: { initial
       saveProfile: refuse,
       addFindByUrl: refuse,
       searchNow: refuse,
+      switchSearch: refuse,
+      createSearch: (() => refuse()) as unknown as typeof live.createSearch,
+      renameSearch: refuse,
       materials: Object.fromEntries(Object.keys(live.materials).map((k) => [k, refuse])) as unknown as typeof live.materials,
     };
   }, [live, readOnly]);

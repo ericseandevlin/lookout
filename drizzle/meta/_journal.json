@@ -162,6 +162,13 @@
       "when": 1794022042175,
       "tag": "0022_events_board",
       "breakpoints": true
+    },
+    {
+      "idx": 23,
+      "version": "7",
+      "when": 1794076800000,
+      "tag": "0023_searches",
+      "breakpoints": true
     }
   ]
 }

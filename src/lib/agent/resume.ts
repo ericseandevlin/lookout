@@ -7,6 +7,7 @@ import { readUserFile } from "@/lib/files";
 import { completeJSON, emptyUsage } from "@/lib/ai/llm";
 import { assertBudget, finishRun, progress, startRun } from "@/lib/ai/runs";
 import { getAiConfig } from "@/lib/config";
+import { getActiveSearch } from "@/lib/searches";
 
 const MAX_RESUME_CHARS = 60_000;
 
@@ -113,9 +114,11 @@ export async function applyResumeResult(userId: string, materialId: string, f: z
 }
 
 async function applyFills(userId: string, fills: Record<string, string | string[]>) {
-  const [p] = await db.select().from(schema.profiles).where(eq(schema.profiles.userId, userId));
-  const answers = { ...(p?.answers ?? {}) };
-  const auto = { ...(p?.autofilled ?? {}) };
+  // Answers live on the active search now (#8).
+  const s = await getActiveSearch(userId);
+  if (!s) return [];
+  const answers = { ...(s?.answers ?? {}) };
+  const auto = { ...(s?.autofilled ?? {}) };
   const filled: string[] = [];
   for (const [k, v] of Object.entries(fills)) {
     const has = Array.isArray(answers[k]) ? (answers[k] as string[]).length > 0 : !!answers[k];
@@ -126,9 +129,9 @@ async function applyFills(userId: string, fills: Record<string, string | string[
     filled.push(k);
   }
   await db
-    .insert(schema.profiles)
-    .values({ userId, answers, autofilled: auto })
-    .onConflictDoUpdate({ target: schema.profiles.userId, set: { answers, autofilled: auto, updatedAt: new Date() } });
+    .update(schema.searches)
+    .set({ answers, autofilled: auto, updatedAt: new Date() })
+    .where(eq(schema.searches.id, s!.id));
   return filled;
 }
 

@@ -31,6 +31,8 @@ const MAX_PICKS = 15;
 const BATCH = 4;
 
 export type Context = {
+  /** The search being run (#8); its kind decides what the queries hunt for. */
+  searchId: string;
   userId: string;
   brief: string;
   resume: string;
@@ -48,19 +50,21 @@ export type Context = {
   hasResume: boolean;
 };
 
-export async function loadContext(userId: string): Promise<Context> {
-  const raw = await loadRawInputs(userId);
+export async function loadContext(searchId: string): Promise<Context> {
+  const raw = await loadRawInputs(searchId);
+  const userId = raw.stored!.userId;
   const rows = await db
     .select({ url: schema.opportunities.sourceUrl, title: schema.opportunities.title, company: schema.opportunities.company, feedback: schema.userOpportunities.feedback })
     .from(schema.userOpportunities)
     .innerJoin(schema.opportunities, eq(schema.opportunities.id, schema.userOpportunities.opportunityId))
-    .where(eq(schema.userOpportunities.userId, userId));
+    .where(eq(schema.userOpportunities.searchId, searchId));
   const rejected = rows
     .filter((r) => r.feedback)
     .sort((a, b) => (b.feedback!.at > a.feedback!.at ? 1 : -1))
     .slice(0, 12)
     .map((r) => `${r.title} at ${r.company}: ${r.feedback!.reason}`);
   return {
+    searchId,
     userId,
     brief: raw.brief,
     resume: raw.resume,
@@ -307,6 +311,7 @@ export async function save(ctx: Context, finds: ScoredT[], via: "agent" | "manua
       .insert(schema.userOpportunities)
       .values({
         userId: ctx.userId,
+        searchId: ctx.searchId,
         opportunityId: opp.id,
         score: ruled.score,
         reasonsMatch: ruled.reasonsMatch,
@@ -333,21 +338,29 @@ export function makeReport(ctx: Context, r: Omit<RunReport, "tips">): RunReport 
 
 // --- entry points ----------------------------------------------------------------
 
-/** Scheduled (or "Search now") discovery for one user. */
-export async function discover(userId: string, trigger: "scheduled" | "manual" = "scheduled") {
+/** The search row a run belongs to (#8): every run is for one of the account's searches. */
+async function searchOf(searchId: string) {
+  const [s] = await db.select().from(schema.searches).where(eq(schema.searches.id, searchId));
+  if (!s) throw new Error("Search not found");
+  return s;
+}
+
+/** Scheduled (or "Search now") discovery for one search (#8). */
+export async function discover(searchId: string, trigger: "scheduled" | "manual" = "scheduled") {
+  const search = await searchOf(searchId);
   if ((await getAiConfig()).provider === "agent") {
-    const run = await startRun(userId, trigger, { status: "queued", request: { type: "discover" } });
+    const run = await startRun(search.userId, trigger, { searchId, status: "queued", request: { type: "discover", searchId } });
     await progress(run.id, 0, "Queued. Waiting for the search agent to pick this up");
     return { found: 0, added: 0, queued: true };
   }
-  await assertBudget(userId);
-  const run = await startRun(userId, trigger);
+  await assertBudget(search.userId);
+  const run = await startRun(search.userId, trigger, { searchId });
   const usage = emptyUsage();
   try {
     const report: Report = (pct, step) => progress(run.id, pct, step);
     await report(3, "Reading your profile and materials");
-    const ctx = await loadContext(userId);
-    const sp = await ensureSearchProfile(userId, usage);
+    const ctx = await loadContext(searchId);
+    const sp = await ensureSearchProfile(searchId, usage);
     if (sp.rebuilt) await report(5, "Updated your search profile from your latest changes");
     ctx.searchProfile = sp.profile;
     await report(6, "Planning searches");
@@ -361,9 +374,9 @@ export async function discover(userId: string, trigger: "scheduled" | "manual" =
     await report(97, "Saving new finds");
     const { newFinds, ...tally } = await save(ctx, scored, "agent");
     const { added, postings: found } = tally;
-    await autoQueue(userId, newFinds).catch((e) => console.error("[auto-apply] queue failed", e));
+    await autoQueue(search.userId, newFinds).catch((e) => console.error("[auto-apply] queue failed", e));
     await report(98, "Checking that your open finds are still posted");
-    tally.closed = await closeGonePostings(userId).catch((e) => (console.error("[links] check failed", e), 0));
+    tally.closed = await closeGonePostings(search.userId).catch((e) => (console.error("[links] check failed", e), 0));
     // Networking events (#7): only for people who set event interests, on their weekly or monthly schedule (#265); never fails the job search.
     const events = await findEventsIfDue(ctx, usage, (step) => report(99, step)).catch((e) => (console.error("[events] failed", e), null));
     const eventsNote = events ? `, plus ${events} ${events === 1 ? "event" : "events"}` : "";
@@ -377,19 +390,21 @@ export async function discover(userId: string, trigger: "scheduled" | "manual" =
   }
 }
 
-/** Manual add: read one posting by URL, score it, add it. */
-export async function addByUrl(userId: string, url: string) {
+/** Manual add: read one posting by URL, score it, add it to the search's board (#8). */
+export async function addByUrl(searchId: string, url: string) {
+  const search = await searchOf(searchId);
+  const userId = search.userId;
   if ((await getAiConfig()).provider === "agent") {
-    const run = await startRun(userId, "url", { status: "queued", request: { type: "url", url } });
+    const run = await startRun(userId, "url", { searchId, status: "queued", request: { type: "url", url } });
     await progress(run.id, 0, "Queued. Waiting for the search agent to read the posting");
     return { added: 0, queued: true };
   }
   await assertBudget(userId);
-  const run = await startRun(userId, "url");
+  const run = await startRun(userId, "url", { searchId });
   const usage = emptyUsage();
   try {
     await progress(run.id, 10, `Opening ${host(url)}`);
-    const ctx = await loadContext(userId);
+    const ctx = await loadContext(searchId);
     let page: Page;
     try {
       const { url: finalUrl, html } = await fetchPage(url);

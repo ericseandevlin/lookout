@@ -15,9 +15,10 @@ vi.mock("@/lib/db", () => ({ db, schema }));
 const { queueApplication, setAutoApplying } = await import("./apply");
 
 let userId = "";
+let searchId = "";
 const opp = async (url: string, stage: schema.Stage = "Not applied") => {
   const [o] = await db.insert(schema.opportunities).values({ title: "Role", company: "Acme", sourceUrl: url, fingerprint: url } as typeof schema.opportunities.$inferInsert).returning();
-  await db.insert(schema.userOpportunities).values({ userId, opportunityId: o.id, stage, score: 5 } as typeof schema.userOpportunities.$inferInsert);
+  await db.insert(schema.userOpportunities).values({ userId, searchId, opportunityId: o.id, stage, score: 5 } as typeof schema.userOpportunities.$inferInsert);
   return o.id;
 };
 const stageOf = async (id: string) =>
@@ -27,6 +28,9 @@ beforeAll(async () => {
   await migrate(db, { migrationsFolder: path.resolve(__dirname, "../../drizzle") });
   const [u] = await db.insert(schema.users).values({ email: "eric@example.com", name: "Eric" } as typeof schema.users.$inferInsert).returning();
   userId = u.id;
+  // The board belongs to a search now (#8).
+  const [s] = await db.insert(schema.searches).values({ userId, name: "Job search" } as typeof schema.searches.$inferInsert).returning();
+  searchId = s.id;
 });
 afterAll(async () => {
   await pg.close();
