@@ -187,7 +187,7 @@ export function Drawer({ f, currentComp, close, toggle, setStage, enter, nav }: 
                 <div style={{ display: "flex", flexDirection: "column", gap: 7 }}>
                   {f.reasonsGap.map((m) => (
                     <div key={m} style={{ display: "flex", gap: 10, alignItems: "flex-start", fontSize: 14, lineHeight: 1.45 }}>
-                      <XIcon stroke=color.brick style={{ flex: "none", marginTop: 3 }} />
+                      <XIcon stroke={color.brick} style={{ flex: "none", marginTop: 3 }} />
                       <span style={{ textWrap: "pretty" }}>{m}</span>
                     </div>
                   ))}

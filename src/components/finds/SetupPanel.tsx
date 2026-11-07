@@ -44,7 +44,7 @@ export function SetupPanel({ answered, sources }: { answered: number; sources: n
                 <div style={{ fontSize: 30, fontWeight: 700, lineHeight: 1, letterSpacing: "-0.02em", color: color.orange }}>{t.n}</div>
                 {t.done && <span style={{ fontSize: 14, fontWeight: 700, letterSpacing: ".12em", color: color.orange }}>COMPLETE</span>}
               </div>
-              {t.done ? <CheckIcon stroke=color.orange /> : <div style={{ fontSize: 14, fontWeight: 600, color: "#A89F92" }}>{t.status}</div>}
+              {t.done ? <CheckIcon stroke={color.orange} /> : <div style={{ fontSize: 14, fontWeight: 600, color: "#A89F92" }}>{t.status}</div>}
             </div>
             <div style={{ fontSize: 15.5, fontWeight: 600 }}>{t.title}</div>
             <div style={{ fontSize: 14, lineHeight: 1.5, color: "#C9C1B5", textWrap: "pretty", flex: 1 }}>{t.body}</div>

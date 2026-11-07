@@ -164,7 +164,7 @@ export function Materials() {
           {resume && rs !== "scanning" && (
             <div style={{ display: "flex", alignItems: "center", gap: 16, padding: 14, borderRadius: 12, background: "#fff", border: "1.5px solid #E6E0D8" }}>
               <a href="/api/materials/resume" target="_blank" rel="noopener" data-tip="View resume" aria-label="View resume" className="h-border" style={{ width: 64, height: 82, flex: "none", border: "1px solid #E0D9CF", borderRadius: 6, background: "#fff", boxShadow: "0 2px 6px rgba(29,26,15,.08)", padding: "9px 8px", display: "flex", flexDirection: "column", gap: 4 }}>
-                <Bar w="70%" h={4} c=color.ink /><Bar w="45%" c=color.brick /><span style={{ height: 3 }} />
+                <Bar w="70%" h={4} c={color.ink} /><Bar w="45%" c={color.brick} /><span style={{ height: 3 }} />
                 <Bar w="100%" /><Bar w="92%" /><Bar w="96%" /><span style={{ height: 2 }} />
                 <Bar w="40%" c="#CFC6B9" /><Bar w="100%" /><Bar w="84%" /><Bar w="90%" />
               </a>

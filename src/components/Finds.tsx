@@ -394,7 +394,7 @@ export function Finds() {
                       <div style={{ flex: 1, minWidth: 0 }}>
                         <div style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 14.5, fontWeight: 600, lineHeight: 1.3 }}>
                           <button className="cell-link" onClick={(e) => { e.stopPropagation(); open(f.id); }} aria-label={`${f.role} at ${f.company}`} style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{f.company}</button>
-                          {f.pinned && <PinIcon size={13} stroke=color.brick sw={2} style={{ flex: "none" }} />}
+                          {f.pinned && <PinIcon size={13} stroke={color.brick} sw={2} style={{ flex: "none" }} />}
                         </div>
                         <div style={{ fontSize: 14, lineHeight: 1.35, color: "#3A3428", marginTop: 1, display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>{f.role}</div>
                       </div>

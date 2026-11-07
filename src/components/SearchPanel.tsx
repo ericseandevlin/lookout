@@ -106,7 +106,7 @@ function Live({ run }: { run: RunInfo }) {
         <ol style={{ listStyle: "none", margin: 0, padding: 0, display: "flex", flexDirection: "column", gap: 6 }}>
           {steps.slice(0, -1).map((s, i, arr) => (
             <li key={s.at + s.text} className="lk-in" style={{ display: "flex", gap: 9, alignItems: "flex-start", fontSize: 14, lineHeight: 1.4, color: "#C9C1B5", opacity: 0.45 + (0.55 * (i + 1)) / arr.length }}>
-              <CheckIcon size={13} stroke=color.orange style={{ flex: "none", marginTop: 3 }} />
+              <CheckIcon size={13} stroke={color.orange} style={{ flex: "none", marginTop: 3 }} />
               <span style={{ textWrap: "pretty" }}>{s.text}</span>
             </li>
           ))}
@@ -138,7 +138,7 @@ function Finished({ run, onDismiss, onRetry, retrying, retryError }: { run: RunI
       <div style={{ display: "flex", alignItems: "flex-start", gap: 12 }}>
         <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: 6 }}>
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-            {failed ? <XIcon stroke=color.orange /> : <CheckIcon size={15} stroke=color.orange />}
+            {failed ? <XIcon stroke={color.orange} /> : <CheckIcon size={15} stroke={color.orange} />}
             <Eyebrow>{failed ? "Didn't finish" : "Search complete"}</Eyebrow>
           </div>
           <Title>{title}</Title>
