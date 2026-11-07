@@ -57,6 +57,21 @@ export function inviteEmail(to: string, link: string, from: string): Mail {
   };
 }
 
+/** Sent once an account has gone 12 months unused (#26). Account mail, so no unsubscribe link. */
+export function inactiveEmail(to: string, link: string): Mail {
+  return {
+    to,
+    subject: "Your Lookout account hasn't been used in a year",
+    text: `You haven't signed in to Lookout for 12 months. To keep your account, sign in:\n\n${link}\n\nIf you don't sign in within 6 months, your account and everything in it may be deleted. To delete it now, sign in and use Settings, Delete everything.`,
+    html: emailShell(
+      "Still want your Lookout account?",
+      `<p style="font-size:14.5px;line-height:1.5;color:#6B6358;margin:0 0 20px">You haven't signed in for 12 months. Sign in to keep your account. If you don't sign in within 6 months, your account and everything in it may be deleted.</p>
+<a href="${escapeHtml(link)}" style="display:inline-block;background:#99220F;color:#fff;text-decoration:none;font-weight:600;font-size:14.5px;padding:13px 24px;border-radius:12px">Sign in to Lookout</a>
+<p style="font-size:14px;color:#6B6358;margin:24px 0 0">To delete it now, sign in and use Settings, Delete everything.</p>`,
+    ),
+  };
+}
+
 export function emailChangeEmail(to: string, link: string): Mail {
   return {
     to,
