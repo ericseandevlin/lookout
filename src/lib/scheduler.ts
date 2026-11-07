@@ -120,7 +120,8 @@ async function tick() {
     for (const { userId, searchId } of await dueSearches()) {
       try {
         const r = await discover(searchId, "scheduled");
-        if (r.added > 0) await sendDigest(userId, "runId" in r ? r.runId : undefined);
+        // Even with nothing new: pinned finds due soon still go out, once a day (#304).
+        await sendDigest(userId, "runId" in r ? r.runId : undefined);
       } catch (e) {
         // Caps and missing config affect everyone; stop this tick instead of failing search by search.
         if (e instanceof BudgetError || e instanceof AiConfigError || e instanceof SearchConfigError) break;

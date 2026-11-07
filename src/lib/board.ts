@@ -50,11 +50,12 @@ export function valueText(f: Find) {
   return "No value posted";
 }
 /** Days until a due date (negative once it's past), or null when there's no date. */
-export function dueDays(f: Find) {
-  const s = attrStr(f, "due");
+export const dueDays = (f: Find) => daysUntil(attrStr(f, "due"));
+/** Days from now until a date string (YYYY-MM-DD reads as noon local), or null when it isn't a date. The digest uses it too (#304). */
+export function daysUntil(s: string, now = Date.now()) {
   if (!s) return null;
   const t = new Date(/^\d{4}-\d{2}-\d{2}$/.test(s) ? `${s}T12:00:00` : s).getTime();
-  return Number.isFinite(t) ? Math.ceil((t - Date.now()) / 864e5) : null;
+  return Number.isFinite(t) ? Math.ceil((t - now) / 864e5) : null;
 }
 export function dueText(f: Find) {
   const s = attrStr(f, "due");
