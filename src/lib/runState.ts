@@ -5,12 +5,12 @@ export type RunLike = { trigger: string; status: string };
 export const isActiveRun = (r: { status: string } | null | undefined) => !!r && (r.status === "running" || r.status === "queued");
 
 /**
- * The run the board panel follows, from runs newest first. Resume scans show on Materials, so they are skipped.
+ * The run the board panel follows, from runs newest first. Resume scans show on Materials and event searches on Events, so they are skipped.
  * An active search wins over a newer finished one: the agent can claim jobs out of order, and a finished run
  * must not end the board's polling while another search is still saving finds.
  */
 export function pickBoardRun<T extends RunLike>(newestFirst: T[]): T | null {
-  const runs = newestFirst.filter((r) => r.trigger !== "resume");
+  const runs = newestFirst.filter((r) => r.trigger !== "resume" && r.trigger !== "events");
   return runs.find(isActiveRun) ?? runs[0] ?? null;
 }
 
