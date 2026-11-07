@@ -19,6 +19,21 @@ image=ghcr.io/ericseandevlin/lookout:$ch
 repo=${LOOKOUT_REPO:-/root/src/lookout-$ch}
 export DOCKER_CONFIG=${DOCKER_CONFIG:-/root/.config/lookout-ghcr}
 log() { echo "$(date -u +%FT%TZ) [$ch] $*"; }
+# One line per deploy, rollback or failure, both channels, in DEPLOYS.txt next to the release notes (readable by
+# agents and Eric). If $LOOKOUT_DEPLOY_NOTIFY names an executable (for example one that posts a Paperclip
+# comment), it gets the line on stdin too; a failing notifier never fails the deploy.
+deploys=${LOOKOUT_DEPLOYS:-/opt/lookout-staging/DEPLOYS.txt}
+report() {
+  local line
+  line="$(date -u +%FT%TZ) $ch $*"
+  log "$*"
+  echo "$line" >> "$deploys"
+  if [ -n "${LOOKOUT_DEPLOY_NOTIFY:-}" ] && [ -x "$LOOKOUT_DEPLOY_NOTIFY" ]; then
+    echo "$line" | timeout 30 "$LOOKOUT_DEPLOY_NOTIFY" || log "Notifier failed"
+  fi
+}
+label() { docker image inspect -f "{{index .Config.Labels \"$2\"}}" "$1" 2>/dev/null || true; }
+health() { curl -fsS "http://172.17.0.1:$port/api/health" 2>/dev/null || echo unreachable; }
 
 # A pull of an unchanged tag only fetches the manifest, so running every two minutes is cheap.
 docker pull -q "$image" >/dev/null
@@ -28,7 +43,10 @@ cur=$(docker image inspect -f '{{.Id}}' "$tag" 2>/dev/null || true)
 rev=$(docker image inspect -f '{{index .Config.Labels "org.opencontainers.image.revision"}}' "$image")
 [[ "$rev" =~ ^[0-9a-f]{40}$ ]] || { log "Refusing: image has no commit label"; exit 1; }
 sha=${rev::7}
+scan=$(label "$image" co.ericdevlin.run); scan=${scan:-none}
+was=$( [ -z "$cur" ] || label "$cur" co.ericdevlin.commit ); was=${was:-none}
 log "New image $sha, deploying"
+trap 'report "error $sha (was $was) at line $LINENO scan=$scan"' ERR
 
 git -C "$repo" fetch -q origin
 git -C "$repo" checkout -q --detach "$rev"
@@ -54,17 +72,22 @@ healthy() {
 }
 (cd "$dir" && docker compose up -d)
 if ! healthy; then
+  trap - ERR
   if [ -n "$cur" ]; then
     log "Health check failed for $sha, rolling back"
     docker tag "$prev" "$tag"
-    (cd "$dir" && docker compose up -d)
+    (cd "$dir" && docker compose up -d) || true
+    healthy || true
+    report "rolled back $sha to $was, health=$(health) scan=$scan"
+  else
+    report "failed $sha (no previous image to roll back to), health=$(health) scan=$scan"
   fi
-  log "FAILED: $sha is not healthy"
   exit 1
 fi
+trap - ERR
 docker image prune -f >/dev/null
 echo "$sha $(date -u +%FT%TZ)" > "$dir/DEPLOYED"
-log "Deployed $sha: $(curl -fsS "http://172.17.0.1:$port/api/health")"
+report "deployed $sha (was $was), health=$(health) scan=$scan"
 
 # Release notes for the weekly meeting (Quill reads these): what is on staging and not yet on prod,
 # and the issue numbers already shipped (the GitHub sync marks those done).

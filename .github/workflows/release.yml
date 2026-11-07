@@ -46,7 +46,9 @@ jobs:
           docker buildx build --platform linux/amd64 --load \
             --cache-from "type=registry,ref=$IMAGE:buildcache" \
             --cache-to "type=registry,ref=$IMAGE:buildcache,mode=max" \
+            --build-arg "GIT_COMMIT=${GITHUB_SHA::7}" \
             --label "co.ericdevlin.commit=${GITHUB_SHA::7}" \
+            --label "co.ericdevlin.run=$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID" \
             --label "org.opencontainers.image.revision=$GITHUB_SHA" \
             --label "org.opencontainers.image.source=https://github.com/$GITHUB_REPOSITORY" \
             -t "$IMAGE:sha-${GITHUB_SHA::7}" .
