@@ -1,6 +1,6 @@
 # Incident and breach response
 
-What to do if Lookout's data or keys may have leaked. Production runs on one VPS in `/opt/lookout`; every command below runs there as root, from that directory, unless it says otherwise. Eric runs this plan. Agents have no root or Docker access on the server, so they can check the plan and the code but not run these commands, on staging or prod.
+What to do if Lookout's data or keys may have leaked. Production runs on one VPS in `/opt/lookout`; every command below runs there as root, from that directory, unless it says otherwise. Eric runs this plan. Agents have no root or Docker access on the server; on staging they can run the safe drill steps through a root wrapper (see Practice run), and on prod nothing.
 
 Keep notes as you go: what you saw, when, and what you did. Times in UTC.
 
@@ -88,6 +88,8 @@ The legal part, for orientation only. Check it with a lawyer (#22) before sendin
 ## Practice run
 
 Once a year, and after any big change to how Lookout is hosted, walk through this plan on staging (`/opt/lookout-staging`, port 3201) with a made-up scenario. Time each step and fix what didn't work. A good first scenario: "OpenRouter emails that our key is being used from another country." Staging has no `backup.sh` of its own; run prod's with `LOOKOUT_DIR=/opt/lookout-staging`. Don't revoke real provider keys in a drill; make and revoke a spare one instead.
+
+Agents run the safe steps with `sudo /root/bin/lookout-drill-staging <step>` ([deploy/drill-staging.sh](../deploy/drill-staging.sh), #275): `snapshot` (2.1 backup), `logs` (2.1 logs), `reencrypt-dry-run` (2.4 re-encrypt, counts only, writes nothing) and `health` (step 5). It works on staging only, prints sizes and counts but never contents, and times each step into `/opt/lookout-staging/DRILL.txt`. Stopping the app, sign-outs and key changes stay with Eric. Root installs it once; the steps are in the script's header. `node scripts/reencrypt.mjs --dry-run` also works on its own, on prod too, before a real rotation.
 
 Log:
 
