@@ -8,6 +8,7 @@ import { autoSubmitOn, submitMode } from "@/lib/application/submitMode";
 import type { AppState, Find, Resume, RunInfo } from "@/lib/types";
 import { pickBoardRun } from "@/lib/runState";
 import { listSearches, pickActiveSearch } from "@/lib/searches";
+import { searchOn } from "@/lib/sources";
 
 function toFind(
   o: typeof schema.opportunities.$inferSelect,
@@ -110,6 +111,7 @@ export async function getState(user: SessionUser): Promise<AppState> {
     },
     searches: searches.map(({ id, name, kind }) => ({ id, name, kind })),
     searchId: active?.id ?? "",
+    canSearch: searchOn(active?.kind ?? "job"),
     profile: {
       kind: active?.kind ?? "job",
       answers: active?.answers ?? {},

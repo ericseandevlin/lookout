@@ -251,7 +251,7 @@ export const rfp: KindConfig = {
     preStage: { key: "due", label: "Due" },
     tail: { key: "setAside", label: "Set-aside" },
   },
-  /** RFP discovery (SAM.gov, then state and city portals) comes next (#8). */
+  /** Web search is off for rfp: it reads SAM.gov's API instead, once SAM_API_KEY is set (#272, see src/lib/sources.ts). State and city portals come later. */
   discovery: false,
 };
 

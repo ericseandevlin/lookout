@@ -16,6 +16,7 @@ import { getAiConfig } from "@/lib/config";
 import { applyRules, fingerprint, normUrl } from "./rules";
 import { closeGonePostings } from "./linkCheck";
 import { findEventsIfDue } from "./networking";
+import { discoverRfp } from "./rfp";
 
 /**
  * Discovery pipeline, built to work with small, cheap models:
@@ -79,7 +80,7 @@ export async function loadContext(searchId: string): Promise<Context> {
   };
 }
 
-const profileBlock = (c: Context) =>
+export const profileBlock = (c: Context) =>
   `<profile>\n${c.brief}\n</profile>\n` +
   (c.searchProfile
     ? `<search_profile>\n${renderSearchProfile(c.searchProfile)}\n</search_profile>`
@@ -348,6 +349,8 @@ async function searchOf(searchId: string) {
 /** Scheduled (or "Search now") discovery for one search (#8). */
 export async function discover(searchId: string, trigger: "scheduled" | "manual" = "scheduled") {
   const search = await searchOf(searchId);
+  // RFP searches read SAM.gov's API instead of the web (#272).
+  if (search.kind === "rfp") return discoverRfp(searchId, search.userId, trigger);
   if ((await getAiConfig()).provider === "agent") {
     const run = await startRun(search.userId, trigger, { searchId, status: "queued", request: { type: "discover", searchId } });
     await progress(run.id, 0, "Queued. Waiting for the search agent to pick this up");

@@ -10,6 +10,7 @@ import { discover, isRunning } from "@/lib/agent/discover";
 import { sendDigest } from "@/lib/digest";
 import { getAiConfig } from "@/lib/config";
 import { sweepApplications } from "@/lib/application/run";
+import { searchOn } from "@/lib/sources";
 import { cleanup } from "@/lib/retention";
 
 const TICK_MS = 10 * 60_000;
@@ -50,8 +51,8 @@ async function dueSearches() {
   const due: { userId: string; searchId: string }[] = [];
   for (const { user, settings, search } of rows) {
     const cfg = kinds[search.kind] ?? kinds.job;
-    // No discovery sources for this kind yet (rfp until SAM.gov lands, #8): nothing to run.
-    if (!cfg.discovery) continue;
+    // No discovery source for this kind (rfp needs a SAM.gov key, #272): nothing to run.
+    if (!searchOn(search.kind)) continue;
     if (answeredCount(cfg, search.answers) < cfg.questions.length) continue;
     const [resume] = await db
       .select({ id: schema.materials.id })
