@@ -215,12 +215,8 @@ export function Finds() {
                 style={{ flex: 1, minWidth: 0, background: "transparent", border: 0, outline: "none", color: "#1D1A0F", fontSize: 14 }}
               />
             </div>
-            {!store.readOnly && cfg.discovery && (
-              <>
-                <SearchNowButton />
-                <AddLink open={addOpen} setOpen={setAddOpen} />
-              </>
-            )}
+            {!store.readOnly && (cfg.discovery || state.canSearch) && <SearchNowButton />}
+            {!store.readOnly && cfg.discovery && <AddLink open={addOpen} setOpen={setAddOpen} />}
           </div>
         </div>
       </div>

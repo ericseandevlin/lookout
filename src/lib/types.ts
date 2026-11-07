@@ -59,6 +59,8 @@ export type AppState = {
   /** Every search the account holds; the board, profile and runs follow `searchId` (#8). */
   searches: SearchInfo[];
   searchId: string;
+  /** Whether this search has a discovery source on (#272: rfp needs a SAM.gov key). */
+  canSearch?: boolean;
   profile: { kind: string; answers: Answers; auto: Record<string, string>; savedAt: string | null };
   materials: { resume: Resume | null; linkedin: { handle: string; linked: boolean; pdf: { name: string; uploadedAt: string } | null }; links: Link[] };
   finds: Find[];
