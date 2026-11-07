@@ -1,5 +1,61 @@
 import { describe, expect, it } from "vitest";
-import { LINK_KINDS, LINK_TILE, linkKind } from "./links";
+import { LINK_KINDS, LINK_TILE, cleanUrl, hrefOf, linkKind } from "./links";
+
+describe("linkKind", () => {
+  it("knows each platform", () => {
+    expect(linkKind("https://www.instagram.com/eric")).toBe("Instagram");
+    expect(linkKind("https://www.tiktok.com/@eric")).toBe("TikTok");
+    expect(linkKind("https://twitter.com/eric")).toBe("X");
+    expect(linkKind("https://github.com/eric")).toBe("GitHub");
+    expect(linkKind("https://www.youtube.com/@eric")).toBe("YouTube");
+    expect(linkKind("https://www.behance.net/eric")).toBe("Behance");
+    expect(linkKind("https://dribbble.com/eric")).toBe("Dribbble");
+    expect(linkKind("https://www.linkedin.com/in/eric")).toBe("LinkedIn");
+  });
+  it("knows youtu.be short links", () => {
+    expect(linkKind("https://youtu.be/dQw4w9WgXcQ")).toBe("YouTube");
+  });
+  it("knows x.com but not domains that only contain it", () => {
+    expect(linkKind("https://x.com/eric")).toBe("X");
+    expect(linkKind("x.com/eric")).toBe("X");
+    expect(linkKind("https://www.box.com/s/abc")).toBe("Website");
+    expect(linkKind("https://netflix.com/title/1")).toBe("Website");
+  });
+  it("labels site builders as Portfolio", () => {
+    for (const u of ["https://eric.squarespace.com", "https://eric.wixsite.com/work", "https://eric.format.com", "https://eric.cargo.site"]) expect(linkKind(u)).toBe("Portfolio");
+  });
+  it("falls back to Website", () => {
+    expect(linkKind("https://ericdevlin.co")).toBe("Website");
+    expect(linkKind("")).toBe("Website");
+  });
+});
+
+describe("cleanUrl", () => {
+  it("strips the scheme, www. and one trailing slash", () => {
+    expect(cleanUrl("https://www.ericdevlin.co/")).toBe("ericdevlin.co");
+    expect(cleanUrl("http://ericdevlin.co/work/")).toBe("ericdevlin.co/work");
+    expect(cleanUrl("HTTPS://WWW.Example.com")).toBe("Example.com");
+  });
+  it("only strips one trailing slash", () => {
+    expect(cleanUrl("https://example.com//")).toBe("example.com/");
+  });
+  it("leaves bare hosts and www inside the path alone", () => {
+    expect(cleanUrl("ericdevlin.co")).toBe("ericdevlin.co");
+    expect(cleanUrl("example.com/www.foo")).toBe("example.com/www.foo");
+  });
+});
+
+describe("hrefOf", () => {
+  it("adds https:// when there is no scheme", () => {
+    expect(hrefOf("ericdevlin.co")).toBe("https://ericdevlin.co");
+    expect(hrefOf("www.ericdevlin.co/work")).toBe("https://www.ericdevlin.co/work");
+  });
+  it("keeps an existing http or https scheme", () => {
+    expect(hrefOf("https://ericdevlin.co")).toBe("https://ericdevlin.co");
+    expect(hrefOf("http://ericdevlin.co")).toBe("http://ericdevlin.co");
+    expect(hrefOf("HTTPS://ericdevlin.co")).toBe("HTTPS://ericdevlin.co");
+  });
+});
 
 describe("linkKind social and newsletter links", () => {
   it("knows Bluesky", () => {
