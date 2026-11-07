@@ -1,8 +1,11 @@
 /**
- * Opportunity type config. Jobs are the only type in v1. Every type-specific
- * piece (profile questions, which answer counts as the comp floor, copy, the
- * discovery brief) lives here so RFPs, rentals, etc. can be added as new configs.
+ * Opportunity type config (#8). Every type-specific piece (profile questions, copy,
+ * board columns, stages, the discovery brief) lives here so new kinds are added as
+ * new configs. Jobs are the first kind; `rfp` is the second. A kind without
+ * `discovery` is set up end to end but has no search sources yet.
  */
+/** A kind's config, or the job kind when the id isn't one (the default). */
+export const kindOf = (id: string | null | undefined) => kinds[id ?? "job"] ?? kinds.job;
 export type Question =
   | {
       key: string;
@@ -19,12 +22,34 @@ export type Question =
   | { key: string; kind: "comp"; prompt: string; helper: string; floorKey: string; targetKey: string }
   | { key: string; kind: "modes"; prompt: string; modesKey: string; areaKey: string; options: string[] };
 
+/** Board column keys. "company"/"role"/"comp"/"listed"/"location" are Find fields; the rest come from the find's attributes (#8). */
+export type ColumnKey = "company" | "role" | "comp" | "listed" | "location" | "value" | "due" | "setAside";
+
+export type KindBoard = {
+  /** Columns between Match and Stage. Exactly three today. */
+  columns: { key: ColumnKey; label: string }[];
+  /** The column right before Stage (job: Posted; rfp: Due). */
+  preStage: { key: ColumnKey; label: string };
+  /** The column after Stage (job: Location; rfp: Set-aside). */
+  tail: { key: ColumnKey; label: string };
+};
+
 export type KindConfig = {
   id: string;
   noun: { one: string; many: string };
   questions: Question[];
   /** Turns profile answers into a plain brief for the discovery agent. */
   brief: (a: Record<string, string | string[]>) => string;
+  /** Stages a find moves through, in board order. */
+  stages: string[];
+  /** Stages that end a find: moving into one archives it (#180). */
+  endedStages: string[];
+  /** Stage new finds start at. */
+  defaultStage: string;
+  /** Board columns for this kind (#8). */
+  board: KindBoard;
+  /** Whether the discovery pipeline can search for this kind yet. */
+  discovery: boolean;
 };
 
 /** Answer key for the optional free-text "Bonus context" field under the five questions. It doesn't count toward "answered". */
@@ -122,9 +147,115 @@ export const job: KindConfig = {
       // Optional, so it's left out when empty and existing briefs (and their cache hash) stay the same.
       ...(str(a[BONUS_KEY]) ? [`Other context from them: ${str(a[BONUS_KEY])}`] : []),
     ].join("\n"),
+  stages: ["Not applied", "Auto-applying", "Applied", "Interview", "Offer", "Closed", "Ghosted", "Not selected", "Nope"],
+  endedStages: ["Closed", "Ghosted", "Not selected", "Nope"],
+  defaultStage: "Not applied",
+  board: {
+    columns: [
+      { key: "company", label: "Company" },
+      { key: "role", label: "Role" },
+      { key: "comp", label: "Comp" },
+    ],
+    preStage: { key: "listed", label: "Posted" },
+    tail: { key: "location", label: "Location" },
+  },
+  discovery: true,
 };
 
-export const kinds: Record<string, KindConfig> = { job };
+export const rfp: KindConfig = {
+  id: "rfp",
+  noun: { one: "opportunity", many: "opportunities" },
+  questions: [
+    {
+      key: "q1",
+      kind: "text",
+      prompt: "What work can your business do, and what would make a contract a real win?",
+      helper: "Services, clients, the kind of agency or team you want to grow into.",
+      placeholder: "e.g. Event production for city and federal agencies, growing into multi-year contracts",
+      starters: {
+        mode: "append",
+        options: [
+          { label: "Bigger contracts", text: "larger contract values" },
+          { label: "Multi-year", text: "multi-year contracts" },
+          { label: "Prime, not sub", text: "prime contracts, not subcontracting" },
+          { label: "New agencies", text: "new agencies or markets" },
+          { label: "Recurring work", text: "recurring or standing work" },
+        ],
+      },
+    },
+    {
+      key: "naics",
+      kind: "text",
+      prompt: "What NAICS codes describe your work?",
+      helper: "The codes agencies search by. Look them up once; they apply to every solicitation.",
+      placeholder: "e.g. 561920, 711310, 561910",
+    },
+    {
+      key: "certs",
+      kind: "text",
+      prompt: "What certifications or set-asides does your business hold?",
+      helper: "Certifications that qualify you for set-aside contracts.",
+      placeholder: "e.g. 8(a), WOSB",
+      starters: {
+        mode: "toggle",
+        options: [
+          { label: "8(a)", text: "8(a)" },
+          { label: "WOSB", text: "WOSB" },
+          { label: "SDVOSB", text: "SDVOSB" },
+          { label: "HUBZone", text: "HUBZone" },
+          { label: "Small business", text: "Small business" },
+        ],
+      },
+    },
+    {
+      key: "comp",
+      kind: "comp",
+      prompt: "What contract value is too small, and what would you jump for?",
+      helper: "Annual contract value. Solicitations below your floor get marked down, not hidden.",
+      floorKey: "floor",
+      targetKey: "target",
+    },
+    {
+      key: "geo",
+      kind: "text",
+      prompt: "Where can you perform the work?",
+      helper: "States, cities or regions you can serve, or a delivery radius.",
+      placeholder: "e.g. New York City metro, plus remote work nationwide",
+      starters: {
+        mode: "toggle",
+        options: [
+          { label: "Nationwide", text: "Nationwide" },
+          { label: "Northeast", text: "Northeast" },
+          { label: "My metro only", text: "My metro area only" },
+        ],
+      },
+    },
+  ],
+  brief: (a) =>
+    [
+      `Work the business wants: ${str(a.q1) || "(not given)"}`,
+      `NAICS codes: ${str(a.naics) || "(not given)"}`,
+      `Certifications / set-asides: ${str(a.certs) || "(none given)"}`,
+      `Contract value floor: ${str(a.floor) || "(not given)"}; would jump for: ${str(a.target) || "(not given)"}`,
+      `Geographies they can serve: ${str(a.geo) || "(not given)"}`,
+    ].join("\n"),
+  stages: ["Reviewing", "Bid", "Submitted", "Awarded", "Lost"],
+  endedStages: ["Lost"],
+  defaultStage: "Reviewing",
+  board: {
+    columns: [
+      { key: "company", label: "Agency" },
+      { key: "role", label: "Opportunity" },
+      { key: "value", label: "Value" },
+    ],
+    preStage: { key: "due", label: "Due" },
+    tail: { key: "setAside", label: "Set-aside" },
+  },
+  /** RFP discovery (SAM.gov, then state and city portals) comes next (#8). */
+  discovery: false,
+};
+
+export const kinds: Record<string, KindConfig> = { job, rfp };
 
 /** Count answered questions the same way the prototype does: a question counts once any of its fields is set. */
 export function answeredCount(cfg: KindConfig, a: Record<string, string | string[]>) {

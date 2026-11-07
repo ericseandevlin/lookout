@@ -211,7 +211,8 @@ export const userOpportunities = pgTable(
     score: integer("score").notNull(),
     reasonsMatch: text("reasons_match").array().notNull().default(sql`ARRAY[]::text[]`),
     reasonsGap: text("reasons_gap").array().notNull().default(sql`ARRAY[]::text[]`),
-    stage: text("stage").$type<Stage>().notNull().default("Not applied"),
+    /** Which one it is comes from the find's kind config (#8): job stages above, rfp stages in the kind config. */
+    stage: text("stage").notNull().default("Not applied"),
     pinned: boolean("pinned").notNull().default(false),
     archived: boolean("archived").notNull().default(false),
     notes: text("notes").notNull().default(""),
@@ -276,8 +277,10 @@ export const invites = pgTable("invites", {
 /** Request-access form submissions. Approving one creates an invite. */
 export const accessRequests = pgTable("access_requests", {
   email: text("email").primaryKey(),
-  /** Key of the "What's your next move?" choice; pre-fills profile question 1 */
-  nextMove: text("next_move"),
+    /** Key of the "What's your next move?" choice; pre-fills profile question 1 */
+    nextMove: text("next_move"),
+    /** What they want Lookout to find (#8). Which kind's profile they get at sign-up. */
+    kind: text("kind").notNull().default("job"),
   status: text("status").$type<"pending" | "approved" | "declined">().notNull().default("pending"),
   createdAt: createdAt(),
   decidedAt: timestamp("decided_at", { withTimezone: true }),

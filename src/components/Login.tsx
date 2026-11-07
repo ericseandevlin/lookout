@@ -78,6 +78,7 @@ function SignIn({ emailEnabled, inviteOnly, onRequest }: { emailEnabled: boolean
 
 function RequestAccess({ emailEnabled, onSignIn }: { emailEnabled: boolean; onSignIn: () => void }) {
   const [email, setEmail] = useState("");
+  const [kind, setKind] = useState<string>("job");
   const [move, setMove] = useState<string | null>(null);
   const [state, setState] = useState<"idle" | "sending" | "sent" | "error">("idle");
   const [msg, setMsg] = useState("");
@@ -88,7 +89,7 @@ function RequestAccess({ emailEnabled, onSignIn }: { emailEnabled: boolean; onSi
     const res = await fetch("/api/auth/request-access", {
       method: "POST",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify({ email, nextMove: move ?? undefined }),
+      body: JSON.stringify({ email, kind, nextMove: kind === "job" ? move ?? undefined : undefined }),
     }).catch(() => null);
     if (res?.ok) return setState("sent");
     const data = await res?.json().catch(() => ({}));
@@ -116,6 +117,31 @@ function RequestAccess({ emailEnabled, onSignIn }: { emailEnabled: boolean; onSi
         <label htmlFor="req-email" style={label}>Email</label>
         <input id="req-email" type="email" required autoComplete="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@example.com" className="f-brick" style={field} />
         <fieldset style={{ border: 0, padding: 0, margin: "8px 0 4px", display: "flex", flexDirection: "column", gap: 6 }}>
+          <legend style={{ ...label, marginBottom: 8 }}>What do you want Lookout to find?</legend>
+          {([
+            ["job", "A job or role", "Lookout searches job boards and company sites every week and scores what it finds."],
+            ["rfp", "Contract opportunities (RFPs)", "Lookout watches solicitations and scores them against your business. Starting with federal."],
+          ] as const).map(([key, lab, note]) => {
+            const on = kind === key;
+            return (
+              <button
+                type="button"
+                key={key}
+                aria-pressed={on}
+                onClick={() => setKind(key)}
+                style={{ display: "flex", alignItems: "center", gap: 10, minHeight: 42, padding: "0 14px", borderRadius: 10, border: `1.5px solid ${on ? "#1D1A0F" : "#E6E0D8"}`, background: on ? "#1D1A0F" : "#fff", color: on ? "#fff" : "#1D1A0F", fontSize: 14, fontWeight: 500, cursor: "pointer", textAlign: "left" }}
+              >
+                <span style={{ width: 14, height: 14, borderRadius: "50%", border: `1.5px solid ${on ? "#F8A865" : "#CFC6B9"}`, background: on ? "#F8A865" : "transparent", flex: "none" }} />
+                <span>
+                  {lab}
+                  <span style={{ display: "block", fontSize: 14, fontWeight: 400, opacity: 0.75 }}>{note}</span>
+                </span>
+              </button>
+            );
+          })}
+        </fieldset>
+        {kind === "job" && (
+        <fieldset style={{ border: 0, padding: 0, margin: "8px 0 4px", display: "flex", flexDirection: "column", gap: 6 }}>
           <legend style={{ ...label, marginBottom: 8 }}>What&apos;s your next move? <span style={{ textTransform: "none", letterSpacing: 0, fontWeight: 500 }}>(optional)</span></legend>
           {NEXT_MOVES.map((m) => {
             const on = move === m.key;
@@ -133,6 +159,7 @@ function RequestAccess({ emailEnabled, onSignIn }: { emailEnabled: boolean; onSi
             );
           })}
         </fieldset>
+        )}
         <button type="submit" disabled={state === "sending"} style={primary}>{state === "sending" ? "Sending…" : "Request access"}</button>
         {state === "error" && <div role="alert" style={{ fontSize: 14, color: "#99220F" }}>{msg}</div>}
       </form>

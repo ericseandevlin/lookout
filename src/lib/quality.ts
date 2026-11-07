@@ -6,7 +6,7 @@ import type { Stage } from "@/lib/db/schema";
  * acted = pinned, or moved to Applied or any stage that comes after applying.
  */
 
-export type FindRow = { userId: string; addedAt: Date; seenAt: Date | null; pinned: boolean; stage: Stage; feedback: { reason: string } | null };
+export type FindRow = { userId: string; addedAt: Date; seenAt: Date | null; pinned: boolean; stage: string; feedback: { reason: string } | null };
 export type Outcome = { added: number; opened: number; pinned: number; applied: number; notFit: number; acted: number };
 
 /** Stages that mean the person applied. "Closed" (posting gone) and "Nope" (they passed) don't. */
@@ -15,7 +15,7 @@ export const APPLIED: readonly Stage[] = ["Applied", "Interview", "Offer", "Not 
 export function outcome(rows: FindRow[]): Outcome {
   const o: Outcome = { added: rows.length, opened: 0, pinned: 0, applied: 0, notFit: 0, acted: 0 };
   for (const r of rows) {
-    const applied = APPLIED.includes(r.stage);
+    const applied = (APPLIED as readonly string[]).includes(r.stage);
     if (r.seenAt) o.opened++;
     if (r.pinned) o.pinned++;
     if (applied) o.applied++;

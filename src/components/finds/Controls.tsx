@@ -1,8 +1,7 @@
 "use client";
 
 import { createPortal } from "react-dom";
-import { ENDED_STAGES, STAGE_STYLE, STAGES } from "@/lib/board";
-import type { Stage } from "@/lib/types";
+import { ENDED_STAGES, STAGES, stageStyle } from "@/lib/board";
 
 export function Menu({ style, children, onClick }: { style: React.CSSProperties; children: React.ReactNode; onClick?: (e: React.MouseEvent) => void }) {
   return (
@@ -12,20 +11,21 @@ export function Menu({ style, children, onClick }: { style: React.CSSProperties;
   );
 }
 
-export function StageMenu({ current, onPick, style, mobile }: { current: Stage; onPick: (s: Stage) => void; style: React.CSSProperties; mobile?: boolean }) {
+/** The stage menu for a find: its kind's stages (#8), ended ones flagged as archives. */
+export function StageMenu({ current, onPick, style, mobile, stages = STAGES, ended = ENDED_STAGES, dividerAfter = 4 }: { current: string; onPick: (s: string) => void; style: React.CSSProperties; mobile?: boolean; stages?: string[]; ended?: string[]; dividerAfter?: number }) {
   return createPortal(
     <Menu style={{ position: "fixed", zIndex: 40, ...style }} onClick={(e) => e.stopPropagation()}>
-      {STAGES.map((s, i) => (
+      {stages.map((s, i) => (
         <div key={s} style={{ display: "contents" }}>
-          {i === 4 && <div style={{ height: 1, background: "#EEEAE4", margin: "4px 6px" }} />}
+          {i === dividerAfter && <div style={{ height: 1, background: "#EEEAE4", margin: "4px 6px" }} />}
           <button
             role="menuitem"
             className="h-menu"
-            data-tip={ENDED_STAGES.includes(s) ? "Archives it" : undefined}
+            data-tip={ended.includes(s) ? "Archives it" : undefined}
             onClick={(e) => { e.stopPropagation(); onPick(s); }}
             style={{ display: "flex", alignItems: "center", gap: 9, padding: mobile ? "0 10px" : "8px 10px", minHeight: mobile ? 40 : undefined, border: 0, borderRadius: 8, background: s === current ? "#F6F2EC" : "transparent", fontSize: mobile ? 14 : 13, fontWeight: 500, color: "#1D1A0F", cursor: "pointer", textAlign: "left", whiteSpace: "nowrap" }}
           >
-            <span style={{ width: 10, height: 10, borderRadius: "50%", background: STAGE_STYLE[s].bg, border: `1.5px solid ${STAGE_STYLE[s].bg}`, flex: "none" }} />
+            <span style={{ width: 10, height: 10, borderRadius: "50%", background: stageStyle(s).bg, border: `1.5px solid ${stageStyle(s).bg}`, flex: "none" }} />
             {s}
           </button>
         </div>

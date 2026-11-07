@@ -49,7 +49,10 @@ async function dueUsers() {
     .where(eq(schema.users.disabled, false));
   const due: string[] = [];
   for (const { user, settings, profile } of rows) {
-    if (answeredCount(kinds[profile.kind] ?? kinds.job, profile.answers) < 5) continue;
+    const cfg = kinds[profile.kind] ?? kinds.job;
+    // No discovery sources for this kind yet (rfp until SAM.gov lands, #8): nothing to run.
+    if (!cfg.discovery) continue;
+    if (answeredCount(cfg, profile.answers) < cfg.questions.length) continue;
     const [resume] = await db
       .select({ id: schema.materials.id })
       .from(schema.materials)

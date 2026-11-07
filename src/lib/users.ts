@@ -2,6 +2,7 @@ import "server-only";
 import { and, eq, isNull, sql } from "drizzle-orm";
 import { getAccessConfig } from "@/lib/config";
 import { NEXT_MOVES } from "@/lib/onboarding";
+import { kinds } from "@/lib/kinds";
 import { db, schema } from "@/lib/db";
 import { env } from "@/lib/env";
 
@@ -40,12 +41,14 @@ export async function ensureUser(email: string) {
       .values({ email: e, isAdmin: env.adminEmails.includes(e) })
       .returning();
     await tx.insert(schema.settings).values({ userId: user.id });
-    // The request-access answer seeds question 1.
+    // The kind picked at request-access (#8) decides which profile they get. Job
+    // requests also seed question 1 from the next-move answer.
     const [req] = await tx.select().from(schema.accessRequests).where(eq(schema.accessRequests.email, e));
-    const move = NEXT_MOVES.find((m) => m.key === req?.nextMove);
+    const kind = req?.kind && kinds[req.kind] ? req.kind : "job";
+    const move = kind === "job" ? NEXT_MOVES.find((m) => m.key === req?.nextMove) : undefined;
     await tx
       .insert(schema.profiles)
-      .values({ userId: user.id, ...(move ? { answers: { q1: move.q1 }, autofilled: { q1: "sign-up" } } : {}) });
+      .values({ userId: user.id, kind, ...(move ? { answers: { q1: move.q1 }, autofilled: { q1: "sign-up" } } : {}) });
     return user;
   });
 }

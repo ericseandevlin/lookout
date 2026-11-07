@@ -64,7 +64,7 @@ export async function metrics(now = new Date()) {
     const find = actedOn(e);
     if (find) touched.add(`${e.userId}:${find}`);
   }
-  const rated = finds.map((f) => ({ score: f.score, acted: f.pinned || APPLIED.includes(f.stage) || touched.has(`${f.userId}:${f.opportunityId}`) }));
+  const rated = finds.map((f) => ({ score: f.score, acted: f.pinned || (APPLIED as readonly string[]).includes(f.stage) || touched.has(`${f.userId}:${f.opportunityId}`) }));
 
   const searches = await db
     .select({ status: schema.runs.status, read: sql<number | null>`(${schema.runs.report} ->> 'read')::int` })
