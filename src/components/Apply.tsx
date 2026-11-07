@@ -118,7 +118,7 @@ export function ApplyPage() {
   const summary = !settings ? "" : on ? `Queues ${settings.threshold === 5 ? "level 5 matches" : "level 4 and 5 matches"} automatically, up to ${settings.dailyCap} a day` : "Only roles you queue yourself";
 
   return (
-    <div className="page-pad lk-page" style={{ display: "flex", flexDirection: "column", gap: 16, maxWidth: 820 }}>
+    <div className="page-pad lk-page w-page" style={{ display: "flex", flexDirection: "column", gap: 16 }}>
       <PageHead eyebrow="Beta" title="Auto-apply" intro="Lookout drafts each application for your review and only sends what you approve." />
 
       {settings && (

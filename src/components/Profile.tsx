@@ -39,7 +39,7 @@ export function ProfileTabs() {
       {tabs.map(([href, label]) => {
         const on = path === href;
         return (
-          <Link key={href} href={href} role="tab" aria-selected={on} tabIndex={on || (!anyOn && href === tabs[0][0]) ? 0 : -1} style={{ display: "flex", alignItems: "center", flex: "none", height: 42, padding: "0 2px", marginBottom: -1, borderBottom: `2.5px solid ${on ? "#99220F" : "transparent"}`, color: on ? "#1D1A0F" : "#6B6358", fontSize: 15, fontWeight: on ? 700 : 600, whiteSpace: "nowrap", textDecoration: "none" }}>
+          <Link key={href} href={href} role="tab" className="lk-tab" aria-selected={on} tabIndex={on || (!anyOn && href === tabs[0][0]) ? 0 : -1} style={{ display: "flex", alignItems: "center", flex: "none", height: 42, padding: "0 2px", marginBottom: -1, borderBottom: `2.5px solid ${on ? "#99220F" : "transparent"}`, color: on ? "#1D1A0F" : "#6B6358", fontSize: 15, fontWeight: on ? 700 : 600, whiteSpace: "nowrap", textDecoration: "none" }}>
             {label}
           </Link>
         );
@@ -261,7 +261,7 @@ export function Profile() {
   };
 
   return (
-    <div className="page-pad lk-page" style={{ display: "flex", flexWrap: "wrap", gap: 24, alignItems: "flex-start" }}>
+    <div className="page-pad lk-page w-page" style={{ display: "flex", flexWrap: "wrap", gap: 24, alignItems: "flex-start" }}>
       <div style={{ flex: "1 1 520px", minWidth: 0, display: "flex", flexDirection: "column", gap: 16 }}>
         <ProfileTabs />
         {showNote && (
