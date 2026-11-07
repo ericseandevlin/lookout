@@ -115,7 +115,7 @@ async function work() {
   if (Date.now() - lastCleanup > 24 * 3600_000) {
     lastCleanup = Date.now();
     await cleanup()
-      .then((n) => console.log(`[scheduler] cleanup: ${n.loginTokens} sign-in links, ${n.sessions} sessions, ${n.runLogs} run logs, ${n.errors} errors`))
+      .then((n) => console.log(`[scheduler] cleanup: ${n.loginTokens} sign-in links, ${n.sessions} sessions, ${n.runLogs} run logs, ${n.errors} errors, ${n.inactiveWarned} inactive accounts warned`))
       .catch((e) => fail("cleanup", e));
   }
   const ai = await getAiConfig();
