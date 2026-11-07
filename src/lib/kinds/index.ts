@@ -11,7 +11,7 @@ export type Question =
       helper: string;
       placeholder: string;
       /**
-       * Quick picks. "insert" drops in a sentence starter to finish; "toggle" adds or removes an item in a
+       * Quick picks. "insert" opens a sentence starter with inline blanks (see lib/blanks); "toggle" adds or removes an item in a
        * comma list; "append" adds or removes a phrase at the end of free text without touching the rest.
        */
       starters?: { mode: "insert" | "toggle" | "append"; options: { label: string; text: string }[] };
@@ -79,12 +79,12 @@ export const job: KindConfig = {
       starters: {
         mode: "insert",
         options: [
-          { label: "Grew revenue", text: "Grew revenue __% in __ years by " },
-          { label: "Cut costs", text: "Cut costs by $__ a year by " },
-          { label: "Launched something", text: "Launched __, which reached __ " },
-          { label: "Built a team", text: "Built and led a team of __ that " },
-          { label: "Turned it around", text: "Took __ from __ to __ by " },
-          { label: "Landed a big client", text: "Won __, a $__ account, by " },
+          { label: "Grew revenue", text: "Grew revenue {n:40}%[ in {n:2} years][ by {t:rebuilding the sales team}]" },
+          { label: "Cut costs", text: "Cut costs by ${s:200k} a year[ by {t:renegotiating vendor contracts}]" },
+          { label: "Launched something", text: "Launched {s:a new booking app}[, which reached {s:10,000 users}]" },
+          { label: "Built a team", text: "Built and led a team of {n:8}[ that {t:shipped the new design system}]" },
+          { label: "Turned it around", text: "Took {s:the venue} from {s:a loss} to {s:a profit}[ by {t:cutting slow menus}]" },
+          { label: "Landed a big client", text: "Won {s:a national hotel group}[, a ${s:2M} account,][ by {t:pitching a custom package}]" },
         ],
       },
     },
