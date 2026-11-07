@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("server-only", () => ({}));
-const { decrypt, encrypt, isSealedFile, openFile, sealFile } = await import("./secrets");
+const { decrypt, encrypt, isSealedFile, mask, openFile, sealFile } = await import("./secrets");
 
 const A = "a".repeat(32);
 const B = "b".repeat(32);
@@ -30,6 +30,32 @@ describe("secrets", () => {
     vi.stubEnv("APP_SECRET", B);
     vi.stubEnv("APP_SECRET_PREVIOUS", "short");
     expect(() => decrypt(old)).toThrow();
+  });
+
+  it("uses a fresh IV for every value", () => {
+    vi.stubEnv("APP_SECRET", A);
+    expect(encrypt("sk-test")).not.toBe(encrypt("sk-test"));
+  });
+
+  it("refuses an unknown format and a truncated tag", () => {
+    vi.stubEnv("APP_SECRET", A);
+    expect(() => decrypt("v2:a:b:c")).toThrow("Unknown secret format");
+    expect(() => decrypt("plain text")).toThrow("Unknown secret format");
+    const [v, iv, tag, data] = encrypt("sk-test").split(":");
+    const short = Buffer.from(tag, "base64").subarray(0, 8).toString("base64");
+    expect(() => decrypt([v, iv, short, data].join(":"))).toThrow("Bad secret tag");
+  });
+
+  it("needs an APP_SECRET of 32+ characters", () => {
+    vi.stubEnv("APP_SECRET", "");
+    expect(() => encrypt("x")).toThrow("APP_SECRET");
+    vi.stubEnv("APP_SECRET", "short");
+    expect(() => encrypt("x")).toThrow("APP_SECRET");
+  });
+
+  it("masks all but the first and last four characters", () => {
+    expect(mask("sk-abcdefghijkl")).toBe("sk-a…ijkl");
+    expect(mask("")).toBe("");
   });
 });
 
