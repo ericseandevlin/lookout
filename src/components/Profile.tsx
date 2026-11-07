@@ -2,10 +2,11 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { useState } from "react";
+import { useState, useSyncExternalStore } from "react";
 import { fillTemplate, parseTemplate, type Chunk } from "@/lib/blanks";
-import { job } from "@/lib/kinds";
+import { BONUS_KEY, job } from "@/lib/kinds";
 import { WORK_MODE_LABEL } from "@/lib/onboarding";
+import { searchBlocker } from "@/lib/ready";
 import { togglePhrase } from "@/lib/phrases";
 import { useCounts } from "./Shell";
 import { useStore } from "./store";
@@ -21,26 +22,37 @@ export function ProfileTabs() {
   const tabs: [string, string][] = [["/profile", "Your answers"], ["/profile/materials", "Materials"], ["/profile/sees", "What Lookout sees"]];
   // Auto-apply beta: the answers it reuses on every application form (#108).
   if (state.user.autoApply) tabs.push(["/profile/application", "Application answers"]);
+  // Each tab is its own page, so arrows move focus between tabs and Enter opens one (manual activation).
+  const onKey = (e: React.KeyboardEvent<HTMLDivElement>) => {
+    const list = [...e.currentTarget.querySelectorAll<HTMLAnchorElement>('[role="tab"]')];
+    const i = list.indexOf(document.activeElement as HTMLAnchorElement);
+    const n = list.length;
+    const to = ({ ArrowRight: i + 1, ArrowDown: i + 1, ArrowLeft: i - 1, ArrowUp: i - 1, Home: 0, End: n - 1 } as Record<string, number>)[e.key];
+    if (to === undefined || i < 0) return;
+    e.preventDefault();
+    list[(to + n) % n].focus();
+  };
+  const anyOn = tabs.some(([href]) => href === path);
   return (
-    <nav aria-label="Profile sections" style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 18 }}>
+    <div role="tablist" aria-label="Profile sections" onKeyDown={onKey} style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 18 }}>
       {tabs.map(([href, label]) => {
         const on = path === href;
         return (
-          <Link key={href} href={href} aria-current={on ? "page" : undefined} style={{ display: "flex", alignItems: "center", height: 34, padding: "0 15px", borderRadius: 999, border: `1.5px solid ${on ? "#1D1A0F" : "#E0D9CF"}`, background: on ? "#1D1A0F" : "#fff", color: on ? "#fff" : "#1D1A0F", fontSize: 14, fontWeight: 600, textDecoration: "none" }}>
+          <Link key={href} href={href} role="tab" aria-selected={on} tabIndex={on || (!anyOn && href === tabs[0][0]) ? 0 : -1} style={{ display: "flex", alignItems: "center", height: 34, padding: "0 15px", borderRadius: 999, border: `1.5px solid ${on ? "#1D1A0F" : "#E0D9CF"}`, background: on ? "#1D1A0F" : "#fff", color: on ? "#fff" : "#1D1A0F", fontSize: 14, fontWeight: 600, textDecoration: "none" }}>
             {label}
           </Link>
         );
       })}
-    </nav>
+    </div>
   );
 }
 
 /**
  * The one next thing a new person has to do: answers, then resume, then a first search.
- * Shown on the profile, materials and an empty board, so no step ends without a way forward.
+ * Shown on materials and an empty board, so no step ends without a way forward. The profile has its own Next button.
  */
-export function NextStep({ here }: { here: "profile" | "materials" | "finds" }) {
-  const { state, searchNow, saveProfile, fail } = useStore();
+export function NextStep({ here }: { here: "materials" | "finds" }) {
+  const { state, searchNow, fail } = useStore();
   const { answered } = useCounts(state);
   const router = useRouter();
   const [busy, setBusy] = useState(false);
@@ -60,16 +72,16 @@ export function NextStep({ here }: { here: "profile" | "materials" | "finds" }) 
   if (answered < 5) {
     const left = 5 - answered;
     text = `Answer ${left === 1 ? "the last question" : `the ${left} questions left`} so Lookout knows what to look for.`;
-    if (here !== "profile") action = { label: "Go to your answers", run: async () => router.push("/profile") };
+    action = { label: "Go to your answers", run: async () => router.push("/profile") };
   } else if (rs !== "done") {
     text = rs === "scanning" ? "Reading your resume. This takes about a minute." : rs === "failed" ? "Lookout couldn't read your resume. Try a PDF or Word file." : "Next, add your resume. Lookout reads it to know what you've done.";
     if (here !== "materials" && rs !== "scanning")
-      action = { label: "Next: add your resume", run: async () => { if (here === "profile") await saveProfile(); router.push("/profile/materials"); } };
+      action = { label: "Next: add your resume", run: async () => router.push("/profile/materials") };
   } else if (state.finds.length === 0) {
     if (state.running) text = "Your first search is running. Finds show up on your board as they come in.";
     else {
       text = "You're set. Run your first search now; after that Lookout searches on your schedule.";
-      action = { label: "Run my first search", run: async () => { if (here === "profile") await saveProfile(); await searchNow(); if (here !== "finds") router.push("/finds"); } };
+      action = { label: "Run my first search", run: async () => { await searchNow(); if (here !== "finds") router.push("/finds"); } };
     }
   }
   if (!text) return null;
@@ -186,9 +198,25 @@ function Starters({ mode, options, value, onChange }: { mode: "insert" | "toggle
   );
 }
 
+const FIRST_NOTE_KEY = "lookout:profile-first-note";
+
+function readNoteHidden() {
+  try {
+    return localStorage.getItem(FIRST_NOTE_KEY) ?? "";
+  } catch {
+    return "";
+  }
+}
+
 export function Profile() {
-  const { state, editAnswers, saveProfile } = useStore();
+  const { state, editAnswers, saveProfile, searchNow, fail } = useStore();
   const { answered } = useCounts(state);
+  const router = useRouter();
+  const [busy, setBusy] = useState(false);
+  const [noteClosed, setNoteClosed] = useState(false);
+  // Hidden on the server render so the note doesn't flash for someone who already closed it.
+  const noteStored = useSyncExternalStore(() => () => {}, readNoteHidden, () => "1");
+  const showNote = answered < 5 && !noteClosed && !noteStored;
   const a = state.profile.answers;
   const auto = state.profile.auto;
   const [savedAt, setSavedAt] = useState<string | null>(null);
@@ -200,11 +228,45 @@ export function Profile() {
     await saveProfile();
     setSavedAt(new Date().toLocaleTimeString([], { hour: "numeric", minute: "2-digit" }));
   };
+  const closeNote = () => {
+    setNoteClosed(true);
+    try {
+      localStorage.setItem(FIRST_NOTE_KEY, "1");
+    } catch {
+      // per-device convenience only
+    }
+  };
+
+  // Next opens only once the profile has been saved, then goes to the next setup step.
+  const saved = !!state.profile.savedAt;
+  const rs = state.materials.resume?.status;
+  const canSearch = !searchBlocker(answered, rs);
+  const next =
+    rs !== "done" ? { label: "Next: add your resume", run: async () => router.push("/profile/materials") }
+    : canSearch && state.finds.length === 0 && !state.running ? { label: "Next: run my first search", run: async () => { await searchNow(); router.push("/finds"); } }
+    : { label: "Next: your finds", run: async () => router.push("/finds") };
+  const onNext = async () => {
+    setBusy(true);
+    try {
+      await saveProfile();
+      await next.run();
+    } catch (e) {
+      fail(e);
+    } finally {
+      setBusy(false);
+    }
+  };
 
   return (
     <div className="page-pad lk-page" style={{ display: "flex", flexWrap: "wrap", gap: 24, alignItems: "flex-start" }}>
       <div style={{ flex: "1 1 520px", minWidth: 0, display: "flex", flexDirection: "column", gap: 16 }}>
         <ProfileTabs />
+        {showNote && (
+          <div role="note" style={{ display: "flex", alignItems: "center", gap: 12, padding: "12px 14px 12px 16px", borderRadius: 12, background: "#FFF4F1", border: "1.5px solid #F0C9BF" }}>
+            <div style={{ flex: 1, fontSize: 14.5, fontWeight: 600, color: "#3B362C" }}>First: answer these 5. About 2 minutes.</div>
+            <button type="button" onClick={closeNote} aria-label="Dismiss" style={{ width: 32, height: 32, borderRadius: 8, border: 0, background: "transparent", color: "#6B6358", fontSize: 18, cursor: "pointer" }}>×</button>
+          </div>
+        )}
         <PageHead
           eyebrow="Search profile"
           title="Five questions from your recruiter"
@@ -278,11 +340,22 @@ export function Profile() {
           </div>
         ))}
 
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "flex-start", flexDirection: "row-reverse", gap: 14, flexWrap: "wrap", paddingTop: 4 }}>
-          <button onClick={onSave} style={{ height: 46, padding: "0 28px", borderRadius: 12, border: 0, background: "#99220F", color: "#fff", fontSize: 14.5, fontWeight: 600, cursor: "pointer" }}>Save profile</button>
-          {savedAt && <div aria-live="polite" style={{ fontSize: 14, color: "#6B6358" }}>Saved at {savedAt}. The next discovery run will use it.</div>}
+        <div style={{ padding: "18px 0", display: "grid", gridTemplateColumns: "44px minmax(0,1fr)", gap: "4px 12px" }}>
+          <div />
+          <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+            <label htmlFor={`q-${BONUS_KEY}`} style={{ fontSize: 17, fontWeight: 600 }}>Bonus context (optional)</label>
+            <div id={`q-${BONUS_KEY}-help`} style={{ fontSize: 14, color: "#6B6358" }}>Anything else Lookout should know.</div>
+            <textarea id={`q-${BONUS_KEY}`} aria-describedby={`q-${BONUS_KEY}-help`} className="f-brick" value={str(BONUS_KEY)} onChange={set(BONUS_KEY)} rows={3} maxLength={4000} style={{ ...inputBase, resize: "vertical", padding: "11px 13px", lineHeight: 1.5 }} />
+          </div>
         </div>
-        <NextStep here="profile" />
+
+        <div style={{ display: "flex", alignItems: "center", gap: 14, flexWrap: "wrap", paddingTop: 4 }}>
+          <button onClick={onSave} style={{ height: 46, padding: "0 28px", borderRadius: 12, border: 0, background: "#99220F", color: "#fff", fontSize: 14.5, fontWeight: 600, cursor: "pointer" }}>Save profile</button>
+          <button onClick={onNext} disabled={!saved || busy} title={saved ? undefined : "Save your profile first"} style={{ height: 46, padding: "0 22px", borderRadius: 12, border: "1.5px solid #1D1A0F", background: "#fff", color: "#1D1A0F", fontSize: 14.5, fontWeight: 600, cursor: saved && !busy ? "pointer" : "default", opacity: saved && !busy ? 1 : 0.45 }}>
+            {busy ? "One moment…" : `${next.label} →`}
+          </button>
+          {savedAt && <div aria-live="polite" style={{ flexBasis: "100%", fontSize: 14, color: "#6B6358" }}>Saved at {savedAt}. The next discovery run will use it.</div>}
+        </div>
       </div>
     </div>
   );

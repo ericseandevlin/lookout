@@ -27,6 +27,9 @@ export type KindConfig = {
   brief: (a: Record<string, string | string[]>) => string;
 };
 
+/** Answer key for the optional free-text "Bonus context" field under the five questions. It doesn't count toward "answered". */
+export const BONUS_KEY = "bonus";
+
 const str = (v: unknown) => (typeof v === "string" ? v.trim() : "");
 const arr = (v: unknown) => (Array.isArray(v) ? v.filter((x): x is string => typeof x === "string") : []);
 
@@ -116,6 +119,8 @@ export const job: KindConfig = {
       `Work modes: ${arr(a.modes).join(", ") || "(any)"}; areas: ${str(a.area) || "(not given)"}`,
       `Win they lead with: ${str(a.q4) || "(not given)"}`,
       `Dealbreakers: ${str(a.q5) || "(none given)"}`,
+      // Optional, so it's left out when empty and existing briefs (and their cache hash) stay the same.
+      ...(str(a[BONUS_KEY]) ? [`Other context from them: ${str(a[BONUS_KEY])}`] : []),
     ].join("\n"),
 };
 
