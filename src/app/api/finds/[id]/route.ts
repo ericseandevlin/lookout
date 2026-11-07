@@ -2,14 +2,14 @@ import { and, eq } from "drizzle-orm";
 import { track } from "@/lib/eventStore";
 import { z } from "zod";
 import { authed, body, HttpError, json } from "@/lib/api";
-import { ENDED_STAGES } from "@/lib/board";
 import { db, schema } from "@/lib/db";
-import { STAGES } from "@/lib/db/schema";
+import { kindOf } from "@/lib/kinds";
 
 const Patch = z.object({
   pinned: z.boolean().optional(),
   archived: z.boolean().optional(),
-  stage: z.enum(STAGES).optional(),
+  /** Which stage depends on the find's kind (#8); validated against its kind's stages below. */
+  stage: z.string().trim().min(1).max(40).optional(),
   notes: z.string().max(20_000).optional(),
   seen: z.literal(true).optional(),
   /** "Not a fit" reason; null clears it (e.g. on restore). */
@@ -24,8 +24,17 @@ export const PATCH = authed<Ctx>(async (req, { user, params }) => {
   const p = await body(req, Patch);
   const { seen, feedback, ...rest } = p;
   const set: Partial<typeof schema.userOpportunities.$inferInsert> = { ...rest };
-  // An ended stage archives the find, whichever client set it (#180). Leaving one does not unarchive it; Restore does.
-  if (rest.stage && ENDED_STAGES.includes(rest.stage)) set.archived = true;
+  // A stage must be one its kind's stages, and an ended stage archives the find,
+  // whichever client set it (#180, #8). Leaving one does not unarchive it; Restore does.
+  if (rest.stage) {
+    const [opp] = await db
+      .select({ type: schema.opportunities.type })
+      .from(schema.opportunities)
+      .where(eq(schema.opportunities.id, id));
+    const cfg = kindOf(opp?.type);
+    if (!cfg.stages.includes(rest.stage)) throw new HttpError(400, "Not a stage for this find.");
+    if (cfg.endedStages.includes(rest.stage)) set.archived = true;
+  }
   if (feedback !== undefined) set.feedback = feedback ? { reason: feedback, at: new Date().toISOString() } : null;
   // Any interaction marks the find as seen, like opening it does.
   if (seen || Object.keys(rest).length || feedback !== undefined) set.seenAt = new Date();

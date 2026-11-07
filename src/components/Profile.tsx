@@ -4,7 +4,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useState, useSyncExternalStore } from "react";
 import { fillTemplate, parseTemplate, type Chunk } from "@/lib/blanks";
-import { BONUS_KEY, job } from "@/lib/kinds";
+import { BONUS_KEY, kindOf } from "@/lib/kinds";
 import { WORK_MODE_LABEL } from "@/lib/onboarding";
 import { searchBlocker } from "@/lib/ready";
 import { togglePhrase } from "@/lib/phrases";
@@ -53,7 +53,7 @@ export function ProfileTabs() {
  */
 export function NextStep({ here }: { here: "materials" | "finds" }) {
   const { state, searchNow, fail } = useStore();
-  const { answered } = useCounts(state);
+  const { answered, total } = useCounts(state);
   const router = useRouter();
   const [busy, setBusy] = useState(false);
   const rs = state.materials.resume?.status;
@@ -69,8 +69,8 @@ export function NextStep({ here }: { here: "materials" | "finds" }) {
   };
   let text = "";
   let action: { label: string; run: () => Promise<unknown> } | null = null;
-  if (answered < 5) {
-    const left = 5 - answered;
+  if (answered < total) {
+    const left = total - answered;
     text = `Answer ${left === 1 ? "the last question" : `the ${left} questions left`} so Lookout knows what to look for.`;
     action = { label: "Go to your answers", run: async () => router.push("/profile") };
   } else if (rs !== "done") {
@@ -210,13 +210,15 @@ function readNoteHidden() {
 
 export function Profile() {
   const { state, editAnswers, saveProfile, searchNow, fail } = useStore();
-  const { answered } = useCounts(state);
+  // Questions and counts come from the profile's kind config (#8).
+  const cfg = kindOf(state.profile.kind);
+  const { answered, total } = useCounts(state);
   const router = useRouter();
   const [busy, setBusy] = useState(false);
   const [noteClosed, setNoteClosed] = useState(false);
   // Hidden on the server render so the note doesn't flash for someone who already closed it.
   const noteStored = useSyncExternalStore(() => () => {}, readNoteHidden, () => "1");
-  const showNote = answered < 5 && !noteClosed && !noteStored;
+  const showNote = answered < total && !noteClosed && !noteStored;
   const a = state.profile.answers;
   const auto = state.profile.auto;
   const [savedAt, setSavedAt] = useState<string | null>(null);
@@ -263,24 +265,26 @@ export function Profile() {
         <ProfileTabs />
         {showNote && (
           <div role="note" style={{ display: "flex", alignItems: "center", gap: 12, padding: "12px 14px 12px 16px", borderRadius: 12, background: "#FFF4F1", border: "1.5px solid #F0C9BF" }}>
-            <div style={{ flex: 1, fontSize: 14.5, fontWeight: 600, color: "#3B362C" }}>First: answer these 5. About 2 minutes.</div>
+            <div style={{ flex: 1, fontSize: 14.5, fontWeight: 600, color: "#3B362C" }}>First: answer these {total}. About 2 minutes.</div>
             <button type="button" onClick={closeNote} aria-label="Dismiss" style={{ width: 32, height: 32, borderRadius: 8, border: 0, background: "transparent", color: "#6B6358", fontSize: 18, cursor: "pointer" }}>×</button>
           </div>
         )}
         <PageHead
           eyebrow="Search profile"
-          title="Five questions from your recruiter"
-          intro="Your resume and LinkedIn show what you've done. These answers tell the search what you want next, and they shape every score and fit rating on your board."
+          title={cfg.id === "rfp" ? "Tell Lookout about your business" : "Five questions from your recruiter"}
+          intro={cfg.id === "rfp"
+            ? "These answers tell the search what your business can win, and they shape every score and fit rating on your board."
+            : "Your resume and LinkedIn show what you've done. These answers tell the search what you want next, and they shape every score and fit rating on your board."}
         >
           <div style={{ display: "flex", alignItems: "center", gap: 12, marginTop: 16 }}>
-            <div role="progressbar" aria-valuemin={0} aria-valuemax={5} aria-valuenow={answered} style={{ flex: 1, maxWidth: 320, height: 6, borderRadius: 999, background: "#E0D9CF", overflow: "hidden" }}>
-              <div style={{ height: "100%", width: `${(answered / 5) * 100}%`, background: "#99220F", borderRadius: 999, transition: "width .2s" }} />
+            <div role="progressbar" aria-valuemin={0} aria-valuemax={total} aria-valuenow={answered} style={{ flex: 1, maxWidth: 320, height: 6, borderRadius: 999, background: "#E0D9CF", overflow: "hidden" }}>
+              <div style={{ height: "100%", width: `${(answered / total) * 100}%`, background: "#99220F", borderRadius: 999, transition: "width .2s" }} />
             </div>
-            <div style={{ fontSize: 14, fontWeight: 600, color: "#6B6358" }}>{answered} of 5 answered</div>
+            <div style={{ fontSize: 14, fontWeight: 600, color: "#6B6358" }}>{answered} of {total} answered</div>
           </div>
         </PageHead>
 
-        {job.questions.map((q, i) => (
+        {cfg.questions.map((q, i) => (
           <div key={q.key} style={{ padding: "18px 0", display: "grid", gridTemplateColumns: "44px minmax(0,1fr)", gap: "4px 12px" }}>
             <div style={{ fontSize: 22, fontWeight: 700, color: "#99220F" }}>{String(i + 1).padStart(2, "0")}</div>
             <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>

@@ -11,14 +11,16 @@ const Input = z.object({
   mode: z.enum(WORK_MODES).optional(),
 });
 
-/** Welcome step: name plus two quick picks that pre-fill profile questions 2 and 3. */
+/** Welcome step: name plus two quick picks that pre-fill profile questions 2 and 3 (job only, #8). */
 export const POST = authed(async (req, { user }) => {
   const p = await body(req, Input);
   const [profile] = await db.select().from(schema.profiles).where(eq(schema.profiles.userId, user.id));
   const answers = { ...(profile?.answers ?? {}) };
-  const range = salaryRange(p.salary);
-  if (range) Object.assign(answers, { floor: range.floor, target: range.target });
-  if (p.mode) answers.modes = [p.mode];
+  if ((profile?.kind ?? "job") === "job") {
+    const range = salaryRange(p.salary);
+    if (range) Object.assign(answers, { floor: range.floor, target: range.target });
+    if (p.mode) answers.modes = [p.mode];
+  }
   await db.update(schema.profiles).set({ answers, updatedAt: new Date() }).where(eq(schema.profiles.userId, user.id));
   await db.update(schema.users).set({ name: p.name, onboardedAt: new Date() }).where(eq(schema.users.id, user.id));
   await track(user.id, "welcome_done");
