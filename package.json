@@ -11,7 +11,8 @@
     "test": "vitest run",
     "db:generate": "drizzle-kit generate",
     "import-legacy": "tsx --env-file=.env.local scripts/import-legacy.ts",
-    "login-link": "node --env-file=.env.local scripts/login-link.mjs"
+    "login-link": "node --env-file=.env.local scripts/login-link.mjs",
+    "test:coverage": "vitest run --coverage"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.135.0",
@@ -36,6 +37,7 @@
     "@types/nodemailer": "^8.0.2",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "@vitest/coverage-v8": "^5.0.5",
     "drizzle-kit": "^0.31.11",
     "eslint": "^10.13.0",
     "eslint-config-next": "16.4.2",
