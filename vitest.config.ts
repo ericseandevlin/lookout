@@ -19,8 +19,8 @@ export default defineConfig({
       exclude: ["src/**/*.test.{ts,tsx}"],
       reporter: ["text-summary", "json-summary", "html"],
       reportsDirectory: "coverage",
-      // Floor at the level when coverage was added (#291). Raise it as tests grow; never lower it.
-      thresholds: { lines: 0, statements: 0, functions: 0, branches: 0 },
+      // Floor: CI baseline when coverage was added (#291), rounded down. Raise it as tests grow; never lower it.
+      thresholds: { lines: 28, statements: 30, functions: 27, branches: 25 },
     },
   },
 });
