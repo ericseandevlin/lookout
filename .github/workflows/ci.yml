@@ -29,7 +29,21 @@ jobs:
       - run: npm ci
       - run: npm run typecheck
       - run: npm run lint
-      - run: npm test
+      # Fails if coverage drops below the floor in vitest.config.ts (#291).
+      - run: npm run test:coverage
+      # Code quality report, informational only: every ESLint finding plus complexity hotspots.
+      # Runs on the runner; no third-party service sees the code.
+      - name: Quality report
+        if: ${{ !cancelled() }}
+        run: |
+          npx eslint --rule '{"complexity": ["warn", 15]}' -f json -o eslint-report.json . || true
+          node scripts/ci-report.mjs coverage/coverage-summary.json eslint-report.json >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        if: ${{ !cancelled() }}
+        with:
+          name: coverage
+          path: coverage/
+          retention-days: 14
 
   audit:
     name: Dependency audit
