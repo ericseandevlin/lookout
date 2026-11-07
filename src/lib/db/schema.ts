@@ -622,3 +622,24 @@ export const networkingEvents = pgTable(
   },
   (t) => [uniqueIndex("networking_events_user_fp_idx").on(t.userId, t.fingerprint), index("networking_events_user_starts_idx").on(t.userId, t.startsOn)],
 );
+
+// --- Server errors (#12) ----------------------------------------------------------
+
+/** Unexpected server errors, written by the app itself so they can be searched in Admin > Errors. Kept 30 days. */
+export const serverErrors = pgTable(
+  "server_errors",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    /** Where it happened: "route", "render", "scheduler". */
+    source: text("source").notNull(),
+    message: text("message").notNull(),
+    stack: text("stack"),
+    /** Path only, never the query string (it can carry sign-in tokens). */
+    path: text("path"),
+    method: text("method"),
+    /** Next's error digest, the id shown on the error page. */
+    digest: text("digest"),
+    at: timestamp("at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index("server_errors_at_idx").on(t.at)],
+);

@@ -12,6 +12,7 @@ import { getAiConfig } from "@/lib/config";
 import { sweepApplications } from "@/lib/application/run";
 import { searchOn } from "@/lib/sources";
 import { cleanup } from "@/lib/retention";
+import { recordError } from "@/lib/errorLog";
 
 const TICK_MS = 10 * 60_000;
 const RUN_HOUR = 7; // local time
@@ -85,6 +86,12 @@ async function dueSearches() {
   return due;
 }
 
+/** Log a scheduler failure and keep it for Admin > Errors (#12). */
+function fail(what: string, e: unknown) {
+  console.error(`[scheduler] ${what}`, e);
+  void recordError("scheduler", e, { path: what });
+}
+
 async function tick() {
   // Advisory lock so overlapping ticks (or a second instance) never double-run.
   const [{ locked }] = await sqlClient`select pg_try_advisory_lock(${LOCK_ID}) as locked`;
@@ -94,8 +101,8 @@ async function tick() {
     if (Date.now() - lastCleanup > 24 * 3600_000) {
       lastCleanup = Date.now();
       await cleanup()
-        .then((n) => console.log(`[scheduler] cleanup: ${n.loginTokens} sign-in links, ${n.sessions} sessions, ${n.runLogs} run logs`))
-        .catch((e) => console.error("[scheduler] cleanup", e));
+        .then((n) => console.log(`[scheduler] cleanup: ${n.loginTokens} sign-in links, ${n.sessions} sessions, ${n.runLogs} run logs, ${n.errors} errors`))
+        .catch((e) => fail("cleanup", e));
     }
     const ai = await getAiConfig();
     if (ai.provider !== "agent" && !ai.model) return; // Nothing to run with until an admin sets a model.
@@ -109,7 +116,7 @@ async function tick() {
       .set({ status: "failed", error: "The search agent never picked this up", finishedAt: new Date() })
       .where(and(eq(schema.runs.status, "queued"), lt(schema.runs.startedAt, new Date(Date.now() - 24 * 3600_000))));
     // Auto-apply work left queued or interrupted (normally it starts the moment it's queued).
-    await sweepApplications().catch((e) => console.error("[scheduler] apply sweep", e));
+    await sweepApplications().catch((e) => fail("apply sweep", e));
     for (const { userId, searchId } of await dueSearches()) {
       try {
         const r = await discover(searchId, "scheduled");
@@ -117,7 +124,7 @@ async function tick() {
       } catch (e) {
         // Caps and missing config affect everyone; stop this tick instead of failing search by search.
         if (e instanceof BudgetError || e instanceof AiConfigError || e instanceof SearchConfigError) break;
-        console.error(`[scheduler] run failed for search ${searchId}`, e);
+        fail(`run failed for search ${searchId}`, e);
       }
     }
   } finally {
@@ -129,7 +136,7 @@ let started = false;
 export function startScheduler() {
   if (started || !env.schedulerEnabled) return;
   started = true;
-  const safeTick = () => tick().catch((e) => console.error("[scheduler]", e));
+  const safeTick = () => tick().catch((e) => fail("tick", e));
   setTimeout(safeTick, 30_000);
   setInterval(safeTick, TICK_MS);
   console.log(`[scheduler] on, every ${TICK_MS / 60_000} min, tz ${env.timezone}`);

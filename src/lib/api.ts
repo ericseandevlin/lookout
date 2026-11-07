@@ -46,7 +46,7 @@ export function authed<C = object>(fn: Handler<C>) {
       await refreshSession();
       return await fn(req, { ...ctx, user });
     } catch (e) {
-      return errorResponse(e);
+      return errorResponse(e, req);
     }
   };
 }
@@ -57,18 +57,20 @@ export function publicRoute<C = object>(fn: (req: Request, ctx: C) => Promise<Re
       await assertSameOrigin(req.method);
       return await fn(req, ctx);
     } catch (e) {
-      return errorResponse(e);
+      return errorResponse(e, req);
     }
   };
 }
 
-export function errorResponse(e: unknown) {
+export function errorResponse(e: unknown, req?: Request) {
   if (e instanceof HttpError) return json({ error: e.message }, { status: e.status });
   // Known limits, not crashes: say what happened instead of "Something went wrong" (#201).
   if (e instanceof BudgetError) return json({ error: e.message }, { status: 429 });
   if (e instanceof AiConfigError || e instanceof SearchConfigError) return json({ error: e.message }, { status: 503 });
   if (e instanceof z.ZodError) return json({ error: "Invalid input", issues: e.issues }, { status: 400 });
   console.error(e);
+  // Kept for Admin > Errors (#12). Imported late so modules that only need HttpError don't load the database.
+  void import("@/lib/errorLog").then((m) => m.recordError("route", e, { path: req && new URL(req.url).pathname, method: req?.method })).catch(() => {});
   return json({ error: "Something went wrong" }, { status: 500 });
 }
 

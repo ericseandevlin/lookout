@@ -4,6 +4,8 @@ vi.mock("@/lib/auth/session", () => ({ getSessionUser: vi.fn(), refreshSession: 
 vi.mock("@/lib/ai/llm", () => ({ AiConfigError: class AiConfigError extends Error {} }));
 vi.mock("@/lib/ai/runs", () => ({ BudgetError: class BudgetError extends Error {} }));
 vi.mock("@/lib/ai/search", () => ({ SearchConfigError: class SearchConfigError extends Error {} }));
+const { recordError } = vi.hoisted(() => ({ recordError: vi.fn() }));
+vi.mock("@/lib/errorLog", () => ({ recordError }));
 
 const { allowedOrigins, errorResponse, HttpError } = await import("./api");
 const { AiConfigError } = await import("@/lib/ai/llm");
@@ -31,6 +33,18 @@ describe("errorResponse (#201)", () => {
     const log = vi.spyOn(console, "error").mockImplementation(() => {});
     expect(await read(errorResponse(new Error("db password in here")))).toEqual({ status: 500, body: { error: "Something went wrong" } });
     expect(log).toHaveBeenCalled();
+    log.mockRestore();
+  });
+
+  it("keeps unknown errors for Admin > Errors with the path and method (#12)", async () => {
+    const log = vi.spyOn(console, "error").mockImplementation(() => {});
+    const e = new Error("boom");
+    errorResponse(e, new Request("https://lookout.example/api/finds?token=secret", { method: "POST" }));
+    await vi.waitFor(() => expect(recordError).toHaveBeenCalledWith("route", e, { path: "/api/finds", method: "POST" }));
+    recordError.mockClear();
+    errorResponse(new HttpError(404, "Not found"));
+    await new Promise((r) => setTimeout(r, 10));
+    expect(recordError).not.toHaveBeenCalled();
     log.mockRestore();
   });
 });
