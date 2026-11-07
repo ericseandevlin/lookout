@@ -1,3 +1,4 @@
+import { featureOn } from "@/lib/features";
 import { authed, HttpError, json } from "@/lib/api";
 import { assertBudget, BudgetError } from "@/lib/ai/runs";
 import { eventSearchRunning, getEventPrefs, searchEventsNow } from "@/lib/agent/networking";
@@ -6,6 +7,7 @@ import { rateLimit } from "@/lib/ratelimit";
 
 /** Events "Search now" (#265). Starts an event search on its own and returns; the page polls GET for `searching`. */
 export const POST = authed(async (_req, { user }) => {
+  if (!featureOn("EVENTS")) throw new HttpError(404, "Not found");
   if (!(await getEventPrefs(user.id)).interests) throw new HttpError(409, "Pick an interest first, so Lookout knows what to look for.");
   if (await eventSearchRunning(user.id)) throw new HttpError(409, "An event search is already running.");
   try {

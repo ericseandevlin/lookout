@@ -5,14 +5,14 @@ import { LegalLinks } from "./LegalLinks";
 import { WAITLIST_NOTICE } from "@/lib/legal";
 import { NEXT_MOVES } from "@/lib/onboarding";
 
-export function Login({ emailEnabled, inviteOnly, turnstileSiteKey = "" }: { emailEnabled: boolean; inviteOnly: boolean; turnstileSiteKey?: string }) {
+export function Login({ emailEnabled, inviteOnly, turnstileSiteKey = "", kinds = false }: { emailEnabled: boolean; inviteOnly: boolean; turnstileSiteKey?: string; kinds?: boolean }) {
   const [mode, setMode] = useState<"signin" | "request">(inviteOnly && !emailEnabled ? "request" : "signin");
   return (
     <AuthCard>
       {mode === "signin" ? (
         <SignIn emailEnabled={emailEnabled} inviteOnly={inviteOnly} onRequest={() => setMode("request")} />
       ) : (
-        <RequestAccess emailEnabled={emailEnabled} turnstileSiteKey={turnstileSiteKey} onSignIn={() => setMode("signin")} />
+        <RequestAccess emailEnabled={emailEnabled} turnstileSiteKey={turnstileSiteKey} kinds={kinds} onSignIn={() => setMode("signin")} />
       )}
     </AuthCard>
   );
@@ -78,7 +78,7 @@ function SignIn({ emailEnabled, inviteOnly, onRequest }: { emailEnabled: boolean
   );
 }
 
-function RequestAccess({ emailEnabled, turnstileSiteKey, onSignIn }: { emailEnabled: boolean; turnstileSiteKey: string; onSignIn: () => void }) {
+function RequestAccess({ emailEnabled, turnstileSiteKey, kinds, onSignIn }: { emailEnabled: boolean; turnstileSiteKey: string; kinds: boolean; onSignIn: () => void }) {
   const [email, setEmail] = useState("");
   const [kind, setKind] = useState<string>("job");
   const [move, setMove] = useState<string | null>(null);
@@ -125,6 +125,7 @@ function RequestAccess({ emailEnabled, turnstileSiteKey, onSignIn }: { emailEnab
       <form onSubmit={submit} style={{ display: "flex", flexDirection: "column", gap: 10, marginTop: 24 }}>
         <label htmlFor="req-email" style={label}>Email</label>
         <input id="req-email" type="email" required autoComplete="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@example.com" className="f-brick" style={field} />
+        {kinds && (
         <fieldset style={{ border: 0, padding: 0, margin: "8px 0 4px", display: "flex", flexDirection: "column", gap: 6 }}>
           <legend style={{ ...label, marginBottom: 8 }}>What do you want Lookout to find?</legend>
           {([
@@ -149,6 +150,7 @@ function RequestAccess({ emailEnabled, turnstileSiteKey, onSignIn }: { emailEnab
             );
           })}
         </fieldset>
+        )}
         {kind === "job" && (
         <fieldset style={{ border: 0, padding: 0, margin: "8px 0 4px", display: "flex", flexDirection: "column", gap: 6 }}>
           <legend style={{ ...label, marginBottom: 8 }}>What&apos;s your next move? <span style={{ textTransform: "none", letterSpacing: 0, fontWeight: 500 }}>(optional)</span></legend>

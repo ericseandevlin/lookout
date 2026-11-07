@@ -1,3 +1,4 @@
+import { featureOn } from "@/lib/features";
 import { redirect } from "next/navigation";
 import { getSessionUser } from "@/lib/auth/session";
 import { Login } from "@/components/Login";
@@ -13,7 +14,7 @@ export default async function Home() {
   // A main landmark, so screen readers can jump to the content (#214).
   return (
     <main>
-      <Login emailEnabled={!!env.smtpUrl || env.logEmails} inviteOnly={signupMode === "invite"} turnstileSiteKey={turnstileSiteKey()} />
+      <Login emailEnabled={!!env.smtpUrl || env.logEmails} inviteOnly={signupMode === "invite"} turnstileSiteKey={turnstileSiteKey()} kinds={featureOn("SEARCHES")} />
     </main>
   );
 }

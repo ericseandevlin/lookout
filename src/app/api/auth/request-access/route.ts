@@ -1,3 +1,4 @@
+import { featureOn } from "@/lib/features";
 import { z } from "zod";
 import { body, clientIp, HttpError, json, publicRoute } from "@/lib/api";
 import { db, schema } from "@/lib/db";
@@ -25,7 +26,7 @@ export const POST = publicRoute(async (req) => {
   if (turnstileSiteKey() && !(await verifyTurnstile(p.turnstileToken, ip))) throw new HttpError(400, "We couldn't confirm you're a person. Try again.");
   const email = normalizeEmail(p.email);
   // The consent record (#28): which email notice the form showed, and when they sent it.
-  const answers = { kind: p.kind ?? "job", nextMove: p.nextMove ?? null, consentVersion: WAITLIST_NOTICE_VERSION, consentAt: new Date() };
+  const answers = { kind: featureOn("SEARCHES") ? p.kind ?? "job" : "job", nextMove: p.nextMove ?? null, consentVersion: WAITLIST_NOTICE_VERSION, consentAt: new Date() };
   await db
     .insert(schema.accessRequests)
     .values({ email, ...answers })
