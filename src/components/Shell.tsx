@@ -46,7 +46,8 @@ export function Shell({ children }: { children: React.ReactNode }) {
   const name = state.user.name.trim();
   const initials = initialsOf(name || state.user.email);
   const onSettings = path.startsWith("/settings");
-  const PAGES = state.user.autoApply ? [...BASE_PAGES, APPLY_PAGE] : BASE_PAGES;
+  const base = state.user.events ? BASE_PAGES : BASE_PAGES.filter((p) => p.href !== "/events");
+  const PAGES = state.user.autoApply ? [...base, APPLY_PAGE] : base;
   // Profile to-dos live on subpages with a done/todo mark, not as text squeezed beside the link (#255).
   // What Lookout sees is a view, not a step, so it gets an eye instead of a mark (#266).
   const subpages: { href: string; label: string; done?: boolean; on: boolean }[] = [
@@ -84,7 +85,7 @@ export function Shell({ children }: { children: React.ReactNode }) {
         </div>
         {/* One account can hold several searches (#8); this picks which board the app shows. */}
         <div style={{ padding: `0 0 16px` }}>
-          <SearchSwitcher variant="rail" />
+          {state.user.searches && <SearchSwitcher variant="rail" />}
         </div>
         <nav style={{ display: "flex", flexDirection: "column", gap: 4 }}>
           {PAGES.map(({ href, label, Icon }) => {
@@ -186,7 +187,7 @@ export function Shell({ children }: { children: React.ReactNode }) {
         <div className="mob-only" style={{ position: "relative", zIndex: 8, height: 56, background: "#1D1A0F", color: "#fff", alignItems: "center", gap: 10, padding: "0 12px 0 16px" }}>
           <div className="mob-flex" style={{ display: "flex", alignItems: "center", height: "100%" }}>
             <div className="wordmark">Lookout</div>
-            <SearchSwitcher variant="bar" />
+            {state.user.searches && <SearchSwitcher variant="bar" />}
             <Link href="/settings" aria-label="Settings" style={{ width: 44, height: 44, display: "flex", alignItems: "center", justifyContent: "center" }}>
               <Avatar initials={initials} ring={onSettings} />
             </Link>

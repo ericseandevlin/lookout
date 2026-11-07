@@ -1,3 +1,4 @@
+import { featureOn } from "@/lib/features";
 import { z } from "zod";
 import { authed, body, HttpError, json } from "@/lib/api";
 import { track } from "@/lib/eventStore";
@@ -18,6 +19,7 @@ const Input = z.object({
 
 /** Create a search (kind from the kind configs) and make it the active one. */
 export const POST = authed(async (req, { user }) => {
+  if (!featureOn("SEARCHES")) throw new HttpError(404, "Not found");
   const p = await body(req, Input);
   if (!await rateLimit(`new-search:${user.id}`, 10, 24 * 3600_000)) throw new HttpError(429, "That's enough new searches for today.");
   const search = await createSearch(user.id, p.kind, p.name);
