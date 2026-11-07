@@ -26,6 +26,9 @@ COPY --from=build --chown=app:app /app/scripts/reencrypt.mjs ./scripts/reencrypt
 COPY --from=deps --chown=app:app /app/node_modules/postgres ./scripts/node_modules/postgres
 # The standalone trace drops playwright-core's data files (browsers.json etc.); ship the whole package.
 COPY --from=deps --chown=app:app /app/node_modules/playwright-core ./node_modules/playwright-core
+# Short commit for /api/health. Last, so a new commit does not rebuild the layers above.
+ARG GIT_COMMIT=
+ENV GIT_COMMIT=$GIT_COMMIT
 USER app
 EXPOSE 3000
 HEALTHCHECK --interval=30s --timeout=5s --retries=3 CMD wget -qO- http://127.0.0.1:3000/api/health || exit 1

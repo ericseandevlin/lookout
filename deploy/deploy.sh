@@ -19,7 +19,7 @@ branch=$(git rev-parse --abbrev-ref HEAD)
 git fetch -q origin "$want"
 [ "$(git rev-parse HEAD)" = "$(git rev-parse "origin/$want")" ] || { echo "Refusing: $want isn't pushed (or is behind origin)." >&2; exit 1; }
 sha=$(git rev-parse --short HEAD)
-docker buildx build --platform linux/amd64 -t "$tag" --label "co.ericdevlin.commit=$sha" --load .
+docker buildx build --platform linux/amd64 -t "$tag" --build-arg "GIT_COMMIT=$sha" --label "co.ericdevlin.commit=$sha" --load .
 docker save "$tag" | gzip | $SSH 'gunzip | docker load'
 $SSH "mkdir -p $dir/searxng"
 cat deploy/docker-compose.yml | $SSH "cat > $dir/docker-compose.yml"
