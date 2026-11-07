@@ -13,6 +13,7 @@ Work merged to `main` (staging) and waiting for the weekly release.
 - Terms of Service page for the beta at `/terms`: as-is beta, no guaranteed results, 18+, fair use, you own your content, auto-apply rules, ending accounts, no warranties, liability limits, changes with notice, New York law. The clickwrap box now names Terms and Privacy, so every account is asked once to agree. Linked from the sign-in footer, Settings, and the foot of both legal pages. A draft until the lawyer review (#22) (#20).
 - Uptime check: GitHub calls `/api/health` on prod and staging every 5 minutes and opens an `outage` issue (emailed) when a site stays down, closing it when it is back. Quiet hours (10pm to 7am New York) hold alerts until a morning report (#12).
 - Admin > Errors: unexpected server errors (API 500s, crashed pages, scheduler failures) are stored by Lookout itself and searchable for 30 days. No third-party tracker (#12).
+- Run it yourself: `compose.yaml` at the repo root starts Postgres, SearXNG and Lookout on localhost; `scripts/selfhost-env.sh` writes `.env` with random secrets; sign-in links print to the log; bring your own AI key. Guide in `docs/self-host.md` (#294).
 
 ## [0.4.0] - 2026-11-02
 

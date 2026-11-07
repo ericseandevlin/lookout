@@ -48,6 +48,19 @@ Jobs are the first opportunity type. Type-specific pieces live in `src/lib/kinds
 
 Why it's built this way (open models, zero-retention routing, rules in code, staging first): [docs/decisions](docs/decisions/README.md).
 
+## Run it yourself
+
+Docker and your own AI key, about five minutes:
+
+```bash
+git clone https://github.com/ericseandevlin/lookout.git && cd lookout
+scripts/selfhost-env.sh you@example.com   # writes .env with random secrets; add AI_API_KEY there or later in Admin
+docker compose up -d --build
+docker compose logs app | grep auth/verify   # after you enter your email at http://localhost:3000
+```
+
+Providers, backups, updates and opening it to others: [docs/self-host.md](docs/self-host.md).
+
 ## Local development
 
 ```bash
