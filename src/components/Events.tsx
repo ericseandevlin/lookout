@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { joinInterests, MILES, splitInterests, type EventFreq, type EventReach, type NetworkingEvent } from "@/lib/networking";
 import { PageHead } from "./Profile";
 import { Row, Section, Seg } from "./Settings";
@@ -138,13 +139,27 @@ function InterestPicker({ chosen, suggestions, onToggle, onAdd }: { chosen: stri
   const [open, setOpen] = useState(false);
   const [q, setQ] = useState("");
   const box = useRef<HTMLDivElement>(null);
+  const menu = useRef<HTMLDivElement>(null);
+  const [at, setAt] = useState<{ top: number; left: number; width: number } | null>(null);
   const has = (t: string) => chosen.some((c) => c.toLowerCase() === t.toLowerCase());
   useEffect(() => {
     if (!open) return;
-    const away = (e: MouseEvent) => !box.current?.contains(e.target as Node) && setOpen(false);
+    // The menu sits on <body> so the rows below can't paint over it; it follows the button and closes on an outside click.
+    const place = () => {
+      const r = box.current?.getBoundingClientRect();
+      if (r) setAt({ top: r.bottom + 6, left: r.left, width: Math.min(340, r.width) });
+    };
+    place();
+    const away = (e: MouseEvent) => !box.current?.contains(e.target as Node) && !menu.current?.contains(e.target as Node) && setOpen(false);
     document.addEventListener("mousedown", away);
-    return () => document.removeEventListener("mousedown", away);
-  }, [open]);
+    window.addEventListener("scroll", place, true);
+    window.addEventListener("resize", place);
+    return () => {
+      document.removeEventListener("mousedown", away);
+      window.removeEventListener("scroll", place, true);
+      window.removeEventListener("resize", place);
+    };
+  }, [open, chosen.length]);
   const needle = q.trim().toLowerCase();
   const list = suggestions.filter((t) => !needle || t.toLowerCase().includes(needle));
   const isNew = !!needle && ![...suggestions, ...chosen].some((t) => t.toLowerCase() === needle);
@@ -166,8 +181,8 @@ function InterestPicker({ chosen, suggestions, onToggle, onAdd }: { chosen: stri
         + Add interest
       </button>
       {!chosen.length && <span style={muted}>Event search is off until you pick one.</span>}
-      {open && (
-        <div role="dialog" aria-label="Add interests" style={{ position: "absolute", top: "calc(100% + 6px)", left: 0, zIndex: 20, width: "min(340px, 100%)", background: "#fff", border: "1px solid #E6E0D8", borderRadius: 12, boxShadow: "0 16px 40px rgba(29,26,15,.14)", padding: 10, display: "flex", flexDirection: "column", gap: 8 }}>
+      {open && at && createPortal(
+        <div ref={menu} role="dialog" aria-label="Add interests" onKeyDown={(e) => e.key === "Escape" && setOpen(false)} style={{ position: "fixed", top: at.top, left: at.left, zIndex: 1000, width: at.width, background: "#fff", border: "1px solid #E6E0D8", borderRadius: 12, boxShadow: "0 16px 40px rgba(29,26,15,.14)", padding: 10, display: "flex", flexDirection: "column", gap: 8 }}>
           <input
             autoFocus
             value={q}
@@ -199,7 +214,8 @@ function InterestPicker({ chosen, suggestions, onToggle, onAdd }: { chosen: stri
             ))}
             {!list.length && !isNew && <div style={{ ...muted, padding: "6px" }}>{suggestions.length ? "No match." : "Suggestions show up once Lookout has read your profile. Type your own above."}</div>}
           </div>
-        </div>
+        </div>,
+        document.body,
       )}
     </div>
   );
