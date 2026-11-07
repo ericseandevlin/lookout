@@ -2,8 +2,9 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { compText, ENDED_STAGES, postedText, slugOf, STAGE_STYLE, STAGES } from "@/lib/board";
-import type { Find, Stage } from "@/lib/types";
+import { cellQuiet, cellText, slugOf, stageStyle } from "@/lib/board";
+import { kindOf } from "@/lib/kinds";
+import type { Find } from "@/lib/types";
 import { applicationLabel } from "@/lib/applyLabels";
 import { ArrowUpRight, CheckIcon, LinkIcon, PinIcon, XIcon } from "../icons";
 import { api, useStore } from "../store";
@@ -22,7 +23,7 @@ const NOT_A_FIT = ["Wrong level", "Wrong kind of role", "Wrong industry", "Locat
 
 type DrawerNav = { index: number; total: number; prev?: () => void; next?: () => void };
 
-export function Drawer({ f, close, toggle, setStage, enter, nav }: { f: Find; close: () => void; toggle: (f: Find, k: "pinned" | "archived") => void; setStage: (f: Find, s: Stage) => void; enter: boolean; nav: DrawerNav }) {
+export function Drawer({ f, close, toggle, setStage, enter, nav }: { f: Find; close: () => void; toggle: (f: Find, k: "pinned" | "archived") => void; setStage: (f: Find, s: string) => void; enter: boolean; nav: DrawerNav }) {
   const { patchFind, state, refresh, readOnly } = useStore();
   const [applyMsg, setApplyMsg] = useState<string | null>(null);
   const applyWithLookout = async () => {
@@ -118,6 +119,13 @@ export function Drawer({ f, close, toggle, setStage, enter, nav }: { f: Find; cl
       });
   };
   const posting = f.url || "https://www.google.com/search?q=" + encodeURIComponent(f.company + " " + f.role + " job");
+  // Labels, cells and stages come from the find's kind config (#8).
+  const cfg = kindOf(f.type);
+  const cells = [
+    { label: cfg.board.columns[2].label, text: cellText(f, cfg.board.columns[2].key), quiet: cellQuiet(f, cfg.board.columns[2].key) },
+    { label: cfg.board.preStage.label, text: cellText(f, cfg.board.preStage.key), quiet: cellQuiet(f, cfg.board.preStage.key) },
+    { label: cfg.board.tail.label, text: cellText(f, cfg.board.tail.key), quiet: cellQuiet(f, cfg.board.tail.key) },
+  ];
 
   return (
     <>
@@ -153,9 +161,9 @@ export function Drawer({ f, close, toggle, setStage, enter, nav }: { f: Find; cl
         </div>
         <div style={{ padding: "22px 26px", display: "flex", flexDirection: "column", gap: 22, overflowY: "auto", flex: 1 }}>
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "14px 18px" }}>
-            <div><Label>Comp</Label><div style={{ fontSize: 14.5, marginTop: 4, fontWeight: 600, color: f.comp ? "#99220F" : "#6B6358" }}>{compText(f)}</div></div>
-            <div><Label>Posted</Label><div style={{ fontSize: 14.5, marginTop: 4 }}>{postedText(f)}</div></div>
-            <div style={{ gridColumn: "1 / -1" }}><Label>Location</Label><div style={{ fontSize: 14.5, marginTop: 4 }}>{f.location || "Not stated"}</div></div>
+            <div><Label>{cells[0].label}</Label><div style={{ fontSize: 14.5, marginTop: 4, fontWeight: 600, color: cells[0].quiet ? "#6B6358" : "#99220F" }}>{cells[0].text}</div></div>
+            <div><Label>{cells[1].label}</Label><div style={{ fontSize: 14.5, marginTop: 4 }}>{cells[1].text}</div></div>
+            <div style={{ gridColumn: "1 / -1" }}><Label>{cells[2].label}</Label><div style={{ fontSize: 14.5, marginTop: 4 }}>{cells[2].text || "Not stated"}</div></div>
           </div>
           <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
             {f.reasonsMatch.length > 0 && (
@@ -188,10 +196,10 @@ export function Drawer({ f, close, toggle, setStage, enter, nav }: { f: Find; cl
           <div>
             <Label style={{ marginBottom: 8 }}>Stage</Label>
             <div style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 6 }}>
-              {STAGES.map((s) => {
-                const on = f.stage === s, ss = STAGE_STYLE[s];
+              {cfg.stages.map((s) => {
+                const on = f.stage === s, ss = stageStyle(s);
                 return (
-                  <button key={s} onClick={() => setStage(f, s)} aria-pressed={on} data-tip={ENDED_STAGES.includes(s) ? "Archives it" : undefined} style={{ height: 36, borderRadius: 9, border: `1.5px solid ${on ? ss.bg : "#E6E0D8"}`, background: on ? ss.bg : "#fff", color: on ? ss.ink : "#6B6358", fontSize: 14, fontWeight: 600, cursor: "pointer", padding: "0 4px" }}>
+                  <button key={s} onClick={() => setStage(f, s)} aria-pressed={on} data-tip={cfg.endedStages.includes(s) ? "Archives it" : undefined} style={{ height: 36, borderRadius: 9, border: `1.5px solid ${on ? ss.bg : "#E6E0D8"}`, background: on ? ss.bg : "#fff", color: on ? ss.ink : "#6B6358", fontSize: 14, fontWeight: 600, cursor: "pointer", padding: "0 4px" }}>
                     {s}
                   </button>
                 );

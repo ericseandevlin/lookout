@@ -6,16 +6,21 @@ export type { Density, Freq, SetupMode, Stage };
 
 export type Find = {
   id: string;
+  /** Which kind of find this is (#8); keys into the kind configs. */
+  type: string;
   company: string;
   role: string;
   location: string;
   comp: [number, number] | null;
   postedAt: string | null;
+  /** Type-specific fields (#8): rfp carries agency, due date, value, set-aside. */
+  attributes: Record<string, unknown>;
   url: string | null;
   score: number;
   reasonsMatch: string[];
   reasonsGap: string[];
-  stage: Stage;
+  /** Any of its kind's stages (#8), not just the job stages. */
+  stage: string;
   pinned: boolean;
   archived: boolean;
   notes: string;
@@ -48,7 +53,7 @@ export type Answers = Record<string, string | string[]>;
 export type AppState = {
   user: { name: string; email: string; isAdmin: boolean; autoApply: boolean };
   settings: Settings;
-  profile: { answers: Answers; auto: Record<string, string>; savedAt: string | null };
+  profile: { kind: string; answers: Answers; auto: Record<string, string>; savedAt: string | null };
   materials: { resume: Resume | null; linkedin: { handle: string; linked: boolean; pdf: { name: string; uploadedAt: string } | null }; links: Link[] };
   finds: Find[];
   lastRunAt: string | null;

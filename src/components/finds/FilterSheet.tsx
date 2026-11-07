@@ -2,14 +2,18 @@
 
 import { useEffect, useRef } from "react";
 import { useFocusTrap } from "../useFocusTrap";
-import { chip, seg, SORTS, type SortKey } from "./shared";
+import { chip, seg, type SortKey } from "./shared";
 
 export function FilterSheet(p: {
   close: () => void;
   fit: number; setFit: (n: number) => void; fitCount: (n: number) => number;
   compOnly: boolean; setCompOnly: (v: boolean) => void;
+  /** The kind's board has a comp column (#8); the switch is job-only. */
+  hasComp?: boolean;
   sortKey: SortKey; setSortKey: (k: SortKey) => void;
   sortDir: "asc" | "desc"; setSortDir: (d: "asc" | "desc") => void;
+  /** Sort choices for this kind's board (#8). */
+  sorts: [SortKey, string][];
   shown: number;
 }) {
   const box = useRef<HTMLDivElement>(null);
@@ -42,6 +46,7 @@ export function FilterSheet(p: {
             })}
           </div>
         </div>
+        {p.hasComp && (
         <button onClick={() => p.setCompOnly(!p.compOnly)} role="switch" aria-checked={p.compOnly} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, minHeight: 48, padding: 0, border: 0, background: "transparent", cursor: "pointer", textAlign: "left" }}>
           <span style={{ display: "flex", flexDirection: "column", gap: 2 }}>
             <span style={{ fontSize: 14.5, fontWeight: 600, color: "#1D1A0F" }}>Only roles with comp posted</span>
@@ -51,10 +56,11 @@ export function FilterSheet(p: {
             <span style={{ width: 20, height: 20, borderRadius: "50%", background: "#fff", boxShadow: "0 1px 3px rgba(29,26,15,.25)" }} />
           </span>
         </button>
+        )}
         <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
           <SheetLabel>Sort by</SheetLabel>
           <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
-            {SORTS.map(([k, label]) => {
+            {p.sorts.map(([k, label]) => {
               const c = chip(k === p.sortKey);
               return (
                 <button key={k} onClick={() => p.setSortKey(k)} style={{ height: 38, padding: "0 15px", borderRadius: 999, border: `1.5px solid ${c.border}`, background: c.bg, color: c.ink, fontSize: 14, fontWeight: 600, cursor: "pointer" }}>{label}</button>
@@ -70,7 +76,7 @@ export function FilterSheet(p: {
             })}
           </div>
         </div>
-        <button onClick={p.close} style={{ height: 48, borderRadius: 12, border: 0, background: "#99220F", color: "#fff", fontSize: 15, fontWeight: 600, cursor: "pointer" }}>Show {p.shown} roles</button>
+        <button onClick={p.close} style={{ height: 48, borderRadius: 12, border: 0, background: "#99220F", color: "#fff", fontSize: 15, fontWeight: 600, cursor: "pointer" }}>Show {p.shown} {p.hasComp ? "roles" : "finds"}</button>
       </div>
     </>
   );

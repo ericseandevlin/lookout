@@ -10,8 +10,8 @@ const chip = (on: boolean): React.CSSProperties => ({
   background: on ? "#1D1A0F" : "#fff", color: on ? "#fff" : "#1D1A0F", fontSize: 14, fontWeight: 600, cursor: "pointer",
 });
 
-/** First sign-in: name plus two quick picks that pre-fill profile questions 2 and 3. */
-export function Welcome({ initialName }: { initialName: string }) {
+/** First sign-in: name plus two quick picks that pre-fill profile questions 2 and 3 (job only, #8). */
+export function Welcome({ initialName, kind = "job" }: { initialName: string; kind?: string }) {
   const [name, setName] = useState(initialName);
   const [salary, setSalary] = useState<string | null>(null);
   const [mode, setMode] = useState<string | null>(null);
@@ -36,12 +36,13 @@ export function Welcome({ initialName }: { initialName: string }) {
     <AuthCard>
       <Eyebrow>Welcome</Eyebrow>
       <h1 style={h1}>Let&apos;s set up your search</h1>
-      <p style={p}>Three quick answers to start. You can change any of them later on your profile.</p>
+      <p style={p}>{kind === "rfp" ? "A name to start. You can change anything later on your profile." : "Three quick answers to start. You can change any of them later on your profile."}</p>
       <form onSubmit={submit} style={{ display: "flex", flexDirection: "column", gap: 22, marginTop: 24 }}>
         <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
           <label htmlFor="name" style={label}>Your name</label>
           <input id="name" required autoComplete="name" value={name} onChange={(e) => setName(e.target.value)} placeholder="Full name" maxLength={120} className="f-brick" style={{ height: 46, border: "1.5px solid #E6E0D8", background: "#fff", borderRadius: 10, padding: "0 14px", fontSize: 15, outline: "none", color: "#1D1A0F" }} />
         </div>
+        {kind !== "rfp" && (
         <fieldset style={{ border: 0, padding: 0, margin: 0, display: "flex", flexDirection: "column", gap: 8 }}>
           <legend style={{ ...label, marginBottom: 8 }}>Base salary you&apos;re aiming for</legend>
           <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
@@ -51,6 +52,8 @@ export function Welcome({ initialName }: { initialName: string }) {
           </div>
           <div style={{ fontSize: 14, color: "#6B6358" }}>Roles below the low end get marked down, not hidden.</div>
         </fieldset>
+        )}
+        {kind !== "rfp" && (
         <fieldset style={{ border: 0, padding: 0, margin: 0, display: "flex", flexDirection: "column", gap: 8 }}>
           <legend style={{ ...label, marginBottom: 8 }}>{WORK_MODE_LABEL}</legend>
           <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
@@ -59,6 +62,7 @@ export function Welcome({ initialName }: { initialName: string }) {
             ))}
           </div>
         </fieldset>
+        )}
         <button type="submit" disabled={busy || !name.trim()} style={{ ...primary, opacity: name.trim() ? 1 : 0.6 }}>{busy ? "Saving…" : "Continue to your profile"}</button>
         {err && <div role="alert" style={{ fontSize: 14, color: "#99220F" }}>{err}</div>}
       </form>
