@@ -6,6 +6,13 @@ Every production release of Lookout, newest first. The format follows [Keep a Ch
 
 Work merged to `main` (staging) and waiting for the weekly release.
 
+### Fixed
+- The daily cleanup job no longer fails on prod: dates in its raw SQL go in as ISO strings (#373).
+
+## [0.5.0] - 2026-11-07
+
+Events and several searches per account ship switched off. They stay on staging until Eric turns them on with `FEATURE_EVENTS=on` and `FEATURE_SEARCHES=on` in the server's `.env` (#343).
+
 ### Added
 - Several searches per account: a `searches` table holds each search's kind, profile answers and built search profile, and every account's board and runs belong to one search. The sidebar (and the mobile top bar) gets a search switcher: pick which search the app shows, rename one, or start a new one from the kind picker (#8).
 - Bot check on Request access: with Cloudflare Turnstile keys set, the form shows Turnstile's widget and the server verifies the token before saving the request. Off until `TURNSTILE_SITE_KEY` and `TURNSTILE_SECRET_KEY` are set (#13).
@@ -15,6 +22,24 @@ Work merged to `main` (staging) and waiting for the weekly release.
 - Admin > Errors: unexpected server errors (API 500s, crashed pages, scheduler failures) are stored by Lookout itself and searchable for 30 days. No third-party tracker (#12).
 - Retention policy, enforced daily: expired sign-in links and sessions are deleted, search logs over 12 months keep only counts and cost, and accounts unused for 12 months get one email. Deletion of idle accounts stays by hand. The privacy page gains a "How long it keeps it" section (#26).
 - Run it yourself: `compose.yaml` at the repo root starts Postgres, SearXNG and Lookout on localhost; `scripts/selfhost-env.sh` writes `.env` with random secrets; sign-in links print to the log; bring your own AI key. Guide in `docs/self-host.md` (#294).
+- Onboarding and Search Profile: real tabs, first-visit note, bonus context, Save then Next, inline blanks for lead-with starters, the first search waits for five answers and a resume, a clearer getting-started box and sidebar to-dos, Workplace type label, wider salary bands, new finds appear when a search ends without a reload (#251 to #256, #284, #323).
+- Recruiter Analysis: scores a resume and cover letter the way a recruiter reads them, with a one-click fix for each finding (#152).
+- Current pay on the profile, compared against posted ranges (#109).
+- Digest: a due-soon section for pinned finds, and each find links through `/go` so clicks are counted (#304, #34).
+- Admin > Metrics, Admin > Finds quality, Admin > Activity, and one-question beta surveys (switched off) (#36, #31, #35, #5).
+- Link kinds for Bluesky, Threads, Mastodon and Substack (#301).
+
+### Changed
+- Sign-in sessions end after 30 days unused instead of 90 (#345).
+- Privacy page: a way back into the app, a privacy@ contact address, the full subprocessor list (#251, #25).
+- Plain error messages instead of "Something went wrong" (#201, #202), and a Sign out button in Settings (#197).
+
+### Security
+- Uploaded files are encrypted at rest (#16). Scripts need a per-request nonce (#14). Link fetcher, email-change link and origin check fixes (#207, #208, #209). `APP_SECRET` can rotate without losing stored secrets (#244).
+
+### Fixed
+- Accessibility: focus stays in dialogs, contrast, skip link, focus outlines, keyboard access to finds (#211 to #215).
+- Revising an application no longer wipes edits saved while it ran (#200). Device names for iPhone browsers and Opera (#297).
 
 ## [0.4.0] - 2026-11-02
 
