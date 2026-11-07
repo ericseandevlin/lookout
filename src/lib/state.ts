@@ -15,11 +15,13 @@ function toFind(
 ): Find {
   return {
     id: o.id,
+    type: o.type,
     company: o.company,
     role: o.title,
     location: o.location,
     comp: o.compMin || o.compMax ? [o.compMin ?? o.compMax!, o.compMax ?? o.compMin!] : null,
     postedAt: o.postedAt,
+    attributes: o.attributes ?? {},
     url: o.sourceUrl,
     score: u.score,
     reasonsMatch: u.reasonsMatch,
@@ -100,6 +102,7 @@ export async function getState(user: SessionUser): Promise<AppState> {
       railClosed: s?.railClosed ?? false,
     },
     profile: {
+      kind: profileRow?.kind ?? "job",
       answers: profileRow?.answers ?? {},
       auto: profileRow?.autofilled ?? {},
       savedAt: profileRow?.savedAt?.toISOString() ?? null,

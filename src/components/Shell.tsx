@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { Fragment, useEffect } from "react";
 import { usePathname } from "next/navigation";
-import { answeredCount, job } from "@/lib/kinds";
+import { answeredCount, kindOf } from "@/lib/kinds";
 import { initialsOf, isNewFind } from "@/lib/board";
 import type { AppState } from "@/lib/types";
 import { BoardIcon, CalendarIcon, CheckIcon, FileIcon, ListIcon, PanelIcon, ShieldIcon } from "./icons";
@@ -15,11 +15,12 @@ import { trackClient } from "./track";
 import { HEARTBEAT_SECONDS } from "@/lib/events";
 
 export function useCounts(s: AppState) {
-  const answered = answeredCount(job, s.profile.answers);
+  const cfg = kindOf(s.profile.kind);
+  const answered = answeredCount(cfg, s.profile.answers);
   const m = s.materials;
   const sources = [m.resume?.status === "done", !!m.linkedin.pdf, m.links.length > 0].filter(Boolean).length;
   const newCount = s.finds.filter((f) => isNewFind(f, s.settings.newDays)).length;
-  return { answered, sources, newCount };
+  return { answered, sources, newCount, total: cfg.questions.length };
 }
 
 const BASE_PAGES = [
@@ -33,7 +34,7 @@ const APPLY_PAGE = { href: "/apply", label: "Auto-apply", mob: "Apply", Icon: Fi
 export function Shell({ children }: { children: React.ReactNode }) {
   const { state, putSettings, error } = useStore();
   const path = usePathname();
-  const { answered, newCount } = useCounts(state);
+  const { answered, newCount, total } = useCounts(state);
   // Page views and time on page (#35): a heartbeat every minute while the tab is in front.
   useEffect(() => {
     trackClient("page_view", path);
@@ -47,7 +48,7 @@ export function Shell({ children }: { children: React.ReactNode }) {
   const PAGES = state.user.autoApply ? [...BASE_PAGES, APPLY_PAGE] : BASE_PAGES;
   // Profile to-dos live on subpages with a done/todo mark, not as text squeezed beside the link (#255).
   const subpages = [
-    { href: "/profile", label: "Questions", done: answered >= 5, on: path === "/profile" },
+    { href: "/profile", label: "Questions", done: answered >= total, on: path === "/profile" },
     { href: "/profile/materials", label: "Resume and materials", done: state.materials.resume?.status === "done", on: path.startsWith("/profile/materials") },
   ];
   const profileTodo = subpages.some((p) => !p.done);

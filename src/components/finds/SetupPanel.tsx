@@ -2,13 +2,16 @@
 
 import Link from "next/link";
 import { DAYS } from "@/lib/board";
+import { kindOf } from "@/lib/kinds";
 import { CheckIcon } from "../icons";
 import { useStore } from "../store";
 
 export function SetupPanel({ answered, sources }: { answered: number; sources: number }) {
   const { state } = useStore();
   const st = state.settings;
-  const d1 = answered === 5;
+  const cfg = kindOf(state.profile.kind);
+  const total = cfg.questions.length;
+  const d1 = answered === total;
   const d2 = state.materials.resume?.status === "done";
   const ready = d1 && d2;
   if (st.setup === "Never" || (st.setup === "Until complete" && ready)) return null;
@@ -18,7 +21,7 @@ export function SetupPanel({ answered, sources }: { answered: number; sources: n
 
   const now = !d1 ? 1 : !d2 ? 2 : 0;
   const tiles = [
-    { n: 1, done: d1, status: d1 ? "Done" : `${answered} of 5 answered`, title: "Answer five questions", body: "What you want next, the comp you need, and what’s off the table.", href: "/profile", btn: d1 ? "Review answers" : answered > 0 ? "Continue" : "Start profile" },
+    { n: 1, done: d1, status: d1 ? "Done" : `${answered} of ${total} answered`, title: cfg.id === "rfp" ? "Answer the questions" : "Answer five questions", body: cfg.id === "rfp" ? "What your business can do, the contracts you want, and where you can work." : "What you want next, the comp you need, and what’s off the table.", href: "/profile", btn: d1 ? "Review answers" : answered > 0 ? "Continue" : "Start profile" },
     { n: 2, done: d2, status: d2 ? `${sources} of 3 added` : "Resume needed", title: "Add your materials", body: "Your resume, LinkedIn and any links. Lookout reads these to fill in gaps and to write in your voice.", href: "/profile/materials", btn: d2 ? "Review materials" : "Add materials" },
     { n: 3, done: false, status: s3, title: "Lookout gets to work", body: "New matches land here each week with a green dot. Pin, archive and move them through stages as you go." },
   ];

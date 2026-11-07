@@ -17,14 +17,16 @@ async function blocker(userId: string) {
     .from(schema.materials)
     .where(and(eq(schema.materials.userId, userId), eq(schema.materials.kind, "resume")));
   const answered = profile ? answeredCount(kinds[profile.kind] ?? kinds.job, profile.answers) : 0;
-  return searchBlocker(answered, resumes.some((r) => r.status === "done") ? "done" : resumes[0]?.status);
+  return { blocker: searchBlocker(answered, resumes.some((r) => r.status === "done") ? "done" : resumes[0]?.status), cfg: kinds[profile?.kind ?? "job"] ?? kinds.job };
 }
 
 /** "Search now". Limited to a few a day per user on top of the spend caps. */
 export const POST = authed(async (_req, { user }) => {
   if (await isRunning(user.id)) throw new HttpError(409, "A search is already running.");
   const missing = await blocker(user.id);
-  if (missing) throw new HttpError(409, `${missing.text}.`);
+  if (missing.blocker) throw new HttpError(409, `${missing.blocker.text}.`);
+  // A kind without sources yet (rfp until SAM.gov lands, #8) can't be searched.
+  if (!missing.cfg.discovery) throw new HttpError(400, "Searching for this isn't on yet. Lookout will tell you when it is.");
   try {
     await assertBudget(user.id);
   } catch (e) {

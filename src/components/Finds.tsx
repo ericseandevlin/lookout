@@ -2,16 +2,17 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
-  compText, ENDED_STAGES, isNewFind, postedDays, postedText, scoreStyle, shortDate, slugOf, STAGE_STYLE, STAGES,
+  cellQuiet, cellText, dueDays, isNewFind, postedDays, scoreStyle, shortDate, slugOf, stageStyle,
 } from "@/lib/board";
-import type { Find, Stage } from "@/lib/types";
+import { kindOf } from "@/lib/kinds";
+import type { Find } from "@/lib/types";
 import { ArchiveIcon, ChevronDown, PinIcon, SearchIcon, SlidersIcon } from "./icons";
 import { useCounts } from "./Shell";
 import { LastReport, SearchPanel } from "./SearchPanel";
 import { useStore } from "./store";
 import { NextStep } from "./Profile";
 import { trackClient } from "./track";
-import { chip, seg, SORTS, type SortKey } from "./finds/shared";
+import { sortsFor, chip, seg, type SortKey } from "./finds/shared";
 import { IconBtn, Menu, StageMenu, Switch } from "./finds/Controls";
 import { SetupPanel } from "./finds/SetupPanel";
 import { SearchNowButton } from "./finds/SearchNowButton";
@@ -23,23 +24,40 @@ export { Switch } from "./finds/Controls";
 
 type Filter = "all" | "new" | "archived";
 
-const GRID = "82px 76px minmax(170px,1.2fr) minmax(210px,1.6fr) minmax(170px,1fr) 100px 136px minmax(160px,1.1fr)";
-
-const sortVal: Record<SortKey, (f: Find) => string | number> = {
-  score: (f) => f.score,
-  company: (f) => f.company,
-  role: (f) => f.role,
-  location: (f) => f.location,
-  comp: (f) => (f.comp ? f.comp[1] : -1),
-  stage: (f) => STAGES.indexOf(f.stage),
-  listed: (f) => -(postedDays(f) ?? 9999),
+/** Column widths (#8), keyed by column key so the grid follows the kind config. */
+const WIDTH: Record<string, string> = {
+  company: "minmax(170px,1.2fr)",
+  role: "minmax(210px,1.6fr)",
+  comp: "minmax(170px,1fr)",
+  listed: "100px",
+  location: "minmax(160px,1.1fr)",
+  value: "minmax(150px,1fr)",
+  due: "110px",
+  setAside: "minmax(130px,1fr)",
 };
+
+/** One column's sort value for a find (#8): from the find itself, or its kind's stage order. */
+const sortValue = (f: Find, key: SortKey): string | number =>
+  key === "score" ? f.score
+  : key === "company" ? f.company
+  : key === "role" ? f.role
+  : key === "location" ? f.location
+  : key === "comp" ? (f.comp ? f.comp[1] : -1)
+  : key === "stage" ? kindOf(f.type).stages.indexOf(f.stage)
+  : key === "listed" ? -(postedDays(f) ?? 9999)
+  : key === "value" ? (typeof f.attributes?.value === "number" ? f.attributes.value : -1)
+  : key === "due" ? (dueDays(f) ?? 9999)
+  : typeof f.attributes?.setAside === "string" ? f.attributes.setAside : "";
 
 export function Finds() {
   const store = useStore();
   const { state, patchFind } = store;
   const { settings } = state;
   const counts = useCounts(state);
+  // Board columns, headers and stage list come from the profile's kind (#8).
+  const cfg = kindOf(state.profile.kind);
+  const SORTS = sortsFor(cfg);
+  const GRID = `82px 76px ${cfg.board.columns.map((c) => WIDTH[c.key]).join(" ")} ${WIDTH[cfg.board.preStage.key]} 136px ${WIDTH[cfg.board.tail.key]}`;
 
   const [filter, setFilter] = useState<Filter>("all");
   const [fit, setFit] = useState(0);
@@ -95,10 +113,9 @@ export function Finds() {
     const needle = q.trim().toLowerCase();
     if (needle) list = list.filter((f) => [f.company, f.role, f.location, f.notes].join(" ").toLowerCase().includes(needle));
     const dir = sortDir === "asc" ? 1 : -1;
-    const sv = sortVal[sortKey];
     return [...list].sort((a, b) => {
       if (a.pinned !== b.pinned) return a.pinned ? -1 : 1;
-      const x = sv(a), y = sv(b);
+      const x = sortValue(a, sortKey), y = sortValue(b, sortKey);
       return (typeof x === "string" ? x.localeCompare(y as string) : x - (y as number)) * dir;
     });
   }, [base, fit, compOnly, q, sortKey, sortDir]);
@@ -143,9 +160,9 @@ export function Finds() {
     setStageMenu(null);
     setFitMenu(false);
   };
-  // Closed, Ghosted, Not selected and Nope end a find, so they archive it too (#180).
-  const setStage = (f: Find, s: Stage) => {
-    if (!ENDED_STAGES.includes(s)) return patchFind(f.id, { stage: s });
+  // Ended stages archive the find, whichever kind it is (#180, #8).
+  const setStage = (f: Find, s: string) => {
+    if (!kindOf(f.type).endedStages.includes(s)) return patchFind(f.id, { stage: s });
     patchFind(f.id, { stage: s, archived: true });
     if (openId === f.id) open(null);
   };
@@ -169,8 +186,8 @@ export function Finds() {
   const dense = settings.density === "Compact";
 
   const sub = state.running
-    ? state.running === "url" ? "Reading the posting you added…" : "Lookout is searching for new roles…"
-    : state.lastRunAt ? `Updated ${shortDate(state.lastRunAt)}` : finds.length ? `${tally.all} roles` : "No searches yet";
+    ? state.running === "url" ? "Reading the posting you added…" : `Lookout is searching for new ${cfg.noun.many}…`
+    : state.lastRunAt ? `Updated ${shortDate(state.lastRunAt)}` : finds.length ? `${tally.all} ${cfg.noun.many}` : "No searches yet";
 
   return (
     <>
@@ -198,7 +215,7 @@ export function Finds() {
                 style={{ flex: 1, minWidth: 0, background: "transparent", border: 0, outline: "none", color: "#1D1A0F", fontSize: 14 }}
               />
             </div>
-            {!store.readOnly && (
+            {!store.readOnly && cfg.discovery && (
               <>
                 <SearchNowButton />
                 <AddLink open={addOpen} setOpen={setAddOpen} />
@@ -210,7 +227,7 @@ export function Finds() {
 
       <div className="board-body">
         {showReport && !state.running && state.lastReport && <LastReport {...state.lastReport} onClose={() => setShowReport(false)} />}
-        <SearchPanel ready={counts.answered === 5 && state.materials.resume?.status === "done"} />
+        <SearchPanel ready={counts.answered === counts.total && state.materials.resume?.status === "done"} />
         <SetupPanel answered={counts.answered} sources={counts.sources} />
 
         <section className="board-sec" style={{ background: "#fff", overflow: "hidden" }}>
@@ -284,7 +301,7 @@ export function Finds() {
             <div style={{ minWidth: 1080 }} role="table" aria-label="Finds">
               <div role="rowgroup">
               <div role="row" style={{ display: "grid", gridTemplateColumns: GRID, alignItems: "center", padding: "0 22px", height: 46, borderBottom: "1px solid #EEEAE4" }}>
-                {([["", null], ["Match", "score"], ["Company", "company"], ["Role", "role"], ["Comp", "comp"], ["Posted", "listed"], ["Stage", "stage"], ["Location", "location"]] as [string, SortKey | null][]).map(([label, key]) => {
+                {([["", null], ["Match", "score" as SortKey], ...cfg.board.columns.map((c) => [c.label, c.key as SortKey] as [string, SortKey]), [cfg.board.preStage.label, cfg.board.preStage.key as SortKey], ["Stage", "stage" as SortKey], [cfg.board.tail.label, cfg.board.tail.key as SortKey]] as [string, SortKey | null][]).map(([label, key]) => {
                   const on = key && sortKey === key;
                   return (
                     <div key={label} role="columnheader" style={{ display: "flex", alignItems: "center", gap: 8 }}>
@@ -304,7 +321,7 @@ export function Finds() {
               </div>
               <div role="rowgroup">
               {rows.map((f, i) => {
-                const st = STAGE_STYLE[f.stage];
+                const st = stageStyle(f.stage);
                 const sc = scoreStyle(f.score);
                 return (
                   <div
@@ -326,15 +343,21 @@ export function Finds() {
                     <div role="cell" style={{ paddingLeft: 13, width: 60 }}>
                       <div style={{ width: 30, height: 30, borderRadius: "50%", background: sc.bg, color: sc.ink, border: `1.5px solid ${sc.border}`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 14, fontWeight: 700 }}>{f.score}</div>
                     </div>
-                    <div role="rowheader" style={{ fontSize: 14.5, fontWeight: 600, paddingRight: 16 }}>
-                      {/* The keyboard and screen reader way into a find (#211); the row's click stays for pointers. */}
-                      <button className="cell-link" onClick={(e) => { e.stopPropagation(); open(f.id); }} aria-label={`${f.role} at ${f.company}`}>
-                        {f.company}
-                      </button>
-                    </div>
-                    <div role="cell" style={{ fontSize: 14, paddingRight: 16, textWrap: "pretty" }}>{f.role}</div>
-                    <div role="cell" style={{ fontSize: 14, fontWeight: f.comp ? 600 : 400, color: f.comp ? "#99220F" : "#6B6358", fontVariantNumeric: "tabular-nums" }}>{compText(f)}</div>
-                    <div role="cell" style={{ fontSize: 14, color: "#6B6358", fontStyle: f.postedAt ? "normal" : "italic" }}>{postedText(f)}</div>
+                    {cfg.board.columns.map((c, ci) =>
+                      ci === 0 ? (
+                        <div role="rowheader" key={c.key} style={{ fontSize: 14.5, fontWeight: 600, paddingRight: 16 }}>
+                          {/* The keyboard and screen reader way into a find (#211); the row's click stays for pointers. */}
+                          <button className="cell-link" onClick={(e) => { e.stopPropagation(); open(f.id); }} aria-label={`${f.role} at ${f.company}`}>
+                            {cellText(f, c.key)}
+                          </button>
+                        </div>
+                      ) : (
+                        <div role="cell" key={c.key} style={{ fontSize: 14, fontWeight: c.key === "comp" || c.key === "value" ? 600 : 400, color: cellQuiet(f, c.key) ? "#6B6358" : c.key === "comp" || c.key === "value" ? "#99220F" : "#1D1A0F", fontVariantNumeric: "tabular-nums", paddingRight: 16, textWrap: "pretty" }}>
+                          {cellText(f, c.key)}
+                        </div>
+                      ),
+                    )}
+                    <div role="cell" style={{ fontSize: 14, color: "#6B6358", fontStyle: cellQuiet(f, cfg.board.preStage.key) ? "italic" : "normal" }}>{cellText(f, cfg.board.preStage.key)}</div>
                     <div role="cell" style={{ position: "relative", paddingRight: 16 }}>
                       <button
                         data-tip="Change stage"
@@ -345,10 +368,10 @@ export function Finds() {
                         <ChevronDown />
                       </button>
                       {stageMenu === f.id && menuSurface === "desk" && (
-                        <StageMenu current={f.stage} style={{ ...menuAt, minWidth: 150 }} onPick={(s) => { setStage(f, s); setStageMenu(null); }} />
+                        <StageMenu stages={kindOf(f.type).stages} ended={kindOf(f.type).endedStages} current={f.stage} style={{ ...menuAt, minWidth: 150 }} onPick={(s) => { setStage(f, s); setStageMenu(null); }} />
                       )}
                     </div>
-                    <div role="cell" style={{ fontSize: 14, color: "#6B6358", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} data-tip={f.location}>{f.location}</div>
+                    <div role="cell" style={{ fontSize: 14, color: "#6B6358", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} data-tip={cellText(f, cfg.board.tail.key)}>{cellText(f, cfg.board.tail.key)}</div>
                   </div>
                 );
               })}
@@ -360,7 +383,7 @@ export function Finds() {
           {/* Mobile cards */}
           <div className="mob-only">
             {rows.map((f, i) => {
-              const st = STAGE_STYLE[f.stage];
+              const st = stageStyle(f.stage);
               const sc = scoreStyle(f.score);
               return (
                 <div key={f.id} className="lk-in" onClick={() => open(f.id)} style={{ animationDelay: `${Math.min(i, 14) * 28}ms`, position: "relative", zIndex: stageMenu === f.id ? 6 : undefined, display: "flex", gap: 12, alignItems: "flex-start", padding: "12px 12px 12px 20px", borderBottom: "1px solid #F2EEE8", background: f.pinned ? "#FFFBF6" : "#fff", cursor: "pointer" }}>
@@ -375,17 +398,17 @@ export function Finds() {
                         </div>
                         <div style={{ fontSize: 14, lineHeight: 1.35, color: "#3A3428", marginTop: 1, display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>{f.role}</div>
                       </div>
-                      <span style={{ flex: "none", fontSize: 14, color: "#6B6358", fontStyle: f.postedAt ? "normal" : "italic", whiteSpace: "nowrap", marginTop: 2 }}>{postedText(f)}</span>
+                      <span style={{ flex: "none", fontSize: 14, color: "#6B6358", fontStyle: cellQuiet(f, cfg.board.preStage.key) ? "italic" : "normal", whiteSpace: "nowrap", marginTop: 2 }}>{cellText(f, cfg.board.preStage.key)}</span>
                     </div>
                     <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, marginTop: 2 }}>
-                      <span style={{ minWidth: 0, fontSize: 14, fontWeight: f.comp ? 600 : 400, color: f.comp ? "#99220F" : "#6B6358", fontVariantNumeric: "tabular-nums", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{compText(f)}</span>
+                      <span style={{ minWidth: 0, fontSize: 14, fontWeight: 600, color: "#99220F", fontVariantNumeric: "tabular-nums", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{cellText(f, cfg.board.columns[2].key)}</span>
                       <div style={{ position: "relative", flex: "none" }}>
                         <button onClick={(e) => toggleStageMenu(e, f.id, "right")} style={{ display: "inline-flex", alignItems: "center", gap: 4, height: 26, padding: "0 8px 0 10px", borderRadius: 999, fontSize: 14, fontWeight: 600, border: "1.5px solid rgba(29,26,15,.14)", background: st.bg, color: st.ink, cursor: "pointer", whiteSpace: "nowrap" }}>
                           {f.stage}
                           <ChevronDown size={11} />
                         </button>
                         {stageMenu === f.id && menuSurface === "mob" && (
-                          <StageMenu mobile current={f.stage} style={{ ...menuAt, minWidth: 170 }} onPick={(s) => { setStage(f, s); setStageMenu(null); }} />
+                          <StageMenu stages={kindOf(f.type).stages} ended={kindOf(f.type).endedStages} mobile current={f.stage} style={{ ...menuAt, minWidth: 170 }} onPick={(s) => { setStage(f, s); setStageMenu(null); }} />
                         )}
                       </div>
                     </div>
@@ -404,8 +427,8 @@ export function Finds() {
         <FilterSheet
           close={() => setSheetOpen(false)}
           fit={fit} setFit={setFit} fitCount={fitCount}
-          compOnly={compOnly} setCompOnly={setCompOnly}
-          sortKey={sortKey} setSortKey={setSortKey} sortDir={sortDir} setSortDir={setSortDir}
+          compOnly={compOnly} setCompOnly={setCompOnly} hasComp={cfg.board.columns.some((c) => c.key === "comp")}
+          sortKey={sortKey} setSortKey={setSortKey} sortDir={sortDir} setSortDir={setSortDir} sorts={SORTS}
           shown={rows.length}
         />
       )}
