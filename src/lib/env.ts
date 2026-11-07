@@ -37,6 +37,10 @@ export const env = {
   get mailReplyTo() {
     return process.env.MAIL_REPLY_TO || list(process.env.ADMIN_EMAILS)[0] || "";
   },
+  /** Postal address printed at the bottom of news and waitlist mail (#28, CAN-SPAM). Those emails don't send without it. */
+  get mailPostalAddress() {
+    return (process.env.MAIL_POSTAL_ADDRESS || "").trim();
+  },
   /** Print magic links to stdout when no SMTP is configured. Dev only. */
   get logEmails() {
     return process.env.EMAIL_DEV_LOG === "1";

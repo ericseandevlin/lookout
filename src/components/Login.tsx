@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { LegalLinks } from "./LegalLinks";
+import { WAITLIST_NOTICE } from "@/lib/legal";
 import { NEXT_MOVES } from "@/lib/onboarding";
 
 export function Login({ emailEnabled, inviteOnly, turnstileSiteKey = "" }: { emailEnabled: boolean; inviteOnly: boolean; turnstileSiteKey?: string }) {
@@ -169,6 +170,7 @@ function RequestAccess({ emailEnabled, turnstileSiteKey, onSignIn }: { emailEnab
         </fieldset>
         )}
         {turnstileSiteKey && <Turnstile siteKey={turnstileSiteKey} resetKey={resetKey} onToken={setToken} />}
+        <p style={{ fontSize: 14, lineHeight: 1.5, color: "#6B6358", margin: 0 }}>{WAITLIST_NOTICE}</p>
         <button type="submit" disabled={state === "sending" || (!!turnstileSiteKey && !token)} style={primary}>{state === "sending" ? "Sending…" : "Request access"}</button>
         {state === "error" && <div role="alert" style={{ fontSize: 14, color: "#99220F" }}>{msg}</div>}
       </form>

@@ -21,3 +21,10 @@ export const acceptedNow = () => ({ termsVersion: TERMS_VERSION, privacyVersion:
 export function versionDate(v: string) {
   return new Date(`${v}T12:00:00Z`).toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric", timeZone: "UTC" });
 }
+
+/**
+ * The email notice on the request-access form (#28). Bump the version when the wording changes,
+ * so each waitlist row records what that person was told.
+ */
+export const WAITLIST_NOTICE_VERSION = "2026-11-07";
+export const WAITLIST_NOTICE = "We'll email you about your invite and, now and then, news about Lookout. Every email has an unsubscribe link.";
