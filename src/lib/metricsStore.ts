@@ -6,7 +6,7 @@ import { APPLIED, topReasons } from "./quality";
 
 const DAY = 864e5;
 
-/** Admin > Metrics (#36): each beta goal with where it stands. Disabled accounts are left out. */
+/** Admin > Metrics (#36): each beta goal with where it stands. Disabled accounts are left out, except from cost, which is real spend. */
 export async function metrics(now = new Date()) {
   const since = new Date(now.getTime() - 12 * 7 * DAY);
   const rows = await db
@@ -27,17 +27,19 @@ export async function metrics(now = new Date()) {
   const [{ n: interviews, offers }] = await db
     .select({ n: sql<number>`count(*)::int`, offers: sql<number>`count(*) filter (where ${schema.userOpportunities.stage} = 'Offer')::int` })
     .from(schema.userOpportunities)
-    .where(inArray(schema.userOpportunities.stage, ["Interview", "Offer"]));
+    .innerJoin(schema.users, eq(schema.users.id, schema.userOpportunities.userId))
+    .where(and(inArray(schema.userOpportunities.stage, ["Interview", "Offer"]), eq(schema.users.disabled, false)));
   const week4 = retention(events, 4, now);
   const week8 = retention(events, 8, now);
 
   // Activation: profile, resume and a first finished search within 7 days of joining.
+  // "users"."id" is written out: drizzle renders a column here as a bare "id", which the subquery reads as its own row's id.
   const joiners = await db
     .select({
       createdAt: schema.users.createdAt,
-      profileSaved: sql<boolean>`exists (select 1 from ${schema.searches} s where s.user_id = ${schema.users.id} and s.saved_at is not null)`,
-      resume: sql<boolean>`exists (select 1 from ${schema.materials} m where m.user_id = ${schema.users.id} and m.kind = 'resume')`,
-      firstSearchAt: sql<Date | null>`(select min(r.finished_at) from ${schema.runs} r where r.user_id = ${schema.users.id} and r.status = 'done' and r.trigger in ('scheduled', 'manual'))`,
+      profileSaved: sql<boolean>`exists (select 1 from ${schema.searches} s where s.user_id = "users"."id" and s.saved_at is not null)`,
+      resume: sql<boolean>`exists (select 1 from ${schema.materials} m where m.user_id = "users"."id" and m.kind = 'resume')`,
+      firstSearchAt: sql<Date | null>`(select min(r.finished_at) from ${schema.runs} r where r.user_id = "users"."id" and r.status = 'done' and r.trigger in ('scheduled', 'manual'))`,
     })
     .from(schema.users)
     .where(eq(schema.users.disabled, false));
@@ -69,7 +71,8 @@ export async function metrics(now = new Date()) {
   const searches = await db
     .select({ status: schema.runs.status, read: sql<number | null>`(${schema.runs.report} ->> 'read')::int` })
     .from(schema.runs)
-    .where(and(gte(schema.runs.startedAt, monthAgo), inArray(schema.runs.trigger, ["scheduled", "manual"])));
+    .innerJoin(schema.users, eq(schema.users.id, schema.runs.userId))
+    .where(and(gte(schema.runs.startedAt, monthAgo), inArray(schema.runs.trigger, ["scheduled", "manual"]), eq(schema.users.disabled, false)));
   const cost = Number(usd);
   return {
     goals: GOALS,
