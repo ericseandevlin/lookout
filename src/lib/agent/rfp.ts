@@ -43,7 +43,8 @@ const RfpScore = z.object({
   ),
 });
 
-const RFP_SYSTEM = `You score government solicitations for one business. Today is ${today()}.
+// Built per call: a module constant would keep the date the server started.
+const rfpSystem = () => `You score government solicitations for one business. Today is ${today()}.
 Only use the facts given for each notice; never invent values or dates. Reasons are read on a phone: short and concrete.`;
 
 async function scoreRfps(ctx: Context, items: RfpItem[], usage: Usage) {
@@ -56,7 +57,7 @@ async function scoreRfps(ctx: Context, items: RfpItem[], usage: Usage) {
         schema: RfpScore,
         usage,
         maxTokens: 3000,
-        system: RFP_SYSTEM,
+        system: rfpSystem(),
         user: `${profileBlock(ctx)}\n\n<notices>\n${batch.map((it, j) => `[${j}]\n${rfpText(it)}`).join("\n\n")}\n</notices>\n\nReturn one entry per notice, using its [n] as index.`,
       });
       for (const s of res.finds) if (batch[s.index]) out.push({ item: batch[s.index], s });
