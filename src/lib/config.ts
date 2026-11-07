@@ -4,6 +4,7 @@ import { z } from "zod";
 import { db, schema } from "@/lib/db";
 import { env } from "@/lib/env";
 import { decrypt, encrypt, mask } from "@/lib/secrets";
+import { nextSecret, openSecretFields } from "@/lib/secretFields";
 
 /**
  * Runtime config an admin edits in the app. Env vars are the defaults; values
@@ -80,22 +81,23 @@ function defaults() {
 type Sections = ReturnType<typeof defaults>;
 type Name = keyof Sections;
 
-async function load<N extends Name>(name: N): Promise<Sections[N]> {
+const warned = new Set<string>();
+
+/** A section with its saved secrets decrypted, plus the ones that couldn't be read (#274). */
+async function loadWithStatus<N extends Name>(name: N): Promise<{ config: Sections[N]; unreadable: string[] }> {
   const base = defaults()[name];
   const [row] = await db.select().from(schema.appSettings).where(eq(schema.appSettings.key, name));
-  if (!row) return base;
-  const saved = { ...row.value };
-  for (const f of SECRET_FIELDS[name]) {
-    if (typeof saved[f] === "string" && saved[f]) {
-      try {
-        saved[f] = decrypt(saved[f] as string);
-      } catch {
-        delete saved[f];
-      }
-    }
+  if (!row) return { config: base, unreadable: [] };
+  const { saved, unreadable } = openSecretFields(row.value, SECRET_FIELDS[name], decrypt);
+  for (const f of unreadable) {
+    if (warned.has(`${name}.${f}`)) continue;
+    warned.add(`${name}.${f}`);
+    console.warn(`[config] saved ${name}.${f} can't be decrypted (APP_SECRET changed?). Not falling back to the env key. Re-enter it under Admin > AI settings.`);
   }
-  return { ...base, ...saved } as Sections[N];
+  return { config: { ...base, ...saved } as Sections[N], unreadable };
 }
+
+const load = async <N extends Name>(name: N) => (await loadWithStatus(name)).config;
 
 export const getAiConfig = () => load("ai");
 export const getSearchConfig = () => load("search");
@@ -104,13 +106,10 @@ export const getSurveyConfig = () => load("survey");
 
 /** Save a section. Empty secret fields keep the stored value, so the admin page never needs to see the key. */
 export async function saveConfig<N extends Name>(name: N, value: Sections[N]) {
-  const current = await load(name);
+  const [row] = await db.select().from(schema.appSettings).where(eq(schema.appSettings.key, name));
   const out: Record<string, unknown> = { ...value };
-  for (const f of SECRET_FIELDS[name]) {
-    const v = out[f] as string;
-    const keep = !v ? (current as Record<string, unknown>)[f] : v;
-    out[f] = keep ? encrypt(keep as string) : "";
-  }
+  // A blank field keeps the stored blob as is, so saving other settings never wipes (or re-encrypts) a key it can't read.
+  for (const f of SECRET_FIELDS[name]) out[f] = nextSecret((out[f] as string) || "", row?.value?.[f], encrypt);
   await db
     .insert(schema.appSettings)
     .values({ key: name, value: out })
@@ -119,12 +118,14 @@ export async function saveConfig<N extends Name>(name: N, value: Sections[N]) {
 
 /** Config as the admin page sees it: secrets masked. */
 export async function publicConfig() {
-  const [ai, search, access] = await Promise.all([getAiConfig(), getSearchConfig(), getAccessConfig()]);
+  const [aiS, searchS, access] = await Promise.all([loadWithStatus("ai"), loadWithStatus("search"), getAccessConfig()]);
+  const ai = aiS.config;
+  const search = searchS.config;
   const [seen] = await db.select().from(schema.appSettings).where(eq(schema.appSettings.key, "agent_seen"));
   return {
     agent: { tokenSet: (process.env.AGENT_TOKEN ?? "").length >= 32, lastSeen: (seen?.value?.at as string | undefined) ?? null },
-    ai: { ...ai, apiKey: "", apiKeyHint: mask(ai.apiKey) },
-    search: { ...search, braveKey: "", braveKeyHint: mask(search.braveKey) },
+    ai: { ...ai, apiKey: "", apiKeyHint: mask(ai.apiKey), apiKeyUnreadable: aiS.unreadable.includes("apiKey") },
+    search: { ...search, braveKey: "", braveKeyHint: mask(search.braveKey), braveKeyUnreadable: searchS.unreadable.includes("braveKey") },
     access,
   };
 }
