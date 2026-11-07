@@ -60,7 +60,7 @@ export async function sendDigest(userId: string, runId?: string) {
         .join("")}</table>`
     : "";
   const dueText = due.map(({ row: o, days }) => `${dueLabel(days)}: ${o.title}, ${o.company}\n${link(o.id)}`).join("\n\n");
-  const headline = n ? `${n} new ${n === 1 ? "find" : "finds"} this week` : `${due.length} pinned ${due.length === 1 ? "find" : "finds"} due soon`;
+  const headline = n ? `${n} new ${n === 1 ? "find" : "finds"} today` : `${due.length} pinned ${due.length === 1 ? "find" : "finds"} due soon`;
   const html = emailShell(
     headline,
     `${n ? `<table width="100%" cellpadding="0" cellspacing="0">${items
