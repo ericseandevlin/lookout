@@ -5,10 +5,10 @@ import { joinInterests, MILES, splitInterests, type EventFreq, type EventReach, 
 import { PageHead } from "./Profile";
 import { btn, Row, Section, Seg } from "./Settings";
 import { api } from "./store";
+import { EventsBoard } from "./events/EventsBoard";
 
 type Prefs = { interests: string; reach: EventReach; miles: number; freq: EventFreq };
 
-const card: React.CSSProperties = { background: "#fff", borderRadius: 14, border: "1.5px solid #E6E0D8", padding: "14px 16px", display: "flex", flexDirection: "column", gap: 6 };
 const muted: React.CSSProperties = { fontSize: 14, color: "#6B6358" };
 const chip = (on: boolean): React.CSSProperties => ({
   minHeight: 36, padding: "0 14px", borderRadius: 999, border: `1.5px solid ${on ? "#1D1A0F" : "#E0D9CF"}`,
@@ -16,10 +16,6 @@ const chip = (on: boolean): React.CSSProperties => ({
 });
 const field: React.CSSProperties = { width: "100%", maxWidth: 520, height: 42, border: "1.5px solid #E6E0D8", background: "#fff", borderRadius: 10, padding: "0 13px", fontSize: 14, color: "#1D1A0F" };
 
-const when = (e: NetworkingEvent) => {
-  const d = (s: string) => new Date(`${s}T12:00:00Z`).toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric", timeZone: "UTC" });
-  return `${d(e.startsOn)}${e.endsOn && e.endsOn !== e.startsOn ? ` to ${d(e.endsOn)}` : ""}${e.time ? `, ${e.time}` : ""}`;
-};
 
 /** /events: networking events the sweep found (#7), apart from job finds, with what to look for. */
 export function Events() {
@@ -34,7 +30,7 @@ export function Events() {
     () =>
       api<{ events: NetworkingEvent[]; prefs: Prefs; suggestions: string[]; searching: boolean }>("/api/networking-events")
       .then((r) => {
-        setEvents(r.events.filter((e) => !e.archived));
+        setEvents(r.events);
         setPrefs(r.prefs);
         setSuggestions(r.suggestions ?? []);
         setSearching(r.searching);
@@ -82,14 +78,26 @@ export function Events() {
     save({ ...prefs, interests }, interests ? "Saved. Your next search looks for events too." : "Event search is off.");
   };
   const toggle = (t: string) => setInterests(has(t) ? chosen.filter((c) => c.toLowerCase() !== t.toLowerCase()) : [...chosen, t]);
-  const dismiss = async (id: string) => {
+  // Pin, archive and "Not for me" (#265): applied here at once, then saved one by one.
+  const patchEvents = async (ids: string[], patch: { pinned?: boolean; archived?: boolean; dismissed?: boolean }) => {
+    setEvents((xs) => (xs ?? []).flatMap((x) => (ids.includes(x.id) ? (patch.dismissed ? [] : [{ ...x, ...patch }]) : [x])));
     try {
-      await api(`/api/networking-events/${id}`, { method: "PATCH", json: { dismissed: true } });
-      setEvents((xs) => xs?.filter((x) => x.id !== id) ?? null);
+      for (const id of ids) await api(`/api/networking-events/${id}`, { method: "PATCH", json: patch });
     } catch (e) {
-      setMsg({ text: e instanceof Error ? e.message : "Couldn't hide it", ok: false });
+      setMsg({ text: e instanceof Error ? e.message : "Couldn't save that", ok: false });
+      void load().catch(() => {});
     }
   };
+  const clearEvents = async () => {
+    try {
+      const r = await api<{ archived: number }>("/api/networking-events/clear", { method: "POST" });
+      setEvents((xs) => (xs ?? []).map((x) => (x.pinned ? x : { ...x, archived: true })));
+      setMsg({ text: `Archived ${r.archived} ${r.archived === 1 ? "event" : "events"}. Pinned ones stayed.`, ok: true });
+    } catch (e) {
+      setMsg({ text: e instanceof Error ? e.message : "Couldn't clear", ok: false });
+    }
+  };
+
 
   return (
     <div className="page-pad settings lk-page" style={{ display: "flex", flexDirection: "column", maxWidth: 820, gap: 4 }}>
@@ -150,37 +158,11 @@ export function Events() {
         </>
       )}
 
-      <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
-        <Section>Upcoming</Section>
-        {prefs?.interests && (
-          <button onClick={searchNow} disabled={searching} style={{ ...btn("outline"), marginLeft: "auto" }}>
-            {searching ? "Searching for events…" : "Search now"}
-          </button>
-        )}
-      </div>
+      <Section>Events</Section>
       {events === null && !msg && <div style={muted}>Loading…</div>}
-      {events && !events.length && <div style={muted}>{prefs?.interests ? "Nothing yet. Events show up here after your next search." : "Pick an interest above and your searches will look for events too."}</div>}
-      {events && events.length > 0 && (
-        <ul style={{ listStyle: "none", margin: "8px 0 0", padding: 0, display: "flex", flexDirection: "column", gap: 10 }}>
-          {events.map((e) => (
-            <li key={e.id} style={card}>
-              <div style={{ fontSize: 14, fontWeight: 600, color: "#99220F" }}>{when(e)}</div>
-              <div style={{ fontSize: 16, fontWeight: 700 }}>{e.title}</div>
-              <div style={muted}>
-                {[e.host, e.online ? "Online" : e.place, e.cost].filter(Boolean).join(" · ")}
-              </div>
-              {e.why && <div style={{ fontSize: 14 }}>{e.why}</div>}
-              <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 4 }}>
-                <a href={e.url} target="_blank" rel="noopener noreferrer" style={{ ...btn("solid"), height: 34, display: "inline-flex", alignItems: "center", textDecoration: "none" }}>
-                  See the event
-                </a>
-                <button onClick={() => dismiss(e.id)} style={{ ...btn("text"), height: 34 }}>
-                  Not for me
-                </button>
-              </div>
-            </li>
-          ))}
-        </ul>
+      {events && !events.length && <div style={muted}>{prefs?.interests ? "Nothing yet. Events show up here after your next search, or press Search now." : "Pick an interest above and your searches will look for events too."}</div>}
+      {events && (events.length > 0 || !!prefs?.interests) && (
+        <EventsBoard events={events} searching={searching} canSearch={!!prefs?.interests} onSearch={searchNow} onPatch={patchEvents} onClear={clearEvents} />
       )}
     </div>
   );
