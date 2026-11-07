@@ -6,6 +6,7 @@ import { btn, Row, Section, Seg } from "../Settings";
 import { api } from "../store";
 import { when, input, Tabs, Msg } from "./shared";
 import type { Config } from "./shared";
+import { color } from "@/lib/tokens";
 
 // --- AI settings --------------------------------------------------------------------
 
@@ -25,7 +26,7 @@ const CATALOG_NAME: Record<Catalog, string> = { openrouter: "OpenRouter", openco
 
 function Fixed({ children, empty }: { children: React.ReactNode; empty?: boolean }) {
   return (
-    <div style={{ ...input, display: "flex", alignItems: "center", background: "#F6F2EC", borderColor: "#EEEAE4", color: empty ? "#6B6358" : "#1D1A0F", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{children}</div>
+    <div style={{ ...input, display: "flex", alignItems: "center", background: "#F6F2EC", borderColor: "#EEEAE4", color: empty ? color.t2 : color.ink, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{children}</div>
   );
 }
 
@@ -152,8 +153,8 @@ export function AdminAi() {
       {ai.provider === "agent" && (
         <Row title="Claude agent" help="Searches, link adds and resume reads are queued here. A poller on your Mac checks the queue every 2 minutes and has Claude Code do the work on your Claude plan, then sends results back. Nothing runs while your Mac is asleep.">
           <div style={{ display: "flex", flexDirection: "column", gap: 6, fontSize: 14 }}>
-            <span style={{ fontWeight: 600, color: cfg.agent.tokenSet ? "#35662A" : "#99220F" }}>{cfg.agent.tokenSet ? "Agent token is set on the server" : "No AGENT_TOKEN on the server yet"}</span>
-            <span style={{ color: "#6B6358" }}>{cfg.agent.lastSeen ? `Agent last checked in ${when(cfg.agent.lastSeen)}` : "The agent hasn't checked in yet"}</span>
+            <span style={{ fontWeight: 600, color: cfg.agent.tokenSet ? "#35662A" : color.brick }}>{cfg.agent.tokenSet ? "Agent token is set on the server" : "No AGENT_TOKEN on the server yet"}</span>
+            <span style={{ color: color.t2 }}>{cfg.agent.lastSeen ? `Agent last checked in ${when(cfg.agent.lastSeen)}` : "The agent hasn't checked in yet"}</span>
           </div>
         </Row>
       )}
@@ -164,7 +165,7 @@ export function AdminAi() {
               {[...PRESETS, null].map((p) => {
                 const on = p ? preset === p : !preset;
                 return (
-                  <button key={p?.label ?? "custom"} onClick={() => choosePreset(p)} style={{ height: 30, padding: "0 11px", borderRadius: 999, border: `1.5px solid ${on ? "#1D1A0F" : "#E0D9CF"}`, background: on ? "#1D1A0F" : "#fff", color: on ? "#fff" : "#1D1A0F", fontSize: 14, fontWeight: 600, cursor: "pointer" }}>{p?.label ?? "Custom"}</button>
+                  <button key={p?.label ?? "custom"} onClick={() => choosePreset(p)} style={{ height: 30, padding: "0 11px", borderRadius: 999, border: `1.5px solid ${on ? color.ink : "#E0D9CF"}`, background: on ? color.ink : "#fff", color: on ? "#fff" : color.ink, fontSize: 14, fontWeight: 600, cursor: "pointer" }}>{p?.label ?? "Custom"}</button>
                 );
               })}
             </div>
@@ -331,7 +332,7 @@ function SecretField({ label, hint, value, onChange, action }: { label: string; 
 function NumberField({ label, value, onChange }: { label: string; value: number; onChange: (v: number) => void }) {
   const [v, setV] = useState(String(value));
   return (
-    <label style={{ display: "flex", flexDirection: "column", gap: 6, fontSize: 14, fontWeight: 600, letterSpacing: ".06em", textTransform: "uppercase", color: "#6B6358" }}>
+    <label style={{ display: "flex", flexDirection: "column", gap: 6, fontSize: 14, fontWeight: 600, letterSpacing: ".06em", textTransform: "uppercase", color: color.t2 }}>
       {label}
       <input
         inputMode="decimal"
@@ -375,25 +376,25 @@ function ModelPicker({ source, current, onPick }: { source: Catalog; current: st
           <div style={{ display: "flex", gap: 10, alignItems: "center", padding: 10, borderBottom: "1px solid #EEEAE4", flexWrap: "wrap" }}>
             <input autoFocus value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search, e.g. qwen, deepseek, llama" aria-label="Search models" className="f-brick" style={{ ...input, height: 36, flex: 1, minWidth: 180 }} />
             {priced && (
-              <label style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 14, color: "#6B6358" }}>
+              <label style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 14, color: color.t2 }}>
                 <input type="checkbox" checked={onlyStructured} onChange={(e) => setOnlyStructured(e.target.checked)} />
                 Structured output only
               </label>
             )}
           </div>
           {err && <div style={{ padding: 12 }}><Msg text={err} /></div>}
-          {!models && !err && <div style={{ padding: 12, fontSize: 14, color: "#6B6358" }}>Loading models…</div>}
+          {!models && !err && <div style={{ padding: 12, fontSize: 14, color: color.t2 }}>Loading models…</div>}
           {models && (
             <div style={{ maxHeight: 320, overflowY: "auto" }}>
-              <div style={{ display: "grid", gridTemplateColumns: "minmax(0,1fr) 70px 70px", gap: 8, padding: "8px 12px", fontSize: 14, fontWeight: 600, letterSpacing: ".06em", textTransform: "uppercase", color: "#6B6358", position: "sticky", top: 0, background: "#fff", borderBottom: "1px solid #EEEAE4" }}>
+              <div style={{ display: "grid", gridTemplateColumns: "minmax(0,1fr) 70px 70px", gap: 8, padding: "8px 12px", fontSize: 14, fontWeight: 600, letterSpacing: ".06em", textTransform: "uppercase", color: color.t2, position: "sticky", top: 0, background: "#fff", borderBottom: "1px solid #EEEAE4" }}>
                 <span>{priced ? "Model · cheapest first" : "Model"}</span><span style={{ textAlign: "right" }}>{priced && "In /1M"}</span><span style={{ textAlign: "right" }}>{priced && "Out /1M"}</span>
               </div>
-              {list.length === 0 && <div style={{ padding: 12, fontSize: 14, color: "#6B6358" }}>No models match.</div>}
+              {list.length === 0 && <div style={{ padding: 12, fontSize: 14, color: color.t2 }}>No models match.</div>}
               {list.map((m) => (
                 <button key={m.id} className="h-menu" onClick={() => { onPick(m); setOpen(false); }} style={{ display: "grid", gridTemplateColumns: "minmax(0,1fr) 70px 70px", gap: 8, width: "100%", padding: "9px 12px", border: 0, borderBottom: "1px solid #F2EEE8", background: m.id === current ? "#F6F2EC" : "#fff", cursor: "pointer", textAlign: "left", alignItems: "center" }}>
                   <span style={{ minWidth: 0 }}>
-                    <span style={{ display: "block", fontSize: 14, fontWeight: 600, color: "#1D1A0F", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{m.name}</span>
-                    <span style={{ display: "block", fontSize: 14, color: "#6B6358", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{m.context ? `${m.id} · ${Math.round(m.context / 1000)}K context` : m.id}</span>
+                    <span style={{ display: "block", fontSize: 14, fontWeight: 600, color: color.ink, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{m.name}</span>
+                    <span style={{ display: "block", fontSize: 14, color: color.t2, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{m.context ? `${m.id} · ${Math.round(m.context / 1000)}K context` : m.id}</span>
                   </span>
                   <span style={{ fontSize: 14, textAlign: "right", fontVariantNumeric: "tabular-nums" }}>{price(m.priceIn)}</span>
                   <span style={{ fontSize: 14, textAlign: "right", fontVariantNumeric: "tabular-nums" }}>{price(m.priceOut)}</span>

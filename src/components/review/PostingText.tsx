@@ -1,6 +1,7 @@
 "use client";
 
 import { postingBlocks } from "@/lib/application/posting";
+import { color } from "@/lib/tokens";
 
 /** The posting, readable: key facts first, then its own headings, lists and paragraphs. */
 export function PostingText({ text }: { text: string }) {
@@ -11,13 +12,13 @@ export function PostingText({ text }: { text: string }) {
           <dl key={i} style={{ margin: 0, display: "grid", gridTemplateColumns: "auto 1fr", gap: "4px 12px", padding: 12, borderRadius: 10, background: "#FAF8F5" }}>
             {b.rows.map(([k, v]) => (
               <div key={k} style={{ display: "contents" }}>
-                <dt style={{ fontWeight: 600, color: "#6B6358" }}>{k}</dt>
+                <dt style={{ fontWeight: 600, color: color.t2 }}>{k}</dt>
                 <dd style={{ margin: 0 }}>{v}</dd>
               </div>
             ))}
           </dl>
         ) : b.t === "heading" ? (
-          <h3 key={i} style={{ margin: "8px 0 0", fontSize: 15, fontWeight: 700, color: "#1D1A0F" }}>{b.text}</h3>
+          <h3 key={i} style={{ margin: "8px 0 0", fontSize: 15, fontWeight: 700, color: color.ink }}>{b.text}</h3>
         ) : b.t === "bullets" ? (
           <ul key={i} style={{ margin: 0, paddingLeft: 18, display: "flex", flexDirection: "column", gap: 4 }}>
             {b.items.map((x, j) => (

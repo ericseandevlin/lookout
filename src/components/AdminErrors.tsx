@@ -4,12 +4,13 @@ import { useEffect, useState } from "react";
 import { input, Tabs, when } from "./admin/shared";
 import { PageHead } from "./Profile";
 import { api } from "./store";
+import { color } from "@/lib/tokens";
 
 type Row = { id: string; source: string; message: string; stack: string | null; path: string | null; method: string | null; digest: string | null; at: string };
 type Data = { rows: Row[]; day: number; week: number };
 
 const card: React.CSSProperties = { background: "#fff", borderRadius: 16, overflow: "hidden", marginTop: 8 };
-const muted: React.CSSProperties = { fontSize: 14, color: "#6B6358" };
+const muted: React.CSSProperties = { fontSize: 14, color: color.t2 };
 
 /** /admin/errors: unexpected server errors Lookout recorded itself (#12), newest first, searchable. */
 export function AdminErrors() {
@@ -37,7 +38,7 @@ export function AdminErrors() {
         Search
         <input type="search" value={q} onChange={(e) => setQ(e.target.value)} placeholder="Message, path, source or digest" style={input} />
       </label>
-      {err && <div role="alert" style={{ fontSize: 14, color: "#99220F" }}>{err}</div>}
+      {err && <div role="alert" style={{ fontSize: 14, color: color.brick }}>{err}</div>}
       {!d && !err && <div style={muted}>Loading…</div>}
       {d && (
         <>

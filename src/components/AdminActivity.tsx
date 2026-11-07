@@ -6,6 +6,7 @@ import { Tabs } from "./Admin";
 import { PageHead } from "./Profile";
 import { Section } from "./Settings";
 import { api } from "./store";
+import { color } from "@/lib/tokens";
 
 type Data = {
   weeks: { week: string; active: number }[];
@@ -15,9 +16,9 @@ type Data = {
 type Row = { type: string; target: string | null; at: string; minutes?: number };
 
 const card: React.CSSProperties = { background: "#fff", borderRadius: 16, overflowX: "auto", marginTop: 8 };
-const th: React.CSSProperties = { fontSize: 14, fontWeight: 600, color: "#6B6358", textAlign: "left", padding: "10px 14px", borderBottom: "1px solid #EEEAE4", whiteSpace: "nowrap" };
+const th: React.CSSProperties = { fontSize: 14, fontWeight: 600, color: color.t2, textAlign: "left", padding: "10px 14px", borderBottom: "1px solid #EEEAE4", whiteSpace: "nowrap" };
 const td: React.CSSProperties = { fontSize: 14, padding: "10px 14px", borderBottom: "1px solid #F2EEE8", fontVariantNumeric: "tabular-nums" };
-const muted: React.CSSProperties = { fontSize: 14, color: "#6B6358" };
+const muted: React.CSSProperties = { fontSize: 14, color: color.t2 };
 const when = (iso: string) => new Date(iso).toLocaleString("en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" });
 const day = (iso: string) => new Date(iso).toLocaleDateString("en-US", { month: "short", day: "numeric" });
 
@@ -43,7 +44,7 @@ export function AdminActivity() {
       <PageHead eyebrow="Admin" title="Activity" intro="What people do in Lookout, recorded by Lookout itself: no third-party scripts. Events started on the day this shipped; the funnel uses data from before then too.">
         <Tabs />
       </PageHead>
-      {err && <div role="alert" style={{ fontSize: 14, color: "#99220F" }}>{err}</div>}
+      {err && <div role="alert" style={{ fontSize: 14, color: color.brick }}>{err}</div>}
       {!d && !err && <div style={muted}>Loading…</div>}
       {d && (
         <>
@@ -64,7 +65,7 @@ export function AdminActivity() {
                     <td style={td}>
                       <span style={{ display: "inline-flex", alignItems: "center", gap: 10 }}>
                         <span style={{ minWidth: 20 }}>{w.active}</span>
-                        <span aria-hidden style={{ display: "inline-block", height: 6, width: `${(w.active / top) * 140}px`, background: "#99220F", borderRadius: 3 }} />
+                        <span aria-hidden style={{ display: "inline-block", height: 6, width: `${(w.active / top) * 140}px`, background: color.brick, borderRadius: 3 }} />
                       </span>
                     </td>
                   </tr>
