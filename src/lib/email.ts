@@ -4,7 +4,7 @@ import { env } from "@/lib/env";
 
 let transport: Transporter | null = null;
 
-export type Mail = { to: string; subject: string; text: string; html: string };
+export type Mail = { to: string; subject: string; text: string; html: string; headers?: Record<string, string> };
 
 export async function sendMail(mail: Mail) {
   if (!env.smtpUrl) {

@@ -2,6 +2,7 @@ import "server-only";
 import { and, desc, eq, gte } from "drizzle-orm";
 import { db, schema } from "@/lib/db";
 import { emailShell, escapeHtml, sendMail } from "@/lib/email";
+import { unsubscribeParts } from "@/lib/bulkMail";
 import { env } from "@/lib/env";
 import { goLink } from "./digestLinks";
 
@@ -24,6 +25,8 @@ export async function sendDigest(userId: string, runId?: string) {
     return { o, uo, comp };
   });
   const n = rows.length;
+  // Unsubscribe link, postal address and one-click headers, as for any bulk mail (#28).
+  const { footer, headers } = unsubscribeParts("digest", u.email, "You get this because the finds email is on in your Lookout settings.");
   const [dg] = await db.insert(schema.digests).values({ userId, runId: runId ?? null, finds: n }).returning({ id: schema.digests.id });
   const link = (target: string) => goLink(env.appUrl, dg.id, target);
   const html = emailShell(
@@ -37,15 +40,16 @@ export async function sendDigest(userId: string, runId?: string) {
 <div style="font-size:14px;color:${o.compMax ? "#99220F" : "#6B6358"};margin-top:2px">${comp}</div></td></tr>`,
       )
       .join("")}</table>
-<a href="${link("board")}" style="display:inline-block;margin-top:20px;background:#99220F;color:#fff;text-decoration:none;font-weight:600;font-size:14.5px;padding:13px 24px;border-radius:12px">Open your board</a>`,
+<a href="${link("board")}" style="display:inline-block;margin-top:20px;background:#99220F;color:#fff;text-decoration:none;font-weight:600;font-size:14.5px;padding:13px 24px;border-radius:12px">Open your board</a>${footer.html}`,
   );
   const text = items.map(({ o, uo, comp }) => `${uo.score}/5  ${o.title}, ${o.company} (${o.location}) ${comp}\n${link(o.id)}`).join("\n\n");
   try {
     await sendMail({
       to: u.email,
       subject: `Lookout: ${n} new ${n === 1 ? "find" : "finds"}`,
-      text: `${text}\n\nOpen your board: ${link("board")}\n\nTurn this email off in Settings.`,
+      text: `${text}\n\nOpen your board: ${link("board")}\n\n--\n${footer.text}`,
       html,
+      headers,
     });
   } catch (e) {
     // Not sent, so it doesn't count as sent.
