@@ -92,44 +92,55 @@ function fail(what: string, e: unknown) {
   void recordError("scheduler", e, { path: what });
 }
 
-async function tick() {
-  // Advisory lock so overlapping ticks (or a second instance) never double-run.
-  const [{ locked }] = await sqlClient`select pg_try_advisory_lock(${LOCK_ID}) as locked`;
-  if (!locked) return;
+export async function tick() {
+  // Advisory lock so overlapping ticks (or a second instance) never double-run. The lock belongs to
+  // one session, so take and release it on one reserved connection, not whichever the pool hands out (#316).
+  const conn = await sqlClient.reserve();
   try {
-    // Retention (#26) once a day, before the model check so it runs even with no model set.
-    if (Date.now() - lastCleanup > 24 * 3600_000) {
-      lastCleanup = Date.now();
-      await cleanup()
-        .then((n) => console.log(`[scheduler] cleanup: ${n.loginTokens} sign-in links, ${n.sessions} sessions, ${n.runLogs} run logs, ${n.errors} errors`))
-        .catch((e) => fail("cleanup", e));
-    }
-    const ai = await getAiConfig();
-    if (ai.provider !== "agent" && !ai.model) return; // Nothing to run with until an admin sets a model.
-    // Runs orphaned by a restart never finish; close them out.
-    await db
-      .update(schema.runs)
-      .set({ status: "failed", error: "Interrupted", finishedAt: new Date() })
-      .where(and(eq(schema.runs.status, "running"), lt(schema.runs.startedAt, new Date(Date.now() - 45 * 60_000))));
-    await db
-      .update(schema.runs)
-      .set({ status: "failed", error: "The search agent never picked this up", finishedAt: new Date() })
-      .where(and(eq(schema.runs.status, "queued"), lt(schema.runs.startedAt, new Date(Date.now() - 24 * 3600_000))));
-    // Auto-apply work left queued or interrupted (normally it starts the moment it's queued).
-    await sweepApplications().catch((e) => fail("apply sweep", e));
-    for (const { userId, searchId } of await dueSearches()) {
-      try {
-        const r = await discover(searchId, "scheduled");
-        // Even with nothing new: pinned finds due soon still go out, once a day (#304).
-        await sendDigest(userId, "runId" in r ? r.runId : undefined);
-      } catch (e) {
-        // Caps and missing config affect everyone; stop this tick instead of failing search by search.
-        if (e instanceof BudgetError || e instanceof AiConfigError || e instanceof SearchConfigError) break;
-        fail(`run failed for search ${searchId}`, e);
-      }
+    const [{ locked }] = await conn`select pg_try_advisory_lock(${LOCK_ID}) as locked`;
+    if (!locked) return;
+    try {
+      await work();
+    } finally {
+      await conn`select pg_advisory_unlock(${LOCK_ID})`;
     }
   } finally {
-    await sqlClient`select pg_advisory_unlock(${LOCK_ID})`;
+    conn.release();
+  }
+}
+
+/** One scheduler pass: retention, stuck runs, auto-apply sweep, then due searches. */
+async function work() {
+  // Retention (#26) once a day, before the model check so it runs even with no model set.
+  if (Date.now() - lastCleanup > 24 * 3600_000) {
+    lastCleanup = Date.now();
+    await cleanup()
+      .then((n) => console.log(`[scheduler] cleanup: ${n.loginTokens} sign-in links, ${n.sessions} sessions, ${n.runLogs} run logs, ${n.errors} errors`))
+      .catch((e) => fail("cleanup", e));
+  }
+  const ai = await getAiConfig();
+  if (ai.provider !== "agent" && !ai.model) return; // Nothing to run with until an admin sets a model.
+  // Runs orphaned by a restart never finish; close them out.
+  await db
+    .update(schema.runs)
+    .set({ status: "failed", error: "Interrupted", finishedAt: new Date() })
+    .where(and(eq(schema.runs.status, "running"), lt(schema.runs.startedAt, new Date(Date.now() - 45 * 60_000))));
+  await db
+    .update(schema.runs)
+    .set({ status: "failed", error: "The search agent never picked this up", finishedAt: new Date() })
+    .where(and(eq(schema.runs.status, "queued"), lt(schema.runs.startedAt, new Date(Date.now() - 24 * 3600_000))));
+  // Auto-apply work left queued or interrupted (normally it starts the moment it's queued).
+  await sweepApplications().catch((e) => fail("apply sweep", e));
+  for (const { userId, searchId } of await dueSearches()) {
+    try {
+      const r = await discover(searchId, "scheduled");
+      // Even with nothing new: pinned finds due soon still go out, once a day (#304).
+      await sendDigest(userId, "runId" in r ? r.runId : undefined);
+    } catch (e) {
+      // Caps and missing config affect everyone; stop this tick instead of failing search by search.
+      if (e instanceof BudgetError || e instanceof AiConfigError || e instanceof SearchConfigError) break;
+      fail(`run failed for search ${searchId}`, e);
+    }
   }
 }
 
