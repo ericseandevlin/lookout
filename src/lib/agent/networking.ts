@@ -4,7 +4,7 @@ import { db, schema } from "@/lib/db";
 import { completeJSON, type Usage } from "@/lib/ai/llm";
 import { fetchPage, pageToText } from "@/lib/ai/fetchPage";
 import { webSearch } from "@/lib/ai/search";
-import { cleanEvents, eventQueries, EventsDraft, type EventReach } from "@/lib/networking";
+import { cleanEvents, eventQueries, EventsDraft, suggestInterests, type EventReach } from "@/lib/networking";
 import type { Context } from "./discover";
 
 const today = () => new Date().toISOString().slice(0, 10);
@@ -25,6 +25,12 @@ async function dropPast(userId: string) {
 export async function getEventPrefs(userId: string) {
   const [p] = await db.select({ interests: schema.profiles.eventInterests, reach: schema.profiles.eventReach, miles: schema.profiles.eventMiles }).from(schema.profiles).where(eq(schema.profiles.userId, userId));
   return p ?? { interests: "", reach: "both" as EventReach, miles: 25 };
+}
+
+/** Interest chips from the stored search profile (#264). Reads only; never builds one. */
+export async function getInterestSuggestions(userId: string) {
+  const [p] = await db.select({ sp: schema.profiles.searchProfile }).from(schema.profiles).where(eq(schema.profiles.userId, userId));
+  return suggestInterests(p?.sp);
 }
 
 export async function saveEventPrefs(userId: string, p: { interests: string; reach: EventReach; miles: number }) {

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { cleanEvents, eventFingerprint, eventQueries, isPast } from "./networking";
+import { cleanEvents, eventFingerprint, eventQueries, isPast, joinInterests, splitInterests, suggestInterests } from "./networking";
 
 const now = new Date("2026-11-06T12:00:00Z");
 
@@ -53,4 +53,25 @@ describe("cleanEvents", () => {
 it("isPast uses the last day", () => {
   expect(isPast({ startsOn: "2026-11-01", endsOn: "2026-11-07" }, "2026-11-06")).toBe(false);
   expect(isPast({ startsOn: "2026-11-05", endsOn: null }, "2026-11-06")).toBe(true);
+});
+
+describe("interests (#264)", () => {
+  const sp = {
+    targetTitles: ["VP of UX Engineering", "Director, Design Systems", "Head of Design"],
+    industries: ["Fintech", "open"],
+    strengths: ["Design systems", "Accessibility", "Front-end architecture, React"],
+    searchTerms: ["design systems", "AI product", "a very long search term that will never fit on a chip"],
+  };
+  it("suggests role, industries, skills and terms from the search profile, deduped", () => {
+    expect(suggestInterests(sp)).toEqual(["UX Engineering", "Design Systems", "Fintech", "Accessibility", "AI product"]);
+  });
+  it("suggests nothing without a profile and respects the cap", () => {
+    expect(suggestInterests(null)).toEqual([]);
+    expect(suggestInterests(sp, 2)).toEqual(["UX Engineering", "Design Systems"]);
+  });
+  it("round-trips the saved string event search reads", () => {
+    expect(splitInterests("design systems; AI product,\nDesign Systems, ")).toEqual(["design systems", "AI product"]);
+    expect(joinInterests(["design systems", "AI product", "ai product"])).toBe("design systems, AI product");
+    expect(eventQueries(joinInterests(["AI product"]), "NYC", "online", now)[0]).toContain("AI product");
+  });
 });
