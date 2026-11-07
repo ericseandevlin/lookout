@@ -44,7 +44,7 @@ Lookout is a side project, and part of the point is that it's fun to build. The 
 - [ ] Measurement: email opens and clicks (#34), first-party product events (#35), metrics dashboard against the goals above (#36)
 - [ ] Reviews: code quality, security (OWASP-style), accessibility (WCAG 2.2 AA); findings filed as issues
 - [x] Staging at staging.lookout.ericdevlin.co
-- [ ] Ticket worker on Vellum (VPS, open models) with Claude as advisor via a `needs-claude` label (#33, #4)
+- [x] Ticket worker: Paperclip assigns tasks to agents on the VPS, which branch, open PRs and deploy to staging (replaced the Leantime Super Bot plan, #33, #4)
 - [ ] Review extension for Firefox: approve features on staging without reading code (#32)
 - [ ] Auto-apply (beta, off by default, per-user switch): port the Notion pipeline flow (prep packet, review, green light, submit) into Lookout
 - [ ] Networking: the sweep also finds events, meetups and talks near the user that match their field and interests, on a separate "Events" list
