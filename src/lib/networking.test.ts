@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { cleanEvents, eventFingerprint, eventQueries, isPast, joinInterests, splitInterests, suggestInterests } from "./networking";
+import { cleanEvents, eventFingerprint, eventQueries, eventsDue, isPast, joinInterests, splitInterests, suggestInterests } from "./networking";
 
 const now = new Date("2026-11-06T12:00:00Z");
 
@@ -19,7 +19,7 @@ describe("eventQueries", () => {
 });
 
 describe("cleanEvents", () => {
-  const base = { title: "Design Systems NYC", host: "DS Club", startsOn: "2026-11-20", endsOn: "", time: "6:30 pm", place: "Brooklyn", online: false, cost: "Free", why: "Your field.", url: "https://meetup.example/1" };
+  const base = { title: "Design Systems NYC", host: "DS Club", startsOn: "2026-11-20", endsOn: "", time: "6:30 pm", place: "Brooklyn", online: false, cost: "Free", why: "Your field.", url: "https://meetup.example/1", fit: 4, miles: 3 as number | null };
   const opts = { today: "2026-11-06", readUrls: ["https://meetup.example/1", "https://conf.example/2"], known: new Set<string>(), reach: "both" as const };
 
   it("keeps a well-formed upcoming event", () => {
@@ -73,5 +73,27 @@ describe("interests (#264)", () => {
     expect(splitInterests("design systems; AI product,\nDesign Systems, ")).toEqual(["design systems", "AI product"]);
     expect(joinInterests(["design systems", "AI product", "ai product"])).toBe("design systems, AI product");
     expect(eventQueries(joinInterests(["AI product"]), "NYC", "online", now)[0]).toContain("AI product");
+  });
+});
+
+describe("events board fields (#265)", () => {
+  const base = { title: "Design Systems NYC", host: "", startsOn: "2026-11-20", endsOn: "", time: "", place: "Brooklyn", online: false, cost: "", why: "", url: "https://meetup.example/1", fit: 4, miles: 3 as number | null };
+  const opts = { today: "2026-11-06", readUrls: ["https://meetup.example/1"], known: new Set<string>(), reach: "both" as const };
+  it("keeps fit in 1 to 5 and miles only for in-person events", () => {
+    expect(cleanEvents([{ ...base, fit: 9, miles: 12.4 }], opts)[0]).toMatchObject({ fit: 5, miles: 12 });
+    expect(cleanEvents([{ ...base, fit: 0 }], opts)[0].fit).toBe(1);
+    expect(cleanEvents([{ ...base, online: true, miles: 40 }], opts)[0].miles).toBeNull();
+    expect(cleanEvents([{ ...base, miles: -1 }], opts)[0].miles).toBeNull();
+  });
+});
+
+describe("eventsDue (#265)", () => {
+  const day = 864e5;
+  it("is due when never searched, or after a week or a month", () => {
+    expect(eventsDue("weekly", null, now)).toBe(true);
+    expect(eventsDue("weekly", new Date(now.getTime() - 3 * day), now)).toBe(false);
+    expect(eventsDue("weekly", new Date(now.getTime() - 7 * day + 3600_000), now)).toBe(true);
+    expect(eventsDue("monthly", new Date(now.getTime() - 20 * day), now)).toBe(false);
+    expect(eventsDue("monthly", new Date(now.getTime() - 30 * day), now)).toBe(true);
   });
 });

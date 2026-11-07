@@ -1,11 +1,13 @@
 import "server-only";
-import { and, asc, eq, isNull, lt, or } from "drizzle-orm";
+import { and, asc, desc, eq, isNull, lt, or } from "drizzle-orm";
 import { db, schema } from "@/lib/db";
-import { completeJSON, type Usage } from "@/lib/ai/llm";
+import { completeJSON, emptyUsage, type Usage } from "@/lib/ai/llm";
+import { assertBudget, finishRun, progress, startRun } from "@/lib/ai/runs";
 import { fetchPage, pageToText } from "@/lib/ai/fetchPage";
 import { webSearch } from "@/lib/ai/search";
-import { cleanEvents, eventQueries, EventsDraft, suggestInterests, type EventReach } from "@/lib/networking";
-import type { Context } from "./discover";
+import { cleanEvents, eventQueries, EventsDraft, eventsDue, suggestInterests, type EventFreq, type EventReach } from "@/lib/networking";
+import { loadContext, type Context } from "./discover";
+import { ensureSearchProfile } from "./searchProfile";
 
 const today = () => new Date().toISOString().slice(0, 10);
 const MAX_PAGES = 6;
@@ -23,8 +25,11 @@ async function dropPast(userId: string) {
 }
 
 export async function getEventPrefs(userId: string) {
-  const [p] = await db.select({ interests: schema.profiles.eventInterests, reach: schema.profiles.eventReach, miles: schema.profiles.eventMiles }).from(schema.profiles).where(eq(schema.profiles.userId, userId));
-  return p ?? { interests: "", reach: "both" as EventReach, miles: 25 };
+  const [p] = await db
+    .select({ interests: schema.profiles.eventInterests, reach: schema.profiles.eventReach, miles: schema.profiles.eventMiles, freq: schema.profiles.eventFreq })
+    .from(schema.profiles)
+    .where(eq(schema.profiles.userId, userId));
+  return p ?? { interests: "", reach: "both" as EventReach, miles: 25, freq: "weekly" as EventFreq };
 }
 
 /** Interest chips from the stored search profile (#264). Reads only; never builds one. */
@@ -33,8 +38,8 @@ export async function getInterestSuggestions(userId: string) {
   return suggestInterests(p?.sp);
 }
 
-export async function saveEventPrefs(userId: string, p: { interests: string; reach: EventReach; miles: number }) {
-  await db.update(schema.profiles).set({ eventInterests: p.interests, eventReach: p.reach, eventMiles: p.miles }).where(eq(schema.profiles.userId, userId));
+export async function saveEventPrefs(userId: string, p: { interests: string; reach: EventReach; miles: number; freq: EventFreq }) {
+  await db.update(schema.profiles).set({ eventInterests: p.interests, eventReach: p.reach, eventMiles: p.miles, eventFreq: p.freq }).where(eq(schema.profiles.userId, userId));
 }
 
 /**
@@ -48,6 +53,7 @@ export async function findEvents(ctx: Context, usage: Usage, step: (s: string) =
   const where = ctx.searchProfile?.where ?? "";
   const queries = eventQueries(prefs.interests, where, prefs.reach);
   if (!queries.length) return 0;
+  await db.update(schema.profiles).set({ eventsSearchedAt: new Date() }).where(eq(schema.profiles.userId, ctx.userId));
   await step("Looking for events that match your interests");
   const hits = (await Promise.all(queries.map((q) => webSearch(q, usage, undefined, { recent: false }).catch(() => [])))).flat();
   const urls = [...new Set(hits.map((h) => h.url))].slice(0, MAX_PAGES);
@@ -72,7 +78,53 @@ export async function findEvents(ctx: Context, usage: Usage, step: (s: string) =
   return added.length;
 }
 
-/** Upcoming events for the Events page, soonest first. Past ones are cleared on read. */
+/** With a job search (#265): only when the person's weekly or monthly event search is due. */
+export async function findEventsIfDue(ctx: Context, usage: Usage, step: (s: string) => Promise<unknown>) {
+  const [p] = await db.select({ freq: schema.profiles.eventFreq, at: schema.profiles.eventsSearchedAt }).from(schema.profiles).where(eq(schema.profiles.userId, ctx.userId));
+  if (p && !eventsDue(p.freq, p.at)) return null;
+  return findEvents(ctx, usage, step);
+}
+
+/** Events "Search now" (#265): an event search on its own, logged as an "events" run so it counts against the caps. */
+export async function searchEventsNow(userId: string) {
+  await assertBudget(userId);
+  const run = await startRun(userId, "events");
+  const usage = emptyUsage();
+  try {
+    const ctx = await loadContext(userId);
+    ctx.searchProfile = (await ensureSearchProfile(userId, usage)).profile;
+    const added = await findEvents(ctx, usage, (s) => progress(run.id, 50, s));
+    await progress(run.id, 100, added ? `Added ${added} ${added === 1 ? "event" : "events"}` : "No new events this time");
+    await finishRun(run.id, usage, { found: added, added });
+    return added;
+  } catch (e) {
+    await finishRun(run.id, usage, { error: e instanceof Error ? e.message : String(e) });
+    throw e;
+  }
+}
+
+/** Whether an events "Search now" is still going. */
+export async function eventSearchRunning(userId: string) {
+  const [r] = await db
+    .select({ status: schema.runs.status })
+    .from(schema.runs)
+    .where(and(eq(schema.runs.userId, userId), eq(schema.runs.trigger, "events")))
+    .orderBy(desc(schema.runs.startedAt))
+    .limit(1);
+  return r?.status === "running";
+}
+
+/** "Clear" (#265): archive every event that isn't pinned. Archive, not delete; past events still go with dropPast. */
+export async function clearEvents(userId: string) {
+  const done = await db
+    .update(schema.networkingEvents)
+    .set({ archived: true })
+    .where(and(eq(schema.networkingEvents.userId, userId), eq(schema.networkingEvents.pinned, false), eq(schema.networkingEvents.archived, false)))
+    .returning({ id: schema.networkingEvents.id });
+  return done.length;
+}
+
+/** Events for the Events page, soonest first, archived ones included (the board filters them). Past ones are cleared on read. */
 export async function listEvents(userId: string) {
   await dropPast(userId);
   return db

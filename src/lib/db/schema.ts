@@ -100,6 +100,9 @@ export const profiles = pgTable("profiles", {
   /** "nearby" (within eventMiles of where they live), "online", or "both". */
   eventReach: text("event_reach").$type<"nearby" | "online" | "both">().notNull().default("both"),
   eventMiles: integer("event_miles").notNull().default(25),
+  /** How often event searches run (#265). They ride along with a job search once this much time has passed. */
+  eventFreq: text("event_freq").$type<"weekly" | "monthly">().notNull().default("weekly"),
+  eventsSearchedAt: timestamp("events_searched_at", { withTimezone: true }),
   searchProfileAt: timestamp("search_profile_at", { withTimezone: true }),
   /** Hash of the inputs it was built from; a mismatch means it's stale. */
   searchProfileHash: text("search_profile_hash"),
@@ -239,7 +242,7 @@ export const runs = pgTable(
     userId: uuid("user_id")
       .notNull()
       .references(() => users.id, { onDelete: "cascade" }),
-    trigger: text("trigger").$type<"scheduled" | "manual" | "url" | "resume">().notNull(),
+    trigger: text("trigger").$type<"scheduled" | "manual" | "url" | "resume" | "events">().notNull(),
     status: text("status").$type<"queued" | "running" | "done" | "failed">().notNull().default("running"),
     /** Live progress for the UI: percent, current step, and a short log of steps */
     progress: jsonb("progress").$type<RunProgress>().notNull().default({ pct: 0, step: "", log: [] }),
@@ -576,6 +579,13 @@ export const networkingEvents = pgTable(
     /** Same event found again (another listing, same title and date) is not added twice. */
     fingerprint: text("fingerprint").notNull(),
     dismissed: boolean("dismissed").notNull().default(false),
+    /** Events board (#265): pinned events survive Clear; archived ones leave the main list. */
+    pinned: boolean("pinned").notNull().default(false),
+    archived: boolean("archived").notNull().default(false),
+    /** 1 to 5, how well it fits the person, from the model. Null for events found before #265. */
+    fit: integer("fit"),
+    /** Rough miles from where they live, from the model; null for online events or when unknown. */
+    miles: integer("miles"),
     addedAt: timestamp("added_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [uniqueIndex("networking_events_user_fp_idx").on(t.userId, t.fingerprint), index("networking_events_user_starts_idx").on(t.userId, t.startsOn)],
