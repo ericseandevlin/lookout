@@ -4,8 +4,8 @@ import { eq } from "drizzle-orm";
 import { z } from "zod";
 import { db, schema } from "@/lib/db";
 import { readUserFile } from "@/lib/files";
-import { completeJSON, emptyUsage } from "@/lib/ai/llm";
-import { assertBudget, finishRun, progress, startRun } from "@/lib/ai/runs";
+import { AiConfigError, completeJSON, emptyUsage } from "@/lib/ai/llm";
+import { assertBudget, BudgetError, finishRun, progress, startRun } from "@/lib/ai/runs";
 import { getAiConfig } from "@/lib/config";
 import { getActiveSearch } from "@/lib/searches";
 
@@ -86,11 +86,18 @@ export async function scanResume(userId: string, materialId: string) {
       .set(
         !hasText
           ? { status: "failed", filledNote: e instanceof NoTextError ? e.message : "couldn't read this file" }
-          : { status: "done", scannedAt: new Date(), filledNote: "saved, but auto-fill didn't run (the AI isn't set up)" },
+          : { status: "done", scannedAt: new Date(), filledNote: `saved, but auto-fill didn't run (${skipReason(e)})` },
       )
       .where(eq(schema.materials.id, materialId));
     if (runId) await finishRun(runId, usage, { error: String(e) });
   }
+}
+
+/** Why the AI step didn't fill answers, in the words the profile page shows. */
+function skipReason(e: unknown) {
+  if (e instanceof BudgetError) return "today's AI limit is used up, try again tomorrow";
+  if (e instanceof AiConfigError) return "the AI isn't set up";
+  return "the AI step failed, try uploading again later";
 }
 
 const LABELS: Record<string, string> = { q1: "next role", area: "where you work", modes: "work modes", q4: "lead win" };
