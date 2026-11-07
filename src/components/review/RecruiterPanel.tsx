@@ -4,6 +4,7 @@ import { useState } from "react";
 import { DIMENSION_LABEL, DIMENSIONS, recruiterChecks, type Finding, type RecruiterAnalysis } from "@/lib/application/recruiter";
 import { btn } from "../Settings";
 import { muted } from "./shared";
+import { color } from "@/lib/tokens";
 
 /**
  * Recruiter Analysis (#152): the code-held checks show as you edit; the scored analysis is one click
@@ -16,11 +17,11 @@ export function RecruiterPanel({ kind, text, analysis, locked, busy, onAnalyze, 
   return (
     <div style={{ borderRadius: 12, border: "1px solid #E6E0D8", background: "#FBFAF7", padding: "10px 14px", display: "flex", flexDirection: "column", gap: 8 }}>
       <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
-        <button onClick={() => setOpen((o) => !o)} aria-expanded={open} style={{ ...btn("text"), padding: 0, fontWeight: 600, color: "#1D1A0F" }}>
+        <button onClick={() => setOpen((o) => !o)} aria-expanded={open} style={{ ...btn("text"), padding: 0, fontWeight: 600, color: color.ink }}>
           {open ? "▾" : "▸"} Recruiter Analysis
         </button>
         {analysis ? (
-          <span style={{ fontSize: 14, fontWeight: 700, color: analysis.overall >= 75 ? "#35662A" : analysis.overall >= 50 ? "#7A5A12" : "#99220F" }}>{analysis.overall}/100</span>
+          <span style={{ fontSize: 14, fontWeight: 700, color: analysis.overall >= 75 ? "#35662A" : analysis.overall >= 50 ? "#7A5A12" : color.brick }}>{analysis.overall}/100</span>
         ) : (
           <span style={muted}>{findings.length ? `${findings.length} thing${findings.length === 1 ? "" : "s"} a recruiter would notice` : "Nothing flagged by the quick checks"}</span>
         )}

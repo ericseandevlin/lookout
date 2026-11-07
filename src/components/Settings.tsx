@@ -11,19 +11,20 @@ import { useCounts } from "./Shell";
 import { api, useStore } from "./store";
 import { useConfirm } from "./Confirm";
 import { useFocusTrap } from "./useFocusTrap";
+import { color } from "@/lib/tokens";
 
 const ORDER = Object.keys(DAYS);
 
 export const Section = ({ children }: { children: React.ReactNode }) => (
-  <div style={{ fontSize: 14, fontWeight: 700, letterSpacing: ".14em", textTransform: "uppercase", color: "#99220F", padding: "28px 0 4px" }}>{children}</div>
+  <div style={{ fontSize: 14, fontWeight: 700, letterSpacing: ".14em", textTransform: "uppercase", color: color.brick, padding: "28px 0 4px" }}>{children}</div>
 );
 
 export function Row({ title, help, danger, children }: { title: string; help: React.ReactNode; danger?: boolean; children: React.ReactNode }) {
   return (
     <div className="set-grid">
       <div>
-        <div style={{ fontSize: 14.5, fontWeight: 600, color: danger ? "#99220F" : undefined }}>{title}</div>
-        <div style={{ fontSize: 14, color: "#6B6358", marginTop: 3, lineHeight: 1.45, textWrap: "pretty" }}>{help}</div>
+        <div style={{ fontSize: 14.5, fontWeight: 600, color: danger ? color.brick : undefined }}>{title}</div>
+        <div style={{ fontSize: 14, color: color.t2, marginTop: 3, lineHeight: 1.45, textWrap: "pretty" }}>{help}</div>
       </div>
       <div style={{ minWidth: 0 }}>{children}</div>
     </div>
@@ -36,7 +37,7 @@ export function Seg<T extends string | number>({ opts, cur, pick }: { opts: [str
       {opts.map(([label, v]) => {
         const on = typeof cur === "function" ? (cur as (v: T) => boolean)(v) : cur === v;
         return (
-          <button key={label} aria-pressed={on} onClick={() => pick(v)} style={{ height: 34, padding: "0 14px", borderRadius: 999, border: `1.5px solid ${on ? "#1D1A0F" : "#E0D9CF"}`, background: on ? "#1D1A0F" : "#fff", color: on ? "#fff" : "#1D1A0F", fontSize: 14, fontWeight: 600, cursor: "pointer" }}>
+          <button key={label} aria-pressed={on} onClick={() => pick(v)} style={{ height: 34, padding: "0 14px", borderRadius: 999, border: `1.5px solid ${on ? color.ink : "#E0D9CF"}`, background: on ? color.ink : "#fff", color: on ? "#fff" : color.ink, fontSize: 14, fontWeight: 600, cursor: "pointer" }}>
             {label}
           </button>
         );
@@ -47,10 +48,10 @@ export function Seg<T extends string | number>({ opts, cur, pick }: { opts: [str
 
 export const btn = (kind: "outline" | "danger" | "solid" | "text"): React.CSSProperties => ({
   height: 38, padding: "0 16px", borderRadius: 10, fontSize: 14, fontWeight: 600, cursor: "pointer",
-  ...(kind === "outline" && { border: "1.5px solid #1D1A0F", background: "#fff", color: "#1D1A0F" }),
-  ...(kind === "danger" && { border: "1.5px solid #E8B4AA", background: "#fff", color: "#99220F" }),
-  ...(kind === "solid" && { border: 0, background: "#99220F", color: "#fff" }),
-  ...(kind === "text" && { border: 0, background: "transparent", color: "#1D1A0F", padding: "0 8px", textDecoration: "underline", textUnderlineOffset: 3 }),
+  ...(kind === "outline" && { border: "1.5px solid #1D1A0F", background: "#fff", color: color.ink }),
+  ...(kind === "danger" && { border: "1.5px solid #E8B4AA", background: "#fff", color: color.brick }),
+  ...(kind === "solid" && { border: 0, background: color.brick, color: "#fff" }),
+  ...(kind === "text" && { border: 0, background: "transparent", color: color.ink, padding: "0 8px", textDecoration: "underline", textUnderlineOffset: 3 }),
 });
 
 export function Settings() {
@@ -104,7 +105,7 @@ export function Settings() {
 
       <Section>Profile</Section>
       <Row title="Name" help="Shown in the sidebar and used when Lookout drafts applications.">
-        <input value={name} onChange={(e) => setNameDraft(e.target.value)} placeholder="Your full name" aria-label="Name" maxLength={120} className="f-brick" style={{ width: "100%", maxWidth: 360, height: 42, border: "1.5px solid #E6E0D8", background: "#fff", borderRadius: 10, padding: "0 13px", fontSize: 14, outline: "none", color: "#1D1A0F" }} />
+        <input value={name} onChange={(e) => setNameDraft(e.target.value)} placeholder="Your full name" aria-label="Name" maxLength={120} className="f-brick" style={{ width: "100%", maxWidth: 360, height: 42, border: "1.5px solid #E6E0D8", background: "#fff", borderRadius: 10, padding: "0 13px", fontSize: 14, outline: "none", color: color.ink }} />
       </Row>
       <Row title="Email" help="You sign in with this address. Discovery summaries are sent here too.">
         <EmailChange current={state.user.email} />
@@ -112,7 +113,7 @@ export function Settings() {
       <Row title="Email summary" help="A short list of new matches after each run.">
         <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
           <Switch on={st.digest} onClick={() => put({ digest: !st.digest })} tip="Email summary" />
-          <span style={{ fontSize: 14, color: "#6B6358" }}>{st.digest ? `On · sent to ${state.user.email}` : "Off"}</span>
+          <span style={{ fontSize: 14, color: color.t2 }}>{st.digest ? `On · sent to ${state.user.email}` : "Off"}</span>
         </div>
       </Row>
       <Row title="Signed-in devices" help="You stay signed in for 30 days after your last visit on each device. Sign out anywhere you don't recognize.">
@@ -141,7 +142,7 @@ export function Settings() {
       <Row title="Search now" help="Run a search right away instead of waiting for the schedule. Up to 3 a day.">
         <div style={{ display: "flex", flexDirection: "column", gap: 8, alignItems: "flex-start" }}>
           <button onClick={runNow} disabled={!!state.running || !!missing} style={{ ...btn("outline"), opacity: state.running || missing ? 0.5 : 1 }}>{state.running ? "Searching…" : "Search now"}</button>
-          {(searchMsg || missing) && <span style={{ fontSize: 14, color: "#6B6358" }}>{searchMsg ?? (missing && <><Link href={missing.href} style={{ color: "#99220F", fontWeight: 600 }}>{missing.text}</Link>.</>)}</span>}
+          {(searchMsg || missing) && <span style={{ fontSize: 14, color: color.t2 }}>{searchMsg ?? (missing && <><Link href={missing.href} style={{ color: color.brick, fontWeight: 600 }}>{missing.text}</Link>.</>)}</span>}
         </div>
       </Row>
 
@@ -210,25 +211,25 @@ function DeleteModal({ close }: { close: () => void }) {
     <>
       <div onClick={close} style={{ position: "fixed", inset: 0, background: "rgba(29,26,15,.45)", zIndex: 30 }} />
       <div ref={box} role="dialog" aria-modal="true" aria-labelledby="del-title" style={{ position: "fixed", top: "50%", left: "50%", transform: "translate(-50%,-50%)", width: 460, maxWidth: "calc(100vw - 32px)", background: "#EFEEEC", borderRadius: 16, overflow: "hidden", zIndex: 31, boxShadow: "0 24px 60px rgba(29,26,15,.3)" }}>
-        <div style={{ background: "#1D1A0F", color: "#fff", padding: "22px 24px 20px", display: "flex", alignItems: "flex-start", gap: 12 }}>
+        <div style={{ background: color.ink, color: "#fff", padding: "22px 24px 20px", display: "flex", alignItems: "flex-start", gap: 12 }}>
           <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{ fontSize: 14, fontWeight: 700, letterSpacing: ".14em", textTransform: "uppercase", color: "#F8A865" }}>Delete everything</div>
+            <div style={{ fontSize: 14, fontWeight: 700, letterSpacing: ".14em", textTransform: "uppercase", color: color.orange }}>Delete everything</div>
             <div id="del-title" style={{ fontSize: 22, fontWeight: 700, letterSpacing: "-0.01em", marginTop: 6 }}>Start Lookout from scratch?</div>
           </div>
           <button onClick={close} aria-label="Close" style={{ border: 0, background: "rgba(255,255,255,.1)", color: "#fff", width: 30, height: 30, borderRadius: "50%", cursor: "pointer", fontSize: 16, lineHeight: 1, flex: "none" }}>×</button>
         </div>
         <div style={{ padding: "22px 24px", display: "flex", flexDirection: "column", gap: 18 }}>
-          <div style={{ fontSize: 14, lineHeight: 1.5, color: "#6B6358" }}>This permanently deletes your account and everything in it. It can’t be undone.</div>
+          <div style={{ fontSize: 14, lineHeight: 1.5, color: color.t2 }}>This permanently deletes your account and everything in it. It can’t be undone.</div>
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8px 16px", marginBottom: 10 }}>
             {items.map((d) => (
               <div key={d} style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 14, fontWeight: 500 }}>
-                <span style={{ width: 6, height: 6, borderRadius: "50%", background: "#99220F", flex: "none" }} />
+                <span style={{ width: 6, height: 6, borderRadius: "50%", background: color.brick, flex: "none" }} />
                 {d}
               </div>
             ))}
           </div>
-          <label style={{ display: "flex", flexDirection: "column", gap: 8, fontSize: 14, color: "#6B6358" }}>
-            <span>Type <strong style={{ color: "#1D1A0F", letterSpacing: ".06em" }}>DELETE</strong> to confirm</span>
+          <label style={{ display: "flex", flexDirection: "column", gap: 8, fontSize: 14, color: color.t2 }}>
+            <span>Type <strong style={{ color: color.ink, letterSpacing: ".06em" }}>DELETE</strong> to confirm</span>
             <input
               autoFocus
               value={text}
@@ -236,14 +237,14 @@ function DeleteModal({ close }: { close: () => void }) {
               onKeyDown={(e) => { if (e.key === "Escape") close(); if (e.key === "Enter") doDelete(); }}
               placeholder="DELETE"
               className="f-brick"
-              style={{ height: 42, border: `1.5px solid ${ok ? "#99220F" : "#E6E0D8"}`, background: "#fff", borderRadius: 10, padding: "0 13px", fontSize: 14.5, letterSpacing: ".06em", outline: "none", color: "#1D1A0F" }}
+              style={{ height: 42, border: `1.5px solid ${ok ? color.brick : color.border}`, background: "#fff", borderRadius: 10, padding: "0 13px", fontSize: 14.5, letterSpacing: ".06em", outline: "none", color: color.ink }}
             />
           </label>
-          {err && <div style={{ fontSize: 14, color: "#99220F" }}>{err}</div>}
+          {err && <div style={{ fontSize: 14, color: color.brick }}>{err}</div>}
         </div>
         <div style={{ padding: "0 24px 22px", display: "flex", gap: 8, justifyContent: "flex-end" }}>
-          <button onClick={close} style={{ height: 42, padding: "0 18px", borderRadius: 10, border: "1.5px solid #1D1A0F", background: "#fff", fontSize: 14, fontWeight: 600, color: "#1D1A0F", cursor: "pointer" }}>Cancel</button>
-          <button onClick={doDelete} disabled={!ok || busy} style={{ height: 42, padding: "0 18px", borderRadius: 10, border: 0, background: ok ? "#99220F" : "#D8B0A8", fontSize: 14, fontWeight: 600, color: "#fff", cursor: ok ? "pointer" : "not-allowed" }}>
+          <button onClick={close} style={{ height: 42, padding: "0 18px", borderRadius: 10, border: "1.5px solid #1D1A0F", background: "#fff", fontSize: 14, fontWeight: 600, color: color.ink, cursor: "pointer" }}>Cancel</button>
+          <button onClick={doDelete} disabled={!ok || busy} style={{ height: 42, padding: "0 18px", borderRadius: 10, border: 0, background: ok ? color.brick : "#D8B0A8", fontSize: 14, fontWeight: 600, color: "#fff", cursor: ok ? "pointer" : "not-allowed" }}>
             {busy ? "Deleting…" : "Delete everything"}
           </button>
         </div>
@@ -253,7 +254,7 @@ function DeleteModal({ close }: { close: () => void }) {
 }
 
 
-const inputStyle: React.CSSProperties = { width: "100%", maxWidth: 360, height: 42, border: "1.5px solid #E6E0D8", background: "#fff", borderRadius: 10, padding: "0 13px", fontSize: 14, outline: "none", color: "#1D1A0F" };
+const inputStyle: React.CSSProperties = { width: "100%", maxWidth: 360, height: 42, border: "1.5px solid #E6E0D8", background: "#fff", borderRadius: 10, padding: "0 13px", fontSize: 14, outline: "none", color: color.ink };
 
 function EmailChange({ current }: { current: string }) {
   const [editing, setEditing] = useState(false);
@@ -278,16 +279,16 @@ function EmailChange({ current }: { current: string }) {
       {editing ? (
         <div style={{ display: "flex", gap: 6, maxWidth: 460, flexWrap: "wrap" }}>
           <input autoFocus type="email" value={email} onChange={(e) => setEmail(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") send(); if (e.key === "Escape") setEditing(false); }} placeholder="New email" aria-label="New email" className="f-brick" style={{ ...inputStyle, flex: 1, minWidth: 200 }} />
-          <button onClick={() => setEditing(false)} style={{ ...btn("outline"), border: "1.5px solid #E6E0D8", color: "#6B6358" }}>Cancel</button>
+          <button onClick={() => setEditing(false)} style={{ ...btn("outline"), border: "1.5px solid #E6E0D8", color: color.t2 }}>Cancel</button>
           <button onClick={send} disabled={busy || !email.trim()} style={btn("solid")}>{busy ? "Sending…" : "Send confirmation"}</button>
         </div>
       ) : (
         <div style={{ display: "flex", alignItems: "center", gap: 8, maxWidth: 460 }}>
-          <div style={{ flex: 1, minWidth: 0, display: "flex", alignItems: "center", height: 42, border: "1.5px solid #EEEAE4", background: "#F4F1EC", borderRadius: 10, padding: "0 13px", fontSize: 14, color: "#6B6358", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{current}</div>
+          <div style={{ flex: 1, minWidth: 0, display: "flex", alignItems: "center", height: 42, border: "1.5px solid #EEEAE4", background: "#F4F1EC", borderRadius: 10, padding: "0 13px", fontSize: 14, color: color.t2, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{current}</div>
           <button onClick={() => { setEditing(true); setMsg(null); }} style={btn("outline")}>Change</button>
         </div>
       )}
-      {msg && <span style={{ fontSize: 14, color: msg.ok ? "#35662A" : "#99220F", lineHeight: 1.45 }}>{msg.text}</span>}
+      {msg && <span style={{ fontSize: 14, color: msg.ok ? "#35662A" : color.brick, lineHeight: 1.45 }}>{msg.text}</span>}
     </div>
   );
 }
@@ -331,7 +332,7 @@ function Devices({ onSignOutHere }: { onSignOutHere: () => void }) {
   };
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 6, maxWidth: 460 }}>
-      {list === null && <span style={{ fontSize: 14, color: "#6B6358" }}>Loading…</span>}
+      {list === null && <span style={{ fontSize: 14, color: color.t2 }}>Loading…</span>}
       {list?.map((d) => (
         <div key={d.id} style={{ display: "flex", alignItems: "center", gap: 10, padding: "9px 9px 9px 13px", borderRadius: 10, background: "#fff", border: "1.5px solid #E6E0D8" }}>
           <div style={{ flex: 1, minWidth: 0 }}>
@@ -339,7 +340,7 @@ function Devices({ onSignOutHere }: { onSignOutHere: () => void }) {
               {d.device}
               {d.current && <span style={{ marginLeft: 8, fontSize: 14, fontWeight: 600, padding: "2px 7px", borderRadius: 6, background: "#E6EDD9", color: "#35662A" }}>This device</span>}
             </div>
-            <div style={{ fontSize: 14, color: "#6B6358" }}>{d.seen}</div>
+            <div style={{ fontSize: 14, color: color.t2 }}>{d.seen}</div>
           </div>
           <button onClick={() => signOut(d)} style={{ ...btn("outline"), height: 32, padding: "0 12px", fontSize: 14 }}>Sign out</button>
         </div>

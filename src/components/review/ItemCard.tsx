@@ -10,6 +10,7 @@ import { RecruiterPanel } from "./RecruiterPanel";
 import { TemplatePicker } from "./TemplatePicker";
 import { VersionNotes } from "./VersionNotes";
 import { card, muted, type Act, type Item } from "./shared";
+import { color } from "@/lib/tokens";
 
 export function ItemCard({ appId, item, locked, act, analysis, template, accent, header, onTemplate, onAccent }: { appId: string; item: Item; locked: boolean; act: Act; analysis?: RecruiterAnalysis; template: Template; accent: string | null; header: { name: string; contact: string; headline?: string } | null; onTemplate: (t: Template) => void; onAccent: (hex: string) => void }) {
   const latest = item.versions[0];
@@ -47,11 +48,11 @@ export function ItemCard({ appId, item, locked, act, analysis, template, accent,
   };
 
   return (
-    <div style={{ ...card, display: "flex", flexDirection: "column", gap: 10, borderColor: isApproved ? "#9CC68E" : "#E6E0D8" }}>
+    <div style={{ ...card, display: "flex", flexDirection: "column", gap: 10, borderColor: isApproved ? "#9CC68E" : color.border }}>
       <div style={{ display: "flex", alignItems: "baseline", gap: 8, flexWrap: "wrap" }}>
         <label htmlFor={`it-${item.id}`} style={{ flex: 1, minWidth: 0, fontSize: 15, fontWeight: 600 }}>
           {item.prompt}
-          {item.required ? <span style={{ color: "#99220F" }}> *</span> : !outreach && <span style={{ ...muted, fontWeight: 400 }}> (optional)</span>}
+          {item.required ? <span style={{ color: color.brick }}> *</span> : !outreach && <span style={{ ...muted, fontWeight: 400 }}> (optional)</span>}
         </label>
         {isApproved && <span style={{ fontSize: 14, fontWeight: 600, color: "#35662A" }}>{item.kind === "field" ? "✓ Will be filled" : `✓ Approved v${shown.version}`}</span>}
       </div>
@@ -64,7 +65,7 @@ export function ItemCard({ appId, item, locked, act, analysis, template, accent,
       {item.salary?.amount && !locked && (
         <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", padding: "8px 12px", borderRadius: 10, background: "#F3F7F1", border: "1px solid #CFE3C6" }}>
           <span style={{ fontSize: 14, color: "#35662A" }}>Suggested ask</span>
-          <span style={{ fontSize: 16, fontWeight: 700, color: "#1D1A0F" }}>{item.salary.amount}</span>
+          <span style={{ fontSize: 16, fontWeight: 700, color: color.ink }}>{item.salary.amount}</span>
           <InfoTip label="How this is calculated" text={item.salary.note} />
           {text.replace(/[^\d]/g, "") !== item.salary.amount.replace(/[^\d]/g, "") && (
             <button onClick={() => run("save", { action: "edit", content: item.salary!.amount!, note: "Used Lookout's suggested ask." }, "Saved the suggested ask as a new version.")} disabled={!!busy} style={{ ...btn("outline"), height: 32, marginLeft: "auto" }}>

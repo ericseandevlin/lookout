@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { color } from "@/lib/tokens";
 
 /** Shared by the admin pages: response types, small formatters and styles, the tab bar and the message line. */
 export type Overview = {
@@ -30,9 +31,9 @@ export type Config = {
 export const usd = (n: number) => (n < 0.01 && n > 0 ? "<$0.01" : `$${n.toFixed(2)}`);
 export const when = (iso: string | null) =>
   iso ? new Date(iso).toLocaleString("en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" }) : "Never";
-export const input: React.CSSProperties = { width: "100%", maxWidth: 420, height: 42, border: "1.5px solid #E6E0D8", background: "#fff", borderRadius: 10, padding: "0 13px", fontSize: 14, outline: "none", color: "#1D1A0F" };
+export const input: React.CSSProperties = { width: "100%", maxWidth: 420, height: 42, border: "1.5px solid #E6E0D8", background: "#fff", borderRadius: 10, padding: "0 13px", fontSize: 14, outline: "none", color: color.ink };
 export const card: React.CSSProperties = { background: "#fff", borderRadius: 16, padding: "16px 18px" };
-export const th: React.CSSProperties = { fontSize: 14, fontWeight: 600, letterSpacing: ".08em", textTransform: "uppercase", color: "#6B6358", textAlign: "left", padding: "12px 14px", borderBottom: "1px solid #EEEAE4", whiteSpace: "nowrap" };
+export const th: React.CSSProperties = { fontSize: 14, fontWeight: 600, letterSpacing: ".08em", textTransform: "uppercase", color: color.t2, textAlign: "left", padding: "12px 14px", borderBottom: "1px solid #EEEAE4", whiteSpace: "nowrap" };
 export const td: React.CSSProperties = { fontSize: 14, padding: "12px 14px", borderBottom: "1px solid #F2EEE8", verticalAlign: "top" };
 
 export function Tabs() {
@@ -43,7 +44,7 @@ export function Tabs() {
       {tabs.map(([href, label]) => {
         const on = path === href;
         return (
-          <Link key={href} href={href} style={{ display: "flex", alignItems: "center", height: 34, padding: "0 15px", borderRadius: 999, border: `1.5px solid ${on ? "#99220F" : "#E0D9CF"}`, background: on ? "#99220F" : "#fff", color: on ? "#fff" : "#1D1A0F", fontSize: 14, fontWeight: 600, textDecoration: "none" }}>
+          <Link key={href} href={href} style={{ display: "flex", alignItems: "center", height: 34, padding: "0 15px", borderRadius: 999, border: `1.5px solid ${on ? color.brick : "#E0D9CF"}`, background: on ? color.brick : "#fff", color: on ? "#fff" : color.ink, fontSize: 14, fontWeight: 600, textDecoration: "none" }}>
             {label}
           </Link>
         );
@@ -54,5 +55,5 @@ export function Tabs() {
 
 export function Msg({ text, ok }: { text: string | null; ok?: boolean }) {
   if (!text) return null;
-  return <div aria-live="polite" style={{ fontSize: 14, color: ok ? "#35662A" : "#99220F", lineHeight: 1.45 }}>{text}</div>;
+  return <div aria-live="polite" style={{ fontSize: 14, color: ok ? "#35662A" : color.brick, lineHeight: 1.45 }}>{text}</div>;
 }

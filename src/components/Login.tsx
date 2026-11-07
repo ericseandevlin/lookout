@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { LegalLinks } from "./LegalLinks";
 import { WAITLIST_NOTICE } from "@/lib/legal";
 import { NEXT_MOVES } from "@/lib/onboarding";
+import { color } from "@/lib/tokens";
 
 export function Login({ emailEnabled, inviteOnly, turnstileSiteKey = "", kinds = false }: { emailEnabled: boolean; inviteOnly: boolean; turnstileSiteKey?: string; kinds?: boolean }) {
   const [mode, setMode] = useState<"signin" | "request">(inviteOnly && !emailEnabled ? "request" : "signin");
@@ -18,9 +19,9 @@ export function Login({ emailEnabled, inviteOnly, turnstileSiteKey = "", kinds =
   );
 }
 
-const field: React.CSSProperties = { height: 46, border: "1.5px solid #E6E0D8", background: "#fff", borderRadius: 10, padding: "0 14px", fontSize: 15, outline: "none", color: "#1D1A0F" };
-const label: React.CSSProperties = { fontSize: 14, fontWeight: 600, letterSpacing: ".06em", textTransform: "uppercase", color: "#6B6358" };
-const linkBtn: React.CSSProperties = { border: 0, background: "transparent", padding: 0, color: "#99220F", fontWeight: 600, fontSize: "inherit", cursor: "pointer", textDecoration: "underline", textUnderlineOffset: 3 };
+const field: React.CSSProperties = { height: 46, border: "1.5px solid #E6E0D8", background: "#fff", borderRadius: 10, padding: "0 14px", fontSize: 15, outline: "none", color: color.ink };
+const label: React.CSSProperties = { fontSize: 14, fontWeight: 600, letterSpacing: ".06em", textTransform: "uppercase", color: color.t2 };
+const linkBtn: React.CSSProperties = { border: 0, background: "transparent", padding: 0, color: color.brick, fontWeight: 600, fontSize: "inherit", cursor: "pointer", textDecoration: "underline", textUnderlineOffset: 3 };
 
 function SignIn({ emailEnabled, inviteOnly, onRequest }: { emailEnabled: boolean; inviteOnly: boolean; onRequest: () => void }) {
   const [email, setEmail] = useState("");
@@ -43,7 +44,7 @@ function SignIn({ emailEnabled, inviteOnly, onRequest }: { emailEnabled: boolean
         <Eyebrow>Check your email</Eyebrow>
         <h1 style={h1}>A sign-in link is on its way</h1>
         <p style={p}>
-          If <strong style={{ color: "#1D1A0F" }}>{email}</strong> has an account, the link is in your inbox. It works once and expires in 15 minutes.
+          If <strong style={{ color: color.ink }}>{email}</strong> has an account, the link is in your inbox. It works once and expires in 15 minutes.
         </p>
         <button onClick={() => setState("idle")} style={{ ...ghost, marginTop: 22 }}>Use a different email</button>
       </>
@@ -62,12 +63,12 @@ function SignIn({ emailEnabled, inviteOnly, onRequest }: { emailEnabled: boolean
           <label htmlFor="email" style={label}>Email</label>
           <input id="email" type="email" required autoComplete="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@example.com" className="f-brick" style={field} />
           <button type="submit" disabled={state === "sending"} style={primary}>{state === "sending" ? "Sending…" : "Email me a sign-in link"}</button>
-          {state === "error" && <div role="alert" style={{ fontSize: 14, color: "#99220F" }}>{msg}</div>}
+          {state === "error" && <div role="alert" style={{ fontSize: 14, color: color.brick }}>{msg}</div>}
         </form>
       ) : (
         <p style={{ ...p, marginTop: 20, fontSize: 14 }}>Sign-in emails aren&apos;t on yet. If you were invited, open the sign-in link you were sent.</p>
       )}
-      <div style={{ fontSize: 14, color: "#6B6358", lineHeight: 1.5, marginTop: 18 }}>
+      <div style={{ fontSize: 14, color: color.t2, lineHeight: 1.5, marginTop: 18 }}>
         {inviteOnly ? (
           <>New here? Lookout is invite only for now. <button onClick={onRequest} style={linkBtn}>Request access</button></>
         ) : (
@@ -112,7 +113,7 @@ function RequestAccess({ emailEnabled, turnstileSiteKey, kinds, onSignIn }: { em
         <Eyebrow>You&apos;re on the list</Eyebrow>
         <h1 style={h1}>Thanks. We&apos;ll be in touch.</h1>
         <p style={p}>
-          When your access is approved, you&apos;ll get a link {emailEnabled ? <>at <strong style={{ color: "#1D1A0F" }}>{email}</strong></> : "from the person who runs Lookout"} to set up your account.
+          When your access is approved, you&apos;ll get a link {emailEnabled ? <>at <strong style={{ color: color.ink }}>{email}</strong></> : "from the person who runs Lookout"} to set up your account.
         </p>
       </>
     );
@@ -139,9 +140,9 @@ function RequestAccess({ emailEnabled, turnstileSiteKey, kinds, onSignIn }: { em
                 key={key}
                 aria-pressed={on}
                 onClick={() => setKind(key)}
-                style={{ display: "flex", alignItems: "center", gap: 10, minHeight: 42, padding: "0 14px", borderRadius: 10, border: `1.5px solid ${on ? "#1D1A0F" : "#E6E0D8"}`, background: on ? "#1D1A0F" : "#fff", color: on ? "#fff" : "#1D1A0F", fontSize: 14, fontWeight: 500, cursor: "pointer", textAlign: "left" }}
+                style={{ display: "flex", alignItems: "center", gap: 10, minHeight: 42, padding: "0 14px", borderRadius: 10, border: `1.5px solid ${on ? color.ink : color.border}`, background: on ? color.ink : "#fff", color: on ? "#fff" : color.ink, fontSize: 14, fontWeight: 500, cursor: "pointer", textAlign: "left" }}
               >
-                <span style={{ width: 14, height: 14, borderRadius: "50%", border: `1.5px solid ${on ? "#F8A865" : "#CFC6B9"}`, background: on ? "#F8A865" : "transparent", flex: "none" }} />
+                <span style={{ width: 14, height: 14, borderRadius: "50%", border: `1.5px solid ${on ? color.orange : "#CFC6B9"}`, background: on ? color.orange : "transparent", flex: "none" }} />
                 <span>
                   {lab}
                   <span style={{ display: "block", fontSize: 14, fontWeight: 400, opacity: 0.75 }}>{note}</span>
@@ -162,9 +163,9 @@ function RequestAccess({ emailEnabled, turnstileSiteKey, kinds, onSignIn }: { em
                 key={m.key}
                 aria-pressed={on}
                 onClick={() => setMove(on ? null : m.key)}
-                style={{ display: "flex", alignItems: "center", gap: 10, minHeight: 42, padding: "0 14px", borderRadius: 10, border: `1.5px solid ${on ? "#1D1A0F" : "#E6E0D8"}`, background: on ? "#1D1A0F" : "#fff", color: on ? "#fff" : "#1D1A0F", fontSize: 14, fontWeight: 500, cursor: "pointer", textAlign: "left" }}
+                style={{ display: "flex", alignItems: "center", gap: 10, minHeight: 42, padding: "0 14px", borderRadius: 10, border: `1.5px solid ${on ? color.ink : color.border}`, background: on ? color.ink : "#fff", color: on ? "#fff" : color.ink, fontSize: 14, fontWeight: 500, cursor: "pointer", textAlign: "left" }}
               >
-                <span style={{ width: 14, height: 14, borderRadius: "50%", border: `1.5px solid ${on ? "#F8A865" : "#CFC6B9"}`, background: on ? "#F8A865" : "transparent", flex: "none" }} />
+                <span style={{ width: 14, height: 14, borderRadius: "50%", border: `1.5px solid ${on ? color.orange : "#CFC6B9"}`, background: on ? color.orange : "transparent", flex: "none" }} />
                 {m.label}
               </button>
             );
@@ -172,11 +173,11 @@ function RequestAccess({ emailEnabled, turnstileSiteKey, kinds, onSignIn }: { em
         </fieldset>
         )}
         {turnstileSiteKey && <Turnstile siteKey={turnstileSiteKey} resetKey={resetKey} onToken={setToken} />}
-        <p style={{ fontSize: 14, lineHeight: 1.5, color: "#6B6358", margin: 0 }}>{WAITLIST_NOTICE}</p>
+        <p style={{ fontSize: 14, lineHeight: 1.5, color: color.t2, margin: 0 }}>{WAITLIST_NOTICE}</p>
         <button type="submit" disabled={state === "sending" || (!!turnstileSiteKey && !token)} style={primary}>{state === "sending" ? "Sending…" : "Request access"}</button>
-        {state === "error" && <div role="alert" style={{ fontSize: 14, color: "#99220F" }}>{msg}</div>}
+        {state === "error" && <div role="alert" style={{ fontSize: 14, color: color.brick }}>{msg}</div>}
       </form>
-      <div style={{ fontSize: 14, color: "#6B6358", marginTop: 18 }}>
+      <div style={{ fontSize: 14, color: color.t2, marginTop: 18 }}>
         Already have an account? <button onClick={onSignIn} style={linkBtn}>Sign in</button>
       </div>
     </>
@@ -240,7 +241,7 @@ function Turnstile({ siteKey, resetKey, onToken }: { siteKey: string; resetKey: 
   return (
     <>
       <div ref={box} style={{ minHeight: 65, marginTop: 4 }} />
-      {failed && <div role="alert" style={{ fontSize: 14, color: "#99220F" }}>The bot check didn&apos;t load. Check your connection and reload the page.</div>}
+      {failed && <div role="alert" style={{ fontSize: 14, color: color.brick }}>The bot check didn&apos;t load. Check your connection and reload the page.</div>}
     </>
   );
 }
@@ -249,7 +250,7 @@ export function AuthCard({ children }: { children: React.ReactNode }) {
   return (
     <div style={{ minHeight: "100vh", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "32px 16px", background: "#EFEEEC" }}>
       <div style={{ width: "100%", maxWidth: 460, background: "#fff", borderRadius: 16, overflow: "hidden", boxShadow: "0 24px 60px rgba(29,26,15,.08)" }}>
-        <div style={{ background: "#1D1A0F", color: "#fff", padding: "22px 26px" }}>
+        <div style={{ background: color.ink, color: "#fff", padding: "22px 26px" }}>
           <div className="wordmark">Lookout</div>
         </div>
         <div style={{ padding: "28px 26px 30px" }}>{children}</div>
@@ -260,9 +261,9 @@ export function AuthCard({ children }: { children: React.ReactNode }) {
 }
 
 export const Eyebrow = ({ children }: { children: React.ReactNode }) => (
-  <div style={{ fontSize: 14, fontWeight: 700, letterSpacing: ".14em", textTransform: "uppercase", color: "#99220F" }}>{children}</div>
+  <div style={{ fontSize: 14, fontWeight: 700, letterSpacing: ".14em", textTransform: "uppercase", color: color.brick }}>{children}</div>
 );
 export const h1: React.CSSProperties = { margin: "8px 0 0", fontSize: 27, fontWeight: 700, letterSpacing: "-0.02em", lineHeight: 1.15 };
-export const p: React.CSSProperties = { margin: "10px 0 0", fontSize: 14.5, lineHeight: 1.5, color: "#6B6358", textWrap: "pretty" };
-export const primary: React.CSSProperties = { height: 46, borderRadius: 12, border: 0, background: "#99220F", color: "#fff", fontSize: 14.5, fontWeight: 600, cursor: "pointer" };
-const ghost: React.CSSProperties = { height: 40, padding: "0 16px", borderRadius: 10, border: "1.5px solid #1D1A0F", background: "#fff", color: "#1D1A0F", fontSize: 14, fontWeight: 600, cursor: "pointer" };
+export const p: React.CSSProperties = { margin: "10px 0 0", fontSize: 14.5, lineHeight: 1.5, color: color.t2, textWrap: "pretty" };
+export const primary: React.CSSProperties = { height: 46, borderRadius: 12, border: 0, background: color.brick, color: "#fff", fontSize: 14.5, fontWeight: 600, cursor: "pointer" };
+const ghost: React.CSSProperties = { height: 40, padding: "0 16px", borderRadius: 10, border: "1.5px solid #1D1A0F", background: "#fff", color: color.ink, fontSize: 14, fontWeight: 600, cursor: "pointer" };

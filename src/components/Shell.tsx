@@ -14,6 +14,7 @@ import { SurveyDialog } from "./SurveyDialog";
 import { SearchSwitcher } from "./SearchSwitcher";
 import { trackClient } from "./track";
 import { HEARTBEAT_SECONDS } from "@/lib/events";
+import { color } from "@/lib/tokens";
 
 export function useCounts(s: AppState) {
   const cfg = kindOf(s.profile.kind);
@@ -67,7 +68,7 @@ export function Shell({ children }: { children: React.ReactNode }) {
       <aside
         className="desk-only"
         style={{
-          width: closed ? 68 : 220, flex: "none", background: "#1D1A0F", color: "#fff", display: "flex", flexDirection: "column",
+          width: closed ? 68 : 220, flex: "none", background: color.ink, color: "#fff", display: "flex", flexDirection: "column",
           padding: `22px ${closed ? 10 : 14}px`, position: "sticky", top: 0, height: "100vh", transition: "width .18s ease", overflow: "hidden",
         }}
       >
@@ -184,7 +185,7 @@ export function Shell({ children }: { children: React.ReactNode }) {
       </aside>
 
       <main id="main" tabIndex={-1} className="lk-main" style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", outline: "none" }}>
-        <div className="mob-only" style={{ position: "relative", zIndex: 8, height: 56, background: "#1D1A0F", color: "#fff", alignItems: "center", gap: 10, padding: "0 12px 0 16px" }}>
+        <div className="mob-only" style={{ position: "relative", zIndex: 8, height: 56, background: color.ink, color: "#fff", alignItems: "center", gap: 10, padding: "0 12px 0 16px" }}>
           <div className="mob-flex" style={{ display: "flex", alignItems: "center", height: "100%" }}>
             <div className="wordmark">Lookout</div>
             {state.user.searches && <SearchSwitcher variant="bar" />}
@@ -198,7 +199,7 @@ export function Shell({ children }: { children: React.ReactNode }) {
 
       <nav
         className="mob-only"
-        style={{ position: "fixed", left: 0, right: 0, bottom: 0, zIndex: 9, background: "#1D1A0F", padding: "6px 6px calc(6px + env(safe-area-inset-bottom))", borderTop: "1px solid rgba(255,255,255,.08)" }}
+        style={{ position: "fixed", left: 0, right: 0, bottom: 0, zIndex: 9, background: color.ink, padding: "6px 6px calc(6px + env(safe-area-inset-bottom))", borderTop: "1px solid rgba(255,255,255,.08)" }}
       >
         <div className="mob-grid" style={{ display: "grid", gridTemplateColumns: `repeat(${PAGES.length},1fr)` }}>
           {PAGES.map(({ href, mob, Icon }) => {
@@ -207,7 +208,7 @@ export function Shell({ children }: { children: React.ReactNode }) {
               <Link
                 key={href}
                 href={href}
-                style={{ position: "relative", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 4, minHeight: 52, borderRadius: 10, color: active ? "#F8A865" : "#A89F92", fontSize: 14, fontWeight: 600, textDecoration: "none" }}
+                style={{ position: "relative", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 4, minHeight: 52, borderRadius: 10, color: active ? color.orange : "#A89F92", fontSize: 14, fontWeight: 600, textDecoration: "none" }}
               >
                 <span style={{ position: "relative", width: 22, height: 22, display: "flex", alignItems: "center", justifyContent: "center" }}>
                   {href === "/profile" && profileTodo && <TodoDot />}
@@ -226,7 +227,7 @@ export function Shell({ children }: { children: React.ReactNode }) {
       </nav>
 
       {error && (
-        <div role="alert" style={{ position: "fixed", left: "50%", bottom: 92, transform: "translateX(-50%)", zIndex: 60, background: "#1D1A0F", color: "#fff", fontSize: 14, fontWeight: 600, padding: "11px 16px", borderRadius: 12, boxShadow: "0 8px 28px rgba(29,26,15,.25)", maxWidth: "calc(100vw - 32px)" }}>
+        <div role="alert" style={{ position: "fixed", left: "50%", bottom: 92, transform: "translateX(-50%)", zIndex: 60, background: color.ink, color: "#fff", fontSize: 14, fontWeight: 600, padding: "11px 16px", borderRadius: 12, boxShadow: "0 8px 28px rgba(29,26,15,.25)", maxWidth: "calc(100vw - 32px)" }}>
           {error}
         </div>
       )}
@@ -241,7 +242,7 @@ export function Avatar({ initials, ring }: { initials: string; ring?: boolean })
   return (
     <span
       style={{
-        width: 34, height: 34, borderRadius: "50%", background: "#99220F", color: "#fff", display: "flex", alignItems: "center", justifyContent: "center",
+        width: 34, height: 34, borderRadius: "50%", background: color.brick, color: "#fff", display: "flex", alignItems: "center", justifyContent: "center",
         fontSize: 14, fontWeight: 600, flex: "none", boxShadow: ring ? "0 0 0 2px #1D1A0F, 0 0 0 4px #F8A865" : "none",
       }}
     >
@@ -252,5 +253,5 @@ export function Avatar({ initials, ring }: { initials: string; ring?: boolean })
 
 /** Something on the search profile is still to do; shown on the icon where the subpages don't fit (#255). */
 const TodoDot = () => (
-  <span aria-hidden style={{ position: "absolute", top: -3, right: -5, width: 8, height: 8, borderRadius: "50%", background: "#F8A865", boxShadow: "0 0 0 2px #1D1A0F" }} />
+  <span aria-hidden style={{ position: "absolute", top: -3, right: -5, width: 8, height: 8, borderRadius: "50%", background: color.orange, boxShadow: "0 0 0 2px #1D1A0F" }} />
 );

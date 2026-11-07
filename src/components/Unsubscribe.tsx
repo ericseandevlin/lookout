@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { AuthCard, Eyebrow, h1, p, primary } from "./Login";
+import { color } from "@/lib/tokens";
 
 const WHAT = { news: "news and waitlist emails", digest: "the finds email" } as const;
 
@@ -31,7 +32,7 @@ export function Unsubscribe({ token, email, list }: { token: string; email: stri
         <Eyebrow>Unsubscribed</Eyebrow>
         <h1 style={h1}>Done</h1>
         <p style={p}>
-          <strong style={{ color: "#1D1A0F" }}>{email}</strong> won&apos;t get {WHAT[list]} anymore. Sign-in links still arrive when you ask for one.
+          <strong style={{ color: color.ink }}>{email}</strong> won&apos;t get {WHAT[list]} anymore. Sign-in links still arrive when you ask for one.
           {list === "digest" && " You can turn the finds email back on in Settings."}
         </p>
       </AuthCard>
@@ -42,11 +43,11 @@ export function Unsubscribe({ token, email, list }: { token: string; email: stri
       <Eyebrow>Unsubscribe</Eyebrow>
       <h1 style={h1}>Stop {WHAT[list]}?</h1>
       <p style={p}>
-        For <strong style={{ color: "#1D1A0F" }}>{email}</strong>.
+        For <strong style={{ color: color.ink }}>{email}</strong>.
       </p>
       <form onSubmit={submit} style={{ display: "flex", flexDirection: "column", gap: 12, marginTop: 24 }}>
         <button type="submit" disabled={state === "busy"} style={primary}>{state === "busy" ? "Saving…" : "Unsubscribe"}</button>
-        {state === "error" && <div role="alert" style={{ fontSize: 14, color: "#99220F" }}>Couldn&apos;t save that. Try again.</div>}
+        {state === "error" && <div role="alert" style={{ fontSize: 14, color: color.brick }}>Couldn&apos;t save that. Try again.</div>}
       </form>
     </AuthCard>
   );

@@ -7,11 +7,12 @@ import { PageHead } from "./Profile";
 import { Row, Section, Seg } from "./Settings";
 import { api } from "./store";
 import { EventsBoard } from "./events/EventsBoard";
+import { color } from "@/lib/tokens";
 
 type Prefs = { interests: string; reach: EventReach; miles: number; freq: EventFreq };
 
-const muted: React.CSSProperties = { fontSize: 14, color: "#6B6358" };
-const field: React.CSSProperties = { width: "100%", maxWidth: 520, height: 42, border: "1.5px solid #E6E0D8", background: "#fff", borderRadius: 10, padding: "0 13px", fontSize: 14, color: "#1D1A0F" };
+const muted: React.CSSProperties = { fontSize: 14, color: color.t2 };
+const field: React.CSSProperties = { width: "100%", maxWidth: 520, height: 42, border: "1.5px solid #E6E0D8", background: "#fff", borderRadius: 10, padding: "0 13px", fontSize: 14, color: color.ink };
 
 
 /** /events: networking events the sweep found (#7), apart from job finds, with what to look for. */
@@ -97,7 +98,7 @@ export function Events() {
     <div className="page-pad settings lk-page w-page" style={{ display: "flex", flexDirection: "column", gap: 4 }}>
       <PageHead eyebrow="Networking" title="Events" intro="Meetups, panels, industry nights, conferences and talks that fit your field, found with each search. Kept apart from your job finds. Past events drop off on their own." />
       {msg && (
-        <div role={msg.ok ? "status" : "alert"} style={{ fontSize: 14, color: msg.ok ? "#35662A" : "#99220F" }}>
+        <div role={msg.ok ? "status" : "alert"} style={{ fontSize: 14, color: msg.ok ? "#35662A" : color.brick }}>
           {msg.text}
         </div>
       )}
@@ -172,12 +173,12 @@ function InterestPicker({ chosen, suggestions, onToggle, onAdd }: { chosen: stri
   return (
     <div ref={box} style={{ position: "relative", display: "flex", flexWrap: "wrap", alignItems: "center", gap: 8 }} onKeyDown={(e) => e.key === "Escape" && setOpen(false)}>
       {chosen.map((t) => (
-        <span key={t} style={{ display: "inline-flex", alignItems: "center", gap: 4, height: 32, padding: "0 6px 0 12px", borderRadius: 999, background: "#1D1A0F", color: "#fff", fontSize: 14, fontWeight: 600 }}>
+        <span key={t} style={{ display: "inline-flex", alignItems: "center", gap: 4, height: 32, padding: "0 6px 0 12px", borderRadius: 999, background: color.ink, color: "#fff", fontSize: 14, fontWeight: 600 }}>
           {t}
           <button type="button" onClick={() => onToggle(t)} aria-label={`Remove ${t}`} style={{ width: 22, height: 22, border: 0, borderRadius: "50%", background: "rgba(255,255,255,.14)", color: "#fff", fontSize: 14, lineHeight: 1, cursor: "pointer" }}>×</button>
         </span>
       ))}
-      <button type="button" aria-expanded={open} aria-haspopup="true" onClick={() => setOpen((o) => !o)} style={{ height: 32, padding: "0 12px", borderRadius: 999, border: "1.5px dashed #B9AE9F", background: "transparent", color: "#1D1A0F", fontSize: 14, fontWeight: 600, cursor: "pointer" }}>
+      <button type="button" aria-expanded={open} aria-haspopup="true" onClick={() => setOpen((o) => !o)} style={{ height: 32, padding: "0 12px", borderRadius: 999, border: "1.5px dashed #B9AE9F", background: "transparent", color: color.ink, fontSize: 14, fontWeight: 600, cursor: "pointer" }}>
         + Add interest
       </button>
       {!chosen.length && <span style={muted}>Event search is off until you pick one.</span>}
@@ -202,12 +203,12 @@ function InterestPicker({ chosen, suggestions, onToggle, onAdd }: { chosen: stri
           />
           <div style={{ maxHeight: 240, overflowY: "auto", display: "flex", flexDirection: "column" }}>
             {isNew && (
-              <button type="button" onClick={addTyped} style={{ textAlign: "left", padding: "8px 6px", border: 0, background: "transparent", fontSize: 14, fontWeight: 600, color: "#99220F", cursor: "pointer" }}>
+              <button type="button" onClick={addTyped} style={{ textAlign: "left", padding: "8px 6px", border: 0, background: "transparent", fontSize: 14, fontWeight: 600, color: color.brick, cursor: "pointer" }}>
                 + Add &ldquo;{q.trim()}&rdquo;
               </button>
             )}
             {list.map((t) => (
-              <label key={t} style={{ display: "flex", alignItems: "center", gap: 10, padding: "7px 6px", borderRadius: 8, fontSize: 14, color: "#1D1A0F", cursor: "pointer" }}>
+              <label key={t} style={{ display: "flex", alignItems: "center", gap: 10, padding: "7px 6px", borderRadius: 8, fontSize: 14, color: color.ink, cursor: "pointer" }}>
                 <input type="checkbox" checked={has(t)} onChange={() => onToggle(t)} />
                 {t}
               </label>

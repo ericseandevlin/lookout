@@ -16,6 +16,7 @@ import { KeywordReport } from "./review/KeywordReport";
 import { PostingText } from "./review/PostingText";
 import { QuestionRow } from "./review/QuestionRow";
 import { SendForMe } from "./review/SendForMe";
+import { color } from "@/lib/tokens";
 
 export { DocPreview } from "./review/DocPreview";
 
@@ -127,7 +128,7 @@ export function ApplicationReview({ id }: { id: string }) {
   return (
     <div className="page-pad lk-page" style={{ display: "flex", flexDirection: "column", gap: 16, maxWidth: 1180 }}>
       <style>{`.lk-review{display:grid;grid-template-columns:minmax(0,1fr);gap:18px;align-items:start}@media(min-width:1000px){.lk-review{grid-template-columns:minmax(0,1fr) 360px}.lk-review aside{position:sticky;top:16px;max-height:calc(100vh - 32px);overflow:auto}}`}</style>
-      <Link href="/apply" style={{ fontSize: 14, color: "#1D1A0F" }}>← All applications</Link>
+      <Link href="/apply" style={{ fontSize: 14, color: color.ink }}>← All applications</Link>
       <div style={{ display: "flex", alignItems: "flex-start", gap: 12, flexWrap: "wrap" }}>
         <div style={{ flex: "1 1 320px", minWidth: 0 }}>
           <h1 style={{ margin: 0, fontSize: 28, fontWeight: 700, letterSpacing: "-0.02em" }}>{d.role}</h1>
@@ -141,10 +142,10 @@ export function ApplicationReview({ id }: { id: string }) {
       </div>
 
       <div aria-live="polite" style={{ ...muted, minHeight: 20 }}>{said}</div>
-      {err && <div role="alert" style={{ fontSize: 14, color: "#99220F" }}>{err}</div>}
+      {err && <div role="alert" style={{ fontSize: 14, color: color.brick }}>{err}</div>}
 
       {working && <div style={card}>Lookout is {d.status === "drafting" ? "drafting your application" : "reading the application"}. This takes a minute or two; the page updates on its own.</div>}
-      {d.status === "failed" && <div role="alert" style={{ ...card, borderColor: "#E8B4AA", color: "#99220F" }}>{d.report.error ?? "This one didn't work."} Go back to the list to try again.</div>}
+      {d.status === "failed" && <div role="alert" style={{ ...card, borderColor: "#E8B4AA", color: color.brick }}>{d.report.error ?? "This one didn't work."} Go back to the list to try again.</div>}
 
       {!working && d.items.length > 0 && (
         <div className="lk-review">
@@ -164,7 +165,7 @@ export function ApplicationReview({ id }: { id: string }) {
             )}
 
             {open.length > 0 && !locked && (
-              <section aria-labelledby="qs" style={{ ...card, borderColor: "#F8A865", background: "#FFF9F3" }}>
+              <section aria-labelledby="qs" style={{ ...card, borderColor: color.orange, background: "#FFF9F3" }}>
                 <h2 id="qs" style={{ margin: "0 0 4px", fontSize: 17, fontWeight: 700 }}>Lookout needs you for {open.length === 1 ? "one thing" : `${open.length} things`}</h2>
                 <p style={{ ...muted, margin: "0 0 12px" }}>It won&apos;t guess facts. Answer here and it becomes a version you can approve.</p>
                 <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
@@ -214,7 +215,7 @@ export function ApplicationReview({ id }: { id: string }) {
           <aside aria-label="The posting" style={{ ...card, display: "flex", flexDirection: "column", gap: 10 }}>
             <h2 style={{ margin: 0, fontSize: 16, fontWeight: 700 }}>The posting</h2>
             {d.url && (
-              <a href={d.url} target="_blank" rel="noreferrer" style={{ fontSize: 14, color: "#1D1A0F" }}>
+              <a href={d.url} target="_blank" rel="noreferrer" style={{ fontSize: 14, color: color.ink }}>
                 Open the original ↗
               </a>
             )}

@@ -2,6 +2,7 @@
 
 import { createPortal } from "react-dom";
 import { ENDED_STAGES, STAGES, stageStyle } from "@/lib/board";
+import { color } from "@/lib/tokens";
 
 export function Menu({ style, children, onClick }: { style: React.CSSProperties; children: React.ReactNode; onClick?: (e: React.MouseEvent) => void }) {
   return (
@@ -23,7 +24,7 @@ export function StageMenu({ current, onPick, style, mobile, stages = STAGES, end
             className="h-menu"
             data-tip={ended.includes(s) ? "Archives it" : undefined}
             onClick={(e) => { e.stopPropagation(); onPick(s); }}
-            style={{ display: "flex", alignItems: "center", gap: 9, padding: mobile ? "0 10px" : "8px 10px", minHeight: mobile ? 40 : undefined, border: 0, borderRadius: 8, background: s === current ? "#F6F2EC" : "transparent", fontSize: mobile ? 14 : 13, fontWeight: 500, color: "#1D1A0F", cursor: "pointer", textAlign: "left", whiteSpace: "nowrap" }}
+            style={{ display: "flex", alignItems: "center", gap: 9, padding: mobile ? "0 10px" : "8px 10px", minHeight: mobile ? 40 : undefined, border: 0, borderRadius: 8, background: s === current ? "#F6F2EC" : "transparent", fontSize: mobile ? 14 : 13, fontWeight: 500, color: color.ink, cursor: "pointer", textAlign: "left", whiteSpace: "nowrap" }}
           >
             <span style={{ width: 10, height: 10, borderRadius: "50%", background: stageStyle(s).bg, border: `1.5px solid ${stageStyle(s).bg}`, flex: "none" }} />
             {s}
@@ -59,7 +60,7 @@ export function Switch({ on, onClick, tip, small, disabled }: { on: boolean; onC
       data-tip={tip}
       disabled={disabled}
       onClick={onClick}
-      style={{ width: w, height: h, borderRadius: 999, border: 0, padding: p, background: on ? "#99220F" : "#D8D0C4", cursor: disabled ? "not-allowed" : "pointer", opacity: disabled ? 0.5 : 1, display: "flex", justifyContent: on ? "flex-end" : "flex-start", transition: "background .15s", flex: "none" }}
+      style={{ width: w, height: h, borderRadius: 999, border: 0, padding: p, background: on ? color.brick : "#D8D0C4", cursor: disabled ? "not-allowed" : "pointer", opacity: disabled ? 0.5 : 1, display: "flex", justifyContent: on ? "flex-end" : "flex-start", transition: "background .15s", flex: "none" }}
     >
       <span style={{ width: k, height: k, borderRadius: "50%", background: "#fff", boxShadow: "0 1px 2px rgba(0,0,0,.2)" }} />
     </button>
