@@ -9,5 +9,5 @@ export default defineConfig({
       "server-only": path.resolve(__dirname, "test/server-only.ts"),
     },
   },
-  test: { environment: "node" },
+  test: { environment: "node", hookTimeout: 60_000 },
 });

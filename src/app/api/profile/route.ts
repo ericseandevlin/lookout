@@ -1,9 +1,10 @@
-import { eq } from "drizzle-orm";
 import { track } from "@/lib/eventStore";
 import { rateLimit } from "@/lib/ratelimit";
 import { z } from "zod";
-import { authed, body, json } from "@/lib/api";
+import { authed, body, HttpError, json } from "@/lib/api";
 import { db, schema } from "@/lib/db";
+import { eq } from "drizzle-orm";
+import { getActiveSearch } from "@/lib/searches";
 
 const Value = z.union([z.string().max(4000), z.array(z.string().max(100)).max(20)]);
 const Input = z.object({
@@ -13,17 +14,19 @@ const Input = z.object({
   save: z.boolean().optional(),
 });
 
+/** Save answers onto the active search (#8): each search has its own questions and answers. */
 export const PUT = authed(async (req, { user }) => {
   const p = await body(req, Input);
-  const [row] = await db.select().from(schema.profiles).where(eq(schema.profiles.userId, user.id));
-  const auto = { ...(row?.autofilled ?? {}) };
+  const search = await getActiveSearch(user.id);
+  if (!search) throw new HttpError(409, "Create a search first.");
+  const auto = { ...search.autofilled };
   for (const k of p.clearAuto ?? []) delete auto[k];
-  const answers = { ...(row?.answers ?? {}), ...(p.answers ?? {}) };
-  const savedAt = p.save ? new Date() : (row?.savedAt ?? null);
+  const answers = { ...search.answers, ...(p.answers ?? {}) };
+  const savedAt = p.save ? new Date() : search.savedAt;
   await db
-    .insert(schema.profiles)
-    .values({ userId: user.id, answers, autofilled: auto, savedAt })
-    .onConflictDoUpdate({ target: schema.profiles.userId, set: { answers, autofilled: auto, savedAt, updatedAt: new Date() } });
+    .update(schema.searches)
+    .set({ answers, autofilled: auto, savedAt, updatedAt: new Date() })
+    .where(eq(schema.searches.id, search.id));
   // Answers autosave while typing: one event per ten minutes is enough.
   if (await rateLimit(`ev-profile:${user.id}`, 1, 10 * 60_000)) await track(user.id, "profile_edit");
   return json({ ok: true, savedAt: savedAt?.toISOString() ?? null });

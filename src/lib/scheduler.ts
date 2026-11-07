@@ -38,31 +38,30 @@ function isRunDay(s: { freq: string; runDay: string; runDays: string[] }, day: s
   return s.runDay === day;
 }
 
-/** Users whose setup is complete and who are due: never searched, or today is a run day and today's run hasn't happened. */
-async function dueUsers() {
+/** Active searches whose setup is complete and that are due: never searched, or today is a run day and today's run hasn't happened (#8). */
+async function dueSearches() {
   const now = localNow();
   const rows = await db
-    .select({ user: schema.users, settings: schema.settings, profile: schema.profiles })
+    .select({ user: schema.users, settings: schema.settings, search: schema.searches })
     .from(schema.users)
     .innerJoin(schema.settings, eq(schema.settings.userId, schema.users.id))
-    .innerJoin(schema.profiles, eq(schema.profiles.userId, schema.users.id))
+    .innerJoin(schema.searches, eq(schema.searches.id, schema.settings.activeSearchId))
     .where(eq(schema.users.disabled, false));
-  const due: string[] = [];
-  for (const { user, settings, profile } of rows) {
-    const cfg = kinds[profile.kind] ?? kinds.job;
+  const due: { userId: string; searchId: string }[] = [];
+  for (const { user, settings, search } of rows) {
+    const cfg = kinds[search.kind] ?? kinds.job;
     // No discovery sources for this kind yet (rfp until SAM.gov lands, #8): nothing to run.
     if (!cfg.discovery) continue;
-    if (answeredCount(cfg, profile.answers) < cfg.questions.length) continue;
+    if (answeredCount(cfg, search.answers) < cfg.questions.length) continue;
     const [resume] = await db
       .select({ id: schema.materials.id })
       .from(schema.materials)
       .where(and(eq(schema.materials.userId, user.id), eq(schema.materials.kind, "resume"), eq(schema.materials.status, "done")));
     if (!resume) continue;
-    const runs = db
+    const ever = await db
       .select({ n: sql<number>`count(*)::int` })
       .from(schema.runs)
-      .where(and(eq(schema.runs.userId, user.id), sql`${schema.runs.trigger} in ('scheduled','manual')`, eq(schema.runs.status, "done")));
-    const [{ n: ever }] = await runs;
+      .where(and(eq(schema.runs.searchId, search.id), sql`${schema.runs.trigger} in ('scheduled','manual')`, eq(schema.runs.status, "done")));
     // Back off for 2h after a failed search so a broken setup doesn't retry every tick.
     const [{ n: failing }] = await db
       .select({ n: sql<number>`count(*)::int` })
@@ -70,8 +69,8 @@ async function dueUsers() {
       .where(and(eq(schema.runs.userId, user.id), eq(schema.runs.status, "failed"), gte(schema.runs.startedAt, new Date(Date.now() - 2 * 3600_000))));
     if (failing > 0) continue;
     if (await isRunning(user.id)) continue;
-    if (ever === 0) {
-      due.push(user.id);
+    if (ever[0].n === 0) {
+      due.push({ userId: user.id, searchId: search.id });
       continue;
     }
     if (!isRunDay(settings, now.day) || now.hour < RUN_HOUR) continue;
@@ -79,8 +78,8 @@ async function dueUsers() {
     const [{ n: recent }] = await db
       .select({ n: sql<number>`count(*)::int` })
       .from(schema.runs)
-      .where(and(eq(schema.runs.userId, user.id), eq(schema.runs.trigger, "scheduled"), gte(schema.runs.startedAt, since)));
-    if (recent === 0) due.push(user.id);
+      .where(and(eq(schema.runs.searchId, search.id), eq(schema.runs.trigger, "scheduled"), gte(schema.runs.startedAt, since)));
+    if (recent === 0) due.push({ userId: user.id, searchId: search.id });
   }
   return due;
 }
@@ -110,14 +109,14 @@ async function tick() {
       .where(and(eq(schema.runs.status, "queued"), lt(schema.runs.startedAt, new Date(Date.now() - 24 * 3600_000))));
     // Auto-apply work left queued or interrupted (normally it starts the moment it's queued).
     await sweepApplications().catch((e) => console.error("[scheduler] apply sweep", e));
-    for (const userId of await dueUsers()) {
+    for (const { userId, searchId } of await dueSearches()) {
       try {
-        const r = await discover(userId, "scheduled");
+        const r = await discover(searchId, "scheduled");
         if (r.added > 0) await sendDigest(userId, "runId" in r ? r.runId : undefined);
       } catch (e) {
-        // Caps and missing config affect everyone; stop this tick instead of failing user by user.
+        // Caps and missing config affect everyone; stop this tick instead of failing search by search.
         if (e instanceof BudgetError || e instanceof AiConfigError || e instanceof SearchConfigError) break;
-        console.error(`[scheduler] run failed for ${userId}`, e);
+        console.error(`[scheduler] run failed for search ${searchId}`, e);
       }
     }
   } finally {
