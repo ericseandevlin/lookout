@@ -169,6 +169,13 @@
       "when": 1794076800000,
       "tag": "0023_searches",
       "breakpoints": true
+    },
+    {
+      "idx": 24,
+      "version": "7",
+      "when": 1794528000000,
+      "tag": "0024_consent",
+      "breakpoints": true
     }
   ]
 }
