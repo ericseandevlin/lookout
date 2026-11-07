@@ -209,7 +209,7 @@ function Report({ r }: { r: RunReport }) {
             <li key={tip.text} style={{ display: "flex", gap: 12, alignItems: "flex-start", justifyContent: "space-between", flexWrap: "wrap", padding: "11px 13px", borderRadius: 10, background: "rgba(255,255,255,.06)" }}>
               <span style={{ flex: "1 1 280px", fontSize: 14, lineHeight: 1.45, color: "#E9E3DA", textWrap: "pretty" }}>{tip.text}</span>
               {tip.href && (
-                <Link href={tip.href} onClick={() => trackClient("tip_clicked", tip.href)} style={{ flex: "none", fontSize: 14, fontWeight: 600, color: "#F8A865", textDecoration: "none", whiteSpace: "nowrap" }}>{tip.label ?? "Edit"} →</Link>
+                <Link href={tip.href} onClick={() => trackClient("tip_clicked", tip.href)} style={{ flex: "none", fontSize: 14, fontWeight: 600, color: "#F8A865", textDecoration: "none", whiteSpace: "nowrap" }}>{tip.label ?? "Edit"}</Link>
               )}
             </li>
           ))}
