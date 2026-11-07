@@ -5,7 +5,9 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { DAYS } from "@/lib/board";
 import type { Settings as S } from "@/lib/types";
 import { Switch } from "./Finds";
+import { searchBlocker } from "@/lib/ready";
 import { PageHead } from "./Profile";
+import { useCounts } from "./Shell";
 import { api, useStore } from "./store";
 import { useConfirm } from "./Confirm";
 import { useFocusTrap } from "./useFocusTrap";
@@ -58,6 +60,7 @@ export function Settings() {
   const [name, setNameDraft] = useState(state.user.name);
   const [delModal, setDelModal] = useState(false);
   const [searchMsg, setSearchMsg] = useState<string | null>(null);
+  const missing = searchBlocker(useCounts(state).answered, state.materials.resume?.status);
 
   useEffect(() => {
     const t = setTimeout(() => name !== state.user.name && setName(name), 600);
@@ -137,8 +140,8 @@ export function Settings() {
       )}
       <Row title="Search now" help="Run a search right away instead of waiting for the schedule. Up to 3 a day.">
         <div style={{ display: "flex", flexDirection: "column", gap: 8, alignItems: "flex-start" }}>
-          <button onClick={runNow} disabled={!!state.running} style={{ ...btn("outline"), opacity: state.running ? 0.5 : 1 }}>{state.running ? "Searching…" : "Search now"}</button>
-          {searchMsg && <span style={{ fontSize: 14, color: "#6B6358" }}>{searchMsg}</span>}
+          <button onClick={runNow} disabled={!!state.running || !!missing} style={{ ...btn("outline"), opacity: state.running || missing ? 0.5 : 1 }}>{state.running ? "Searching…" : "Search now"}</button>
+          {(searchMsg || missing) && <span style={{ fontSize: 14, color: "#6B6358" }}>{searchMsg ?? (missing && <><Link href={missing.href} style={{ color: "#99220F", fontWeight: 600 }}>{missing.text}</Link>.</>)}</span>}
         </div>
       </Row>
 

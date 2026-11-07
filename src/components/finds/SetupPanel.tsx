@@ -16,6 +16,7 @@ export function SetupPanel({ answered, sources }: { answered: number; sources: n
     ? "Starts once 1 and 2 are done"
     : st.freq === "Weekly" ? `Next run ${DAYS[st.day]}` : st.freq === "Twice a week" ? `Runs ${st.days.join(" & ")}` : "Runs daily";
 
+  const now = !d1 ? 1 : !d2 ? 2 : 0;
   const tiles = [
     { n: 1, done: d1, status: d1 ? "Done" : `${answered} of 5 answered`, title: "Answer five questions", body: "What you want next, the comp you need, and what’s off the table.", href: "/profile", btn: d1 ? "Review answers" : answered > 0 ? "Continue" : "Start profile" },
     { n: 2, done: d2, status: d2 ? `${sources} of 3 added` : "Resume needed", title: "Add your materials", body: "Your resume, LinkedIn and any links. Lookout reads these to fill in gaps and to write in your voice.", href: "/profile/materials", btn: d2 ? "Review materials" : "Add materials" },
@@ -32,7 +33,8 @@ export function SetupPanel({ answered, sources }: { answered: number; sources: n
       </div>
       <div className="setup-grid" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(220px,1fr))" }}>
         {tiles.map((t) => (
-          <div key={t.n} className="setup-tile" style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+          // The step you're on gets a thin outline; step 3 is what happens next, so it sits on the card as plain text (#255).
+          <div key={t.n} className={`setup-tile${t.n === now ? " now" : ""}${t.n === 3 ? " plain" : ""}`} aria-current={t.n === now ? "step" : undefined} style={{ display: "flex", flexDirection: "column", gap: 10 }}>
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10 }}>
               <div style={{ display: "flex", alignItems: "baseline", gap: 10 }}>
                 <div style={{ fontSize: 30, fontWeight: 700, lineHeight: 1, letterSpacing: "-0.02em", color: "#F8A865" }}>{t.n}</div>
