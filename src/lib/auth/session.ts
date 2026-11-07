@@ -6,8 +6,8 @@ import { env } from "@/lib/env";
 import { hashToken, newToken } from "./crypto";
 
 export const SESSION_COOKIE = "lookout_session";
-// Rolling: every signed-in request (at most once a day) pushes expiry out to 90 days again.
-const SESSION_DAYS = 90;
+// Rolling: every signed-in request (at most once a day) pushes expiry out to 30 days again (#345).
+const SESSION_DAYS = 30;
 
 export type SessionUser = typeof schema.users.$inferSelect;
 

@@ -33,7 +33,7 @@ export default function Privacy() {
       <H>How long it keeps it</H>
       <ul>
         <li><b>Sign-in links:</b> deleted once they expire.</li>
-        <li><b>Signed-in devices:</b> deleted 90 days after you last used them.</li>
+        <li><b>Signed-in devices:</b> deleted 30 days after you last used them.</li>
         <li><b>Search logs:</b> the details of each search are deleted after 12 months. Only the counts and cost stay.</li>
         <li><b>Your account:</b> kept while you use it. If you don&apos;t use Lookout for 12 months, it emails you once. If you still don&apos;t sign in, Eric may delete the account by hand after 18 months. Nothing is deleted automatically.</li>
         <li><b>Deleted accounts:</b> removed right away. Copies in encrypted backups age out within 60 days.</li>
@@ -57,7 +57,7 @@ export default function Privacy() {
       <p>Lookout also reads public pages, such as job postings and the links you add. Those sites see a visit from Lookout&apos;s server, nothing about you. If you use auto-apply, an application goes to that employer&apos;s site only after you approve the exact version that goes out.</p>
 
       <H>Cookies</H>
-      <p>One cookie keeps you signed in. It lasts 90 days and renews while you use Lookout. There are no analytics or advertising cookies.</p>
+      <p>One cookie keeps you signed in. It lasts 30 days and renews while you use Lookout. There are no analytics or advertising cookies.</p>
 
       <H>Your controls</H>
       <ul>

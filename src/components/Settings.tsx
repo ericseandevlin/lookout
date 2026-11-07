@@ -115,7 +115,7 @@ export function Settings() {
           <span style={{ fontSize: 14, color: "#6B6358" }}>{st.digest ? `On · sent to ${state.user.email}` : "Off"}</span>
         </div>
       </Row>
-      <Row title="Signed-in devices" help="You stay signed in for 90 days after your last visit on each device. Sign out anywhere you don't recognize.">
+      <Row title="Signed-in devices" help="You stay signed in for 30 days after your last visit on each device. Sign out anywhere you don't recognize.">
         <Devices onSignOutHere={signOut} />
       </Row>
       <Row title="Sign out" help="Sign out on this device. You'll need a new sign-in link to come back.">
