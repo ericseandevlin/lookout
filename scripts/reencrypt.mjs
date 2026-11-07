@@ -4,6 +4,7 @@
 // (it reads with either key meanwhile), run this, then remove APP_SECRET_PREVIOUS and restart again.
 // Without APP_SECRET_PREVIOUS it only encrypts uploads saved before #16. Safe to run twice: values already
 // on the current key are skipped.
+// --dry-run counts what would change and writes nothing (incident drills, #275).
 // Prints counts only, never values. Same format as src/lib/secrets.ts, repeated here because scripts
 // run without the app's build.
 import { createCipheriv, createDecipheriv, createHash, randomBytes } from "node:crypto";
@@ -18,6 +19,7 @@ if (now.length < 32 || (old && old.length < 32)) {
   console.error("APP_SECRET (and APP_SECRET_PREVIOUS, if set) must be 32+ characters.");
   process.exit(1);
 }
+const DRY = process.argv.includes("--dry-run");
 const NEW = keyOf(now);
 const OLD = old ? keyOf(old) : null;
 
@@ -100,13 +102,13 @@ await sql.begin(async (tx) => {
         changed = true;
       }
     }
-    if (changed) await tx`update app_settings set value = ${tx.json(value)}, updated_at = now() where key = ${name}`;
+    if (changed && !DRY) await tx`update app_settings set value = ${tx.json(value)}, updated_at = now() where key = ${name}`;
   }
   const rows = await tx`select user_id, eeo from profiles where eeo is not null for update`;
   for (const p of rows) {
     const r = move(p.eeo);
     count(r);
-    if (r !== "kept" && r !== "bad") await tx`update profiles set eeo = ${r} where user_id = ${p.user_id}`;
+    if (r !== "kept" && r !== "bad" && !DRY) await tx`update profiles set eeo = ${r} where user_id = ${p.user_id}`;
   }
 });
 await sql.end();
@@ -121,6 +123,7 @@ for (const u of users.filter((d) => d.isDirectory())) {
     const r = moveFile(await readFile(p));
     if (r === null) files.kept++;
     else if (r === "bad") files.bad++;
+    else if (DRY) files.moved++;
     else {
       // Write next to it, then rename, so a crash never leaves a half-written file.
       await writeFile(`${p}.tmp`, r, { mode: 0o600 });
@@ -130,7 +133,9 @@ for (const u of users.filter((d) => d.isDirectory())) {
   }
 }
 
-console.log(`Secrets: re-encrypted ${tally.moved}, already on the current key ${tally.kept}, unreadable ${tally.bad}.`);
-console.log(`Uploads: encrypted ${files.moved}, already on the current key ${files.kept}, unreadable ${files.bad}.`);
+const did = (verb) => (DRY ? `would be ${verb}` : verb);
+if (DRY) console.log("Dry run: nothing was written.");
+console.log(`Secrets: ${did("re-encrypted")} ${tally.moved}, already on the current key ${tally.kept}, unreadable ${tally.bad}.`);
+console.log(`Uploads: ${did("encrypted")} ${files.moved}, already on the current key ${files.kept}, unreadable ${files.bad}.`);
 if (tally.bad) console.log("Unreadable secrets were left as they are: re-enter API keys on the admin page; EEO answers need re-entering by that person.");
 if (files.bad) console.log("Unreadable uploads were left as they are. If a rotation is under way, set APP_SECRET_PREVIOUS and run again; otherwise those people need to upload again.");
