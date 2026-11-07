@@ -28,6 +28,10 @@ export const users = pgTable(
     lastLoginAt: timestamp("last_login_at", { withTimezone: true }),
     /** Set when the welcome step is done (name, salary range, work mode) */
     onboardedAt: timestamp("onboarded_at", { withTimezone: true }),
+    /** Versions of the Terms and Privacy pages they last agreed to, and when (#21). See lib/legal.ts. */
+    termsVersion: text("terms_version"),
+    privacyVersion: text("privacy_version"),
+    acceptedAt: timestamp("accepted_at", { withTimezone: true }),
   },
   (t) => [uniqueIndex("users_email_idx").on(sql`lower(${t.email})`)],
 );

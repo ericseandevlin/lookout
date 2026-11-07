@@ -1,12 +1,13 @@
 import Link from "next/link";
 import { getSessionUser } from "@/lib/auth/session";
+import { PRIVACY_VERSION, versionDate } from "@/lib/legal";
 
 export const metadata = { title: "Privacy · Lookout" };
 export const dynamic = "force-dynamic";
 
 const CONTACT = "privacy@lookout.ericdevlin.co";
 
-/** Plain-language privacy page. Keep it true: update it whenever what's stored or who sees it changes. */
+/** Plain-language privacy page. Keep it true: update it whenever what's stored or who sees it changes, and bump PRIVACY_VERSION in lib/legal.ts. */
 export default async function Privacy() {
   const signedIn = !!(await getSessionUser());
   return (
@@ -26,7 +27,7 @@ export default async function Privacy() {
           <div style={{ padding: "28px 26px 34px", fontSize: 15, lineHeight: 1.6, color: "#3B362C" }}>
             <div style={{ fontSize: 14, fontWeight: 700, letterSpacing: ".14em", textTransform: "uppercase", color: "#99220F" }}>Privacy</div>
             <h1 style={{ margin: "8px 0 4px", fontSize: 30, fontWeight: 700, letterSpacing: "-0.02em", color: "#1D1A0F" }}>What Lookout keeps, and who sees it</h1>
-            <p style={{ color: "#6B6358", fontSize: 14, margin: 0 }}>Last updated November 7, 2026</p>
+            <p style={{ color: "#6B6358", fontSize: 14, margin: 0 }}>Last updated {versionDate(PRIVACY_VERSION)}</p>
 
             <H>The short version</H>
             <p>Lookout is a small, invite-only tool run by Eric Devlin. It keeps what you give it so it can search for you. It doesn&apos;t sell your data, show ads or use tracking cookies. You can export your board and profile, or delete everything, from Settings.</p>
@@ -34,6 +35,7 @@ export default async function Privacy() {
             <H>What it keeps</H>
             <ul>
               <li>Your email, name, and the devices you&apos;re signed in on.</li>
+              <li>Which version of this page you agreed to, and when.</li>
               <li>Your answers to the five profile questions.</li>
               <li>Your resume and LinkedIn PDF, if you upload them: the files and the text pulled from them. Uploaded files are stored encrypted.</li>
               <li>Links you add, and the text Lookout reads from those pages.</li>
