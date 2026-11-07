@@ -21,7 +21,7 @@ export async function activity() {
   const users = await db
     .select({ id: schema.users.id, email: schema.users.email, name: schema.users.name, lastLoginAt: schema.users.lastLoginAt, onboardedAt: schema.users.onboardedAt, disabled: schema.users.disabled, isAdmin: schema.users.isAdmin })
     .from(schema.users);
-  const profiles = await db.select({ userId: schema.profiles.userId, answers: schema.profiles.answers, searchProfileAt: schema.profiles.searchProfileAt }).from(schema.profiles);
+  const searches = await db.select({ userId: schema.searches.userId, kind: schema.searches.kind, answers: schema.searches.answers, searchProfileAt: schema.searches.searchProfileAt }).from(schema.searches);
   const mats = await db.select({ userId: schema.materials.userId }).from(schema.materials).where(inArray(schema.materials.kind, ["resume", "linkedin"]));
   const ran = await db.selectDistinct({ userId: schema.runs.userId }).from(schema.runs).where(and(eq(schema.runs.status, "done"), inArray(schema.runs.trigger, ["scheduled", "manual"])));
   const acted = await db
@@ -32,7 +32,8 @@ export async function activity() {
   const pinned = await db.selectDistinct({ userId: schema.userOpportunities.userId }).from(schema.userOpportunities).where(eq(schema.userOpportunities.pinned, true));
   const set = (xs: { userId: string }[]) => new Set(xs.map((x) => x.userId));
   const [mat, ranS, foundS, actS, pinS] = [set(mats), set(ran), set(found), set(acted), set(pinned)];
-  const prof = new Map(profiles.map((p) => [p.userId, p]));
+  const prof = new Map<string, { answers: Record<string, string | string[]>; searchProfileAt: Date | null }[]>();
+  for (const s of searches) prof.set(s.userId, [...(prof.get(s.userId) ?? []), { answers: s.answers, searchProfileAt: s.searchProfileAt }]);
   // Admins and disabled accounts are left out, so testing doesn't count.
   const live = users.filter((u) => !u.disabled && !isAdmin(u));
   const steps = new Map<string, FunnelPerson>(
@@ -41,9 +42,10 @@ export async function activity() {
       {
         signedIn: !!u.lastLoginAt,
         welcome: !!u.onboardedAt,
-        answered: answeredCount(job, (prof.get(u.id)?.answers ?? {}) as Record<string, string | string[]>) >= job.questions.length,
+        // A step counts when any of the account's searches has it done (#8).
+        answered: (prof.get(u.id) ?? []).some((s) => answeredCount(job, s.answers) >= job.questions.length),
         material: mat.has(u.id),
-        searchProfile: !!prof.get(u.id)?.searchProfileAt,
+        searchProfile: (prof.get(u.id) ?? []).some((s) => !!s.searchProfileAt),
         searched: ranS.has(u.id),
         found: foundS.has(u.id),
         acted: actS.has(u.id) || pinS.has(u.id),

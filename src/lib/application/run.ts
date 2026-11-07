@@ -18,6 +18,7 @@ import { ensureMaster } from "./master";
 import { findOutreach, type OutreachItem } from "./outreach";
 import { roleSwaps } from "./masterCheck";
 import { asksBase, asksMinimum, isSalaryQuestion, rangeBasis, suggestSalary } from "./salary";
+import { getActiveSearch } from "@/lib/searches";
 import {
   ANSWERS_SYSTEM,
   AnswersDraft,
@@ -163,6 +164,8 @@ export async function processApplication(id: string) {
 async function loadInputs(userId: string, opp: typeof schema.opportunities.$inferSelect, usage: Usage, postingHtml?: string): Promise<DraftInputs> {
   const [user] = await db.select().from(schema.users).where(eq(schema.users.id, userId));
   const [profile] = await db.select().from(schema.profiles).where(eq(schema.profiles.userId, userId));
+  // The brief and pay come from the active search's answers (#8); the rest of the profile is per-account.
+  const search = await getActiveSearch(userId);
   const mats = await db.select().from(schema.materials).where(eq(schema.materials.userId, userId));
   // The structured master resume (#131), built once from the upload; the raw PDF text is only a fallback.
   const master = await ensureMaster(userId, usage);
@@ -198,10 +201,10 @@ async function loadInputs(userId: string, opp: typeof schema.opportunities.$infe
     email: user?.email ?? "",
     linkedinUrl: li?.url ? linkedinUrl(li.url) : null,
     links: mats.filter((m) => m.kind === "link" && m.url).map((m) => ({ url: m.url!, text: m.extracted?.text ?? "" })),
-    brief: (kinds[profile?.kind ?? "job"]?.brief(profile?.answers ?? {}) ?? "") + savedBlock(profile?.applyAnswers ?? []) + notesBlock(profile?.skillNotes ?? []),
+    brief: (kinds[search?.kind ?? "job"]?.brief(search?.answers ?? {}) ?? "") + savedBlock(profile?.applyAnswers ?? []) + notesBlock(profile?.skillNotes ?? []),
     notes: notesBlock(profile?.skillNotes ?? []),
     saved: profile?.applyAnswers ?? [],
-    pay: { floor: profile?.answers?.floor, target: profile?.answers?.target },
+    pay: { floor: search?.answers?.floor, target: search?.answers?.target },
     resume: resume.slice(0, 20000),
     posting: { company: opp.company, title: opp.title, text },
     traps: cleaned.traps,

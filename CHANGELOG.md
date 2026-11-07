@@ -6,6 +6,9 @@ Every production release of Lookout, newest first. The format follows [Keep a Ch
 
 Work merged to `main` (staging) and waiting for the weekly release.
 
+### Added
+- Several searches per account: a `searches` table holds each search's kind, profile answers and built search profile, and every account's board and runs belong to one search. The sidebar (and the mobile top bar) gets a search switcher: pick which search the app shows, rename one, or start a new one from the kind picker (#8).
+
 ## [0.4.0] - 2026-11-02
 
 ### Added

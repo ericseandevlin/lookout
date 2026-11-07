@@ -6,6 +6,7 @@ import { assertBudget, finishRun, progress, startRun } from "@/lib/ai/runs";
 import { fetchPage, pageToText } from "@/lib/ai/fetchPage";
 import { webSearch } from "@/lib/ai/search";
 import { cleanEvents, eventQueries, EventsDraft, eventsDue, suggestInterests, type EventFreq, type EventReach } from "@/lib/networking";
+import { getActiveSearch } from "@/lib/searches";
 import { loadContext, type Context } from "./discover";
 import { ensureSearchProfile } from "./searchProfile";
 
@@ -32,10 +33,10 @@ export async function getEventPrefs(userId: string) {
   return p ?? { interests: "", reach: "both" as EventReach, miles: 25, freq: "weekly" as EventFreq };
 }
 
-/** Interest chips from the stored search profile (#264). Reads only; never builds one. */
+/** Interest chips from the active search's stored search profile (#264). Reads only; never builds one. */
 export async function getInterestSuggestions(userId: string) {
-  const [p] = await db.select({ sp: schema.profiles.searchProfile }).from(schema.profiles).where(eq(schema.profiles.userId, userId));
-  return suggestInterests(p?.sp);
+  const search = await getActiveSearch(userId);
+  return suggestInterests(search?.searchProfile ?? undefined);
 }
 
 export async function saveEventPrefs(userId: string, p: { interests: string; reach: EventReach; miles: number; freq: EventFreq }) {
@@ -87,12 +88,15 @@ export async function findEventsIfDue(ctx: Context, usage: Usage, step: (s: stri
 
 /** Events "Search now" (#265): an event search on its own, logged as an "events" run so it counts against the caps. */
 export async function searchEventsNow(userId: string) {
+  // Events ride the active search's context (#8).
+  const search = await getActiveSearch(userId);
+  if (!search) throw new Error("Search not found");
   await assertBudget(userId);
-  const run = await startRun(userId, "events");
+  const run = await startRun(userId, "events", { searchId: search.id });
   const usage = emptyUsage();
   try {
-    const ctx = await loadContext(userId);
-    ctx.searchProfile = (await ensureSearchProfile(userId, usage)).profile;
+    const ctx = await loadContext(search.id);
+    ctx.searchProfile = (await ensureSearchProfile(search.id, usage)).profile;
     const added = await findEvents(ctx, usage, (s) => progress(run.id, 50, s));
     await progress(run.id, 100, added ? `Added ${added} ${added === 1 ? "event" : "events"}` : "No new events this time");
     await finishRun(run.id, usage, { found: added, added });

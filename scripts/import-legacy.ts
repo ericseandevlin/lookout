@@ -30,10 +30,14 @@ async function main() {
   let [user] = await db.select().from(schema.users).where(dsql`lower(${schema.users.email}) = ${e}`);
   if (!user) {
     [user] = await db.insert(schema.users).values({ email: e }).returning();
-    await db.insert(schema.settings).values({ userId: user.id });
+    // One search per account (#8): imports land on it.
+    const [search] = await db.insert(schema.searches).values({ userId: user.id, name: "Job search" }).returning();
+    await db.insert(schema.settings).values({ userId: user.id, activeSearchId: search.id });
     await db.insert(schema.profiles).values({ userId: user.id });
     console.log(`created user ${e}`);
   }
+  const search = (await db.select().from(schema.searches).where(dsql`user_id = ${user.id}`)).at(0);
+  if (!search) throw new Error(`user ${e} has no search to import into`);
   let added = 0;
   for (const r of rows) {
     const [min, max] = money(r.comp || "");
@@ -49,7 +53,7 @@ async function main() {
     const ins = await db
       .insert(schema.userOpportunities)
       .values({
-        userId: user.id, opportunityId: opp.id, score: Math.max(1, Math.min(5, r.score || 3)),
+        userId: user.id, searchId: search.id, opportunityId: opp.id, score: Math.max(1, Math.min(5, r.score || 3)),
         reasonsMatch: r.summary ? [r.summary] : [], reasonsGap: min ? [] : ["No comp posted"],
         pinned: !!r.pinned, archived: !!r.archived, notes: r.notes ?? "",
         addedAt: new Date(r.added + "T12:00:00Z"), addedVia: "import",

@@ -50,9 +50,15 @@ export type Settings = {
 
 export type Answers = Record<string, string | string[]>;
 
+/** One of an account's searches, for the switcher (#8). */
+export type SearchInfo = { id: string; name: string; kind: string };
+
 export type AppState = {
   user: { name: string; email: string; isAdmin: boolean; autoApply: boolean };
   settings: Settings;
+  /** Every search the account holds; the board, profile and runs follow `searchId` (#8). */
+  searches: SearchInfo[];
+  searchId: string;
   profile: { kind: string; answers: Answers; auto: Record<string, string>; savedAt: string | null };
   materials: { resume: Resume | null; linkedin: { handle: string; linked: boolean; pdf: { name: string; uploadedAt: string } | null }; links: Link[] };
   finds: Find[];

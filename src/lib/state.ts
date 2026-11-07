@@ -7,6 +7,7 @@ import { canUseAutoApply } from "@/lib/apply";
 import { autoSubmitOn, submitMode } from "@/lib/application/submitMode";
 import type { AppState, Find, Resume, RunInfo } from "@/lib/types";
 import { pickBoardRun } from "@/lib/runState";
+import { listSearches, pickActiveSearch } from "@/lib/searches";
 
 function toFind(
   o: typeof schema.opportunities.$inferSelect,
@@ -38,7 +39,7 @@ function toFind(
   };
 }
 
-async function getFinds(userId: string) {
+async function getFinds(userId: string, searchId: string) {
   const rows = await db
     .select()
     .from(schema.userOpportunities)
@@ -47,7 +48,7 @@ async function getFinds(userId: string) {
       schema.applications,
       and(eq(schema.applications.opportunityId, schema.userOpportunities.opportunityId), eq(schema.applications.userId, userId)),
     )
-    .where(eq(schema.userOpportunities.userId, userId))
+    .where(eq(schema.userOpportunities.searchId, searchId))
     .orderBy(desc(schema.userOpportunities.addedAt));
   return rows.map((r) => toFind(r.opportunities, r.user_opportunities, r.applications));
 }
@@ -79,14 +80,20 @@ async function getMaterials(userId: string) {
 
 export async function getState(user: SessionUser): Promise<AppState> {
   const [settingsRow] = await db.select().from(schema.settings).where(eq(schema.settings.userId, user.id));
-  const [profileRow] = await db.select().from(schema.profiles).where(eq(schema.profiles.userId, user.id));
-  const [lastRun] = await db
-    .select()
-    .from(schema.runs)
-    .where(and(eq(schema.runs.userId, user.id), eq(schema.runs.status, "done"), inArray(schema.runs.trigger, ["scheduled", "manual"])))
-    .orderBy(desc(schema.runs.finishedAt))
-    .limit(1);
-  const run = await getLatestRun(user.id);
+  // The board, profile and runs are about the active search (#8).
+  const searches = await listSearches(user.id);
+  const active = pickActiveSearch(searches, settingsRow?.activeSearchId);
+  const lastRun = active
+    ? (
+        await db
+          .select()
+          .from(schema.runs)
+          .where(and(eq(schema.runs.searchId, active.id), eq(schema.runs.status, "done"), inArray(schema.runs.trigger, ["scheduled", "manual"])))
+          .orderBy(desc(schema.runs.finishedAt))
+          .limit(1)
+      )[0]
+    : undefined;
+  const run = active ? await getLatestRun(active.id) : null;
   const running = run && (run.status === "running" || run.status === "queued") ? run : null;
   const s = settingsRow;
   return {
@@ -101,14 +108,16 @@ export async function getState(user: SessionUser): Promise<AppState> {
       newDays: s?.newDays ?? 7,
       railClosed: s?.railClosed ?? false,
     },
+    searches: searches.map(({ id, name, kind }) => ({ id, name, kind })),
+    searchId: active?.id ?? "",
     profile: {
-      kind: profileRow?.kind ?? "job",
-      answers: profileRow?.answers ?? {},
-      auto: profileRow?.autofilled ?? {},
-      savedAt: profileRow?.savedAt?.toISOString() ?? null,
+      kind: active?.kind ?? "job",
+      answers: active?.answers ?? {},
+      auto: active?.autofilled ?? {},
+      savedAt: active?.savedAt?.toISOString() ?? null,
     },
     materials: await getMaterials(user.id),
-    finds: await getFinds(user.id),
+    finds: active ? await getFinds(user.id, active.id) : [],
     lastRunAt: lastRun?.finishedAt?.toISOString() ?? null,
     lastReport: lastRun?.report && lastRun.finishedAt ? { at: lastRun.finishedAt.toISOString(), added: lastRun.added, report: lastRun.report } : null,
     running: running ? running.trigger : null,
@@ -118,11 +127,11 @@ export async function getState(user: SessionUser): Promise<AppState> {
 
 /** Most recent search or link add (resume scans included), for the live progress panel. */
 /** The run the board follows (#256): an active search or link add first, else the newest one. Resume scans are left out. */
-export async function getLatestRun(userId: string): Promise<RunInfo | null> {
+export async function getLatestRun(searchId: string): Promise<RunInfo | null> {
   const recent = await db
     .select()
     .from(schema.runs)
-    .where(eq(schema.runs.userId, userId))
+    .where(eq(schema.runs.searchId, searchId))
     .orderBy(desc(schema.runs.startedAt))
     .limit(10);
   const r = pickBoardRun(recent);

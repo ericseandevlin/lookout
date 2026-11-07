@@ -24,9 +24,12 @@ export async function assertBudget(userId: string) {
 export async function startRun(
   userId: string,
   trigger: (typeof schema.runs.$inferInsert)["trigger"],
-  opts: { status?: "queued" | "running"; request?: Record<string, unknown> } = {},
+  opts: { searchId?: string; status?: "queued" | "running"; request?: Record<string, unknown> } = {},
 ) {
-  const [run] = await db.insert(schema.runs).values({ userId, trigger, status: opts.status ?? "running", request: opts.request }).returning();
+  const [run] = await db
+    .insert(schema.runs)
+    .values({ userId, trigger, ...(opts.searchId && { searchId: opts.searchId }), status: opts.status ?? "running", request: opts.request })
+    .returning();
   return run;
 }
 

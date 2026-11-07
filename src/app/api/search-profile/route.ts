@@ -2,13 +2,16 @@ import { authed, HttpError, json } from "@/lib/api";
 import { canBuild, ensureSearchProfile } from "@/lib/agent/searchProfile";
 import { emptyUsage } from "@/lib/ai/llm";
 import { rateLimit } from "@/lib/ratelimit";
+import { getActiveSearch } from "@/lib/searches";
 
-/** Profile > What Lookout sees. Opening it rebuilds the profile if the user's inputs changed. */
+/** Profile > What Lookout sees, for the active search (#8). Opening it rebuilds the profile if the search's inputs changed. */
 async function respond(userId: string, force: boolean) {
+  const search = await getActiveSearch(userId);
+  if (!search) throw new HttpError(409, "Create a search first.");
   const usage = emptyUsage();
   // Building costs a model call; cap rebuilds so a stuck tab can't loop.
   const mayBuild = await rateLimit(`search-profile:${userId}`, 30, 24 * 3600_000);
-  const r = await ensureSearchProfile(userId, usage, { force, build: mayBuild });
+  const r = await ensureSearchProfile(search.id, usage, { force, build: mayBuild });
   const stale = !!r.raw.stored?.searchProfileHash && r.raw.stored.searchProfileHash !== r.raw.hash && !r.rebuilt;
   return json({
     profile: r.profile,
