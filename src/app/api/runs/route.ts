@@ -8,6 +8,7 @@ import { and, eq } from "drizzle-orm";
 import { db, schema } from "@/lib/db";
 import { answeredCount, kinds } from "@/lib/kinds";
 import { searchBlocker } from "@/lib/ready";
+import { searchOn } from "@/lib/sources";
 import { getActiveSearch } from "@/lib/searches";
 
 /** The same readiness rule the board shows, checked here too so a stale tab can't start an empty search (#255). */
@@ -22,6 +23,7 @@ async function blocker(userId: string) {
     search,
     blocker: searchBlocker(answered, resumes.some((r) => r.status === "done") ? "done" : resumes[0]?.status),
     cfg: kinds[search?.kind ?? "job"] ?? kinds.job,
+    kind: search?.kind ?? "job",
   };
 }
 
@@ -31,8 +33,8 @@ export const POST = authed(async (_req, { user }) => {
   const missing = await blocker(user.id);
   if (!missing.search) throw new HttpError(409, "Create a search first.");
   if (missing.blocker) throw new HttpError(409, `${missing.blocker.text}.`);
-  // A kind without sources yet (rfp until SAM.gov lands, #8) can't be searched.
-  if (!missing.cfg.discovery) throw new HttpError(400, "Searching for this isn't on yet. Lookout will tell you when it is.");
+  // A kind without a source can't be searched (rfp needs a SAM.gov key, #272).
+  if (!searchOn(missing.kind)) throw new HttpError(400, "Searching for this isn't on yet. Lookout will tell you when it is.");
   try {
     await assertBudget(user.id);
   } catch (e) {

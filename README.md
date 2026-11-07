@@ -80,6 +80,7 @@ AI and search settings can live in env or be set in Admin > AI settings (the dat
 | `AI_PROVIDER`, `AI_BASE_URL`, `AI_MODEL`, `AI_API_KEY`, `AI_PRICE_IN`, `AI_PRICE_OUT`, `AI_JSON_MODE` | Default model settings (`openai`, `anthropic` or `agent`) |
 | `AGENT_TOKEN` | 32+ chars; bearer token for the Claude agent queue |
 | `SEARCH_PROVIDER`, `SEARXNG_URL`, `BRAVE_API_KEY`, `SEARCH_PRICE` | Web search |
+| `SAM_API_KEY` | Free key from a SAM.gov account; turns on RFP searches (federal solicitations). RFP search stays off without it |
 | `SIGNUP_MODE` | `invite` (default) or `open` |
 | `ADMIN_EMAILS`, `ALLOWED_EMAILS` | Comma lists; admins can always sign in |
 | `SMTP_URL`, `MAIL_FROM` | Outgoing email, e.g. `smtps://resend:KEY@smtp.resend.com:465`. The From address only sends |
