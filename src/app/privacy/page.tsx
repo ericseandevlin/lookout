@@ -26,7 +26,7 @@ export default async function Privacy() {
           <div style={{ padding: "28px 26px 34px", fontSize: 15, lineHeight: 1.6, color: "#3B362C" }}>
             <div style={{ fontSize: 14, fontWeight: 700, letterSpacing: ".14em", textTransform: "uppercase", color: "#99220F" }}>Privacy</div>
             <h1 style={{ margin: "8px 0 4px", fontSize: 30, fontWeight: 700, letterSpacing: "-0.02em", color: "#1D1A0F" }}>What Lookout keeps, and who sees it</h1>
-            <p style={{ color: "#6B6358", fontSize: 14, margin: 0 }}>Last updated November 4, 2026</p>
+            <p style={{ color: "#6B6358", fontSize: 14, margin: 0 }}>Last updated November 7, 2026</p>
 
             <H>The short version</H>
             <p>Lookout is a small, invite-only tool run by Eric Devlin. It keeps what you give it so it can search for you. It doesn&apos;t sell your data, show ads or use tracking cookies. You can export your board and profile, or delete everything, from Settings.</p>
@@ -35,13 +35,14 @@ export default async function Privacy() {
             <ul>
               <li>Your email, name, and the devices you&apos;re signed in on.</li>
               <li>Your answers to the five profile questions.</li>
-              <li>Your resume and LinkedIn PDF, if you upload them: the files and the text pulled from them.</li>
+              <li>Your resume and LinkedIn PDF, if you upload them: the files and the text pulled from them. Uploaded files are stored encrypted.</li>
               <li>Links you add, and the text Lookout reads from those pages.</li>
               <li>Your search profile: the summary Lookout builds from all of the above. You can see it under Profile, What Lookout sees.</li>
-              <li>Your board: the roles found for you, plus your stages, notes, pins and &ldquo;Not a fit&rdquo; reasons.</li>
+              <li>Your searches: what each one looks for (jobs, or RFPs for a business), and its board: the finds, plus your stages, notes, pins and &ldquo;Not a fit&rdquo; reasons.</li>
               <li>If you turn on events: your event interests, and the public events Lookout found for you. Past events are deleted.</li>
               <li>Your application drafts and approved versions, including public people Lookout suggests you contact and your outreach message drafts. Lookout never sends those messages.</li>
-              <li>A log of each search: when it ran, what it searched for, and what it cost.</li>
+              <li>A log of each search: when it ran, what it searched for, and what it cost. After 12 months the details are deleted; only the counts and cost stay.</li>
+              <li>Your answers to the short beta surveys, if you answer them.</li>
               <li>What you do in Lookout: the pages you open and for how long, and actions like finishing the welcome step, searching, pinning, moving a find, opening a posting or turning auto-apply on or off. Lookout records this itself to see what&apos;s useful; no outside analytics or ad scripts are on the site.</li>
               <li>Which links you click in the finds email. Links in that email pass through Lookout first, so it can tell whether the finds are useful. It doesn&apos;t track whether you open the email.</li>
             </ul>
@@ -52,7 +53,7 @@ export default async function Privacy() {
             <H>Services it uses</H>
             <ul>
               <li><b>An AI model.</b> To build your search profile and score postings, Lookout sends your profile answers and the text of your resume, LinkedIn PDF and links to an AI model through OpenRouter. Lookout tells OpenRouter to use only hosts that don&apos;t keep your data or train on it, and to try US hosts first. Lookout doesn&apos;t train any models on your data either.</li>
-              <li><b>Web search.</b> Lookout runs its own search engine relay. The queries it sends are job titles, company names, places and keywords, never your name, email or resume.</li>
+              <li><b>Web search.</b> Lookout runs its own search engine relay. The queries it sends are job titles, company names, places and keywords, never your name, email or resume. RFP searches also ask SAM.gov, the US government&apos;s public contracts site, using the same kind of keywords.</li>
               <li><b>Email.</b> Sign-in links and invites go out through Resend.</li>
               <li><b>Hosting and backups.</b> The app and its database run on a private server. A backup is taken every night, encrypted, and kept for up to 60 days in Amazon S3.</li>
             </ul>
