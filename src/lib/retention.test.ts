@@ -44,7 +44,7 @@ describe("cleanup", () => {
       ])
       .returning();
 
-    expect(await cleanup(NOW)).toEqual({ loginTokens: 1, sessions: 1, runLogs: 1 });
+    expect(await cleanup(NOW)).toEqual({ loginTokens: 1, sessions: 1, runLogs: 1, errors: 0 });
     expect((await db.select().from(schema.loginTokens)).map((t) => t.tokenHash)).toEqual(["live"]);
     expect((await db.select().from(schema.sessions)).map((s) => s.idHash)).toEqual(["here"]);
     const [o] = await db.select().from(schema.runs).where(eq(schema.runs.id, old.id));
@@ -54,6 +54,6 @@ describe("cleanup", () => {
     const [r] = await db.select().from(schema.runs).where(eq(schema.runs.id, recent.id));
     expect(r.progress.log).toHaveLength(1);
 
-    expect(await cleanup(NOW)).toEqual({ loginTokens: 0, sessions: 0, runLogs: 0 });
+    expect(await cleanup(NOW)).toEqual({ loginTokens: 0, sessions: 0, runLogs: 0, errors: 0 });
   });
 });

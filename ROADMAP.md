@@ -85,7 +85,7 @@ Must be done before opening sign-up beyond friends. Each item is an issue labele
 - [x] SPF, DKIM and DMARC on the sending domain
 - [x] Signed-in devices and "sign out everywhere"
 - [ ] Persist VPS firewall rules; confirm Postgres is unreachable from outside
-- [ ] Uptime check and alerting on `/api/health`; error tracking
+- [x] Uptime check and alerting on `/api/health`; error tracking (#12)
 - [x] Bot protection on request access (Cloudflare Turnstile) (#13)
 - [ ] CSP with nonces instead of `'unsafe-inline'`
 - [ ] Rate limits in Postgres so they survive restarts

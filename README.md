@@ -26,7 +26,7 @@ Jobs are the first opportunity type. Type-specific pieces live in `src/lib/kinds
   - **Materials** (`/profile/materials`): resume (PDF/DOCX, fills empty answers), LinkedIn PDF (LinkedIn has no usable API and blocks scraping, so people use its Save to PDF; steps are on the page), and other links, which Lookout reads and shows as Read / why it couldn't.
   - **What Lookout sees** (`/profile/sees`): the saved search profile every search uses, with links to edit each part and a Rebuild button.
 - **Settings** (`/settings`): schedule, digest, density, name, change email, signed-in devices, export, reset board, delete everything, privacy link.
-- **Admin** (`/admin`, admins only): people, access mode, spend caps, access requests, invites (with Resend and copy link), recent runs. **AI settings** (`/admin/ai`): provider presets (OpenRouter, OpenCode Zen/Go, DeepInfra, Together, Groq, Ollama, Custom), model pickers, encrypted keys, Test buttons. Everything autosaves. **Metrics** (`/admin/metrics`): the beta goals from ROADMAP > Goals (weekly actives, finds acted on per active person, interviews, week-4 retention, cost per active person) and where each stands.
+- **Admin** (`/admin`, admins only): people, access mode, spend caps, access requests, invites (with Resend and copy link), recent runs. **AI settings** (`/admin/ai`): provider presets (OpenRouter, OpenCode Zen/Go, DeepInfra, Together, Groq, Ollama, Custom), model pickers, encrypted keys, Test buttons. Everything autosaves. **Metrics** (`/admin/metrics`): the beta goals from ROADMAP > Goals (weekly actives, finds acted on per active person, interviews, week-4 retention, cost per active person) and where each stands. **Errors** (`/admin/errors`): server errors Lookout recorded, newest first, with search (#12).
 - **Privacy** (`/privacy`): what's kept, who sees it, services used, controls.
 
 ## How a search works
@@ -114,6 +114,11 @@ Three environments, promoted in order: **dev** is your machine (`npm run dev`, f
 
 Sign someone in without email (on the server): `docker compose exec app node scripts/login-link.mjs someone@example.com`.
 
+## Uptime and errors
+
+- **Uptime:** `.github/workflows/uptime.yml` calls `/api/health` on prod and staging every 5 minutes from GitHub (best effort, so sometimes 15). Three failures 30 seconds apart open an issue labeled `outage`, which GitHub emails; it closes itself when the site answers. From 10pm to 7am New York nothing is opened or closed; the first check after 7am opens one "was down overnight" issue instead. Logic: `scripts/uptime-check.sh`. Run it by hand from Actions > Uptime > Run workflow.
+- **Errors:** unexpected server errors (API 500s, pages that crash, scheduler failures) are stored in the `server_errors` table and searchable in Admin > Errors (`/admin/errors`). Paths are stored without the query string; rows are kept 30 days.
+
 ## Backups
 
 - **Server:** root cron at 07:15 UTC runs `/opt/lookout/backup.sh`: `pg_dump` of the whole database (13 tables: the 12 app tables plus Drizzle's migration log) and a tarball of uploaded files (encrypted with `APP_SECRET`, so a restore needs the same secret), into `/opt/lookout/backups`, kept 14 days. Log: `/opt/lookout/backups.log`.
@@ -129,7 +134,7 @@ Sign someone in without email (on the server): `docker compose exec app node scr
 
 ## Security notes
 
-- Retention (`src/lib/retention.ts`, daily from the scheduler): expired sign-in links and sessions are deleted; run logs, reports and requests older than 12 months are cleared, keeping the run counts and cost.
+- Retention (`src/lib/retention.ts`, daily from the scheduler): expired sign-in links and sessions are deleted; run logs, reports and requests older than 12 months are cleared, keeping the run counts and cost; server errors older than 30 days are deleted.
 - Sign-in tokens and session IDs are stored only as SHA-256 hashes. Tokens are single use, expire in 15 minutes (invites 7 days), and are redeemed by POST so mail scanners can't burn them. Sessions roll for 90 days.
 - All writes require a same-origin `Origin` header; cookies are `HttpOnly`, `Secure`, `SameSite=Lax`. In-memory rate limits on sign-in, uploads and rebuilds.
 - API keys in the database are encrypted with AES-256-GCM keyed from `APP_SECRET`; the admin UI only ever shows the last four characters.

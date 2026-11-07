@@ -11,6 +11,8 @@ Work merged to `main` (staging) and waiting for the weekly release.
 - Bot check on Request access: with Cloudflare Turnstile keys set, the form shows Turnstile's widget and the server verifies the token before saving the request. Off until `TURNSTILE_SITE_KEY` and `TURNSTILE_SECRET_KEY` are set (#13).
 - Clickwrap consent: the welcome step needs a ticked "I agree to the Privacy Policy" box, and the version agreed to and when are stored per account. Accounts from before this, and everyone after the privacy version changes, are asked on their next visit. Terms join the box once the Terms page ships (#20) (#21).
 - Terms of Service page for the beta at `/terms`: as-is beta, no guaranteed results, 18+, fair use, you own your content, auto-apply rules, ending accounts, no warranties, liability limits, changes with notice, New York law. The clickwrap box now names Terms and Privacy, so every account is asked once to agree. Linked from the sign-in footer, Settings, and the foot of both legal pages. A draft until the lawyer review (#22) (#20).
+- Uptime check: GitHub calls `/api/health` on prod and staging every 5 minutes and opens an `outage` issue (emailed) when a site stays down, closing it when it is back. Quiet hours (10pm to 7am New York) hold alerts until a morning report (#12).
+- Admin > Errors: unexpected server errors (API 500s, crashed pages, scheduler failures) are stored by Lookout itself and searchable for 30 days. No third-party tracker (#12).
 
 ## [0.4.0] - 2026-11-02
 

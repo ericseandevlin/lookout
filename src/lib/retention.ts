@@ -1,11 +1,12 @@
 import "server-only";
 import { and, lt, or, sql } from "drizzle-orm";
 import { db, schema } from "@/lib/db";
+import { pruneErrors } from "@/lib/errorLog";
 
 /** Run logs and reports are kept 12 months; the run row and its counts stay for cost totals (#26). */
 export const RUN_LOG_DAYS = 365;
 
-/** Delete what has no use any more: expired sign-in links and sessions, and old run logs. Returns counts. */
+/** Delete what has no use any more: expired sign-in links and sessions, old run logs and old server errors (#12). Returns counts. */
 export async function cleanup(now = new Date()) {
   const tokens = await db.delete(schema.loginTokens).where(lt(schema.loginTokens.expiresAt, now)).returning({ h: schema.loginTokens.tokenHash });
   const sessions = await db.delete(schema.sessions).where(lt(schema.sessions.expiresAt, now)).returning({ h: schema.sessions.idHash });
@@ -20,5 +21,6 @@ export async function cleanup(now = new Date()) {
       ),
     )
     .returning({ id: schema.runs.id });
-  return { loginTokens: tokens.length, sessions: sessions.length, runLogs: runs.length };
+  const errors = await pruneErrors(now);
+  return { loginTokens: tokens.length, sessions: sessions.length, runLogs: runs.length, errors };
 }

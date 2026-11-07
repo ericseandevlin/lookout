@@ -47,7 +47,7 @@ export function extensionRoute<C = object>(fn: Handler<C>) {
       await db.update(schema.extensionTokens).set({ lastUsedAt: new Date() }).where(eq(schema.extensionTokens.tokenHash, hashToken(token)));
       return await fn(req, { ...ctx, user: row.user });
     } catch (e) {
-      return errorResponse(e);
+      return errorResponse(e, req);
     }
   };
 }

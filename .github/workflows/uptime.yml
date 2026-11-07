@@ -1,0 +1,50 @@
+# Uptime check (#12): GitHub calls /api/health on prod and staging every 5 minutes, from outside
+# the server. A site that stays down opens an "outage" issue (GitHub emails it); it closes when
+# the site is back. Quiet hours hold alerts overnight. Details in scripts/uptime-check.sh.
+# GitHub runs schedules on a best-effort basis, so checks can land 5 to 15 minutes apart.
+name: Uptime
+
+on:
+  schedule:
+    - cron: "*/5 * * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+  actions: read
+
+concurrency:
+  group: uptime-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  check:
+    name: Health ${{ matrix.name }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: prod
+            url: https://lookout.ericdevlin.co/api/health
+          - name: staging
+            url: https://staging.lookout.ericdevlin.co/api/health
+    env:
+      GH_TOKEN: ${{ github.token }}
+      GH_REPO: ${{ github.repository }}
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          sparse-checkout: scripts/uptime-check.sh
+          sparse-checkout-cone-mode: false
+      - run: gh label create outage --color B60205 --description "Lookout site down (uptime check)" --force
+      - run: bash scripts/uptime-check.sh "${{ matrix.name }}" "${{ matrix.url }}"
+      # Marker for the morning report when a site was down during quiet hours.
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: down-overnight-${{ matrix.name }}-${{ github.run_id }}
+          path: down-overnight-${{ matrix.name }}.txt
+          if-no-files-found: ignore
+          retention-days: 2
