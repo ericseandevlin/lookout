@@ -2,6 +2,7 @@
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import type { Answers, AppState, Find, Link, RunInfo, Settings } from "@/lib/types";
+import { latestOnly, nextPoll } from "@/lib/runState";
 
 export async function api<T = unknown>(path: string, init?: RequestInit & { json?: unknown }): Promise<T> {
   const { json, ...rest } = init ?? {};
@@ -36,11 +37,8 @@ function useStoreValue(initial: AppState) {
     stateRef.current = state;
   }, [state]);
 
-  const refresh = useCallback(async () => {
-    const next = await api<AppState>("/api/state");
-    setState(next);
-    return next;
-  }, []);
+  // Only the newest /api/state response is applied: an older one landing late must not empty the board (#256).
+  const refresh = useMemo(() => latestOnly(() => api<AppState>("/api/state"), setState), []);
 
   const fail = useCallback((e: unknown) => {
     setError(e instanceof Error ? e.message : "Something went wrong");
@@ -54,8 +52,7 @@ function useStoreValue(initial: AppState) {
     const t = setInterval(async () => {
       try {
         const { run } = await api<{ run: RunInfo | null }>("/api/runs/latest");
-        const active = run && (run.status === "running" || run.status === "queued");
-        if (active) setState((s) => ({ ...s, run }));
+        if (nextPoll(run) === "progress") setState((s) => ({ ...s, run }));
         else await refresh();
       } catch {
         // keep polling

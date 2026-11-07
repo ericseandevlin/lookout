@@ -6,6 +6,7 @@ import { isAdmin } from "@/lib/users";
 import { canUseAutoApply } from "@/lib/apply";
 import { autoSubmitOn, submitMode } from "@/lib/application/submitMode";
 import type { AppState, Find, Resume, RunInfo } from "@/lib/types";
+import { pickBoardRun } from "@/lib/runState";
 
 function toFind(
   o: typeof schema.opportunities.$inferSelect,
@@ -113,13 +114,15 @@ export async function getState(user: SessionUser): Promise<AppState> {
 }
 
 /** Most recent search or link add (resume scans included), for the live progress panel. */
+/** The run the board follows (#256): an active search or link add first, else the newest one. Resume scans are left out. */
 export async function getLatestRun(userId: string): Promise<RunInfo | null> {
-  const [r] = await db
+  const recent = await db
     .select()
     .from(schema.runs)
     .where(eq(schema.runs.userId, userId))
     .orderBy(desc(schema.runs.startedAt))
-    .limit(1);
+    .limit(10);
+  const r = pickBoardRun(recent);
   if (!r) return null;
   return {
     id: r.id,
