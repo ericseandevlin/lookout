@@ -1,5 +1,5 @@
 import path from "node:path";
-import { defineConfig } from "vitest/config";
+import { configDefaults, defineConfig } from "vitest/config";
 
 export default defineConfig({
   resolve: {
@@ -11,6 +11,8 @@ export default defineConfig({
   },
   test: {
     environment: "node",
+    // A local `next build` copies the app into .next/standalone; don't run those copies (#426).
+    exclude: [...configDefaults.exclude, ".next/**"],
     hookTimeout: 60_000,
     // Used by `npm run test:coverage` (CI). Plain `npm test` skips it.
     coverage: {
