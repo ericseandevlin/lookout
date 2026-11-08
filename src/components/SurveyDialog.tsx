@@ -72,7 +72,7 @@ export function SurveyDialog() {
 
   if (!q) return null;
   const choices = q.kind === "choice" ? q.options : q.kind === "scale" ? [...SCALE] : null;
-  const pill = (on: boolean): React.CSSProperties => ({ minWidth: 44, height: 44, padding: "0 14px", borderRadius: 10, border: `1.5px solid ${on ? color.ink : "#E0D9CF"}`, background: on ? color.ink : "#fff", color: on ? "#fff" : color.ink, fontSize: 15, fontWeight: 600, cursor: "pointer" });
+  const pill = (on: boolean): React.CSSProperties => ({ minWidth: 44, height: 44, padding: "0 14px", borderRadius: 10, border: `1.5px solid ${on ? color.ink : color.border}`, background: on ? color.ink : "#fff", color: on ? "#fff" : color.ink, fontSize: 15, fontWeight: 600, cursor: "pointer" });
 
   return (
     <>
@@ -104,7 +104,7 @@ export function SurveyDialog() {
                   ))}
                 </div>
               ) : (
-                <textarea aria-labelledby="survey-q" value={value} onChange={(e) => setValue(e.target.value)} maxLength={MAX_TEXT} rows={3} className="f-brick" style={{ borderRadius: 10, border: "1.5px solid #E6E0D8", padding: 10, fontSize: 15, fontFamily: "inherit", resize: "vertical" }} />
+                <textarea aria-labelledby="survey-q" value={value} onChange={(e) => setValue(e.target.value)} maxLength={MAX_TEXT} rows={3} className="f-brick" style={{ borderRadius: 10, border: `1.5px solid ${color.border}`, padding: 10, fontSize: 15, fontFamily: "inherit", resize: "vertical" }} />
               )}
               {q.kind === "scale" && <div style={{ fontSize: 14, color: color.t2, marginTop: -6 }}>1 is not at all, 5 is very.</div>}
               {err && (

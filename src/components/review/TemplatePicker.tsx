@@ -13,7 +13,7 @@ export function TemplatePicker({ value, accent, onPick, onAccent }: { value: Tem
       <div role="radiogroup" aria-label="Resume design" style={{ display: "flex", gap: 6, alignItems: "center", flexWrap: "wrap" }}>
         <span style={{ fontSize: 14, color: color.t2, marginRight: 4 }}>Design</span>
         {TEMPLATES.map((t) => (
-          <button key={t} role="radio" aria-checked={value === t} onClick={() => onPick(t)} style={{ height: 32, padding: "0 12px", borderRadius: 999, border: `1.5px solid ${value === t ? color.ink : "#E0D9CF"}`, background: value === t ? color.ink : "#fff", color: value === t ? "#fff" : color.ink, fontSize: 14, fontWeight: 600, cursor: "pointer" }}>
+          <button key={t} role="radio" aria-checked={value === t} onClick={() => onPick(t)} style={{ height: 32, padding: "0 12px", borderRadius: 999, border: `1.5px solid ${value === t ? color.ink : color.border}`, background: value === t ? color.ink : "#fff", color: value === t ? "#fff" : color.ink, fontSize: 14, fontWeight: 600, cursor: "pointer" }}>
             {TEMPLATE_STYLE[t].label}
           </button>
         ))}
@@ -22,7 +22,7 @@ export function TemplatePicker({ value, accent, onPick, onAccent }: { value: Tem
         <div role="radiogroup" aria-label="Highlight color" style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
           <span style={{ fontSize: 14, color: color.t2, marginRight: 4 }}>Highlight</span>
           {ACCENTS.map(([name, hex]) => (
-            <button key={hex} role="radio" aria-checked={cur === hex} aria-label={name} title={name} onClick={() => onAccent(hex)} style={{ width: 26, height: 26, borderRadius: "50%", border: cur === hex ? "2px solid #1D1A0F" : "2px solid #fff", outline: "1px solid #E0D9CF", background: `#${hex}`, cursor: "pointer" }} />
+            <button key={hex} role="radio" aria-checked={cur === hex} aria-label={name} title={name} onClick={() => onAccent(hex)} style={{ width: 26, height: 26, borderRadius: "50%", border: cur === hex ? "2px solid #1D1A0F" : "2px solid #fff", outline: `1px solid ${color.border}`, background: `#${hex}`, cursor: "pointer" }} />
           ))}
           <label style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 14, color: color.t2, cursor: "pointer" }}>
             <input

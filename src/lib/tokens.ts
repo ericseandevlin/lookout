@@ -12,7 +12,9 @@ export const color = {
   brick: "#99220F", // errors, destructive actions
   orange: "#F8A865", // accent, focus ring
   peachInk: "#7A3A10",
-  green: "#427D33",
+  green: "#427D33", // fills: toggles, dots. Not for text on the page color
+  greenText: "#35662A", // success text
   page: "#EFEEEC",
-  border: "#E6E0D8", // card and input borders
+  border: "#E6E0D8", // card, input and divider borders
+  surface: "#F4F1EC", // light fills: chips, tracks, selected and hover rows
 } as const;

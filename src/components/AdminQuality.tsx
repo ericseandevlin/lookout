@@ -22,8 +22,8 @@ type Data = {
 };
 
 const card: React.CSSProperties = { background: "#fff", borderRadius: 16, padding: 0, overflowX: "auto", marginTop: 8 };
-const th: React.CSSProperties = { fontSize: 14, fontWeight: 600, color: color.t2, textAlign: "right", padding: "10px 14px", borderBottom: "1px solid #EEEAE4", whiteSpace: "nowrap" };
-const td: React.CSSProperties = { fontSize: 14, padding: "10px 14px", borderBottom: "1px solid #F2EEE8", textAlign: "right", fontVariantNumeric: "tabular-nums", whiteSpace: "nowrap" };
+const th: React.CSSProperties = { fontSize: 14, fontWeight: 600, color: color.t2, textAlign: "right", padding: "10px 14px", borderBottom: `1px solid ${color.border}`, whiteSpace: "nowrap" };
+const td: React.CSSProperties = { fontSize: 14, padding: "10px 14px", borderBottom: `1px solid ${color.surface}`, textAlign: "right", fontVariantNumeric: "tabular-nums", whiteSpace: "nowrap" };
 const first: React.CSSProperties = { textAlign: "left" };
 const muted: React.CSSProperties = { fontSize: 14, color: color.t2 };
 const day = (iso: string) => new Date(iso).toLocaleDateString("en-US", { month: "short", day: "numeric" });
@@ -83,7 +83,7 @@ export function AdminQuality() {
                     <tr key={w.week}>
                       <th scope="row" style={{ ...td, ...first, fontWeight: 400 }}>
                         <div>{day(`${w.week}T12:00:00Z`)}</div>
-                        <div aria-hidden style={{ marginTop: 4, height: 6, width: 120, background: "#F2EEE8", borderRadius: 3 }}>
+                        <div aria-hidden style={{ marginTop: 4, height: 6, width: 120, background: color.surface, borderRadius: 3 }}>
                           <div style={{ height: 6, width: `${((p ?? 0) / best) * 100}%`, background: color.brick, borderRadius: 3 }} />
                         </div>
                       </th>

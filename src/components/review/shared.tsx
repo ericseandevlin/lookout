@@ -49,7 +49,7 @@ export type Detail = {
   keywordsApproved: boolean;
 };
 
-export const card: React.CSSProperties = { padding: 18, borderRadius: 14, background: "#fff", border: "1.5px solid #E6E0D8" };
+export const card: React.CSSProperties = { padding: 18, borderRadius: 14, background: "#fff", border: `1.5px solid ${color.border}` };
 export const muted: React.CSSProperties = { fontSize: 14, color: color.t2 };
 
 export type Act = (itemId: string, payload: Record<string, unknown>, done: string) => Promise<boolean>;

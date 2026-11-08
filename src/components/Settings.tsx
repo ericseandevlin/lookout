@@ -37,7 +37,7 @@ export function Seg<T extends string | number>({ opts, cur, pick }: { opts: [str
       {opts.map(([label, v]) => {
         const on = typeof cur === "function" ? (cur as (v: T) => boolean)(v) : cur === v;
         return (
-          <button key={label} aria-pressed={on} onClick={() => pick(v)} style={{ height: 34, padding: "0 14px", borderRadius: 999, border: `1.5px solid ${on ? color.ink : "#E0D9CF"}`, background: on ? color.ink : "#fff", color: on ? "#fff" : color.ink, fontSize: 14, fontWeight: 600, cursor: "pointer" }}>
+          <button key={label} aria-pressed={on} onClick={() => pick(v)} style={{ height: 34, padding: "0 14px", borderRadius: 999, border: `1.5px solid ${on ? color.ink : color.border}`, background: on ? color.ink : "#fff", color: on ? "#fff" : color.ink, fontSize: 14, fontWeight: 600, cursor: "pointer" }}>
             {label}
           </button>
         );
@@ -105,7 +105,7 @@ export function Settings() {
 
       <Section>Profile</Section>
       <Row title="Name" help="Shown in the sidebar and used when Lookout drafts applications.">
-        <input value={name} onChange={(e) => setNameDraft(e.target.value)} placeholder="Your full name" aria-label="Name" maxLength={120} className="f-brick" style={{ width: "100%", maxWidth: 360, height: 42, border: "1.5px solid #E6E0D8", background: "#fff", borderRadius: 10, padding: "0 13px", fontSize: 14, outline: "none", color: color.ink }} />
+        <input value={name} onChange={(e) => setNameDraft(e.target.value)} placeholder="Your full name" aria-label="Name" maxLength={120} className="f-brick" style={{ width: "100%", maxWidth: 360, height: 42, border: `1.5px solid ${color.border}`, background: "#fff", borderRadius: 10, padding: "0 13px", fontSize: 14, outline: "none", color: color.ink }} />
       </Row>
       <Row title="Email" help="You sign in with this address. Discovery summaries are sent here too.">
         <EmailChange current={state.user.email} />
@@ -254,7 +254,7 @@ function DeleteModal({ close }: { close: () => void }) {
 }
 
 
-const inputStyle: React.CSSProperties = { width: "100%", maxWidth: 360, height: 42, border: "1.5px solid #E6E0D8", background: "#fff", borderRadius: 10, padding: "0 13px", fontSize: 14, outline: "none", color: color.ink };
+const inputStyle: React.CSSProperties = { width: "100%", maxWidth: 360, height: 42, border: `1.5px solid ${color.border}`, background: "#fff", borderRadius: 10, padding: "0 13px", fontSize: 14, outline: "none", color: color.ink };
 
 function EmailChange({ current }: { current: string }) {
   const [editing, setEditing] = useState(false);
@@ -279,16 +279,16 @@ function EmailChange({ current }: { current: string }) {
       {editing ? (
         <div style={{ display: "flex", gap: 6, maxWidth: 460, flexWrap: "wrap" }}>
           <input autoFocus type="email" value={email} onChange={(e) => setEmail(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") send(); if (e.key === "Escape") setEditing(false); }} placeholder="New email" aria-label="New email" className="f-brick" style={{ ...inputStyle, flex: 1, minWidth: 200 }} />
-          <button onClick={() => setEditing(false)} style={{ ...btn("outline"), border: "1.5px solid #E6E0D8", color: color.t2 }}>Cancel</button>
+          <button onClick={() => setEditing(false)} style={{ ...btn("outline"), border: `1.5px solid ${color.border}`, color: color.t2 }}>Cancel</button>
           <button onClick={send} disabled={busy || !email.trim()} style={btn("solid")}>{busy ? "Sending…" : "Send confirmation"}</button>
         </div>
       ) : (
         <div style={{ display: "flex", alignItems: "center", gap: 8, maxWidth: 460 }}>
-          <div style={{ flex: 1, minWidth: 0, display: "flex", alignItems: "center", height: 42, border: "1.5px solid #EEEAE4", background: "#F4F1EC", borderRadius: 10, padding: "0 13px", fontSize: 14, color: color.t2, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{current}</div>
+          <div style={{ flex: 1, minWidth: 0, display: "flex", alignItems: "center", height: 42, border: `1.5px solid ${color.border}`, background: color.surface, borderRadius: 10, padding: "0 13px", fontSize: 14, color: color.t2, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{current}</div>
           <button onClick={() => { setEditing(true); setMsg(null); }} style={btn("outline")}>Change</button>
         </div>
       )}
-      {msg && <span style={{ fontSize: 14, color: msg.ok ? "#35662A" : color.brick, lineHeight: 1.45 }}>{msg.text}</span>}
+      {msg && <span style={{ fontSize: 14, color: msg.ok ? color.greenText : color.brick, lineHeight: 1.45 }}>{msg.text}</span>}
     </div>
   );
 }
@@ -334,11 +334,11 @@ function Devices({ onSignOutHere }: { onSignOutHere: () => void }) {
     <div style={{ display: "flex", flexDirection: "column", gap: 6, maxWidth: 460 }}>
       {list === null && <span style={{ fontSize: 14, color: color.t2 }}>Loading…</span>}
       {list?.map((d) => (
-        <div key={d.id} style={{ display: "flex", alignItems: "center", gap: 10, padding: "9px 9px 9px 13px", borderRadius: 10, background: "#fff", border: "1.5px solid #E6E0D8" }}>
+        <div key={d.id} style={{ display: "flex", alignItems: "center", gap: 10, padding: "9px 9px 9px 13px", borderRadius: 10, background: "#fff", border: `1.5px solid ${color.border}` }}>
           <div style={{ flex: 1, minWidth: 0 }}>
             <div style={{ fontSize: 14, fontWeight: 600 }}>
               {d.device}
-              {d.current && <span style={{ marginLeft: 8, fontSize: 14, fontWeight: 600, padding: "2px 7px", borderRadius: 6, background: "#E6EDD9", color: "#35662A" }}>This device</span>}
+              {d.current && <span style={{ marginLeft: 8, fontSize: 14, fontWeight: 600, padding: "2px 7px", borderRadius: 6, background: "#E6EDD9", color: color.greenText }}>This device</span>}
             </div>
             <div style={{ fontSize: 14, color: color.t2 }}>{d.seen}</div>
           </div>

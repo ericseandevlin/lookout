@@ -6,6 +6,7 @@ import { unsubscribeParts } from "@/lib/bulkMail";
 import { env } from "@/lib/env";
 import { goLink } from "./digestLinks";
 import { dueLabel, pickDueSoon } from "./digestDue";
+import { color } from "@/lib/tokens";
 
 const money = (n: number) => "$" + n.toLocaleString("en-US");
 
@@ -52,7 +53,7 @@ export async function sendDigest(userId: string, runId?: string) {
     ? `<div style="font-size:13px;font-weight:700;letter-spacing:.04em;color:#6B6358;margin:${n ? "28px" : "0"} 0 4px">DUE SOON</div>
 <table width="100%" cellpadding="0" cellspacing="0">${due
         .map(
-          ({ row: o, days }) => `<tr><td style="padding:12px 0;border-top:1px solid #EEEAE4">
+          ({ row: o, days }) => `<tr><td style="padding:12px 0;border-top:1px solid ${color.border}">
 <div style="font-size:14px;font-weight:700;color:#99220F">${dueLabel(days).toUpperCase()}</div>
 <div style="font-size:15px;font-weight:600;margin-top:2px"><a href="${link(o.id)}" style="color:#1D1A0F">${escapeHtml(o.title)}</a></div>
 <div style="font-size:14px;color:#6B6358">${escapeHtml(o.company)}</div></td></tr>`,
@@ -65,7 +66,7 @@ export async function sendDigest(userId: string, runId?: string) {
     headline,
     `${n ? `<table width="100%" cellpadding="0" cellspacing="0">${items
       .map(
-        ({ o, uo, comp }) => `<tr><td style="padding:12px 0;border-top:1px solid #EEEAE4">
+        ({ o, uo, comp }) => `<tr><td style="padding:12px 0;border-top:1px solid ${color.border}">
 <div style="font-size:14px;font-weight:700;color:#99220F">MATCH ${uo.score}/5</div>
 <div style="font-size:15px;font-weight:600;margin-top:2px"><a href="${link(o.id)}" style="color:#1D1A0F">${escapeHtml(o.title)}</a></div>
 <div style="font-size:14px;color:#6B6358">${escapeHtml(o.company)} · ${escapeHtml(o.location)}</div>
