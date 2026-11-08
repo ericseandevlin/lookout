@@ -41,7 +41,7 @@ async function brave(q: string, c: SearchConfig, recent: boolean): Promise<Searc
   if (!res.ok) throw new Error(`Brave ${res.status}`);
   const data = (await res.json()) as { web?: { results?: { title?: string; url?: string; description?: string; page_age?: string }[] } };
   return (data.web?.results ?? [])
-    .filter((r) => r.url)
+    .filter((r) => r.url && /^https?:\/\//.test(r.url))
     .map((r) => ({ title: r.title ?? "", url: r.url!, snippet: (r.description ?? "").replace(/<[^>]+>/g, ""), published: r.page_age }));
 }
 
