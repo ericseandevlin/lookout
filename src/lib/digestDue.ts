@@ -5,13 +5,10 @@ export const DUE_SOON_DAYS = 7;
 
 /** Pinned finds whose due date falls in the next week, soonest first (#304). Past dates and finds with no date are left out. */
 export function pickDueSoon<T extends { attributes: Record<string, unknown> }>(rows: T[], now = Date.now()) {
-  // Count from today's noon so a date due today reads 0, not 1, before noon.
-  const noon = new Date(now);
-  noon.setHours(12, 0, 0, 0);
   return rows
     .map((r) => {
       const v = r.attributes?.due;
-      const days = daysUntil(typeof v === "string" ? v.trim() : "", noon.getTime());
+      const days = daysUntil(typeof v === "string" ? v.trim() : "", now);
       return { row: r, days };
     })
     .filter((x): x is { row: T; days: number } => x.days != null && x.days >= 0 && x.days <= DUE_SOON_DAYS)
