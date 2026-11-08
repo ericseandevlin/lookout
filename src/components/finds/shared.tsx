@@ -18,6 +18,6 @@ export const sortsFor = (cfg: KindConfig): [SortKey, string][] => {
   return keys.map((k) => [k, SORT_LABELS[k]]);
 };
 const ON = { bg: color.brick, ink: "#fff", border: color.brick };
-const OFF = { bg: "#fff", ink: color.ink, border: "#E0D9CF" };
+const OFF = { bg: "#fff", ink: color.ink, border: color.border };
 export const chip = (on: boolean) => (on ? ON : OFF);
 export const seg = (on: boolean) => (on ? { bg: "#fff", ink: color.ink, shadow: "0 1px 3px rgba(29,26,15,.12)" } : { bg: "transparent", ink: color.t2, shadow: "none" });

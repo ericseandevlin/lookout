@@ -15,13 +15,13 @@ export function RecruiterPanel({ kind, text, analysis, locked, busy, onAnalyze, 
   const findings = analysis?.findings ?? recruiterChecks(kind, text);
   const label = kind === "resume" ? "resume" : "cover letter";
   return (
-    <div style={{ borderRadius: 12, border: "1px solid #E6E0D8", background: "#FBFAF7", padding: "10px 14px", display: "flex", flexDirection: "column", gap: 8 }}>
+    <div style={{ borderRadius: 12, border: `1px solid ${color.border}`, background: "#FBFAF7", padding: "10px 14px", display: "flex", flexDirection: "column", gap: 8 }}>
       <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
         <button onClick={() => setOpen((o) => !o)} aria-expanded={open} style={{ ...btn("text"), padding: 0, fontWeight: 600, color: color.ink }}>
           {open ? "▾" : "▸"} Recruiter Analysis
         </button>
         {analysis ? (
-          <span style={{ fontSize: 14, fontWeight: 700, color: analysis.overall >= 75 ? "#35662A" : analysis.overall >= 50 ? "#7A5A12" : color.brick }}>{analysis.overall}/100</span>
+          <span style={{ fontSize: 14, fontWeight: 700, color: analysis.overall >= 75 ? color.greenText : analysis.overall >= 50 ? "#7A5A12" : color.brick }}>{analysis.overall}/100</span>
         ) : (
           <span style={muted}>{findings.length ? `${findings.length} thing${findings.length === 1 ? "" : "s"} a recruiter would notice` : "Nothing flagged by the quick checks"}</span>
         )}
@@ -57,7 +57,7 @@ export function RecruiterPanel({ kind, text, analysis, locked, busy, onAnalyze, 
                     <br />
                     <strong>{f.what}</strong> {f.why}
                   </div>
-                  {f.line && <blockquote style={{ margin: "4px 0", padding: "2px 10px", borderLeft: "3px solid #E0D9CF", color: "#4A443A", fontSize: 13 }}>{f.line}</blockquote>}
+                  {f.line && <blockquote style={{ margin: "4px 0", padding: "2px 10px", borderLeft: `3px solid ${color.border}`, color: "#4A443A", fontSize: 13 }}>{f.line}</blockquote>}
                   {!locked && (
                     <div style={{ display: "flex", alignItems: "baseline", gap: 8, flexWrap: "wrap" }}>
                       <span style={{ ...muted, fontSize: 13, flex: "1 1 240px" }}>Fix: {f.fix}</span>

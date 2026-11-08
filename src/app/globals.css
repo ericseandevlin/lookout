@@ -11,6 +11,9 @@
   --muted: #a89f92;
   --on-dark: #c9c1b5;
   --green: #427d33;
+  --green-text: #35662a;
+  --border: #e6e0d8;
+  --surface: #f4f1ec;
   --font: var(--font-instrument), system-ui, sans-serif;
   --wordmark: var(--font-syne), sans-serif;
 }
@@ -42,13 +45,13 @@ div.board-search:has(input:focus-visible), .focus-box:has(input:focus-visible) {
 
 /* Hover states the inline styles can't express */
 .h-rail:hover { background: rgba(255, 255, 255, 0.09) !important; color: #fff !important; }
-.h-menu:hover { background: #f6f2ec !important; }
-.h-row:hover { background: #fbf8f4 !important; }
+.h-menu:hover { background: var(--surface) !important; }
+.h-row:hover { background: var(--surface) !important; }
 .h-border:hover { border-color: var(--brick) !important; }
 .h-ink-border:hover { border-color: var(--ink) !important; }
 .h-danger:hover { background: #fbedea !important; color: var(--brick) !important; }
 .h-danger-solid:hover { background: var(--brick-hover) !important; }
-.h-soft:hover { background: #f6f2ec !important; color: var(--ink) !important; }
+.h-soft:hover { background: var(--surface) !important; color: var(--ink) !important; }
 .h-link:hover { color: var(--brick) !important; text-decoration: underline !important; }
 .f-brick:focus { border-color: var(--brick) !important; background: #fff; }
 
@@ -112,7 +115,7 @@ a[style*="border-radius"]:active { box-shadow: inset 0 0 0 999px rgb(128 120 108
 .w-wide { max-width: var(--w-wide); }
 .page-pad { padding: 21px 32px 48px; }
 .page-pad.settings { padding-bottom: 64px; }
-.set-grid { display: grid; grid-template-columns: minmax(0, 240px) minmax(0, 1fr); gap: 8px 32px; padding: 18px 0; border-top: 1px solid #e0d9cf; align-items: start; }
+.set-grid { display: grid; grid-template-columns: minmax(0, 240px) minmax(0, 1fr); gap: 8px 32px; padding: 18px 0; border-top: 1px solid var(--border); align-items: start; }
 @media (max-width: 759.98px) {
   .board-hdr { padding: 20px 16px 18px; }
   .board-search { height: 44px; width: 100%; }

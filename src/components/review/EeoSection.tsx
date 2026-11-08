@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { card, muted, type Act, type Detail } from "./shared";
+import { color } from "@/lib/tokens";
 
 /** Voluntary EEO questions (#122): filled only from the person's own answers, with their permission. */
 export function EeoSection({ d, act }: { d: Detail; act: Act }) {
@@ -24,7 +25,7 @@ export function EeoSection({ d, act }: { d: Detail; act: Act }) {
               id={`eeo-${q.id}`}
               value={q.eeoAnswer ?? ""}
               onChange={(e) => act(q.id, { action: "edit", content: e.target.value, note: "" }, "Saved for this wording.")}
-              style={{ height: 40, borderRadius: 10, border: "1.5px solid #E0D9CF", padding: "0 10px", fontSize: 15, maxWidth: 520 }}
+              style={{ height: 40, borderRadius: 10, border: `1.5px solid ${color.border}`, padding: "0 10px", fontSize: 15, maxWidth: 520 }}
             >
               <option value="">Leave blank</option>
               {(q.options ?? []).map((o) => (

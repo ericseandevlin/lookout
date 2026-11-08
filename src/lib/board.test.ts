@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { attrNum, attrStr, cellQuiet, cellText, compText, daysUntil, dueText, initialsOf, isNewFind, postedDays, postedText, scoreStyle, slugOf, stageStyle, valueText } from "./board";
 import type { Find } from "./types";
+import { color } from "@/lib/tokens";
 
 const find = (over: Partial<Find> = {}) =>
   ({ company: "Acme", role: "Design Lead", comp: null, postedAt: null, archived: false, seen: false, addedAt: "2026-11-07T12:00:00Z", ...over }) as Find;
@@ -152,9 +153,9 @@ describe("RFP cells", () => {
 
 describe("stageStyle and scoreStyle", () => {
   it("styles known stages and falls back to neutral", () => {
-    expect(stageStyle("Offer")).toEqual({ bg: "#E6EDD9", ink: "#35662A" });
+    expect(stageStyle("Offer")).toEqual({ bg: "#E6EDD9", ink: color.greenText });
     expect(stageStyle("Awarded")).toEqual(stageStyle("Offer"));
-    expect(stageStyle("Something new")).toEqual({ bg: "#EEEAE4", ink: "#5E574D" });
+    expect(stageStyle("Something new")).toEqual({ bg: color.border, ink: "#5E574D" });
   });
 
   it("fills 5s, tints 4s, outlines the rest", () => {

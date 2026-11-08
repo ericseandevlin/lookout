@@ -214,15 +214,15 @@ export function Drawer({ f, currentComp, close, toggle, setStage, enter, nav }: 
               <div style={{ fontSize: 14, color: color.t2 }}>{readOnly ? "View only" : "Saves when you pause or close"}</div>
             </div>
             <div style={{ position: "relative", flex: 1, display: "flex" }}>
-              <textarea value={notes} readOnly={readOnly} onChange={(e) => onNotes(e.target.value)} onBlur={flushNotes} placeholder="Contacts, follow-ups, interview prep..." aria-label="Notes" className="f-brick" style={{ flex: 1, minHeight: 160, resize: "vertical", border: "1.5px solid #E6E0D8", borderRadius: 10, padding: "12px 14px 34px", fontSize: 14, lineHeight: 1.5, outline: "none", color: color.ink, cursor: noteState === "saving" ? "progress" : undefined }} />
-              <div aria-live="polite" style={{ position: "absolute", right: 10, bottom: 10, padding: "3px 10px", borderRadius: 999, fontSize: 14, fontWeight: 600, background: noteState === "saved" ? "#E8F1E6" : "#F4F1EC", color: noteState === "saved" ? "#2F5A2A" : "#3B362C", opacity: noteState === "idle" ? 0 : 1, transition: "opacity .25s", pointerEvents: "none" }}>
+              <textarea value={notes} readOnly={readOnly} onChange={(e) => onNotes(e.target.value)} onBlur={flushNotes} placeholder="Contacts, follow-ups, interview prep..." aria-label="Notes" className="f-brick" style={{ flex: 1, minHeight: 160, resize: "vertical", border: `1.5px solid ${color.border}`, borderRadius: 10, padding: "12px 14px 34px", fontSize: 14, lineHeight: 1.5, outline: "none", color: color.ink, cursor: noteState === "saving" ? "progress" : undefined }} />
+              <div aria-live="polite" style={{ position: "absolute", right: 10, bottom: 10, padding: "3px 10px", borderRadius: 999, fontSize: 14, fontWeight: 600, background: noteState === "saved" ? "#E8F1E6" : color.surface, color: noteState === "saved" ? "#2F5A2A" : "#3B362C", opacity: noteState === "idle" ? 0 : 1, transition: "opacity .25s", pointerEvents: "none" }}>
                 {noteState === "saving" ? "Saving…" : noteState === "saved" ? "Saved" : ""}
               </div>
             </div>
           </div>
         </div>
         {state.user.autoApply && !f.archived && (
-          <div style={{ padding: "14px 26px 0", borderTop: "1px solid #EEEAE4", display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
+          <div style={{ padding: "14px 26px 0", borderTop: `1px solid ${color.border}`, display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
             {f.application ? (
               (() => {
                 const st = applicationLabel(f.application.status, f.application.queuedBy);
@@ -246,20 +246,20 @@ export function Drawer({ f, currentComp, close, toggle, setStage, enter, nav }: 
           </div>
         )}
         {asking && !f.archived && (
-          <div style={{ padding: "14px 26px 0", borderTop: "1px solid #EEEAE4", display: "flex", flexDirection: "column", gap: 8 }}>
+          <div style={{ padding: "14px 26px 0", borderTop: `1px solid ${color.border}`, display: "flex", flexDirection: "column", gap: 8 }}>
             <div style={{ fontSize: 14, fontWeight: 600 }}>What&apos;s off about it? Lookout uses this on your next searches.</div>
             <div role="group" aria-label="Why it's not a fit" style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
               {NOT_A_FIT.map((r) => (
-                <button key={r} onClick={() => { patchFind(f.id, { archived: true, feedback: r === "Just not interested" ? null : r }); setAsking(false); }} style={{ height: 32, padding: "0 12px", borderRadius: 999, border: "1.5px solid #E0D9CF", background: "#fff", color: color.ink, fontSize: 14, fontWeight: 600, cursor: "pointer" }}>{r}</button>
+                <button key={r} onClick={() => { patchFind(f.id, { archived: true, feedback: r === "Just not interested" ? null : r }); setAsking(false); }} style={{ height: 32, padding: "0 12px", borderRadius: 999, border: `1.5px solid ${color.border}`, background: "#fff", color: color.ink, fontSize: 14, fontWeight: 600, cursor: "pointer" }}>{r}</button>
               ))}
             </div>
           </div>
         )}
-        <div style={{ padding: "16px 26px", borderTop: asking && !f.archived ? 0 : "1px solid #EEEAE4", display: "flex", gap: 8 }}>
+        <div style={{ padding: "16px 26px", borderTop: asking && !f.archived ? 0 : `1px solid ${color.border}`, display: "flex", gap: 8 }}>
           <button
             onClick={() => (f.archived ? patchFind(f.id, { archived: false, feedback: null }) : setAsking((v) => !v))}
             aria-expanded={f.archived ? undefined : asking}
-            style={{ flex: 1, height: 42, borderRadius: 10, border: "1.5px solid #1D1A0F", background: asking ? "#F4F1EC" : "#fff", fontSize: 14, fontWeight: 600, color: color.ink, cursor: "pointer" }}
+            style={{ flex: 1, height: 42, borderRadius: 10, border: "1.5px solid #1D1A0F", background: asking ? color.surface : "#fff", fontSize: 14, fontWeight: 600, color: color.ink, cursor: "pointer" }}
           >
             {f.archived ? (f.feedback ? `Restore · was “${f.feedback}”` : "Restore") : asking ? "Cancel" : "Not a fit"}
           </button>

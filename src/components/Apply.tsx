@@ -123,7 +123,7 @@ export function ApplyPage() {
       <PageHead eyebrow="Beta" title="Auto-apply" intro="Lookout drafts each application for your review and only sends what you approve." />
 
       {settings && (
-        <div style={{ display: "flex", alignItems: "center", gap: 14, minHeight: 64, padding: "10px 12px 10px 18px", borderRadius: 14, background: "#fff", border: "1.5px solid #E6E0D8" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 14, minHeight: 64, padding: "10px 12px 10px 18px", borderRadius: 14, background: "#fff", border: `1.5px solid ${color.border}` }}>
           <span aria-hidden style={{ width: 10, height: 10, borderRadius: "50%", flex: "none", background: on ? "#427D33" : "#CFC6B9" }} />
           <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column" }}>
             <span style={{ fontSize: 15, fontWeight: 700 }}>Auto-apply {on ? "on" : "off"}</span>
@@ -138,7 +138,7 @@ export function ApplyPage() {
       {!apps && !err && <div style={{ fontSize: 14, color: color.t2 }}>Loading…</div>}
 
       {apps && apps.length === 0 && (
-        <div style={{ padding: 22, borderRadius: 14, background: "#fff", border: "1.5px solid #E6E0D8", display: "flex", flexDirection: "column", gap: 12 }}>
+        <div style={{ padding: 22, borderRadius: 14, background: "#fff", border: `1.5px solid ${color.border}`, display: "flex", flexDirection: "column", gap: 12 }}>
           <div style={{ fontSize: 18, fontWeight: 700 }}>Nothing queued yet</div>
           <p style={{ margin: 0, fontSize: 14, lineHeight: 1.55, color: "#3B362C" }}>
             Open a role on <Link href="/finds">your board</Link> and choose <b>Apply with Lookout</b>, or turn auto-apply on to queue strong matches as they come in. Lookout reads the application, drafts everything, and waits for your approval before anything is sent.
@@ -256,9 +256,9 @@ function SettingsPanel({ settings, save, close }: { settings: AutoApplySettings;
     <>
       <div onClick={close} style={{ position: "fixed", inset: 0, zIndex: 40, background: "rgba(29,26,15,.35)" }} />
       <aside ref={box} role="dialog" aria-modal="true" aria-labelledby="aa-panel-title" style={{ position: "fixed", top: 0, right: 0, bottom: 0, zIndex: 41, width: "min(440px, 100vw)", background: "#fff", boxShadow: "-12px 0 40px rgba(29,26,15,.18)", display: "flex", flexDirection: "column" }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "20px 22px", borderBottom: "1px solid #EEEAE4" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "20px 22px", borderBottom: `1px solid ${color.border}` }}>
           <h2 id="aa-panel-title" style={{ margin: 0, flex: 1, fontSize: 20, fontWeight: 700 }}>Auto-apply settings</h2>
-          <button ref={closeRef} onClick={close} aria-label="Close" style={{ width: 36, height: 36, borderRadius: "50%", border: 0, background: "#F4F1EC", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>
+          <button ref={closeRef} onClick={close} aria-label="Close" style={{ width: 36, height: 36, borderRadius: "50%", border: 0, background: color.surface, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>
             <XIcon />
           </button>
         </div>
@@ -282,7 +282,7 @@ function SettingsPanel({ settings, save, close }: { settings: AutoApplySettings;
             </div>
           </fieldset>
           <ExtensionSection />
-          <div style={{ borderTop: "1px solid #EEEAE4", paddingTop: 18 }}>
+          <div style={{ borderTop: `1px solid ${color.border}`, paddingTop: 18 }}>
             <h3 style={{ margin: "0 0 12px", fontSize: 16, fontWeight: 700 }}>How it works</h3>
             <ol style={{ listStyle: "none", margin: 0, padding: 0, display: "flex", flexDirection: "column", gap: 12 }}>
               {STEPS.map(([title, body], i) => (
@@ -342,7 +342,7 @@ function ExtensionSection() {
   };
   const used = status?.lastUsedAt ? `Last used ${new Date(status.lastUsedAt).toLocaleString()}` : "Not used yet";
   return (
-    <div style={{ borderTop: "1px solid #EEEAE4", paddingTop: 18, display: "flex", flexDirection: "column", gap: 10 }}>
+    <div style={{ borderTop: `1px solid ${color.border}`, paddingTop: 18, display: "flex", flexDirection: "column", gap: 10 }}>
       <h3 style={{ margin: 0, fontSize: 16, fontWeight: 700 }}>Firefox extension</h3>
       <div style={{ fontSize: 14, lineHeight: 1.5, color: color.t2 }}>
         Fills an approved application on the job&apos;s own page in your Firefox. You check it and press Submit. When the thank-you page shows, Lookout marks it Applied.{" "}
@@ -351,7 +351,7 @@ function ExtensionSection() {
       {token ? (
         <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
           <div style={{ fontSize: 14, fontWeight: 600 }}>Paste this into the extension. It won&apos;t be shown again.</div>
-          <code style={{ fontSize: 12.5, wordBreak: "break-all", background: "#F4F1EC", borderRadius: 8, padding: "10px 12px" }}>{token}</code>
+          <code style={{ fontSize: 12.5, wordBreak: "break-all", background: color.surface, borderRadius: 8, padding: "10px 12px" }}>{token}</code>
           <div>
             <button onClick={copy} style={btn("solid")}>{copied ? "Copied" : "Copy token"}</button>
           </div>

@@ -57,7 +57,7 @@ function LinkedinPdf() {
     const when = new Date(pdf.uploadedAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
     return (
       <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 12, padding: "11px 14px", borderRadius: 12, background: "#fff", border: "1.5px solid #E6E0D8" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 12, padding: "11px 14px", borderRadius: 12, background: "#fff", border: `1.5px solid ${color.border}` }}>
           <div style={{ minWidth: 0, flex: 1, display: "flex", flexDirection: "column", gap: 2 }}>
             <a href="/api/materials/linkedin/pdf" target="_blank" rel="noopener" className="h-link" style={{ fontSize: 14, fontWeight: 600, color: color.ink, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", textDecoration: "none" }}>{pdf.name}</a>
             <span style={{ fontSize: 14, color: color.t2 }}>LinkedIn profile PDF · uploaded {when} · read on every search</span>
@@ -71,7 +71,7 @@ function LinkedinPdf() {
               const ok = await ask({ eyebrow: "Delete LinkedIn PDF", title: `Delete ${pdf.name}?`, body: "The file and its text are removed. Searches will use your resume and answers.", confirmLabel: "Delete", danger: true });
               if (ok) m.deleteLinkedinPdf();
             }}
-            style={{ width: 32, height: 32, flex: "none", borderRadius: 8, border: "1.5px solid #E6E0D8", background: "#fff", color: color.t2, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", padding: 0 }}
+            style={{ width: 32, height: 32, flex: "none", borderRadius: 8, border: `1.5px solid ${color.border}`, background: "#fff", color: color.t2, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", padding: 0 }}
           >
             <TrashIcon />
           </button>
@@ -81,7 +81,7 @@ function LinkedinPdf() {
     );
   }
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 10, padding: 14, borderRadius: 12, background: "#FBF8F4", border: "1.5px solid #EEEAE4" }}>
+    <div style={{ display: "flex", flexDirection: "column", gap: 10, padding: 14, borderRadius: 12, background: color.surface, border: `1.5px solid ${color.border}` }}>
       <div style={{ fontSize: 14, fontWeight: 600 }}>Add your full LinkedIn profile</div>
       <p style={{ margin: 0, fontSize: 14, lineHeight: 1.5, color: color.t2, textWrap: "pretty" }}>
         LinkedIn doesn&apos;t let apps read profiles, so have LinkedIn save yours as a PDF and upload it here. Lookout reads your full history from it.
@@ -153,17 +153,17 @@ export function Materials() {
           </label>
 
           {rs === "scanning" && resume && (
-            <div style={{ padding: 14, borderRadius: 12, background: "#fff", border: "1.5px solid #E6E0D8", display: "flex", flexDirection: "column", gap: 10 }}>
+            <div style={{ padding: 14, borderRadius: 12, background: "#fff", border: `1.5px solid ${color.border}`, display: "flex", flexDirection: "column", gap: 10 }}>
               <div style={{ fontSize: 14, fontWeight: 600, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>Scanning {resume.name}…</div>
-              <div style={{ height: 4, borderRadius: 999, background: "#F4F1EC", overflow: "hidden" }}>
+              <div style={{ height: 4, borderRadius: 999, background: color.surface, overflow: "hidden" }}>
                 <div className="scan-bar" style={{ height: "100%", width: "40%", background: color.orange, borderRadius: 999 }} />
               </div>
             </div>
           )}
 
           {resume && rs !== "scanning" && (
-            <div style={{ display: "flex", alignItems: "center", gap: 16, padding: 14, borderRadius: 12, background: "#fff", border: "1.5px solid #E6E0D8" }}>
-              <a href="/api/materials/resume" target="_blank" rel="noopener" data-tip="View resume" aria-label="View resume" className="h-border" style={{ width: 64, height: 82, flex: "none", border: "1px solid #E0D9CF", borderRadius: 6, background: "#fff", boxShadow: "0 2px 6px rgba(29,26,15,.08)", padding: "9px 8px", display: "flex", flexDirection: "column", gap: 4 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 16, padding: 14, borderRadius: 12, background: "#fff", border: `1.5px solid ${color.border}` }}>
+              <a href="/api/materials/resume" target="_blank" rel="noopener" data-tip="View resume" aria-label="View resume" className="h-border" style={{ width: 64, height: 82, flex: "none", border: `1px solid ${color.border}`, borderRadius: 6, background: "#fff", boxShadow: "0 2px 6px rgba(29,26,15,.08)", padding: "9px 8px", display: "flex", flexDirection: "column", gap: 4 }}>
                 <Bar w="70%" h={4} c={color.ink} /><Bar w="45%" c={color.brick} /><span style={{ height: 3 }} />
                 <Bar w="100%" /><Bar w="92%" /><Bar w="96%" /><span style={{ height: 2 }} />
                 <Bar w="40%" c="#CFC6B9" /><Bar w="100%" /><Bar w="84%" /><Bar w="90%" />
@@ -174,7 +174,7 @@ export function Materials() {
                 <div style={{ fontSize: 14, color: color.brick }}>{rs === "failed" ? `Couldn't read this file · ${resume.filled || "try a PDF or DOCX"}` : statusLine(resume.filled)}</div>
               </div>
               <div style={{ display: "flex", gap: 6, flex: "none" }}>
-                <a href="/api/materials/resume" target="_blank" rel="noopener" className="h-ink-border" style={{ height: 32, padding: "0 12px", borderRadius: 8, border: "1.5px solid #E6E0D8", background: "#fff", fontSize: 14, fontWeight: 600, color: color.ink, display: "flex", alignItems: "center", textDecoration: "none" }}>View</a>
+                <a href="/api/materials/resume" target="_blank" rel="noopener" className="h-ink-border" style={{ height: 32, padding: "0 12px", borderRadius: 8, border: `1.5px solid ${color.border}`, background: "#fff", fontSize: 14, fontWeight: 600, color: color.ink, display: "flex", alignItems: "center", textDecoration: "none" }}>View</a>
                 <button
                   data-tip="Delete resume"
                   aria-label="Delete resume"
@@ -192,7 +192,7 @@ export function Materials() {
                     });
                     if (ok) m.deleteResume();
                   }}
-                  style={{ width: 32, height: 32, borderRadius: 8, border: "1.5px solid #E6E0D8", background: "#fff", color: color.t2, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", padding: 0 }}
+                  style={{ width: 32, height: 32, borderRadius: 8, border: `1.5px solid ${color.border}`, background: "#fff", color: color.t2, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", padding: 0 }}
                 >
                   <TrashIcon />
                 </button>
@@ -228,7 +228,7 @@ export function Materials() {
                       style={{ flex: 1, minWidth: 0, height: 34, border: 0, outline: "none", background: "transparent", fontSize: 14, color: color.ink }}
                     />
                     <div style={{ display: "flex", gap: 6, flex: "none" }}>
-                      <button onClick={() => setEditId(null)} style={{ height: 32, padding: "0 12px", borderRadius: 8, border: "1.5px solid #E6E0D8", background: "#fff", fontSize: 14, fontWeight: 600, color: color.t2, cursor: "pointer" }}>Cancel</button>
+                      <button onClick={() => setEditId(null)} style={{ height: 32, padding: "0 12px", borderRadius: 8, border: `1.5px solid ${color.border}`, background: "#fff", fontSize: 14, fontWeight: 600, color: color.t2, cursor: "pointer" }}>Cancel</button>
                       <button onClick={saveEdit} style={{ height: 32, padding: "0 14px", borderRadius: 8, border: 0, background: color.ink, fontSize: 14, fontWeight: 600, color: "#fff", cursor: "pointer" }}>Save</button>
                     </div>
                   </>
@@ -245,7 +245,7 @@ export function Materials() {
                             <div onClick={() => setKindMenu(null)} style={{ position: "fixed", inset: 0, zIndex: 5 }} />
                             <div role="menu" style={{ position: "absolute", top: 22, left: -8, zIndex: 6, background: "#fff", borderRadius: 12, boxShadow: "0 8px 28px rgba(29,26,15,.18)", padding: 6, minWidth: 170, maxHeight: 300, overflowY: "auto", display: "flex", flexDirection: "column" }}>
                               <KindOption label="Auto-detect" note={auto} on={!lk.kind} pick={() => { m.updateLink(lk.id, { kind: null }); setKindMenu(null); }} />
-                              <div style={{ height: 1, background: "#EEEAE4", margin: "4px 6px" }} />
+                              <div style={{ height: 1, background: color.border, margin: "4px 6px" }} />
                               {LINK_KINDS.map((k) => (
                                 <KindOption key={k} label={k} on={lk.kind === k} pick={() => { m.updateLink(lk.id, { kind: k }); setKindMenu(null); }} />
                               ))}
@@ -278,7 +278,7 @@ export function Materials() {
               aria-label="Add a link"
               maxLength={500}
               className="f-brick"
-              style={{ flex: 1, minWidth: 0, height: 40, borderRadius: 10, border: "1.5px solid #E6E0D8", background: "#fff", padding: "0 12px", color: color.ink, fontSize: 14, outline: "none" }}
+              style={{ flex: 1, minWidth: 0, height: 40, borderRadius: 10, border: `1.5px solid ${color.border}`, background: "#fff", padding: "0 12px", color: color.ink, fontSize: 14, outline: "none" }}
             />
             <button onClick={add} style={{ height: 40, padding: "0 14px", borderRadius: 10, border: 0, background: color.ink, color: "#fff", fontSize: 14, fontWeight: 600, cursor: "pointer" }}>Add</button>
           </div>
@@ -298,7 +298,7 @@ const Bar = ({ w, h = 3, c = color.border }: { w: string; h?: number; c?: string
 
 function KindOption({ label, note, on, pick }: { label: string; note?: string; on: boolean; pick: () => void }) {
   return (
-    <button role="menuitem" className="h-menu" onClick={pick} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, padding: "8px 10px", border: 0, borderRadius: 8, background: on ? "#F6F2EC" : "transparent", fontSize: 14, fontWeight: 500, color: color.ink, cursor: "pointer", textAlign: "left" }}>
+    <button role="menuitem" className="h-menu" onClick={pick} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, padding: "8px 10px", border: 0, borderRadius: 8, background: on ? color.surface : "transparent", fontSize: 14, fontWeight: 500, color: color.ink, cursor: "pointer", textAlign: "left" }}>
       {label}
       {note && <span style={{ fontSize: 14, color: color.t2 }}>{note}</span>}
     </button>
@@ -391,7 +391,7 @@ function MasterResumeSection() {
           Use Edit text to move each one under its job, or delete it. Drafts leave them out while they sit here.
         </div>
       )}
-      {m?.md && (editing ? <textarea aria-label="Your resume as Lookout reads it" value={text} onChange={(e) => setText(e.target.value)} rows={24} style={{ borderRadius: 10, border: "1.5px solid #E0D9CF", padding: 10, fontSize: 14, lineHeight: 1.5, fontFamily: "ui-monospace, Menlo, monospace" }} /> : <DocPreview md={m.md} template={m.template} accent={m.accent} />)}
+      {m?.md && (editing ? <textarea aria-label="Your resume as Lookout reads it" value={text} onChange={(e) => setText(e.target.value)} rows={24} style={{ borderRadius: 10, border: `1.5px solid ${color.border}`, padding: 10, fontSize: 14, lineHeight: 1.5, fontFamily: "ui-monospace, Menlo, monospace" }} /> : <DocPreview md={m.md} template={m.template} accent={m.accent} />)}
       {m?.md && (
         <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
           {editing ? (
