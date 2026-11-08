@@ -52,10 +52,19 @@ export function valueText(f: Find) {
 }
 /** Days until a due date (negative once it's past), or null when there's no date. */
 export const dueDays = (f: Find) => daysUntil(attrStr(f, "due"));
-/** Days from now until a date string (YYYY-MM-DD reads as noon local), or null when it isn't a date. The digest uses it too (#304). */
+/**
+ * Days from now until a date string, or null when it isn't a date. The digest uses it too (#304).
+ * A YYYY-MM-DD date counts calendar days from today, so the hour and clock changes don't move it (#495).
+ */
 export function daysUntil(s: string, now = Date.now()) {
   if (!s) return null;
-  const t = new Date(/^\d{4}-\d{2}-\d{2}$/.test(s) ? `${s}T12:00:00` : s).getTime();
+  const ymd = s.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (ymd) {
+    const n = new Date(now);
+    const due = Date.UTC(+ymd[1], +ymd[2] - 1, +ymd[3]);
+    return Number.isFinite(due) ? Math.round((due - Date.UTC(n.getFullYear(), n.getMonth(), n.getDate())) / 864e5) : null;
+  }
+  const t = new Date(s).getTime();
   return Number.isFinite(t) ? Math.ceil((t - now) / 864e5) : null;
 }
 export function dueText(f: Find) {
