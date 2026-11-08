@@ -5,7 +5,8 @@ import { db, schema } from "@/lib/db";
 import { renderSearchProfile } from "@/lib/agent/searchProfile";
 import { loadContext } from "@/lib/agent/discover";
 import { getActiveSearch } from "@/lib/searches";
-import { progress } from "@/lib/ai/runs";
+import { emptyUsage } from "@/lib/ai/llm";
+import { finishRun, progress } from "@/lib/ai/runs";
 
 export const dynamic = "force-dynamic";
 
@@ -40,7 +41,11 @@ export const GET = agentRoute(async (req) => {
     await progress(run.id, 2, "The search agent picked this up");
     // Runs are per search (#8); account-level runs (resume scans) fall back to the active search's context.
     const searchId = run.searchId ?? (await getActiveSearch(run.userId))?.id;
-    if (!searchId) continue;
+    if (!searchId) {
+      // Claimed above, so fail it rather than leave it running forever (#398).
+      await finishRun(run.id, emptyUsage(), { error: "No search for this job" });
+      continue;
+    }
     const ctx = await loadContext(searchId);
     const req = (run.request ?? {}) as { type?: string; url?: string; materialId?: string };
     let resumeText: string | undefined;
