@@ -4,8 +4,9 @@ import type { DraftInputs } from "./draft";
 
 // Search hits per query, page HTML per URL, and the model's answer are set by each test.
 let hitsByQuery: (SearchHit[] | Error)[] = [];
-const webSearch = vi.fn(async (query: string) => {
-  const r = hitsByQuery[webSearch.mock.calls.length - 1] ?? [];
+let searches = 0;
+const webSearch = vi.fn<(query: string) => Promise<SearchHit[]>>(async () => {
+  const r = hitsByQuery[searches++] ?? [];
   if (r instanceof Error) throw r;
   return r;
 });
@@ -18,7 +19,7 @@ const fetchPage = vi.fn(async (url: string) => {
 vi.mock("@/lib/ai/fetchPage", () => ({ fetchPage, pageToText: (html: string) => html }));
 type People = { people: { name: string; role: string; why: string; message: string; sourceUrls: string[] }[] };
 let answer: People = { people: [] };
-const completeJSON = vi.fn(async (_req: { user: string }) => answer);
+const completeJSON = vi.fn<(req: { user: string }) => Promise<People>>(async () => answer);
 vi.mock("@/lib/ai/llm", async (orig) => ({ ...(await orig<typeof import("@/lib/ai/llm")>()), completeJSON }));
 
 const { findOutreach, finishOutreach } = await import("./outreach");
@@ -48,6 +49,7 @@ beforeEach(() => {
   fetchPage.mockClear();
   completeJSON.mockClear();
   hitsByQuery = [];
+  searches = 0;
   pages = {};
   answer = { people: [] };
 });
