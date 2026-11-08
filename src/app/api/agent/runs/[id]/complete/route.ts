@@ -9,6 +9,7 @@ import { applyResumeResult, Fills } from "@/lib/agent/resume";
 import { emptyUsage } from "@/lib/ai/llm";
 import { finishRun, progress } from "@/lib/ai/runs";
 import { sendDigest } from "@/lib/digest";
+import { getActiveSearch } from "@/lib/searches";
 
 const Finding = ScoredList.shape.finds.element.omit({ index: true }).extend({ url: z.string().url().max(1000) });
 const Input = z.object({
@@ -46,7 +47,13 @@ export const POST = agentRoute<Ctx>(async (req, { params }) => {
     return json({ ok: true, filled });
   }
 
-  const ctx = await loadContext(run.userId);
+  // Finds go to the run's search; account-level runs fall back to the active one, as the queue does (#398).
+  const searchId = run.searchId ?? (await getActiveSearch(run.userId))?.id;
+  if (!searchId) {
+    await finishRun(id, usage, { error: "No search to save finds to" });
+    throw new HttpError(409, "No search to save finds to");
+  }
+  const ctx = await loadContext(searchId);
   const finds = (p.finds ?? []).map((f, index) => ({ ...f, index }));
   const { newFinds, ...tally } = await save(ctx, finds, type === "url" ? "manual" : "agent");
   if (type !== "url") await autoQueue(run.userId, newFinds).catch((e) => console.error("[auto-apply] queue failed", e));
