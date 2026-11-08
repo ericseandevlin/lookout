@@ -6,6 +6,9 @@ Every production release of Lookout, newest first. The format follows [Keep a Ch
 
 Work merged to `main` (staging) and waiting for the weekly release.
 
+### Changed
+- A bad link or a page error now shows a Lookout page with a way back, instead of the bare Next.js default. Error pages show a reference people can quote, never the error itself (#396).
+
 ### Fixed
 - The daily cleanup job no longer fails on prod: dates in its raw SQL go in as ISO strings (#373).
 
