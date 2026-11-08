@@ -31,6 +31,28 @@ describe("isJunkKeyword", () => {
     for (const k of ["recruiter scams", "candidates", "verify the opportunity", "hiring process", "open roles", "official email addresses", "social media", "401(k)"]) expect(isJunkKeyword(k)).toBe(true);
     for (const k of ["agentic workflows", "P&L ownership", "SQL", "AI/ML products", "product strategy", "market opportunity sizing"]) expect(isJunkKeyword(k)).toBe(false);
   });
+
+  it("keeps a topic word when the job itself is about it, not when only a notice says it (#509)", () => {
+    expect(isJunkKeyword("fraud detection", [...fraudRole, ...boilerplate].join("\n"))).toBe(false);
+    expect(isJunkKeyword("social media", "Own our social media calendar across Instagram and TikTok.")).toBe(false);
+    expect(isJunkKeyword("insurance", "Lead the claims experience for our insurance customers.")).toBe(false);
+    // In the Red Ventures posting these only appear in its notices.
+    const rv = [...job, ...boilerplate].join("\n");
+    for (const k of ["social media", "privacy policy", "recruiter scams", "candidates"]) expect(isJunkKeyword(k, rv)).toBe(true);
+  });
+});
+
+const fraudRole = [
+  "You will lead our fraud detection platform, catching card-not-present fraud and account takeover in real time.",
+  "Partner with Trust & Safety on phishing and scam reports from customers.",
+  "Build privacy engineering reviews and data protection tooling for every new product.",
+];
+
+describe("stripBoilerplate for roles about fraud and privacy (#509)", () => {
+  it("keeps the job text and still drops the hiring-fraud notice", () => {
+    const notice = "Beware of recruiting fraud: we never ask candidates for payment, and offers come only from our official company email.";
+    expect(stripBoilerplate([...fraudRole, notice].join("\n")).split("\n")).toEqual(fraudRole);
+  });
 });
 
 import { findTraps, removeTraps, stripHidden, trapWordsIn } from "./posting";
