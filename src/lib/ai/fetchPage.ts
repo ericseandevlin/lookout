@@ -1,6 +1,6 @@
 import "server-only";
 import { lookup } from "node:dns";
-import { isIP } from "node:net";
+import { isIP, type LookupFunction } from "node:net";
 // undici's own fetch: Node 22's built-in fetch rejects an Agent from a newer undici.
 import { Agent, fetch } from "undici";
 import { findPay, payLine } from "./pay";
@@ -63,22 +63,20 @@ export function isPublicIp(ip: string): boolean {
   return true;
 }
 
-const agent = new Agent({
-  connect: {
-    timeout: 8_000,
-    lookup(hostname, options, cb) {
-      lookup(hostname, { ...options, all: true }, (err, addrs) => {
-        if (err) return cb(err, "", 4);
-        const list = (Array.isArray(addrs) ? addrs : [addrs]) as { address: string; family: number }[];
-        const bad = list.find((a) => !isPublicIp(a.address));
-        if (bad || !list.length) return cb(new Error(`Blocked address for ${hostname}`), "", 4);
-        // undici calls lookup with all:true and expects the array back
-        if ((options as { all?: boolean }).all) return (cb as unknown as (e: null, a: typeof list) => void)(null, list);
-        cb(null, list[0].address, list[0].family);
-      });
-    },
-  },
-});
+/** DNS lookup for the connect step: fails if any address the host resolves to isn't public. Exported for tests (#403). */
+export const safeLookup: LookupFunction = (hostname, options, cb) => {
+  lookup(hostname, { ...options, all: true }, (err, addrs) => {
+    if (err) return cb(err, "", 4);
+    const list = (Array.isArray(addrs) ? addrs : [addrs]) as { address: string; family: number }[];
+    const bad = list.find((a) => !isPublicIp(a.address));
+    if (bad || !list.length) return cb(new Error(`Blocked address for ${hostname}`), "", 4);
+    // undici calls lookup with all:true and expects the array back
+    if ((options as { all?: boolean }).all) return (cb as unknown as (e: null, a: typeof list) => void)(null, list);
+    cb(null, list[0].address, list[0].family);
+  });
+};
+
+const agent = new Agent({ connect: { timeout: 8_000, lookup: safeLookup } });
 
 const MAX_BYTES = 2_000_000;
 
