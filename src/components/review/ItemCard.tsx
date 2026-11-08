@@ -41,10 +41,11 @@ export function ItemCard({ appId, item, locked, act, analysis, template, accent,
   };
   const run = async (kind: NonNullable<typeof busy>, payload: Record<string, unknown>, done: string) => {
     setBusy(kind);
-    const ok = await act(item.id, payload, done);
-    if (ok && kind !== "approve") setPick(null);
-    if (ok && kind === "revise") setInstr("");
+    const r = await act(item.id, payload, done);
+    if (r && kind !== "approve") setPick(null);
+    if (r && kind === "revise") setInstr("");
     setBusy(null);
+    return r;
   };
 
   return (
@@ -107,7 +108,7 @@ export function ItemCard({ appId, item, locked, act, analysis, template, accent,
           locked={locked}
           busy={busy}
           onAnalyze={() => run("analyze", { action: "analyze", versionId: shown.id }, "Recruiter Analysis is ready.")}
-          onFix={(f) => run("revise", { action: "revise", instruction: f.fix }, "Lookout made a new version with that fix.")}
+          onFix={(instruction) => run("revise", { action: "revise", instruction }, "Lookout made a new version with that fix.")}
         />
       )}
 

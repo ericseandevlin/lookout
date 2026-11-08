@@ -8,7 +8,7 @@ import { useConfirm } from "./Confirm";
 import { api } from "./store";
 import { letterHeaderFrom, readable, TEMPLATE_STYLE, type Template } from "@/lib/application/resumeLayout";
 import { SubmitModeNote } from "./SubmitModeNote";
-import { card, muted, resumeText, type Detail } from "./review/shared";
+import { card, muted, resumeText, type ActResult, type Detail } from "./review/shared";
 import { Checklist } from "./review/Checklist";
 import { EeoSection } from "./review/EeoSection";
 import { ItemCard } from "./review/ItemCard";
@@ -17,9 +17,11 @@ import { PostingText } from "./review/PostingText";
 import { QuestionRow } from "./review/QuestionRow";
 import { SendForMe } from "./review/SendForMe";
 import { color } from "@/lib/tokens";
+import { btn } from "./Settings";
 
 export { DocPreview } from "./review/DocPreview";
 
+const slug = (t: string) => t.toLowerCase().replace(/[^a-z]+/g, "-");
 const WORKING: ApplicationStatus[] = ["queued", "scanning", "drafting"];
 const POLL: ApplicationStatus[] = [...WORKING, "submitting"];
 const SECTIONS: { title: string; kinds: string[]; help?: string }[] = [
@@ -36,6 +38,14 @@ export function ApplicationReview({ id }: { id: string }) {
   const [d, setD] = useState<Detail | null>(null);
   const [err, setErr] = useState<string | null>(null);
   const [said, setSaid] = useState("");
+  // The posting opens in a side panel (#512): closed by default so the drafts get the full width.
+  const [posting, setPosting] = useState(false);
+  useEffect(() => {
+    if (!posting) return;
+    const onKey = (e: KeyboardEvent) => e.key === "Escape" && setPosting(false);
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [posting]);
 
   const load = useCallback(() => api<Detail>(`/api/apply/${id}`).then(setD).catch((e) => setErr(e instanceof Error ? e.message : "Couldn't load")), [id]);
   useEffect(() => {
@@ -72,13 +82,13 @@ export function ApplicationReview({ id }: { id: string }) {
     }
   };
 
-  const act = async (itemId: string, payload: Record<string, unknown>, done: string) => {
+  const act = async (itemId: string, payload: Record<string, unknown>, done: string): Promise<ActResult> => {
     setErr(null);
     try {
       const r = await api<{ status: ApplicationStatus; question?: string | null }>(`/api/apply/${id}/items/${itemId}`, { method: "POST", json: payload });
       await load();
       setSaid(r.question ? `Lookout asks: ${r.question}` : done);
-      return true;
+      return { question: r.question ?? null };
     } catch (e) {
       setErr(e instanceof Error ? e.message : "Couldn't save");
       return false;
@@ -127,7 +137,10 @@ export function ApplicationReview({ id }: { id: string }) {
 
   return (
     <div className="page-pad lk-page" style={{ display: "flex", flexDirection: "column", gap: 16, maxWidth: 1180 }}>
-      <style>{`.lk-review{display:grid;grid-template-columns:minmax(0,1fr);gap:18px;align-items:start}@media(min-width:1000px){.lk-review{grid-template-columns:minmax(0,1fr) 360px}.lk-review aside{position:sticky;top:16px;max-height:calc(100vh - 32px);overflow:auto}}`}</style>
+      <style>{`.lk-review{display:grid;grid-template-columns:minmax(0,1fr);gap:18px;align-items:start}
+.lk-posting{position:fixed;top:0;right:0;bottom:0;width:min(440px,100vw);z-index:21;overflow:auto;border-radius:0 !important;box-shadow:-12px 0 40px rgba(29,26,15,.18)}
+.lk-review section[id^="s-"]{scroll-margin-top:72px}
+@media(min-width:1000px){.lk-review.with-posting{grid-template-columns:minmax(0,1fr) 380px}.lk-posting{position:sticky;top:68px;bottom:auto;width:auto;z-index:auto;max-height:calc(100vh - 84px);border-radius:14px !important;box-shadow:none}}`}</style>
       <Link href="/apply" style={{ fontSize: 14, color: color.ink }}>← All applications</Link>
       <div style={{ display: "flex", alignItems: "flex-start", gap: 12, flexWrap: "wrap" }}>
         <div style={{ flex: "1 1 320px", minWidth: 0 }}>
@@ -141,6 +154,22 @@ export function ApplicationReview({ id }: { id: string }) {
         <span style={{ padding: "6px 12px", borderRadius: 999, fontSize: 14, fontWeight: 600, background: st.bg, color: st.ink }}>{st.label}</span>
       </div>
 
+      {!working && d.items.length > 0 && (
+        <nav aria-label="Sections" style={{ position: "sticky", top: 0, zIndex: 5, margin: "0 -4px", padding: "8px 4px", background: "#EFEEEC", borderBottom: "1px solid #E0D9CF", display: "flex", alignItems: "center", gap: 4, overflowX: "auto" }}>
+          {[
+            ...(open.length > 0 && !locked ? [{ id: "s-needs", label: "Needs you" }] : []),
+            ...SECTIONS.filter((s) => d.items.some((i) => s.kinds.includes(i.kind))).map((s) => ({ id: `s-${slug(s.title)}`, label: s.title })),
+          ].map((s) => (
+            <a key={s.id} href={`#${s.id}`} style={{ flex: "none", padding: "6px 10px", borderRadius: 8, fontSize: 14, fontWeight: 600, color: "#4A443A", textDecoration: "none", whiteSpace: "nowrap" }}>
+              {s.label}
+            </a>
+          ))}
+          <button type="button" onClick={() => setPosting((p) => !p)} aria-pressed={posting} aria-controls="posting-panel" style={{ ...btn(posting ? "solid" : "outline"), height: 34, marginLeft: "auto", flex: "none" }}>
+            {posting ? "Hide posting" : "Posting"}
+          </button>
+        </nav>
+      )}
+
       <div aria-live="polite" style={{ ...muted, minHeight: 20 }}>{said}</div>
       {err && <div role="alert" style={{ fontSize: 14, color: color.brick }}>{err}</div>}
 
@@ -148,7 +177,7 @@ export function ApplicationReview({ id }: { id: string }) {
       {d.status === "failed" && <div role="alert" style={{ ...card, borderColor: "#E8B4AA", color: color.brick }}>{d.report.error ?? "This one didn't work."} Go back to the list to try again.</div>}
 
       {!working && d.items.length > 0 && (
-        <div className="lk-review">
+        <div className={posting ? "lk-review with-posting" : "lk-review"}>
           <div style={{ display: "flex", flexDirection: "column", gap: 16, minWidth: 0 }}>
             {!locked && (
               <div style={{ ...card, display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
@@ -165,12 +194,12 @@ export function ApplicationReview({ id }: { id: string }) {
             )}
 
             {open.length > 0 && !locked && (
-              <section aria-labelledby="qs" style={{ ...card, borderColor: color.orange, background: "#FFF9F3" }}>
+              <section id="s-needs" aria-labelledby="qs" style={{ ...card, borderColor: color.orange, background: "#FFF9F3" }}>
                 <h2 id="qs" style={{ margin: "0 0 4px", fontSize: 17, fontWeight: 700 }}>Lookout needs you for {open.length === 1 ? "one thing" : `${open.length} things`}</h2>
                 <p style={{ ...muted, margin: "0 0 12px" }}>It won&apos;t guess facts. Answer here and it becomes a version you can approve.</p>
                 <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
                   {open.map((i) => (
-                    <QuestionRow key={i.id} item={i} onSave={(content) => act(i.id, { action: "edit", content, note: "Answered by you." }, "Saved. Common answers like this one are kept on your profile for next time.")} />
+                    <QuestionRow key={i.id} item={i} onSave={async (content) => !!(await act(i.id, { action: "edit", content, note: "Answered by you." }, "Saved. Common answers like this one are kept on your profile for next time."))} />
                   ))}
                 </div>
               </section>
@@ -197,7 +226,7 @@ export function ApplicationReview({ id }: { id: string }) {
               const list = d.items.filter((i) => s.kinds.includes(i.kind));
               if (!list.length) return null;
               return (
-                <section key={s.title} aria-labelledby={`sec-${s.title}`} style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                <section key={s.title} id={`s-${slug(s.title)}`} aria-labelledby={`sec-${s.title}`} style={{ display: "flex", flexDirection: "column", gap: 10 }}>
                   <h2 id={`sec-${s.title}`} style={{ margin: "6px 0 0", fontSize: 18, fontWeight: 700 }}>{s.title}</h2>
                   {s.help && !locked && <div style={{ ...muted, marginTop: -4 }}>{s.help}</div>}
                   {s.title === "Resume" && d.keywordRows && <KeywordReport d={d} rows={d.keywordRows} reload={load} locked={locked} />}
@@ -212,8 +241,14 @@ export function ApplicationReview({ id }: { id: string }) {
             {(d.status === "manual" || d.status === "approved" || locked) && <Checklist d={d} onDone={submitted} />}
           </div>
 
-          <aside aria-label="The posting" style={{ ...card, display: "flex", flexDirection: "column", gap: 10 }}>
-            <h2 style={{ margin: 0, fontSize: 16, fontWeight: 700 }}>The posting</h2>
+          {posting && (
+          <aside id="posting-panel" aria-label="The posting" className="lk-posting" style={{ ...card, display: "flex", flexDirection: "column", gap: 10 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              <h2 style={{ margin: 0, fontSize: 16, fontWeight: 700, flex: 1 }}>The posting</h2>
+              <button type="button" onClick={() => setPosting(false)} aria-label="Close the posting" style={{ ...btn("text"), height: 30 }}>
+                Close
+              </button>
+            </div>
             {d.url && (
               <a href={d.url} target="_blank" rel="noreferrer" style={{ fontSize: 14, color: color.ink }}>
                 Open the original ↗
@@ -221,6 +256,7 @@ export function ApplicationReview({ id }: { id: string }) {
             )}
             {d.posting ? <PostingText text={d.posting} /> : <div style={muted}>No description saved for this role.</div>}
           </aside>
+          )}
         </div>
       )}
     </div>
