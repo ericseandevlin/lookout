@@ -1,0 +1,94 @@
+# Follows docs/self-host.md from a fresh clone on a GitHub runner (#417): write .env, build and start
+# compose.yaml, sign in with a minted link, and check the admin from the script can reach an admin API.
+# Catches a change to the Dockerfile, compose.yaml, the env example or a migration that would break a stranger's first run.
+name: Self-host smoke test
+
+on:
+  pull_request:
+    paths:
+      - Dockerfile
+      - compose.yaml
+      - .dockerignore
+      - deploy/**
+      - scripts/**
+      - drizzle/**
+      - package.json
+      - package-lock.json
+      - docs/self-host.md
+      - .github/workflows/selfhost.yml
+  push:
+    branches: [main]
+    paths:
+      - Dockerfile
+      - compose.yaml
+      - .dockerignore
+      - deploy/**
+      - scripts/**
+      - drizzle/**
+      - package.json
+      - package-lock.json
+      - docs/self-host.md
+      - .github/workflows/selfhost.yml
+  schedule:
+    - cron: "17 9 * * 1" # Mondays, after Dependabot's weekly PRs
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: selfhost-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  smoke:
+    name: Fresh clone to signed-in admin
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    env:
+      ADMIN: ci@example.com
+      BASE: http://localhost:3000
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+
+      - name: Step 1, write .env
+        run: |
+          scripts/selfhost-env.sh "$ADMIN"
+          grep -q "^ADMIN_EMAILS=$ADMIN$" .env
+          for k in POSTGRES_PASSWORD SEARXNG_SECRET APP_SECRET; do grep -Eq "^$k=[0-9a-f]{64}$" .env || { echo "$k not filled"; exit 1; }; done
+          # A second run must leave .env alone: a new APP_SECRET would make saved keys unreadable.
+          if scripts/selfhost-env.sh "$ADMIN"; then echo "second run overwrote .env"; exit 1; fi
+
+      - name: Step 3, start it
+        run: docker compose up -d --build
+
+      - name: Wait for /api/health
+        run: |
+          for i in $(seq 60); do
+            if curl -fsS "$BASE/api/health" | grep -q '"ok":true'; then exit 0; fi
+            sleep 3
+          done
+          echo "app never reported healthy"; exit 1
+
+      - name: Step 4, sign in as the admin
+        run: |
+          link=$(docker compose exec -T app node scripts/login-link.mjs "$ADMIN" | head -1)
+          token=${link##*token=}
+          [ -n "$token" ] && [ "$token" != "$link" ] || { echo "no link from login-link.mjs: $link"; exit 1; }
+          # Signed out, the admin API refuses.
+          code=$(curl -s -o /dev/null -w '%{http_code}' "$BASE/api/admin/overview")
+          [ "$code" = 401 ] || { echo "signed out got $code, wanted 401"; exit 1; }
+          curl -fsS -c jar -H "Origin: $BASE" -H "Content-Type: application/json" -d "{\"token\":\"$token\"}" "$BASE/api/auth/verify"
+          code=$(curl -s -o /dev/null -w '%{http_code}' -b jar "$BASE/api/admin/overview")
+          [ "$code" = 200 ] || { echo "signed in admin got $code, wanted 200"; exit 1; }
+          # Links work once.
+          code=$(curl -s -o /dev/null -w '%{http_code}' -H "Origin: $BASE" -H "Content-Type: application/json" -d "{\"token\":\"$token\"}" "$BASE/api/auth/verify")
+          [ "$code" = 400 ] || { echo "reused link got $code, wanted 400"; exit 1; }
+
+      - name: App log
+        if: failure()
+        run: docker compose logs --no-color --tail 200
+
+      - name: Start over
+        if: always()
+        run: docker compose down -v
