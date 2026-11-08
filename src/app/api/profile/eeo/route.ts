@@ -13,7 +13,8 @@ export const GET = authed(async (_req, { user }) => {
 
 const Put = z.object({
   consent: z.boolean().optional(),
-  answers: z.record(z.enum(EEO_CATEGORIES), z.string().max(80)).optional(),
+  // Partial: the page saves one category at a time, and Zod 4's record needs every enum key (#463).
+  answers: z.partialRecord(z.enum(EEO_CATEGORIES), z.string().max(80)).optional(),
 });
 
 export const PUT = authed(async (req, { user }) => {
