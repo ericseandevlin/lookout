@@ -40,7 +40,9 @@ vi.mock("./master", () => ({ ensureMaster: async () => ({ md: RESUME, built: fal
 const findOutreach = vi.fn(async () => [] as unknown[]);
 vi.mock("./outreach", () => ({ findOutreach }));
 
-const { scanPosting, processApplication, sweepApplications, redraftLetter, redraftResume } = await import("./run");
+const { scanPosting, processApplication, sweepApplications, resumeFor, redraftLetter, redraftResume } = await import("./run");
+const { keywordState } = await import("./review");
+const { finalTerms } = await import("./evidence");
 const { emptyUsage } = await import("@/lib/ai/llm");
 
 const GH_URL = "https://job-boards.greenhouse.io/engines/jobs/123";
@@ -299,5 +301,104 @@ describe("redrafts (#378)", () => {
     const { app } = await seedApp({ status: "failed" });
     await expect(redraftLetter(app.id)).rejects.toThrow("No cover letter on this application");
     await expect(redraftResume(app.id)).rejects.toThrow("No resume on this application");
+  });
+});
+
+describe("embedded Greenhouse boards and Ashby outages (#438)", () => {
+  const PAGE = "https://careers.analytical-engines.com/jobs?gh_jid=123";
+  const api = (board: string) => `https://boards-api.greenhouse.io/v1/boards/${board}/jobs/123?questions=true`;
+
+  it("uses the board the company page embeds, and the Greenhouse embed form", async () => {
+    pages.set(PAGE, `<script src="https://boards.greenhouse.io/embed/job_board/js?for=engines"></script>`);
+    const scan = await scanPosting(PAGE, emptyUsage());
+    expect(scan).toMatchObject({ ats: "greenhouse", source: "form", applyUrl: "https://job-boards.greenhouse.io/embed/job_app?for=engines&token=123" });
+    expect(fetchPage.mock.calls.map((c) => c[0])).toEqual([PAGE, GH_API]);
+  });
+
+  it("tries board names from the host when the page names none", async () => {
+    pages.set(PAGE, "<p>Open roles</p>");
+    pages.set(api("analyticalengines"), ghJob(FORM));
+    const scan = await scanPosting(PAGE, emptyUsage());
+    expect(scan.applyUrl).toBe("https://job-boards.greenhouse.io/embed/job_app?for=analyticalengines&token=123");
+    expect(fetchPage.mock.calls.map((c) => c[0])).toEqual([PAGE, api("analytical-engines"), api("analyticalengines")]);
+    expect(completeJSON).not.toHaveBeenCalled();
+  });
+
+  it("reads the page when no board answers", async () => {
+    pages.set(PAGE, "<label>Portfolio link</label>");
+    replies["apply-scan"] = () => ({ hasForm: true, hasEeo: false, howToApply: "", items: [{ prompt: "Portfolio link", required: false, fieldType: "text", options: [] }] });
+    const scan = await scanPosting(PAGE, emptyUsage());
+    expect(scan).toMatchObject({ source: "page", applyUrl: PAGE });
+    expect(scan.items.map((i) => i.prompt)).toEqual(["Portfolio link"]);
+  });
+
+  it("reads the page when the Ashby API is down", async () => {
+    ashby.mockResolvedValue({ ok: false, status: 503 });
+    const apply = "https://jobs.ashbyhq.com/engines/abc-123/application";
+    pages.set(apply, "<label>Name</label>");
+    replies["apply-scan"] = () => ({ hasForm: true, hasEeo: false, howToApply: "", items: [{ prompt: "Name", required: true, fieldType: "text", options: [] }] });
+    const scan = await scanPosting("https://jobs.ashbyhq.com/engines/abc-123", emptyUsage());
+    expect(scan).toMatchObject({ ats: "ashby", source: "page", applyUrl: apply });
+    expect(console.error).toHaveBeenCalledWith(expect.stringContaining("ashby form read failed"), expect.any(Error));
+  });
+});
+
+describe("resume redraft with approved keywords (#438)", () => {
+  it("writes a new version, clears its approval, sends the application back to review and flags unapproved terms", async () => {
+    pages.set(GH_API, JSON.stringify({ ...JSON.parse(ghJob(FORM)), content: "&lt;p&gt;Lead our design system in Figma.&lt;/p&gt;" }));
+    replies["apply-keywords"] = () => ({
+      keywords: [
+        { term: "design system", experience: "- Built a design system used by 40 teams" },
+        { term: "Figma", experience: "" },
+      ],
+    });
+    const { user, app } = await seedApp();
+    await db.insert(schema.materials).values({ userId: user.id, kind: "resume", extracted: { text: RESUME } });
+    await processApplication(app.id);
+
+    // Approve the list as it stands, the way POST /api/apply/[id]/keywords does.
+    const drafted = await getApp(app.id);
+    const { rows } = await keywordState(user.id, drafted, drafted.report.postingText!);
+    expect(finalTerms(rows)).toEqual(["design system"]);
+    await db
+      .update(schema.applications)
+      .set({ status: "approved", report: { ...drafted.report, keywordsApproved: { terms: finalTerms(rows), at: new Date().toISOString() } } })
+      .where(eq(schema.applications.id, app.id));
+    const resume = (await itemsOf(app.id)).find((i) => i.kind === "resume")!;
+    await db.update(schema.applicationItems).set({ approvedVersionId: resume.versions[0].id }).where(eq(schema.applicationItems.id, resume.id));
+
+    replies["apply-resume"] = () => ({
+      keywords: ["design system", "Figma"],
+      resume: `${RESUME}\n- Ran the design system in Figma`,
+      changes: [{ keyword: "design system", where: "Experience" }],
+      notes: ["You now lead with the design system."],
+    });
+    await redraftResume(app.id);
+
+    const after = (await itemsOf(app.id)).find((i) => i.kind === "resume")!;
+    expect(after.versions.map((v) => v.version)).toEqual([1, 2]);
+    expect(after.versions[1].content).toContain("Ran the design system in Figma");
+    expect(after.versions[1].note).toMatch(/^- Redrafted from the posting/);
+    expect(after.versions[1].note).toContain("you didn't approve them and your experience doesn't show them: Figma");
+    expect(after.approvedVersionId).toBeNull();
+    expect(after.question).toContain('"Figma", which you didn\'t approve');
+    // The resume prompt lists only the approved term.
+    const prompt = completeJSON.mock.calls.find((c) => c[0].name === "apply-resume")![0].user;
+    expect(prompt).toContain("- design system (backed by:");
+    expect(prompt).toContain("Never use these: Figma.");
+    const a = await getApp(app.id);
+    expect(a.status).toBe("needs_review");
+    expect(a.report.keywords).toBeDefined();
+  });
+});
+
+describe("resumeFor (#438)", () => {
+  it("restarts only that person's stale and queued work", async () => {
+    const hourAgo = new Date(Date.now() - 3600_000);
+    const mine = await seedApp({ status: "scanning", updatedAt: hourAgo });
+    const theirs = await seedApp({ status: "scanning", updatedAt: hourAgo });
+    await resumeFor(mine.user.id);
+    await vi.waitFor(async () => expect((await getApp(mine.app.id)).status).toBe("needs_review"));
+    expect((await getApp(theirs.app.id)).status).toBe("scanning");
   });
 });
