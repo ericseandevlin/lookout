@@ -40,10 +40,10 @@ beforeEach(async () => {
 });
 
 /** A find on the board, added `ago` ms back. */
-async function find(title: string, o: { ago?: number; score?: number; due?: string; pinned?: boolean; archived?: boolean; compMax?: number } = {}) {
+async function find(title: string, o: { ago?: number; score?: number; due?: string; pinned?: boolean; archived?: boolean; compMin?: number; compMax?: number; currency?: string } = {}) {
   const [opp] = await db
     .insert(schema.opportunities)
-    .values({ company: "Acme <Labs>", title, location: "Remote", fingerprint: title, compMax: o.compMax, attributes: o.due ? { due: o.due } : {} })
+    .values({ company: "Acme <Labs>", title, location: "Remote", fingerprint: title, compMin: o.compMin, compMax: o.compMax, currency: o.currency, attributes: o.due ? { due: o.due } : {} })
     .returning();
   await db.insert(schema.userOpportunities).values({
     userId,
@@ -104,6 +104,16 @@ describe("sendDigest", () => {
     const [dg] = await digests();
     expect(dg.finds).toBe(2);
     expect(m.text).toContain(`https://lookout.example.com/go/${dg.id}/board`);
+  });
+
+  it("shows a posted floor and a non-USD range instead of No comp posted (#492)", async () => {
+    await find("Floor only", { compMin: 150000 });
+    await find("London role", { compMin: 60000, compMax: 80000, currency: "GBP" });
+    await sendDigest(userId);
+    const [m] = sent();
+    expect(m.html).toContain("$150,000+");
+    expect(m.text).toContain("60,000 – 80,000 GBP");
+    expect(m.html).not.toContain("No comp posted");
   });
 
   it("says one find, not one finds", async () => {
