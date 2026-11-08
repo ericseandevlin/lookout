@@ -97,6 +97,7 @@ AI and search settings can live in env or be set in Admin > AI settings (the dat
 | `APP_SECRET` | 32+ chars; encrypts API keys, EEO answers and uploaded files |
 | `APP_SECRET_PREVIOUS` | Only while changing `APP_SECRET`: the old value, so stored secrets stay readable until `scripts/reencrypt.mjs` moves them |
 | `AI_PROVIDER`, `AI_BASE_URL`, `AI_MODEL`, `AI_API_KEY`, `AI_PRICE_IN`, `AI_PRICE_OUT`, `AI_JSON_MODE` | Default model settings (`openai`, `anthropic` or `agent`) |
+| `ANTHROPIC_API_KEY` | Used as the key when `AI_PROVIDER=anthropic` and `AI_API_KEY` is empty |
 | `AGENT_TOKEN` | 32+ chars; bearer token for the Claude agent queue |
 | `SEARCH_PROVIDER`, `SEARXNG_URL`, `BRAVE_API_KEY`, `SEARCH_PRICE` | Web search |
 | `SAM_API_KEY` | Free key from a SAM.gov account; turns on RFP searches (federal solicitations). RFP search stays off without it |
@@ -111,6 +112,12 @@ AI and search settings can live in env or be set in Admin > AI settings (the dat
 | `APP_TZ` | Timezone for run days (default `America/New_York`) |
 | `SCHEDULER` | `off` disables scheduled runs |
 | `FEATURE_AUTO_APPLY` | `on` shows auto-apply to admins (staging only until released) |
+| `FEATURE_AUTO_SUBMIT` | `on` lets auto-apply press Submit itself; otherwise it fills the form and stops for review |
+| `FEATURE_EVENTS` | `on` shows the Events page and adds event searches to scheduled runs (staging only until released) |
+| `FEATURE_SEARCHES` | `on` allows more than one search per account and shows the kind picker at sign-up (staging only until released) |
+| `CHROMIUM_PATH` | Chromium used by auto-apply (default `/usr/bin/chromium-browser`, set in the Docker image) |
+| `MIGRATIONS_DIR` | Database migrations folder (default `./drizzle`, set in the Docker image) |
+| `GIT_COMMIT` | Build arg; the commit `/api/health` reports. `deploy/deploy.sh` sets it |
 | `DATA_DIR` | Where uploads are stored |
 | `EMAIL_DEV_LOG` | `1` prints emails to the log instead of sending |
 
