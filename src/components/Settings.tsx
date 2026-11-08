@@ -87,7 +87,7 @@ export function Settings() {
     } catch (e) {
       return fail(e);
     }
-    window.location.replace(window.location.origin);
+    window.location.replace(`${window.location.origin}/signin?out=1`);
   };
   const runNow = async () => {
     setSearchMsg(null);
