@@ -22,8 +22,13 @@ const webSearch = vi.fn(async () => [{ url: "https://events.example.com/a" }, { 
 vi.mock("@/lib/ai/search", () => ({ webSearch }));
 const fetchPage = vi.fn(async (url: string) => ({ html: `Events listed at ${url}. ${"Details. ".repeat(40)}` }));
 vi.mock("@/lib/ai/fetchPage", () => ({ fetchPage, pageToText: (html: string) => html }));
+// "Search now" checks the budget, loads the search's context and its profile; runs are real rows.
+const assertBudget = vi.fn(async () => {});
+vi.mock("@/lib/ai/runs", async (orig) => ({ ...(await orig<typeof import("@/lib/ai/runs")>()), assertBudget }));
+vi.mock("./discover", () => ({ loadContext: async () => ctx }));
+vi.mock("./searchProfile", () => ({ ensureSearchProfile: async () => ({ profile: { where: "New York, NY" }, rebuilt: false }) }));
 
-const { clearEvents, findEvents, findEventsIfDue, getEventPrefs, listEvents } = await import("./networking");
+const { clearEvents, eventSearchRunning, findEvents, findEventsIfDue, getEventPrefs, getInterestSuggestions, listEvents, saveEventPrefs, searchEventsNow } = await import("./networking");
 const { emptyUsage } = await import("@/lib/ai/llm");
 
 const ymd = (days: number) => new Date(Date.now() + days * 24 * 3600_000).toISOString().slice(0, 10);
@@ -55,6 +60,7 @@ afterAll(async () => {
 });
 beforeEach(async () => {
   completeJSON.mockClear();
+  assertBudget.mockClear();
   webSearch.mockClear();
   fetchPage.mockClear();
   drafts = [];
@@ -75,6 +81,89 @@ describe("getEventPrefs", () => {
   it("falls back to defaults when there is no profile", async () => {
     await db.delete(schema.profiles);
     expect(await getEventPrefs(userId)).toEqual({ interests: "", reach: "both", miles: 25, freq: "weekly" });
+  });
+
+  it("reads back what saveEventPrefs wrote", async () => {
+    const prefs = { interests: "museums, nonprofit boards", reach: "nearby" as const, miles: 10, freq: "monthly" as const };
+    await saveEventPrefs(userId, prefs);
+    expect(await getEventPrefs(userId)).toEqual(prefs);
+  });
+});
+
+/** A job search for the user, made active, with an optional stored search profile. */
+async function activeSearch(searchProfile?: Record<string, unknown>) {
+  const [s] = await db
+    .insert(schema.searches)
+    .values({ userId, name: "Job search", ...(searchProfile && { searchProfile: searchProfile as never }) })
+    .returning();
+  await db.insert(schema.settings).values({ userId, activeSearchId: s.id }).onConflictDoUpdate({ target: schema.settings.userId, set: { activeSearchId: s.id } });
+  return s;
+}
+const eventRuns = () => db.select().from(schema.runs).where(eq(schema.runs.trigger, "events"));
+
+describe("getInterestSuggestions", () => {
+  it("has none without a search or a stored profile", async () => {
+    expect(await getInterestSuggestions(userId)).toEqual([]);
+    await activeSearch();
+    expect(await getInterestSuggestions(userId)).toEqual([]);
+  });
+
+  it("offers chips from the active search's stored profile", async () => {
+    await activeSearch({ targetTitles: [], industries: ["Healthcare"], strengths: ["Design systems"], searchTerms: ["healthcare"] });
+    expect(await getInterestSuggestions(userId)).toEqual(["Healthcare", "Design systems"]);
+  });
+});
+
+describe("searchEventsNow", () => {
+  it("refuses without an active search and logs no run", async () => {
+    await expect(searchEventsNow(userId)).rejects.toThrow("Search not found");
+    expect(await eventRuns()).toEqual([]);
+  });
+
+  it("checks the budget, then logs a finished events run with the count", async () => {
+    const s = await activeSearch();
+    drafts = [draft("Design Systems Night"), draft("Accessibility Panel", { url: "https://events.example.com/b" })];
+    expect(await searchEventsNow(userId)).toBe(2);
+    expect(assertBudget).toHaveBeenCalledWith(userId);
+    const [run] = await eventRuns();
+    expect(run).toMatchObject({ status: "done", searchId: s.id, found: 2, added: 2 });
+    expect(run.progress).toMatchObject({ pct: 100, step: "Added 2 events" });
+  });
+
+  it("says so when nothing new turned up", async () => {
+    await activeSearch();
+    expect(await searchEventsNow(userId)).toBe(0);
+    const [run] = await eventRuns();
+    expect(run).toMatchObject({ status: "done", added: 0 });
+    expect(run.progress).toMatchObject({ step: "No new events this time" });
+  });
+
+  it("stops before any run when over budget", async () => {
+    await activeSearch();
+    assertBudget.mockRejectedValueOnce(new Error("Lookout hit its daily spend cap."));
+    await expect(searchEventsNow(userId)).rejects.toThrow("daily spend cap");
+    expect(await eventRuns()).toEqual([]);
+    expect(webSearch).not.toHaveBeenCalled();
+  });
+
+  it("marks the run failed with the error and rethrows", async () => {
+    await activeSearch();
+    completeJSON.mockRejectedValueOnce(new Error("model down"));
+    await expect(searchEventsNow(userId)).rejects.toThrow("model down");
+    const [run] = await eventRuns();
+    expect(run).toMatchObject({ status: "failed", error: "model down" });
+  });
+});
+
+describe("eventSearchRunning", () => {
+  it("follows the latest events run only", async () => {
+    expect(await eventSearchRunning(userId)).toBe(false);
+    await db.insert(schema.runs).values({ userId, trigger: "events", status: "done", startedAt: new Date(Date.now() - 60_000) });
+    expect(await eventSearchRunning(userId)).toBe(false);
+    await db.insert(schema.runs).values({ userId, trigger: "events", status: "running" });
+    expect(await eventSearchRunning(userId)).toBe(true);
+    await db.insert(schema.runs).values({ userId, trigger: "manual", status: "done", startedAt: new Date(Date.now() + 60_000) });
+    expect(await eventSearchRunning(userId)).toBe(true);
   });
 });
 
