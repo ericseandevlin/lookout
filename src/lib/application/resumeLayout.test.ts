@@ -50,10 +50,10 @@ describe("parseDraft", () => {
 
 describe("contactParts", () => {
   it("makes email, phone, site and LinkedIn into links, leaves the city as text", () => {
-    expect(contactParts("New York, NY • ericdevlin@me.com • 646.319.3777 • ericdevlin.co • linkedin.com/in/ericseandev")).toEqual([
+    expect(contactParts("New York, NY • ericdevlin@me.com • 646.555.0100 • ericdevlin.co • linkedin.com/in/ericseandev")).toEqual([
       { text: "New York, NY" },
       { text: "ericdevlin@me.com", href: "mailto:ericdevlin@me.com" },
-      { text: "646.319.3777", href: "tel:6463193777" },
+      { text: "646.555.0100", href: "tel:6465550100" },
       { text: "ericdevlin.co", href: "https://ericdevlin.co" },
       { text: "linkedin.com/in/ericseandev", href: "https://linkedin.com/in/ericseandev" },
     ]);
