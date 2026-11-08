@@ -178,3 +178,7 @@ Sign someone in without email (on the server): `docker compose exec app node scr
 - Pages the app fetches go through an SSRF-safe fetcher (see step 5 above). Fetched pages are untrusted input; model output is schema-bound and never executed.
 - The container runs as a non-root user on a read-only filesystem; Postgres is only on the internal Compose network.
 - Open items are tracked as GitHub issues labeled `security`, `hardening`, `accessibility` and `code-quality`.
+
+## License
+
+Copyright (C) 2026 Eric Devlin. Lookout is free software under the [GNU Affero General Public License v3.0](LICENSE) (`AGPL-3.0-only`). Use it, change it and run it yourself. If you run a changed version as a service for other people, you have to offer them its source too. Why AGPL and not MIT: [docs/decisions](docs/decisions/README.md#7-agpl-30-license-2026-11-08).
