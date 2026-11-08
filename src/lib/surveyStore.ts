@@ -1,5 +1,5 @@
 import "server-only";
-import { and, asc, count, desc, eq, max, notExists, sql } from "drizzle-orm";
+import { and, asc, count, desc, eq, max, notExists, or, sql } from "drizzle-orm";
 import { db, schema } from "@/lib/db";
 import { HttpError } from "@/lib/api";
 import { getSurveyConfig } from "@/lib/config";
@@ -20,6 +20,8 @@ export async function nextQuestion(user: { id: string; createdAt: Date }): Promi
     .where(
       and(
         eq(schema.surveyQuestions.active, true),
+        // A question about the email goes only to people who get it (#514).
+        or(eq(schema.surveyQuestions.onlyIfDigest, false), sql`coalesce((select ${schema.settings.digest} from ${schema.settings} where ${schema.settings.userId} = ${user.id}), true)`),
         notExists(db.select({ one: sql`1` }).from(schema.surveyAnswers).where(and(eq(schema.surveyAnswers.questionId, schema.surveyQuestions.id), eq(schema.surveyAnswers.userId, user.id)))),
       ),
     )
