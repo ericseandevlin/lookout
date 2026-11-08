@@ -105,6 +105,19 @@ describe("RFP cells", () => {
     expect(daysUntil("2026-11-10", new Date(2026, 10, 9, 12).getTime())).toBe(1);
   });
 
+  it("counts calendar days whatever the hour or a clock change (#495)", () => {
+    const at = (d: number, h: number) => new Date(2026, 10, d, h).getTime();
+    expect(daysUntil("2026-11-07", at(7, 9))).toBe(0);
+    expect(daysUntil("2026-11-07", at(7, 23))).toBe(0);
+    expect(daysUntil("2026-11-08", at(7, 0))).toBe(1);
+    expect(daysUntil("2026-11-08", at(7, 23))).toBe(1);
+    expect(daysUntil("2026-11-06", at(7, 1))).toBe(-1);
+    // Nov 1 2026 is the fall-back change in the US.
+    expect(daysUntil("2026-11-01", new Date(2026, 9, 31, 12).getTime())).toBe(1);
+    expect(daysUntil("2026-11-02", new Date(2026, 9, 31, 8).getTime())).toBe(2);
+    expect(daysUntil("2026-02-30")).toBe(daysUntil("2026-03-02"));
+  });
+
   it("says how long is left, how long it's been, or what was posted", () => {
     expect(dueText(rfp({ due: "2026-11-21" }))).toBe("14d left");
     expect(dueText(rfp({ due: "2026-11-07" }))).toBe("today");
