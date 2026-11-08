@@ -17,7 +17,7 @@ vi.mock("next/headers", () => ({ headers: async () => new Headers({ origin: "htt
 let me: typeof schema.users.$inferSelect | null = null;
 vi.mock("@/lib/auth/session", () => ({ getSessionUser: async () => me, refreshSession: async () => {} }));
 // The Word layout has its own tests; here only which draft goes in, and with what header.
-const draftToDocx = vi.fn(async (md: string, _title: string, _opts?: { letterHeader?: { name: string; contact: string } }) => Buffer.from(md));
+const draftToDocx = vi.fn<(md: string, title: string, opts?: { letterHeader?: { name: string; contact: string } }) => Promise<Buffer>>(async (md) => Buffer.from(md));
 vi.mock("@/lib/application/docx", () => ({ draftToDocx }));
 
 const { GET } = await import("./route");
