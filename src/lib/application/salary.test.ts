@@ -31,6 +31,14 @@ describe("suggestSalary", () => {
     expect(suggestSalary({ floor: "200000", target: "300000", min: 230000, max: 260000 })!.amount).toBe("$255,000");
   });
 
+  it("never asks below the posted min when rounding steps out of a narrow range (#507)", () => {
+    const r = suggestSalary({ min: 101000, max: 102000 })!;
+    expect(r.amount).toBe("$101,000");
+    expect(r.note).toMatch(/Top quarter of their range \(\$101,000\)/);
+    expect(suggestSalary({ min: 201000, max: 203000 })!.amount).toBe("$203,000");
+    expect(suggestSalary({ floor: "90000", min: 151000, max: 152000 })!.amount).toBe("$151,000");
+  });
+
   it("never goes above the posted max, even for a floor near it", () => {
     expect(suggestSalary({ floor: "259000", min: 230000, max: 260000 })!.amount).toBe("$259,000");
   });
