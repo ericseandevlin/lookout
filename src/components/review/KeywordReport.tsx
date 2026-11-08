@@ -74,7 +74,7 @@ export function KeywordReport({ d, rows, reload, locked }: { d: Detail; rows: Ke
                 <span style={{ fontWeight: 600 }}>Your experience: </span>
                 {r.support ? (
                   <>
-                    \u201c{r.support.line}\u201d <span style={muted}>({r.support.from === "notes" ? "your experience notes" : "your master resume"})</span>
+                    {`\u201c${r.support.line}\u201d`} <span style={muted}>({r.support.from === "notes" ? "your experience notes" : "your master resume"})</span>
                   </>
                 ) : (
                   <span style={{ color: color.brick }}>Nothing in your resume or experience notes shows this, so it stays out of the resume unless you add the experience.</span>
