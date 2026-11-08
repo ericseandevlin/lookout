@@ -16,6 +16,8 @@ const message = (text: string, over: Record<string, unknown> = {}) =>
     }),
     { status: 200, headers: { "content-type": "application/json", "request-id": "req_1" } },
   );
+// SDK 0.x sends the key as x-api-key, 1.x as a Bearer token (#185); either is fine.
+const keyOf = (h: Headers) => h.get("x-api-key") ?? h.get("authorization")?.replace(/^Bearer /, "") ?? null;
 const sent = (f: ReturnType<typeof vi.fn>, i = 0) => {
   const [url, init] = f.mock.calls[i] as [string | URL | Request, RequestInit];
   return { url: String(url instanceof Request ? url.url : url), body: JSON.parse(String(init.body)), headers: new Headers(init.headers) };
@@ -34,7 +36,7 @@ describe("completeJSON (Anthropic)", () => {
 
     const { url, body, headers } = sent(f);
     expect(url).toMatch(/\/v1\/messages(\?|$)/);
-    expect(headers.get("x-api-key")).toBe("k-parse");
+    expect(keyOf(headers)).toBe("k-parse");
     expect(headers.get("anthropic-beta")).toContain("server-side-fallback-2026-07-01");
     expect(body).toMatchObject({ model: "claude-test", max_tokens: 900, system: "sys", messages: [{ role: "user", content: "the posting" }] });
     expect(body.output_config.effort).toBe("low");
@@ -84,6 +86,6 @@ describe("completeJSON (Anthropic)", () => {
     vi.stubGlobal("fetch", second);
     expect(await completeJSON({ name: "t", schema, system: "s", user: "u", usage: emptyUsage(), cfg: cfgFor("k-reuse") })).toEqual({ title: "a", score: 1 });
     expect(await completeJSON({ name: "t", schema, system: "s", user: "u", usage: emptyUsage(), cfg: cfgFor("k-rotated") })).toEqual({ title: "b", score: 2 });
-    expect(sent(second).headers.get("x-api-key")).toBe("k-rotated");
+    expect(keyOf(sent(second).headers)).toBe("k-rotated");
   });
 });
