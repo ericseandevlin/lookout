@@ -24,7 +24,7 @@ The steps are in the README under [Local development](README.md#local-developmen
 ## Open a pull request
 
 - Into `main`, using the PR template. Say what changed for the person using Lookout, and how you checked it.
-- CI runs typecheck, lint, tests, a dependency audit, Semgrep and a secret scan. Merge only when it's green.
+- CI runs typecheck, lint, tests, a dependency audit, Semgrep and a secret scan. Merge only when it's green. A PR that changes only Markdown or `docs/` (not README.md) skips CI, so there is nothing to wait for.
 - PRs are squash-merged. `main` deploys to staging; `prod` moves only at the weekly release.
 
 More detail on branches, releases and deploys is in the README under [How we work](README.md#how-we-work).
