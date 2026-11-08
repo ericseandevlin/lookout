@@ -140,6 +140,8 @@ export const profiles = pgTable("profiles", {
   applyAnswers: jsonb("apply_answers").$type<SavedAnswer[]>().notNull().default([]),
   /** Skills the person says they have, with the experience behind them (#121). Editable on the profile. */
   skillNotes: jsonb("skill_notes").$type<SkillNote[]>().notNull().default([]),
+  /** Personal connection stories (#155): true moments a cover letter can open with. Editable on the profile. */
+  personalStories: jsonb("personal_stories").$type<PersonalStory[]>().notNull().default([]),
   /** Voluntary EEO answers (#122), AES-GCM encrypted JSON (EeoProfile). Never sent to an AI model. */
   eeo: text("eeo"),
   /** The person allowed Lookout to fill EEO questions from those answers. Off by default. */
@@ -166,6 +168,9 @@ export type MasterResume = {
 };
 
 export type SkillNote = { skill: string; story: string; updatedAt: string };
+
+/** A moment from the person's life that ties them to what a company makes or stands for (#155). Their words, never Lookout's. */
+export type PersonalStory = { id: string; theme: import("@/lib/application/stories").StoryTheme; story: string; updatedAt: string };
 
 export type SearchProfile = {
   summary: string;

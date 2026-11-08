@@ -6,6 +6,9 @@ Every production release of Lookout, newest first. The format follows [Keep a Ch
 
 Work merged to `main` (staging) and waiting for the weekly release.
 
+### Added
+- Auto-apply beta: personal stories on the Application answers page. Cover letters open with one true, personal line from a story that fits the company. If none fits, the letter has no personal line and the note asks one question about that company. A letter that points to a story you never gave is sent back to you (#155).
+
 ### Changed
 - A bad link or a page error now shows a Lookout page with a way back, instead of the bare Next.js default. Error pages show a reference people can quote, never the error itself (#396).
 

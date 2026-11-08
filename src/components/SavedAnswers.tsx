@@ -1,13 +1,14 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import type { SavedAnswer, SkillNote } from "@/lib/db/schema";
+import type { PersonalStory, SavedAnswer, SkillNote } from "@/lib/db/schema";
 import { PageHead, ProfileTabs } from "./Profile";
 import { btn } from "./Settings";
 import { api } from "./store";
 import { EEO_CATEGORIES, EEO_CHOICES, type EeoCategory } from "@/lib/application/eeo";
 import { useConfirm } from "./Confirm";
 import { color } from "@/lib/tokens";
+import { STORY_PROMPTS, STORY_THEMES, type StoryTheme } from "@/lib/application/stories";
 
 /** /profile/application: the answers auto-apply reuses on every form (#108). */
 export function SavedAnswers() {
@@ -35,7 +36,7 @@ export function SavedAnswers() {
       <PageHead
         eyebrow="Search profile"
         title="Application answers"
-        intro="What Lookout reuses on every application: answers to questions most forms ask, and experience notes behind your skills. Change one here when it's no longer true, like a move or a new name."
+        intro="What Lookout reuses on every application: answers to questions most forms ask, experience notes behind your skills, and personal stories for cover letters. Change one here when it's no longer true, like a move or a new name."
       />
       <div aria-live="polite" style={{ fontSize: 14, color: color.t2, minHeight: 20 }}>{said}</div>
       {err && <div role="alert" style={{ fontSize: 14, color: color.brick }}>{err}</div>}
@@ -52,6 +53,7 @@ export function SavedAnswers() {
         </ul>
       )}
       <ExperienceNotes />
+      <PersonalStories />
       <EeoAnswers />
     </div>
   );
@@ -111,6 +113,79 @@ function NoteRow({ n, save }: { n: SkillNote; save: (skill: string, story: strin
       <div style={{ display: "flex", gap: 8 }}>
         <button onClick={() => save(n.skill, v)} disabled={v === n.story} style={btn("outline")}>Save</button>
         <button onClick={() => save(n.skill, "", true)} style={btn("text")}>Forget</button>
+      </div>
+    </li>
+  );
+}
+
+type StoryEdit = { id?: string; theme: StoryTheme; story: string; forget?: true };
+
+/** Personal connection stories (#155): true moments a cover letter can open with. Lookout never makes one up. */
+function PersonalStories() {
+  const [stories, setStories] = useState<PersonalStory[] | null>(null);
+  const [said, setSaid] = useState("");
+  const [err, setErr] = useState<string | null>(null);
+  useEffect(() => {
+    api<{ stories: PersonalStory[] }>("/api/profile/stories")
+      .then((r) => setStories(r.stories))
+      .catch((e) => setErr(e instanceof Error ? e.message : "Couldn't load"));
+  }, []);
+  const save = async (s: StoryEdit) => {
+    setErr(null);
+    try {
+      const r = await api<{ stories: PersonalStory[] }>("/api/profile/stories", { method: "PUT", json: s.forget ? { id: s.id, forget: true } : s });
+      setStories(r.stories);
+      setSaid(s.forget ? "Forgot that story." : "Saved your story.");
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : "Couldn't save");
+    }
+  };
+  return (
+    <section aria-labelledby="stories" style={{ display: "flex", flexDirection: "column", gap: 10, marginTop: 18 }}>
+      <h2 id="stories" style={{ margin: 0, fontSize: 20, fontWeight: 700 }}>Personal stories</h2>
+      <p style={{ margin: 0, fontSize: 14, lineHeight: 1.55, color: color.t2 }}>
+        One true, personal line makes a cover letter stand out. When a company&apos;s work matches one of these, the letter opens with it. If none fits, Lookout asks you instead of making one up. Only add what really happened; interviewers ask about it.
+      </p>
+      <div style={{ fontSize: 14, lineHeight: 1.55, color: "#3B362C" }}>
+        Some places to start:
+        <ul style={{ margin: "4px 0 0", paddingLeft: 20 }}>
+          {STORY_PROMPTS.map((q) => (
+            <li key={q}>{q}</li>
+          ))}
+        </ul>
+      </div>
+      <div aria-live="polite" style={{ fontSize: 14, color: color.t2, minHeight: 20 }}>{said}</div>
+      {err && <div role="alert" style={{ fontSize: 14, color: color.brick }}>{err}</div>}
+      {stories && (
+        <ul style={{ listStyle: "none", margin: 0, padding: 0, display: "flex", flexDirection: "column", gap: 10 }}>
+          {stories.map((s) => (
+            <StoryRow key={s.id} s={s} save={save} />
+          ))}
+          <StoryRow key={`new-${stories.length}`} save={save} />
+        </ul>
+      )}
+    </section>
+  );
+}
+
+function StoryRow({ s, save }: { s?: PersonalStory; save: (s: StoryEdit) => Promise<void> }) {
+  const [theme, setTheme] = useState<StoryTheme>(s?.theme ?? "other");
+  const [v, setV] = useState(s?.story ?? "");
+  const id = `ps-${s?.id ?? "new"}`;
+  const changed = v.trim() !== (s?.story ?? "") || theme !== (s?.theme ?? "other");
+  return (
+    <li style={{ padding: 16, borderRadius: 14, background: "#fff", border: "1.5px solid #E6E0D8", display: "flex", flexDirection: "column", gap: 8 }}>
+      <label htmlFor={id} style={{ fontSize: 15, fontWeight: 600 }}>{s ? "Your story" : "Add a story"}</label>
+      <textarea id={id} value={v} onChange={(e) => setV(e.target.value)} rows={3} maxLength={1500} placeholder="What happened, in your own words. For example: my grandmother kept living alone for years because of her medical alert pendant." style={{ borderRadius: 10, border: "1.5px solid #E0D9CF", padding: 10, fontSize: 15, fontFamily: "inherit", resize: "vertical" }} />
+      <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
+        <label htmlFor={`${id}-theme`} style={{ fontSize: 14, color: color.t2 }}>Theme</label>
+        <select id={`${id}-theme`} value={theme} onChange={(e) => setTheme(e.target.value as StoryTheme)} style={{ height: 40, borderRadius: 10, border: "1.5px solid #E0D9CF", padding: "0 10px", fontSize: 15, background: "#fff" }}>
+          {STORY_THEMES.map((t) => (
+            <option key={t} value={t}>{t[0].toUpperCase() + t.slice(1)}</option>
+          ))}
+        </select>
+        <button onClick={() => save({ id: s?.id, theme, story: v })} disabled={!v.trim() || !changed} style={btn("outline")}>{s ? "Save" : "Add"}</button>
+        {s && <button onClick={() => save({ id: s.id, theme, story: "", forget: true })} style={btn("text")}>Forget</button>}
       </div>
     </li>
   );
