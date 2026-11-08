@@ -37,5 +37,13 @@ describe("dedupe keys", () => {
   });
   it("normalizes tracking params out of URLs", () => {
     expect(normUrl("https://www.boards.greenhouse.io/x/jobs/1?utm_source=li&gh_src=a")).toBe("boards.greenhouse.io/x/jobs/1");
+    expect(normUrl("https://jobs.lever.co/x/1?lever-source=LinkedIn&lever-origin=applied&ref=hn&src=feed&source=x")).toBe("jobs.lever.co/x/1");
+    expect(normUrl("https://example.com/job/1?refId=a1&trackingId=b2&trk=c3")).toBe("example.com/job/1");
+  });
+  it("keeps job IDs whose names start like a tracking param (#487)", () => {
+    expect(normUrl("https://jobs.example.com/view?referenceId=111")).not.toBe(normUrl("https://jobs.example.com/view?referenceId=222"));
+    expect(normUrl("https://x.icims.com/jobs/search?refnum=55&utm_medium=email")).toBe("x.icims.com/jobs/search?refnum=55");
+    expect(normUrl("https://careers.x.com/job?sourceJobId=9")).toBe("careers.x.com/job?sourcejobid=9");
+    expect(normUrl("https://boards.greenhouse.io/x?gh_jid=42&gh_src=a")).toBe("boards.greenhouse.io/x?gh_jid=42");
   });
 });
