@@ -21,6 +21,22 @@ describe("linkKind", () => {
     expect(linkKind("https://www.box.com/s/abc")).toBe("Website");
     expect(linkKind("https://netflix.com/title/1")).toBe("Website");
   });
+  it("reads the host, not a path that names a platform (#496)", () => {
+    expect(linkKind("https://janedoe.com/work/instagram-stories")).toBe("Website");
+    expect(linkKind("https://janedoe.com/youtube-redesign")).toBe("Website");
+    expect(linkKind("janedoe.com/case-studies/linkedin")).toBe("Website");
+    expect(linkKind("https://my-x.com")).toBe("Website");
+    expect(linkKind("https://notgithub.com/eric")).toBe("Website");
+    expect(linkKind("https://example.com/?ref=twitter.com")).toBe("Website");
+    expect(linkKind("https://example.com/mastodon.social/@eric")).toBe("Website");
+  });
+  it("still knows subdomains and short hosts", () => {
+    expect(linkKind("https://eric.github.io")).toBe("GitHub");
+    expect(linkKind("https://m.youtube.com/watch?v=1")).toBe("YouTube");
+    expect(linkKind("HTTPS://WWW.LinkedIn.com/in/eric")).toBe("LinkedIn");
+    expect(linkKind("https://lnkd.in/abc")).toBe("LinkedIn");
+    expect(linkKind("  instagram.com/eric ")).toBe("Instagram");
+  });
   it("labels site builders as Portfolio", () => {
     for (const u of ["https://eric.squarespace.com", "https://eric.wixsite.com/work", "https://eric.format.com", "https://eric.cargo.site"]) expect(linkKind(u)).toBe("Portfolio");
   });
