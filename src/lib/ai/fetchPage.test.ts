@@ -42,4 +42,12 @@ describe("pageToText", () => {
     expect(t).toContain("Lead events & banquets.");
     expect(t).not.toContain("alert(1)");
   });
+  it("decodes hex, decimal and named entities in the text and the title (#491)", () => {
+    const html = `<title>Engineer &amp;
+      Designer</title><p>Don&#x27;t miss it &#8212; we&rsquo;re hiring&hellip; &#128640; &#X41;</p><p>bad &#0; &#xD800; &bogus; end</p>`;
+    const t = pageToText(html);
+    expect(t).toContain("TITLE: Engineer & Designer");
+    expect(t).toContain("Don't miss it — we’re hiring… \u{1F680} A");
+    expect(t).toContain("bad end");
+  });
 });
