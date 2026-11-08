@@ -46,7 +46,8 @@ export function valueText(f: Find) {
   const n = attrNum(f, "value");
   if (n != null) return fmt(n);
   const s = attrStr(f, "value");
-  if (s) return /^\d+$/i.test(s) ? `$${s}` : s;
+  // A bare number stored as text formats like a number: "250000" reads as $250,000 (#405).
+  if (s) return /^\d+$/.test(s) ? fmt(Number(s)) : s;
   return "No value posted";
 }
 /** Days until a due date (negative once it's past), or null when there's no date. */
