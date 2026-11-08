@@ -78,6 +78,8 @@ npm run dev
 
 With `EMAIL_DEV_LOG=1` and no `SMTP_URL`, sign-in links print to the dev server log. Or mint one: `node scripts/login-link.mjs you@example.com` (with `.env.local` loaded).
 
+To see a full board without an AI key, `npm run seed:demo` creates the made-up account from the screenshots (Maya Ortiz, demo@example.com, eight finds). Re-running it rebuilds the account. Then `npm run login-link demo@example.com` to sign in as her.
+
 ```bash
 npm run typecheck
 npm run lint

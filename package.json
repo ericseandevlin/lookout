@@ -12,6 +12,7 @@
     "db:generate": "drizzle-kit generate",
     "import-legacy": "tsx --env-file=.env.local scripts/import-legacy.ts",
     "login-link": "node --env-file=.env.local scripts/login-link.mjs",
+    "seed:demo": "tsx --env-file=.env.local scripts/seed-demo.ts",
     "test:coverage": "vitest run --coverage"
   },
   "dependencies": {
