@@ -8,6 +8,7 @@ Work merged to `main` (staging) and waiting for the weekly release.
 
 ### Fixed
 - The daily cleanup job no longer fails on prod: dates in its raw SQL go in as ISO strings (#373).
+- Agent mode: finished searches save their finds again. Since several searches per account (#8), every job the external agent finished failed with "Search not found" and stayed running (#398).
 
 ## [0.5.0] - 2026-11-07
 
