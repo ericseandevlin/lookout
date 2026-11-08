@@ -222,11 +222,13 @@ export async function startFill(appId: string, mode: "test" | "submit") {
     const report = { ...a.report, fill };
     if (statusAfterFill(fill) === "submitted") {
       const { sentRecord } = await import("./review");
+      // Read before the transaction: a query on `db` inside it needs a second connection while the first is held.
+      const sent = await sentRecord(appId);
       const now = new Date();
       await db.transaction(async (tx) => {
         await tx
           .update(schema.applications)
-          .set({ status: "submitted", submittedAt: now, updatedAt: now, report, confirmation: { how: "browser", at: now.toISOString(), applyUrl: a.report.applyUrl ?? null, url: fill.finalUrl, text: fill.confirmation, sent: await sentRecord(appId) } })
+          .set({ status: "submitted", submittedAt: now, updatedAt: now, report, confirmation: { how: "browser", at: now.toISOString(), applyUrl: a.report.applyUrl ?? null, url: fill.finalUrl, text: fill.confirmation, sent } })
           .where(eq(schema.applications.id, appId));
         await tx
           .update(schema.userOpportunities)
