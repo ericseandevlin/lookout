@@ -10,7 +10,7 @@ Thanks for looking. Lookout is a small side project, so the process is light, bu
 
 ## Run it locally
 
-The steps are in the README under [Local development](README.md#local-development): a Postgres container, `.env.local` from `deploy/env.example`, `npm install`, `npm run dev`. Sign-in links print to the dev server log when `EMAIL_DEV_LOG=1`.
+The steps are in the README under [Local development](README.md#local-development): a Postgres container, `.env.local` from `deploy/env.example`, `npm install`, `npm run dev`. Sign-in links print to the dev server log when `EMAIL_DEV_LOG=1`. `npm run seed:demo` fills a made-up account with eight finds, so you can work on the board without an AI key; use it for screenshots too.
 
 ## Make the change
 
