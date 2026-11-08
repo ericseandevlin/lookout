@@ -51,14 +51,16 @@ describe("GET /api/admin/models (#435)", () => {
   });
 
   it("lists only the OpenCode families Lookout can call, by id, with no prices", async () => {
-    fetchMock.mockResolvedValue(answer([{ id: "kimi-k2" }, { id: "claude-sonnet-4" }, { id: "GLM-4.6" }, { id: "gpt-5" }, { id: "deepseek-v3" }]));
+    // A fresh Response per call: a body can be read only once (#452).
+    fetchMock.mockImplementation(async () => answer([{ id: "kimi-k2" }, { id: "claude-sonnet-4" }, { id: "GLM-4.6" }, { id: "gpt-5" }, { id: "deepseek-v3" }]));
     const zen = await list("opencode");
     expect(fetchMock.mock.calls[0][0]).toBe("https://opencode.ai/zen/v1/models");
     expect(zen.body.models.map((m: { id: string }) => m.id)).toEqual(["deepseek-v3", "GLM-4.6", "kimi-k2"]);
     expect(zen.body.models[0]).toEqual({ id: "deepseek-v3", name: "deepseek-v3", context: 0, priceIn: null, priceOut: null, structured: null });
 
-    await list("opencode-go");
+    const go = await list("opencode-go");
     expect(fetchMock.mock.calls[1][0]).toBe("https://opencode.ai/zen/go/v1/models");
+    expect(go.status).toBe(200);
   });
 
   it("falls back to OpenRouter for an unknown source", async () => {
