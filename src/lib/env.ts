@@ -58,9 +58,6 @@ export const env = {
   get logEmails() {
     return process.env.EMAIL_DEV_LOG === "1";
   },
-  get model() {
-    return process.env.LOOKOUT_MODEL || "claude-opus-5-5";
-  },
   get schedulerEnabled() {
     return process.env.SCHEDULER !== "off";
   },
