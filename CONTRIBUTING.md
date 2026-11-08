@@ -14,6 +14,8 @@ The steps are in the README under [Local development](README.md#local-developmen
 
 ## Make the change
 
+New to the code? [docs/architecture.md](docs/architecture.md) maps where things live and where to start for common changes.
+
 - Branch from `main`: `feat/<issue>-<slug>`, `fix/<issue>-<slug>`, `docs/...` or `chore/...`.
 - Put the issue number in every commit message, e.g. `Drawer: previous/next on the edge (#48)`.
 - One branch per issue. Don't mix unrelated work.

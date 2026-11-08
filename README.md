@@ -54,6 +54,8 @@ Screenshots use a made-up demo account; no real user data.
 
 Why it's built this way (open models, zero-retention routing, rules in code, staging first): [docs/decisions](docs/decisions/README.md).
 
+Where the code lives and how a request flows through it: [docs/architecture.md](docs/architecture.md).
+
 ## Run it yourself
 
 Docker and your own AI key, about five minutes:
