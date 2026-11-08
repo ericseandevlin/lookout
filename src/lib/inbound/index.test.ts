@@ -45,6 +45,13 @@ describe("bodyText", () => {
     expect(bodyText("Hi there", "<p>ignored</p>")).toBe("Hi there");
     expect(bodyText("", "<style>x{}</style><p>Thanks for applying</p><p>Talk soon &amp; best</p>")).toBe("Thanks for applying\nTalk soon & best");
   });
+  it("decodes each entity once, numeric ones too, and drops comments (#497)", () => {
+    expect(bodyText("", "<p>Use &amp;lt;b&amp;gt; for bold</p>")).toBe("Use &lt;b&gt; for bold");
+    expect(bodyText("", "<p>Don&#39;t miss &quot;Design Lead&quot; &#x2014; it&#x27;s new</p>")).toBe("Don't miss \"Design Lead\" — it's new");
+    expect(bodyText("", "<!--[if mso]><p>a > b</p><![endif]--><p>Hello&nbsp;Eric</p>")).toBe("Hello Eric");
+    expect(bodyText("", "<head><title>Ignore me</title></head><body>Hi</body>")).toBe("Hi");
+    expect(bodyText("", "<p>R&D &unknown; &#0; stays</p>")).toBe("R&D &unknown; &#0; stays");
+  });
 });
 
 describe("store and triage", () => {
