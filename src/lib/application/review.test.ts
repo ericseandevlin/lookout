@@ -16,7 +16,7 @@ vi.mock("@/lib/ai/runs", () => ({ assertBudget: async () => {} }));
 const completeJSON = vi.fn();
 vi.mock("@/lib/ai/llm", async (orig) => ({ ...(await orig<typeof import("@/lib/ai/llm")>()), completeJSON: (...a: unknown[]) => completeJSON(...a) }));
 
-const { approveItem, editItem, markSubmitted, ownApplication, reviseItem, sentRecord } = await import("./review");
+const { analyzeItem, approveItem, draftFacts, editItem, getApplicationDetail, markSubmitted, ownApplication, reviseItem, sentRecord } = await import("./review");
 
 let userId: string;
 let otherId: string;
@@ -234,5 +234,88 @@ describe("sentRecord and markSubmitted", () => {
   it("is a 404 for someone else's application", async () => {
     const { appId } = await seed("manual", [{ kind: "resume", prompt: "Resume", approved: true }]);
     await expect(markSubmitted(otherId, appId)).rejects.toMatchObject({ status: 404 });
+  });
+});
+
+describe("draftFacts", () => {
+  it("is empty with no resume at all", async () => {
+    expect(await draftFacts(userId)).toMatchObject({ resume: "", notes: [] });
+  });
+
+  it("uses the uploaded resume text until there's a master resume", async () => {
+    await db.insert(schema.materials).values({ userId, kind: "resume", extracted: { text: "Uploaded: led design at Initech" } });
+    expect((await draftFacts(userId)).resume).toBe("Uploaded: led design at Initech");
+    await db.update(schema.profiles).set({ masterResume: { md: "# Pat\n\nMaster: led design at Initech", fromHash: "h", edited: false, at: new Date().toISOString() } }).where(eq(schema.profiles.userId, userId));
+    expect((await draftFacts(userId)).resume).toContain("Master: led design at Initech");
+  });
+
+  it("adds experience notes to the facts but not the resume", async () => {
+    await db.insert(schema.materials).values({ userId, kind: "resume", extracted: { text: "Resume text" } });
+    const notes = [{ skill: "Figma", story: "Ran a Figma migration for 30 designers", updatedAt: new Date().toISOString() }];
+    await db.update(schema.profiles).set({ skillNotes: notes }).where(eq(schema.profiles.userId, userId));
+    const f = await draftFacts(userId);
+    expect(f.resume).toBe("Resume text");
+    expect(f.notes).toEqual(notes);
+    expect(f.facts).toContain("Resume text");
+    expect(f.facts).toContain("Ran a Figma migration for 30 designers");
+  });
+});
+
+describe("getApplicationDetail", () => {
+  it("is a 404 for someone else's application", async () => {
+    const { appId } = await seed("needs_review", [{ kind: "answer", prompt: "Why us?" }]);
+    await expect(getApplicationDetail(otherId, appId)).rejects.toMatchObject({ status: 404 });
+  });
+
+  it("returns the find, the items in order with newest versions first, and hides the posting copy in the report", async () => {
+    const { appId, ids } = await seed("needs_review", [
+      { kind: "cover_letter", prompt: "Cover letter" },
+      { kind: "answer", prompt: "Why us?", approved: true },
+    ]);
+    await editItem(userId, appId, ids[0].item, "My edit", "Shorter");
+    await db.update(schema.applications).set({ report: { applyUrl: "https://jobs.example.com/apply", postingText: "The posting" } }).where(eq(schema.applications.id, appId));
+    const d = await getApplicationDetail(userId, appId);
+    expect(d).toMatchObject({ id: appId, findId: oppId, status: "needs_review", company: "Acme", role: "Design Director", posting: "The posting", keywordRows: null, keywordsApproved: false });
+    expect(d.report.postingText).toBeUndefined();
+    expect(d.items.map((i) => i.prompt)).toEqual(["Cover letter", "Why us?"]);
+    expect(d.items[0].versions.map((v) => [v.version, v.content])).toEqual([
+      [2, "My edit"],
+      [1, "Draft for Cover letter"],
+    ]);
+    expect(d.items[0].approvedVersionId).toBeNull();
+    expect(d.items[1].approvedVersionId).toBe(ids[1].version);
+    expect(d.items[1].salary).toBeNull();
+    expect(d.items[1].eeoAnswer).toBeNull();
+  });
+});
+
+describe("analyzeItem", () => {
+  const scores = { scan: 8, impact: 6, relevance: 7, honesty: 9, length: 10 };
+
+  it("reads only the resume and cover letter", async () => {
+    const { appId, ids } = await seed("needs_review", [{ kind: "answer", prompt: "Why us?" }]);
+    await expect(analyzeItem(userId, appId, ids[0].item, ids[0].version)).rejects.toMatchObject({ status: 400 });
+    expect(completeJSON).not.toHaveBeenCalled();
+  });
+
+  it("is a 404 for a version of another item, and a 400 for an empty one", async () => {
+    const { appId, ids } = await seed("needs_review", [
+      { kind: "resume", prompt: "Resume" },
+      { kind: "cover_letter", prompt: "Cover letter", content: "  " },
+    ]);
+    await expect(analyzeItem(userId, appId, ids[0].item, ids[1].version)).rejects.toMatchObject({ status: 404 });
+    await expect(analyzeItem(userId, appId, ids[1].item, ids[1].version)).rejects.toMatchObject({ status: 400 });
+    await expect(analyzeItem(otherId, appId, ids[0].item, ids[0].version)).rejects.toMatchObject({ status: 404 });
+    expect(completeJSON).not.toHaveBeenCalled();
+  });
+
+  it("scores the version on screen and keeps the analysis on the application by item", async () => {
+    const { appId, ids } = await seed("needs_review", [{ kind: "cover_letter", prompt: "Cover letter", content: "Dear Acme, I led design at Initech for six years." }]);
+    completeJSON.mockResolvedValue({ scores, verdict: " Clear and specific. ", findings: [] });
+    const { status, analysis } = await analyzeItem(userId, appId, ids[0].item, ids[0].version);
+    expect(status).toBe("needs_review");
+    expect(analysis).toMatchObject({ versionId: ids[0].version, verdict: "Clear and specific.", overall: 80 });
+    expect(completeJSON.mock.calls[0][0].user).toContain("Posting: Design Director at Acme");
+    expect((await app(appId)).report.recruiter?.[ids[0].item]).toMatchObject({ versionId: ids[0].version, overall: 80 });
   });
 });
