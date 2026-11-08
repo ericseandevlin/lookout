@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { HttpError, json } from "@/lib/api";
+import { body, HttpError, json } from "@/lib/api";
 import { agentRoute } from "@/lib/agentAuth";
 import { triageInbound } from "@/lib/inbound";
 
@@ -18,7 +18,7 @@ const Body = z.object({
 export const POST = agentRoute<Ctx>(async (req, { params }) => {
   const { id } = await params;
   if (!z.string().uuid().safeParse(id).success) throw new HttpError(404, "Not found");
-  const { status, ...triage } = Body.parse(await req.json());
+  const { status, ...triage } = await body(req, Body);
   if (!(await triageInbound(id, status, triage))) throw new HttpError(404, "Not found");
   return json({ ok: true });
 });
