@@ -2,7 +2,7 @@
 # Pull-based deploy, run on the VPS by root cron. The Release workflow (.github/workflows/release.yml) pushes
 # ghcr.io/ericseandevlin/lookout:<channel>; this notices a new image, pulls it, restarts that stack, checks
 # /api/health and rolls back to the previous image if the check fails. GitHub never connects to the server.
-# Usage: pull-deploy.sh stage    staging (/opt/lookout-staging, port 3201), follows release/stage
+# Usage: pull-deploy.sh stage    staging (/opt/lookout-staging, port 3201), follows release/stage + deploy/preview-branches
 #        pull-deploy.sh prod     production (/opt/lookout, port 3200), follows release/prod
 # Needs: a read-only registry login (classic token with read:packages only) in $DOCKER_CONFIG, made once with
 #   DOCKER_CONFIG=/root/.config/lookout-ghcr docker login ghcr.io -u ericseandevlin
@@ -86,12 +86,15 @@ if ! healthy; then
 fi
 trap - ERR
 docker image prune -f >/dev/null
-echo "$sha $(date -u +%FT%TZ)" > "$dir/DEPLOYED"
+# Same format the old VPS staging script wrote: the built commit, then any preview branches merged on top.
+built=$(label "$image" co.ericdevlin.commit); previews=$(label "$image" co.ericdevlin.previews)
+echo "${built:-$sha} $(date -u +%FT%TZ)${previews:+ preview: $previews}" > "$dir/DEPLOYED"
 report "deployed $sha (was $was), health=$(health) scan=$scan"
 
 # Release notes for the weekly meeting (Quill reads these): what is on staging and not yet on prod,
 # and the issue numbers already shipped (the GitHub sync marks those done).
-if git -C "$repo" rev-parse -q --verify origin/release/prod >/dev/null; then
-  git -C "$repo" log --no-merges --date=short --format='%h %ad %s' origin/release/prod..origin/release/stage > /opt/lookout-staging/PENDING.txt
-  git -C "$repo" log --format='%s' origin/release/prod | { grep -oE '\(#[0-9]+\)' || true; } | tr -d '(#)' | sort -un > /opt/lookout-staging/RELEASED.txt
-fi
+# Prod is release/prod once it exists, the old prod branch until then.
+live=origin/release/prod
+git -C "$repo" rev-parse -q --verify "$live" >/dev/null || live=origin/prod
+git -C "$repo" log --no-merges --date=short --format='%h %ad %s' "$live..origin/main" > /opt/lookout-staging/PENDING.txt
+git -C "$repo" log --format='%s' "$live" | { grep -oE '\(#[0-9]+\)' || true; } | tr -d '(#)' | sort -un > /opt/lookout-staging/RELEASED.txt
