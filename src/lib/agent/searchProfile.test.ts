@@ -28,8 +28,8 @@ const MODEL_OUT = {
   searchTerms: many(14, "term"),
   corrections: many(10, "Correction"),
 };
-const completeJSON = vi.fn(async () => MODEL_OUT);
-vi.mock("@/lib/ai/llm", async (orig) => ({ ...(await orig<typeof import("@/lib/ai/llm")>()), completeJSON: () => completeJSON() }));
+const completeJSON = vi.fn<(req?: { user: string }) => Promise<typeof MODEL_OUT>>(async () => MODEL_OUT);
+vi.mock("@/lib/ai/llm", async (orig) => ({ ...(await orig<typeof import("@/lib/ai/llm")>()), completeJSON: (req: { user: string }) => completeJSON(req) }));
 
 const { AiConfigError, emptyUsage } = await import("@/lib/ai/llm");
 const { ensureSearchProfile, renderSearchProfile } = await import("./searchProfile");
@@ -127,6 +127,55 @@ describe("ensureSearchProfile", () => {
       searchTerms: { length: 10 },
       corrections: { length: 8 },
     });
+  });
+});
+
+describe("what the model is given (#581)", () => {
+  const prompt = () => completeJSON.mock.calls.at(-1)![0]!.user;
+  const find = async (title: string, notes: string, search = searchId) => {
+    const [o] = await db.insert(schema.opportunities).values({ company: "Acme", title, fingerprint: crypto.randomUUID() }).returning();
+    await db.insert(schema.userOpportunities).values({ userId, searchId: search, opportunityId: o.id, score: 70, notes, reasonsMatch: ["Leads design teams"], reasonsGap: ["New to banking"] });
+  };
+
+  it("throws for a search that doesn't exist", async () => {
+    await expect(ensureSearchProfile(crypto.randomUUID(), emptyUsage())).rejects.toThrow("Search not found");
+  });
+
+  it("says there's no resume, and leaves out LinkedIn, links and notes when there are none", async () => {
+    await ensure();
+    expect(prompt()).toContain("A step up");
+    expect(prompt()).toContain("<resume>\n(none)\n</resume>");
+    expect(prompt()).not.toMatch(/linkedin_profile|their_links|their_notes_on_finds/);
+  });
+
+  it("sends the resume summary and text, LinkedIn, links with text, and this search's notes with their bullets", async () => {
+    await db.insert(schema.materials).values([
+      { userId, kind: "resume", extracted: { summary: "Design leader.", text: "Ten years leading design." } },
+      { userId, kind: "linkedin", extracted: { text: "Head of Design at Acme" } },
+      ...[1, 2, 3, 4, 5].map((n) => ({ userId, kind: "link" as const, url: `https://site${n}.example`, extracted: { text: `Site ${n}` } })),
+      { userId, kind: "link", url: "https://unread.example" },
+    ]);
+    await find("Designer", "I have banking experience.");
+    await find("Engineer", "");
+    const [other] = await db.insert(schema.searches).values({ userId, name: "Other" }).returning();
+    await find("Writer", "A note for another search", other.id);
+
+    const { raw } = await ensure();
+    expect(prompt()).toContain("<resume>\nDesign leader.\n\nTen years leading design.\n</resume>");
+    expect(prompt()).toContain("<linkedin_profile>\nHead of Design at Acme\n</linkedin_profile>");
+    expect(prompt()).toContain("https://site4.example\nSite 4");
+    expect(prompt()).not.toMatch(/site5|unread/);
+    expect(prompt()).toContain('Find: "Designer" at Acme\nLookout said: + Leads design teams | - New to banking\nTheir note: I have banking experience.');
+    expect(prompt()).not.toMatch(/Engineer|another search/);
+    expect(raw.sources).toEqual({ answers: 1, resume: true, linkedin: true, links: 4, notes: 1 });
+  });
+
+  it("uses the resume text when the summary step never ran, and counts only answers with something in them", async () => {
+    await db.insert(schema.materials).values({ userId, kind: "resume", extracted: { text: "Ten years leading design." } });
+    await db.update(schema.searches).set({ answers: { q1: "A step up", q2: ["Remote", "Hybrid"], q3: [], q4: "  " } }).where(eq(schema.searches.id, searchId));
+    const { raw } = await ensure();
+    expect(raw.resume).toBe("Ten years leading design.");
+    expect(raw.sources.answers).toBe(2);
   });
 });
 
