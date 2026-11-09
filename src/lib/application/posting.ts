@@ -6,27 +6,43 @@
 
 const BOILERPLATE = [
   // recruiting-fraud notices
-  /scam|fraud|phishing|impersonat|never (ask|request).*(payment|money|bank|fee)|official (company )?email|do not hire (someone )?through|verify (the|that the) (opportunity|recruiter)|real human connection|live conversations? with/i,
+  /never (ask|request).*(payment|money|bank|fee)|official (company )?email|do not hire (someone )?through|verify (the|that the) (opportunity|recruiter)|real human connection|live conversations? with/i,
   // EEO, accommodation, legal
   /equal (employment )?opportunity|\beeo\b|discriminat|reasonable accommodation|affirmative action|e-verify|protected (veteran|class)|without regard to (race|sex|age)|fair chance|arrest (and|or) conviction|background check (is|will be)|pay transparency (act|law)/i,
   // privacy and legal links
-  /privacy (notice|policy|statement)|california residents|personal (information|data) (we|that we) collect|\bccpa\b|\bgdpr\b|employeerights@|data protection/i,
+  /privacy (notice|policy|statement)|california residents|personal (information|data) (we|that we) collect|\bccpa\b|\bgdpr\b|employeerights@|data protection (laws?|regulations?|officer|notice|act|rights)/i,
   // tracking tags and link stubs
   /^#\S+$|^(click|learn more) here\.?$|curious how .* fits into/i,
 ];
+
+// "Fraud" alone is the job for fraud and trust and safety roles; it's a notice only when it talks about hiring (#509).
+const FRAUD = /scam|fraud|phishing|impersonat/i;
+const HIRING = /recruit|candidate|applicant|job (offer|seeker|opening|posting)|offer letter|hiring process|\binterviews?\b|employment (offer|opportunit)|on (our )?behalf/i;
+
+const isBoilerplate = (p: string) => BOILERPLATE.some((re) => re.test(p)) || (FRAUD.test(p) && HIRING.test(p));
 
 /** Drop boilerplate paragraphs, keep everything that describes the job and the company. */
 export function stripBoilerplate(text: string) {
   return text
     .split("\n")
-    .filter((p) => !BOILERPLATE.some((re) => re.test(p.trim())))
+    .filter((p) => !isBoilerplate(p.trim()))
     .join("\n");
 }
 
-const JUNK = /scam|fraud|recruit|candidate|applicant|hiring|interview|verify|equal opportunit|\beeo\b|accommodation|benefit|insurance|401\s?\(?k|\bpto\b|parental|privacy|e-?mail|social media|open (roles|positions)|apply|application|job (posting|description)|opportunit(y|ies)$/i;
+const JUNK = /recruit|candidate|applicant|hiring|interview|verify|equal opportunit|\beeo\b|accommodation|open (roles|positions)|apply|application|job (posting|description)|opportunit(y|ies)$/i;
+// Words that are boilerplate in most postings but the job itself in some (fraud analyst, insurance PM, social media manager) (#509).
+const TOPIC = /scam|fraud|benefit|insurance|401\s?\(?k|\bpto\b|parental|privacy|e-?mail|social media/i;
 
-/** Keywords that describe the hiring process or the posting itself, not the job. */
-export const isJunkKeyword = (term: string) => JUNK.test(term.trim());
+/**
+ * Keywords that describe the hiring process or the posting itself, not the job. With the posting, a topic word
+ * still counts when the job text (boilerplate stripped) uses it.
+ */
+export const isJunkKeyword = (term: string, posting?: string) => {
+  const t = term.trim();
+  if (JUNK.test(t)) return true;
+  if (!TOPIC.test(t)) return false;
+  return !posting || !new RegExp(`(?<!\\w)${t.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}(?!\\w)`, "i").test(stripBoilerplate(posting));
+};
 
 // --- Traps (#116): text planted to catch automated applications. Never obey it silently.
 
