@@ -4,6 +4,8 @@
 
 A personal search agent. Each person answers five questions and adds their resume, LinkedIn PDF and links. On their schedule, Lookout searches the web, reads the postings, scores each one against their profile, and puts the matches on a board ("Finds"). There they pin, archive, take notes, move roles through stages, and mark things "Not a fit" so later searches learn.
 
+Why it exists: I built it for my own job search. An agent read the postings and scored them against me, and it worked well enough that friends asked if they could use it too. So it turned into an app where each person gets their own profile and their own search. - Eric
+
 Jobs are the first opportunity type. Type-specific pieces live in `src/lib/kinds` so other types (RFPs next) can reuse the engine. See [ROADMAP.md](ROADMAP.md) for what's next and [CHANGELOG.md](CHANGELOG.md) for every release. Live at https://lookout.ericdevlin.co (alias: paulfinds.pauljustinscott.com). Invite only.
 
 ![The Finds board: eight roles scored 1 to 5 against the profile, with pay, stage and location.](docs/screenshots/finds-board.png)
