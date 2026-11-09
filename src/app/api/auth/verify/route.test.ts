@@ -22,7 +22,7 @@ vi.mock("@/lib/auth/session", () => ({ createSession: (id: string) => createSess
 const { POST } = await import("./route");
 
 const TOKEN = "t".repeat(40);
-const post = () => POST(new Request("https://lookout.test/api/auth/verify", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ token: TOKEN }) }), {});
+const post = (extra: Record<string, unknown> = {}) => POST(new Request("https://lookout.test/api/auth/verify", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ token: TOKEN, ...extra }) }), {});
 const addToken = (purpose: "login" | "email_change") =>
   db.insert(schema.loginTokens).values({ tokenHash: hashToken(TOKEN), email: "new@example.com", expiresAt: new Date(Date.now() + 3600_000), purpose });
 
@@ -45,6 +45,23 @@ describe("POST /api/auth/verify", () => {
     const res = await post();
     expect(res.status).toBe(200);
     expect(createSession).toHaveBeenCalledOnce();
+  });
+
+  it("records the Terms and Privacy agreement when it comes with the sign-in tap (#525)", async () => {
+    await addToken("login");
+    const res = await post({ agree: true });
+    expect(res.status).toBe(200);
+    const [u] = await db.select().from(schema.users).where(eq(schema.users.email, "new@example.com"));
+    expect(u.termsVersion).toBeTruthy();
+    expect(u.privacyVersion).toBeTruthy();
+    expect(u.acceptedAt).toBeInstanceOf(Date);
+  });
+
+  it("leaves the agreement alone on a plain sign-in", async () => {
+    await addToken("login");
+    await post();
+    const [u] = await db.select().from(schema.users).where(eq(schema.users.email, "new@example.com"));
+    expect(u.acceptedAt).toBeNull();
   });
 
   it("refuses an email-change token, so it can't open a new account without an invite (#208)", async () => {
