@@ -54,7 +54,7 @@ function SignIn({ emailEnabled, inviteOnly, signedOut, onRequest }: { emailEnabl
     <>
       {/* A plain sign-in page for people who already have an account (#517). Lookout has no passwords: the emailed link is the sign-in. */}
       {signedOut && (
-        <div role="status" style={{ marginBottom: 16, padding: "8px 12px", borderRadius: 10, background: "#F3F7F1", border: "1px solid #CFE3C6", fontSize: 14, color: "#35662A" }}>
+        <div role="status" style={{ marginBottom: 16, padding: "8px 12px", borderRadius: 10, background: "#F3F7F1", border: "1px solid #CFE3C6", fontSize: 14, color: color.greenText }}>
           You&apos;re signed out.
         </div>
       )}
@@ -71,7 +71,7 @@ function SignIn({ emailEnabled, inviteOnly, signedOut, onRequest }: { emailEnabl
       ) : (
         <p style={{ ...p, marginTop: 20, fontSize: 14 }}>Sign-in emails aren&apos;t on yet. If you were invited, open the sign-in link you were sent.</p>
       )}
-      <div style={{ fontSize: 14, color: color.t2, lineHeight: 1.5, marginTop: 22, paddingTop: 16, borderTop: "1px solid #EEE8E0" }}>
+      <div style={{ fontSize: 14, color: color.t2, lineHeight: 1.5, marginTop: 22, paddingTop: 16, borderTop: `1px solid ${color.border}` }}>
         <strong style={{ color: color.ink }}>New here?</strong> Lookout finds roles that actually fit. Each week it searches job boards and company sites, scores every role against your
         profile, and puts the matches on your board.{" "}
         {inviteOnly ? (
