@@ -1,5 +1,5 @@
 import "server-only";
-import { desc, gte, ilike, lt, or, sql } from "drizzle-orm";
+import { desc, gt, gte, ilike, lt, or, sql } from "drizzle-orm";
 import { db, schema } from "@/lib/db";
 
 /** Server errors are kept this long, then dropped by the daily cleanup (#12). */
@@ -51,6 +51,17 @@ export async function listErrors(q = "", now = new Date()) {
     .from(t)
     .where(gte(t.at, since(7)));
   return { rows, day, week };
+}
+
+/** Errors for agents (#486): newest first, optionally only those after `since`. No request data is stored, so none is returned. */
+export async function listErrorsSince(since: Date | null, limit = 50) {
+  const t = schema.serverErrors;
+  return db
+    .select({ id: t.id, source: t.source, message: t.message, stack: t.stack, path: t.path, method: t.method, digest: t.digest, at: t.at })
+    .from(t)
+    .where(since ? gt(t.at, since) : undefined)
+    .orderBy(desc(t.at))
+    .limit(limit);
 }
 
 /** Drop errors older than ERROR_DAYS. Returns how many went. */

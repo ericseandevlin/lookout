@@ -3,6 +3,7 @@
  * stated range on their own board. Stored encrypted, never sent to a model, never in drafts, exports or imports.
  * The comparison uses only the stated range and the saved number: no benchmarks, no estimates, no currency conversion.
  */
+import { color } from "@/lib/tokens";
 export const CURRENT_COMP_CURRENCY = "USD";
 export const CURRENT_COMP_MIN = 1_000;
 export const CURRENT_COMP_MAX = 10_000_000;
@@ -50,7 +51,7 @@ export function compareText(c: CompCompare): string {
 export const COMPARE_INK: Record<CompCompare["kind"], string> = {
   "not-stated": "#A89F92",
   "other-currency": "#A89F92",
-  above: "#35662A",
+  above: color.greenText,
   within: "#6B6358",
   below: "#99220F",
 };

@@ -1,27 +1,28 @@
 import type { Find, Stage } from "@/lib/types";
+import { color } from "@/lib/tokens";
 
 export const STAGES: Stage[] = ["Not applied", "Auto-applying", "Applied", "Interview", "Offer", "Closed", "Ghosted", "Not selected", "Nope"];
 /** Stages that end a find. Moving a find into one archives it (#180). */
 export const ENDED_STAGES: Stage[] = ["Closed", "Ghosted", "Not selected", "Nope"];
 export const STAGE_STYLE: Record<string, { bg: string; ink: string }> = {
-  "Not applied": { bg: "#F4F1EC", ink: "#1D1A0F" },
+  "Not applied": { bg: color.surface, ink: "#1D1A0F" },
   "Auto-applying": { bg: "#E4E9F2", ink: "#2C4468" },
   Applied: { bg: "#FDE7D3", ink: "#7A3A10" },
   Interview: { bg: "#F9DDD7", ink: "#99220F" },
-  Offer: { bg: "#E6EDD9", ink: "#35662A" },
-  Closed: { bg: "#EEEAE4", ink: "#6B6358" },
-  Ghosted: { bg: "#EEEAE4", ink: "#5E574D" },
-  "Not selected": { bg: "#EEEAE4", ink: "#5E574D" },
-  Nope: { bg: "#EEEAE4", ink: "#5E574D" },
+  Offer: { bg: "#E6EDD9", ink: color.greenText },
+  Closed: { bg: color.border, ink: "#6B6358" },
+  Ghosted: { bg: color.border, ink: "#5E574D" },
+  "Not selected": { bg: color.border, ink: "#5E574D" },
+  Nope: { bg: color.border, ink: "#5E574D" },
   // rfp (#8)
-  Reviewing: { bg: "#F4F1EC", ink: "#1D1A0F" },
+  Reviewing: { bg: color.surface, ink: "#1D1A0F" },
   Bid: { bg: "#E4E9F2", ink: "#2C4468" },
   Submitted: { bg: "#FDE7D3", ink: "#7A3A10" },
-  Awarded: { bg: "#E6EDD9", ink: "#35662A" },
-  Lost: { bg: "#EEEAE4", ink: "#5E574D" },
+  Awarded: { bg: "#E6EDD9", ink: color.greenText },
+  Lost: { bg: color.border, ink: "#5E574D" },
 };
 /** Style for a stage from any kind; unknown stages fall back to neutral. */
-export const stageStyle = (s: string) => STAGE_STYLE[s] ?? { bg: "#EEEAE4", ink: "#5E574D" };
+export const stageStyle = (s: string) => STAGE_STYLE[s] ?? { bg: color.border, ink: "#5E574D" };
 
 export const DAYS: Record<string, string> = {
   Mon: "Monday", Tue: "Tuesday", Wed: "Wednesday", Thu: "Thursday", Fri: "Friday", Sat: "Saturday", Sun: "Sunday",
@@ -52,10 +53,19 @@ export function valueText(f: Find) {
 }
 /** Days until a due date (negative once it's past), or null when there's no date. */
 export const dueDays = (f: Find) => daysUntil(attrStr(f, "due"));
-/** Days from now until a date string (YYYY-MM-DD reads as noon local), or null when it isn't a date. The digest uses it too (#304). */
+/**
+ * Days from now until a date string, or null when it isn't a date. The digest uses it too (#304).
+ * A YYYY-MM-DD date counts calendar days from today, so the hour and clock changes don't move it (#495).
+ */
 export function daysUntil(s: string, now = Date.now()) {
   if (!s) return null;
-  const t = new Date(/^\d{4}-\d{2}-\d{2}$/.test(s) ? `${s}T12:00:00` : s).getTime();
+  const ymd = s.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (ymd) {
+    const n = new Date(now);
+    const due = Date.UTC(+ymd[1], +ymd[2] - 1, +ymd[3]);
+    return Number.isFinite(due) ? Math.round((due - Date.UTC(n.getFullYear(), n.getMonth(), n.getDate())) / 864e5) : null;
+  }
+  const t = new Date(s).getTime();
   return Number.isFinite(t) ? Math.ceil((t - now) / 864e5) : null;
 }
 export function dueText(f: Find) {

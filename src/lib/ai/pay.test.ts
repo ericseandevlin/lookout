@@ -27,6 +27,26 @@ describe("findPay", () => {
     expect(findPay("", "Pay: $55.50 - $70/hr")).toMatchObject({ min: 115440, max: 145600 });
   });
 
+  it.each([
+    ["$40 - $55 an hour", 83200, 114400],
+    ["$40 - $55 per hour", 83200, 114400],
+    ["$40 - $55 /h", 83200, 114400],
+    ["$40 - $55 hourly", 83200, 114400],
+    ["$8,000 - $10,000 a month", 96000, 120000],
+    ["$8,000 - $10,000/month", 96000, 120000],
+    ["$1,500 - $2,000 per week", 78000, 104000],
+    ["$1,500 - $2,000/wk", 78000, 104000],
+    ["$1,500 - $2,000 weekly", 78000, 104000],
+  ])("reads the unit in %s (#484)", (text, min, max) => {
+    expect(findPay("", text)).toMatchObject({ min, max });
+  });
+
+  it("keeps a stated year over a pay schedule, and doesn't read /hybrid as hourly", () => {
+    expect(findPay("", "$120,000 - $140,000 per year, paid monthly")).toMatchObject({ min: 120000, max: 140000 });
+    expect(findPay("", "$120,000 - $140,000 annually")).toMatchObject({ min: 120000, max: 140000 });
+    expect(findPay("", "$120,000 - $140,000 / hybrid in NYC")).toMatchObject({ min: 120000, max: 140000 });
+  });
+
   it("ignores amounts that aren't a salary range", () => {
     expect(findPay("", "We raised $50,000,000 in 2024 and serve 2,000 - 3,000 customers")).toBeNull();
     expect(findPay("", "401k match up to $5,000 - $6,000")).toBeNull();

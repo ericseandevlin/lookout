@@ -99,7 +99,7 @@ export function AdminPeople() {
             <Row title="Pending invites" help="Invited but not signed in yet. Resend sends a fresh link; if it keeps landing in spam, copy the link and text it to them.">
               <div style={{ display: "flex", flexDirection: "column", gap: 6, maxWidth: 520 }}>
                 {data.invites.filter((i) => !i.accepted).map((i) => (
-                  <div key={i.email} style={{ display: "flex", flexDirection: "column", gap: 8, background: "#fff", border: "1.5px solid #E6E0D8", borderRadius: 10, padding: "8px 8px 8px 12px" }}>
+                  <div key={i.email} style={{ display: "flex", flexDirection: "column", gap: 8, background: "#fff", border: `1.5px solid ${color.border}`, borderRadius: 10, padding: "8px 8px 8px 12px" }}>
                     <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
                       <span style={{ flex: 1, minWidth: 0, fontSize: 14, overflow: "hidden", textOverflow: "ellipsis" }}>{i.email}</span>
                       <span style={{ fontSize: 14, color: color.t2 }}>{when(i.createdAt)}</span>
@@ -108,7 +108,7 @@ export function AdminPeople() {
                     </div>
                     {resent[i.email] && (
                       <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap", fontSize: 14 }}>
-                        <span style={{ color: "#35662A", fontWeight: 600 }}>{resent[i.email].emailed ? "Sent again with a fresh 7-day link." : "New link ready."}</span>
+                        <span style={{ color: color.greenText, fontWeight: 600 }}>{resent[i.email].emailed ? "Sent again with a fresh 7-day link." : "New link ready."}</span>
                         <button onClick={() => copyResent(i.email)} style={{ ...btn("text"), height: 26, fontSize: 14 }}>{resent[i.email].copied ? "Copied" : "Copy link to send yourself"}</button>
                       </div>
                     )}
@@ -122,7 +122,7 @@ export function AdminPeople() {
             <Row title="Inbox" help="Email sent to any address at lookout.ericdevlin.co. The inbox agent reads each one and drafts a reply; nothing is sent without you.">
               <div style={{ display: "flex", flexDirection: "column", gap: 6, maxWidth: 640 }}>
                 {data.inbox.map((m) => (
-                  <div key={m.id} style={{ display: "flex", flexDirection: "column", gap: 4, background: "#fff", border: "1.5px solid #E6E0D8", borderRadius: 10, padding: "8px 12px", fontSize: 14 }}>
+                  <div key={m.id} style={{ display: "flex", flexDirection: "column", gap: 4, background: "#fff", border: `1.5px solid ${color.border}`, borderRadius: 10, padding: "8px 12px", fontSize: 14 }}>
                     <div style={{ display: "flex", gap: 10 }}>
                       <span style={{ flex: 1, minWidth: 0, fontWeight: 600, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{m.subject || "(no subject)"}</span>
                       <span style={{ color: color.t2 }}>{when(m.receivedAt)}</span>
@@ -154,7 +154,7 @@ export function AdminPeople() {
                     <td style={{ ...td, fontVariantNumeric: "tabular-nums" }}>{u.runs30}</td>
                     <td style={{ ...td, fontVariantNumeric: "tabular-nums" }}>{usd(u.usd30)}</td>
                     <td style={td}>
-                      <span style={{ fontSize: 14, fontWeight: 600, padding: "3px 8px", borderRadius: 6, background: u.disabled ? "#FBEDEA" : u.isAdmin ? "#FDE7D3" : "#F4F1EC", color: u.disabled ? color.brick : u.isAdmin ? "#7A3A10" : color.t2 }}>
+                      <span style={{ fontSize: 14, fontWeight: 600, padding: "3px 8px", borderRadius: 6, background: u.disabled ? "#FBEDEA" : u.isAdmin ? "#FDE7D3" : color.surface, color: u.disabled ? color.brick : u.isAdmin ? "#7A3A10" : color.t2 }}>
                         {u.disabled ? "Disabled" : u.isAdmin ? "Admin" : "Member"}
                       </span>
                     </td>
@@ -185,7 +185,7 @@ export function AdminPeople() {
                     <td style={td}>{r.email}</td>
                     <td style={td}>{({ scheduled: "Scheduled", manual: "Search now", url: "Added link", resume: "Resume scan" } as Record<string, string>)[r.trigger] ?? r.trigger}</td>
                     <td style={td}>
-                      <span data-tip={r.error ?? undefined} style={{ fontWeight: 600, color: r.status === "failed" ? color.brick : r.status === "running" ? "#7A3A10" : "#35662A" }}>
+                      <span data-tip={r.error ?? undefined} style={{ fontWeight: 600, color: r.status === "failed" ? color.brick : r.status === "running" ? "#7A3A10" : color.greenText }}>
                         {r.status === "failed" ? "Failed" : r.status === "running" ? "Running" : "Done"}
                       </span>
                       {r.error && <div style={{ fontSize: 14, color: color.t2, maxWidth: 320, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{r.error}</div>}
@@ -250,7 +250,7 @@ function Invite({ emailEnabled, onDone }: { emailEnabled: boolean; onDone: () =>
         </label>
         <Msg text={err} />
         {res && (
-          <div style={{ display: "flex", flexDirection: "column", gap: 8, padding: 12, borderRadius: 10, background: "#fff", border: "1.5px solid #E6E0D8" }}>
+          <div style={{ display: "flex", flexDirection: "column", gap: 8, padding: 12, borderRadius: 10, background: "#fff", border: `1.5px solid ${color.border}` }}>
             <span style={{ fontSize: 14, color: color.t2 }}>
               {res.emailed ? "Emailed to " : "Sign-in link for "}
               <strong style={{ color: color.ink }}>{res.email}</strong>
@@ -293,8 +293,8 @@ function Requests({ requests, emailEnabled, onDone }: { requests: Overview["requ
       <div style={{ display: "flex", flexDirection: "column", gap: 8, maxWidth: 520 }}>
         <Msg text={err} />
         {approved.map((email) => (
-          <div key={email} style={{ display: "flex", flexDirection: "column", gap: 8, padding: 12, borderRadius: 10, background: "#fff", border: "1.5px solid #E6E0D8" }}>
-            <span style={{ fontSize: 14, color: "#35662A", fontWeight: 600 }}>{links[email].emailed ? `Approved and emailed ${email}` : `Approved ${email}. Send them this link:`}</span>
+          <div key={email} style={{ display: "flex", flexDirection: "column", gap: 8, padding: 12, borderRadius: 10, background: "#fff", border: `1.5px solid ${color.border}` }}>
+            <span style={{ fontSize: 14, color: color.greenText, fontWeight: 600 }}>{links[email].emailed ? `Approved and emailed ${email}` : `Approved ${email}. Send them this link:`}</span>
             {!links[email].emailed && (
               <>
                 <code style={{ fontSize: 14, wordBreak: "break-all" }}>{links[email].link}</code>
@@ -304,7 +304,7 @@ function Requests({ requests, emailEnabled, onDone }: { requests: Overview["requ
           </div>
         ))}
         {pending.map((r) => (
-          <div key={r.email} style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 10px 10px 12px", borderRadius: 10, background: "#fff", border: "1.5px solid #E6E0D8", flexWrap: "wrap" }}>
+          <div key={r.email} style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 10px 10px 12px", borderRadius: 10, background: "#fff", border: `1.5px solid ${color.border}`, flexWrap: "wrap" }}>
             <div style={{ flex: 1, minWidth: 180 }}>
               <div style={{ fontSize: 14, fontWeight: 600, overflow: "hidden", textOverflow: "ellipsis" }}>{r.email}</div>
               <div style={{ fontSize: 14, color: color.t2 }}>{r.nextMove ?? "No answer"} · {when(r.createdAt)}</div>

@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { attrNum, attrStr, cellQuiet, cellText, compText, daysUntil, dueText, initialsOf, isNewFind, postedDays, postedText, scoreStyle, slugOf, stageStyle, valueText } from "./board";
 import type { Find } from "./types";
+import { color } from "@/lib/tokens";
 
 const find = (over: Partial<Find> = {}) =>
   ({ company: "Acme", role: "Design Lead", comp: null, postedAt: null, archived: false, seen: false, addedAt: "2026-11-07T12:00:00Z", ...over }) as Find;
@@ -105,6 +106,19 @@ describe("RFP cells", () => {
     expect(daysUntil("2026-11-10", new Date(2026, 10, 9, 12).getTime())).toBe(1);
   });
 
+  it("counts calendar days whatever the hour or a clock change (#495)", () => {
+    const at = (d: number, h: number) => new Date(2026, 10, d, h).getTime();
+    expect(daysUntil("2026-11-07", at(7, 9))).toBe(0);
+    expect(daysUntil("2026-11-07", at(7, 23))).toBe(0);
+    expect(daysUntil("2026-11-08", at(7, 0))).toBe(1);
+    expect(daysUntil("2026-11-08", at(7, 23))).toBe(1);
+    expect(daysUntil("2026-11-06", at(7, 1))).toBe(-1);
+    // Nov 1 2026 is the fall-back change in the US.
+    expect(daysUntil("2026-11-01", new Date(2026, 9, 31, 12).getTime())).toBe(1);
+    expect(daysUntil("2026-11-02", new Date(2026, 9, 31, 8).getTime())).toBe(2);
+    expect(daysUntil("2026-02-30")).toBe(daysUntil("2026-03-02"));
+  });
+
   it("says how long is left, how long it's been, or what was posted", () => {
     expect(dueText(rfp({ due: "2026-11-21" }))).toBe("14d left");
     expect(dueText(rfp({ due: "2026-11-07" }))).toBe("today");
@@ -139,9 +153,9 @@ describe("RFP cells", () => {
 
 describe("stageStyle and scoreStyle", () => {
   it("styles known stages and falls back to neutral", () => {
-    expect(stageStyle("Offer")).toEqual({ bg: "#E6EDD9", ink: "#35662A" });
+    expect(stageStyle("Offer")).toEqual({ bg: "#E6EDD9", ink: color.greenText });
     expect(stageStyle("Awarded")).toEqual(stageStyle("Offer"));
-    expect(stageStyle("Something new")).toEqual({ bg: "#EEEAE4", ink: "#5E574D" });
+    expect(stageStyle("Something new")).toEqual({ bg: color.border, ink: "#5E574D" });
   });
 
   it("fills 5s, tints 4s, outlines the rest", () => {

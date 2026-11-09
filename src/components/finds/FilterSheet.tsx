@@ -28,7 +28,7 @@ export function FilterSheet(p: {
     <>
       <div onClick={p.close} style={{ position: "fixed", inset: 0, background: "rgba(29,26,15,.32)", zIndex: 30 }} />
       <div ref={box} role="dialog" aria-modal="true" aria-label="Filter and sort" style={{ position: "fixed", left: 0, right: 0, bottom: 0, zIndex: 31, background: "#fff", borderRadius: "20px 20px 0 0", boxShadow: "0 -12px 40px rgba(29,26,15,.18)", padding: "10px 16px calc(16px + env(safe-area-inset-bottom))", display: "flex", flexDirection: "column", gap: 20, maxHeight: "85vh", overflowY: "auto" }}>
-        <div style={{ width: 36, height: 4, borderRadius: 999, background: "#E0D9CF", alignSelf: "center" }} />
+        <div style={{ width: 36, height: 4, borderRadius: 999, background: color.border, alignSelf: "center" }} />
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
           <div style={{ fontSize: 18, fontWeight: 700 }}>Filter &amp; sort</div>
           <button onClick={() => { p.setFit(0); p.setCompOnly(false); p.setSortKey("score"); p.setSortDir("desc"); }} style={{ border: 0, background: "transparent", padding: "8px 0 8px 12px", fontSize: 14, fontWeight: 600, color: color.brick, cursor: "pointer" }}>Reset</button>
@@ -68,7 +68,7 @@ export function FilterSheet(p: {
               );
             })}
           </div>
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(2,minmax(0,1fr))", gap: 4, padding: 4, background: "#F4F1EC", borderRadius: 12 }}>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(2,minmax(0,1fr))", gap: 4, padding: 4, background: color.surface, borderRadius: 12 }}>
             {([["desc", "↓ Descending"], ["asc", "↑ Ascending"]] as const).map(([d, label]) => {
               const s = seg(p.sortDir === d);
               return (

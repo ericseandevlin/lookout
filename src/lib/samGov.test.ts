@@ -24,9 +24,14 @@ describe("query building (#272)", () => {
     expect(naicsCodes("event production")).toEqual([]);
   });
   it("maps certifications to set-aside codes", () => {
-    expect(setAsideCodes(["8(a)", "WOSB", "Small business"])).toEqual(["8A", "WOSB", "SBA"]);
-    expect(setAsideCodes("SDVOSB and HUBZone")).toEqual(["SDVOSBC", "HZC"]);
+    expect(setAsideCodes(["8(a)", "WOSB", "Small business"])).toEqual(["8A", "SBA", "SBP", "WOSB"]);
+    expect(setAsideCodes("SDVOSB and HUBZone")).toEqual(["SDVOSB", "VSA", "VSS", "SBA", "SBP", "HZ"]);
+    expect(setAsideCodes("Small business")).toEqual(["SBA", "SBP"]);
+    expect(setAsideCodes("8a")).toEqual(["8A", "SBA", "SBP"]);
     expect(setAsideCodes("")).toEqual([]);
+  });
+  it("does not read a stray 8 as 8(a)", () => {
+    expect(setAsideCodes("8 attorneys, no certifications")).toEqual([]);
   });
   it("asks for the last 30 days, one call per code", () => {
     const now = new Date("2026-11-07T12:00:00Z");
@@ -59,6 +64,15 @@ describe("mapping and filtering", () => {
     ];
     expect(keepRfps(list, opts).map((i) => i.noticeId)).toEqual(["abc123", "open"]);
     expect(keepRfps(list, { ...opts, known: new Set(["abc123"]) }).map((i) => i.noticeId)).toEqual(["open"]);
+  });
+  it("opens small business, sole source and veteran set-asides to the programs that qualify (#489)", () => {
+    const list = ["SBA", "SBP", "8AN", "SDVOSBS", "VSA", "HZS", "EDWOSB", "ISBEE"].map((c) => rec({ noticeId: c, typeOfSetAside: c }));
+    const keep = (certs: string) => keepRfps(list, { today: "2026-11-07", known: new Set(), setAsides: setAsideCodes(certs) }).map((i) => i.noticeId);
+    expect(keep("8(a)")).toEqual(["SBA", "SBP", "8AN"]);
+    expect(keep("SDVOSB")).toEqual(["SBA", "SBP", "SDVOSBS", "VSA"]);
+    expect(keep("HUBZone")).toEqual(["SBA", "SBP", "HZS"]);
+    expect(keep("WOSB")).toEqual(["SBA", "SBP"]);
+    expect(keep("")).toEqual([]);
   });
   it("writes the scorer's text from facts only", () => {
     const t = rfpText(toRfpItem(rec())!);

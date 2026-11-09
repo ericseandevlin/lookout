@@ -7,11 +7,13 @@ import { HttpError, json } from "@/lib/api";
 /**
  * Server-to-server routes for the external search agent. Bearer AGENT_TOKEN,
  * compared in constant time. No cookies, so no origin check.
+ * `tokenVar` names a different env token; when it is unset the route answers 404 (#486).
  */
-export function agentRoute<C = object>(fn: (req: Request, ctx: C) => Promise<Response>) {
+export function agentRoute<C = object>(fn: (req: Request, ctx: C) => Promise<Response>, tokenVar = "AGENT_TOKEN") {
   return async (req: Request, ctx: C) => {
     try {
-      const want = process.env.AGENT_TOKEN ?? "";
+      const want = process.env[tokenVar] ?? "";
+      if (tokenVar !== "AGENT_TOKEN" && !want) throw new HttpError(404, "Not found");
       const got = ((await headers()).get("authorization") ?? "").replace(/^Bearer\s+/i, "");
       const ok = want.length >= 32 && got.length === want.length && timingSafeEqual(Buffer.from(got), Buffer.from(want));
       if (!ok) throw new HttpError(401, "Bad agent token");

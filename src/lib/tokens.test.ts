@@ -13,7 +13,7 @@ const contrast = (a: string, b: string) => {
 
 describe("color tokens", () => {
   it("text colors pass WCAG AA (4.5:1) on white and on the page background", () => {
-    for (const c of [color.ink, color.t2, color.brick, color.peachInk]) {
+    for (const c of [color.ink, color.t2, color.brick, color.peachInk, color.greenText]) {
       expect(contrast(c, "#FFFFFF")).toBeGreaterThanOrEqual(4.5);
       expect(contrast(c, color.page)).toBeGreaterThanOrEqual(4.5);
     }
@@ -25,7 +25,7 @@ describe("color tokens", () => {
 
   it("matches the CSS variables in globals.css", () => {
     const css = readFileSync("src/app/globals.css", "utf8");
-    const vars: Record<string, string> = { ink: "--ink", t2: "--t2", t3: "--t3", muted: "--muted", onDark: "--on-dark", brick: "--brick", orange: "--orange", peachInk: "--peach-ink", green: "--green", page: "--page" };
+    const vars: Record<string, string> = { ink: "--ink", t2: "--t2", t3: "--t3", muted: "--muted", onDark: "--on-dark", brick: "--brick", orange: "--orange", peachInk: "--peach-ink", green: "--green", greenText: "--green-text", page: "--page", border: "--border", surface: "--surface" };
     for (const [k, v] of Object.entries(vars)) {
       const m = css.match(new RegExp(`${v}:\\s*(#[0-9a-fA-F]{6})`));
       expect(m?.[1].toUpperCase(), k).toBe(color[k as keyof typeof color]);
