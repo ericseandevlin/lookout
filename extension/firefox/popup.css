@@ -1,6 +1,6 @@
 :root { color-scheme: light; font: 14px/1.45 -apple-system, system-ui, sans-serif; color: #1D1A0F; }
 body { margin: 0; width: 360px; background: #fff; }
-header { display: flex; align-items: center; gap: 8px; padding: 12px 14px; border-bottom: 1px solid #EEEAE4; }
+header { display: flex; align-items: center; gap: 8px; padding: 12px 14px; border-bottom: 1px solid #E6E0D8; }
 h1 { flex: 1; margin: 0; font-size: 15px; }
 section, main { padding: 12px 14px; display: flex; flex-direction: column; gap: 8px; }
 label { font-weight: 600; font-size: 13px; }
@@ -11,7 +11,7 @@ button { height: 34px; border-radius: 8px; font: inherit; font-weight: 600; curs
 .link { border: 0; background: none; color: #6B6358; text-decoration: underline; padding: 0; height: auto; font-weight: 400; }
 .hint, #status { color: #6B6358; margin: 0; }
 ul, ol { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 6px; }
-#matches li { border: 1px solid #EEEAE4; border-radius: 10px; padding: 10px; display: flex; flex-direction: column; gap: 6px; }
+#matches li { border: 1px solid #E6E0D8; border-radius: 10px; padding: 10px; display: flex; flex-direction: column; gap: 6px; }
 #matches .t { font-weight: 700; }
 #log li { font-size: 13px; display: grid; grid-template-columns: 16px 1fr; gap: 6px; }
 #log .bad { color: #99220F; }

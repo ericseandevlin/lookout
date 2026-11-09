@@ -19,7 +19,7 @@ export function Login({ emailEnabled, inviteOnly, turnstileSiteKey = "", kinds =
   );
 }
 
-const field: React.CSSProperties = { height: 46, border: "1.5px solid #E6E0D8", background: "#fff", borderRadius: 10, padding: "0 14px", fontSize: 15, outline: "none", color: color.ink };
+const field: React.CSSProperties = { height: 46, border: `1.5px solid ${color.border}`, background: "#fff", borderRadius: 10, padding: "0 14px", fontSize: 15, outline: "none", color: color.ink };
 const label: React.CSSProperties = { fontSize: 14, fontWeight: 600, letterSpacing: ".06em", textTransform: "uppercase", color: color.t2 };
 const linkBtn: React.CSSProperties = { border: 0, background: "transparent", padding: 0, color: color.brick, fontWeight: 600, fontSize: "inherit", cursor: "pointer", textDecoration: "underline", textUnderlineOffset: 3 };
 

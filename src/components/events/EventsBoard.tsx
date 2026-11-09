@@ -15,7 +15,7 @@ const pill = (on: boolean): React.CSSProperties => {
   const c = chip(on);
   return { display: "flex", alignItems: "center", gap: 7, height: 34, padding: "0 15px", borderRadius: 999, border: `1.5px solid ${c.border}`, background: c.bg, color: c.ink, fontSize: 14, fontWeight: 600, cursor: "pointer" };
 };
-const dateField: React.CSSProperties = { height: 34, border: "1.5px solid #E6E0D8", borderRadius: 10, padding: "0 10px", fontSize: 14, color: color.ink, background: "#fff" };
+const dateField: React.CSSProperties = { height: 34, border: `1.5px solid ${color.border}`, borderRadius: 10, padding: "0 10px", fontSize: 14, color: color.ink, background: "#fff" };
 
 const day = (s: string) => new Date(`${s}T12:00:00Z`).toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric", timeZone: "UTC" });
 const when = (e: NetworkingEvent) => `${day(e.startsOn)}${e.endsOn && e.endsOn !== e.startsOn ? ` to ${day(e.endsOn)}` : ""}`;
@@ -60,14 +60,14 @@ export function EventsBoard({ events, searching, canSearch, onSearch, onPatch, o
 
   return (
     <section style={{ background: "#fff", borderRadius: 16, overflow: "hidden", marginTop: 8 }}>
-      <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "16px 18px", flexWrap: "wrap", borderBottom: "1px solid #EEEAE4" }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "16px 18px", flexWrap: "wrap", borderBottom: `1px solid ${color.border}` }}>
         {(["all", "pinned", "archived"] as EventView[]).map((k) => (
           <button key={k} onClick={() => { set({ view: k }); setPicked(new Set()); }} aria-pressed={f.view === k} style={pill(f.view === k)}>
             {k === "all" ? "All" : k === "pinned" ? "Pinned" : "Archived"}
             <span style={{ opacity: 0.65, fontWeight: 500 }}>{tally[k]}</span>
           </button>
         ))}
-        <div role="group" aria-label="In person or online" style={{ display: "flex", gap: 4, padding: 4, background: "#F4F1EC", borderRadius: 12 }}>
+        <div role="group" aria-label="In person or online" style={{ display: "flex", gap: 4, padding: 4, background: color.surface, borderRadius: 12 }}>
           {([["any", "Any"], ["in-person", "In person"], ["online", "Online"]] as [EventWhere, string][]).map(([k, label]) => {
             const s = seg(f.where === k);
             return (
@@ -83,7 +83,7 @@ export function EventsBoard({ events, searching, canSearch, onSearch, onPatch, o
         <label style={{ ...muted, display: "flex", alignItems: "center", gap: 6 }}>
           To <input type="date" value={f.to} onChange={(e) => set({ to: e.target.value })} style={dateField} />
         </label>
-        <div style={{ display: "flex", alignItems: "center", gap: 6, height: 34, padding: "0 10px", border: "1.5px solid #E6E0D8", borderRadius: 10, flex: "1 1 180px", minWidth: 160 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 6, height: 34, padding: "0 10px", border: `1.5px solid ${color.border}`, borderRadius: 10, flex: "1 1 180px", minWidth: 160 }}>
           <SearchIcon size={15} stroke={color.t2} />
           <input value={f.q} onChange={(e) => set({ q: e.target.value })} placeholder="Search events" aria-label="Search events" style={{ flex: 1, minWidth: 0, border: 0, outline: "none", background: "transparent", fontSize: 14, color: color.ink }} />
         </div>
@@ -94,7 +94,7 @@ export function EventsBoard({ events, searching, canSearch, onSearch, onPatch, o
         )}
       </div>
 
-      <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 18px", borderBottom: "1px solid #EEEAE4", flexWrap: "wrap", minHeight: 52 }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 18px", borderBottom: `1px solid ${color.border}`, flexWrap: "wrap", minHeight: 52 }}>
         {pickedShown.length > 0 ? (
           <>
             <span style={{ fontSize: 14, fontWeight: 600 }}>{pickedShown.length} selected</span>
@@ -126,7 +126,7 @@ export function EventsBoard({ events, searching, canSearch, onSearch, onPatch, o
       <div style={{ overflowX: "auto" }}>
         <div role="table" aria-label="Events" style={{ minWidth: 900 }}>
           <div role="rowgroup">
-            <div role="row" style={{ display: "grid", gridTemplateColumns: GRID, alignItems: "center", padding: "0 18px", height: 44, borderBottom: "1px solid #EEEAE4" }}>
+            <div role="row" style={{ display: "grid", gridTemplateColumns: GRID, alignItems: "center", padding: "0 18px", height: 44, borderBottom: `1px solid ${color.border}` }}>
               <div role="columnheader">
                 <input type="checkbox" aria-label="Select all shown" checked={allPicked} onChange={() => setPicked(allPicked ? new Set() : new Set(shown))} />
               </div>
@@ -157,7 +157,7 @@ export function EventsBoard({ events, searching, canSearch, onSearch, onPatch, o
                     tabIndex={0}
                     onClick={() => setOpenId(open ? null : e.id)}
                     onKeyDown={(k) => { if (k.key === "Enter" || k.key === " ") { k.preventDefault(); setOpenId(open ? null : e.id); } }}
-                    style={{ display: "grid", gridTemplateColumns: GRID, alignItems: "center", padding: "0 18px", minHeight: 52, borderBottom: "1px solid #F2EEE8", cursor: "pointer", background: open ? "#FBF8F4" : undefined }}
+                    style={{ display: "grid", gridTemplateColumns: GRID, alignItems: "center", padding: "0 18px", minHeight: 52, borderBottom: `1px solid ${color.surface}`, cursor: "pointer", background: open ? color.surface : undefined }}
                   >
                     <div role="cell" onClick={(x) => x.stopPropagation()}>
                       <input type="checkbox" aria-label={`Select ${e.title}`} checked={picked.has(e.id)} onChange={() => togglePick(e.id)} />
@@ -175,7 +175,7 @@ export function EventsBoard({ events, searching, canSearch, onSearch, onPatch, o
                     <div role="cell" style={muted}>{e.cost || "–"}</div>
                   </div>
                   {open && (
-                    <div role="row" style={{ padding: "12px 18px 16px 88px", borderBottom: "1px solid #F2EEE8", background: "#FBF8F4", display: "flex", flexDirection: "column", gap: 8 }}>
+                    <div role="row" style={{ padding: "12px 18px 16px 88px", borderBottom: `1px solid ${color.surface}`, background: color.surface, display: "flex", flexDirection: "column", gap: 8 }}>
                       <div role="cell" style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                         <div style={{ fontSize: 14 }}>{[when(e), e.time].filter(Boolean).join(", ")} · {e.online ? "Online" : e.place} {e.cost && `· ${e.cost}`}</div>
                         {e.why && <div style={{ fontSize: 14 }}>{e.why}</div>}

@@ -1,6 +1,7 @@
 import "server-only";
 import { createHmac, timingSafeEqual } from "node:crypto";
 import { escapeHtml as esc } from "@/lib/email";
+import { color } from "@/lib/tokens";
 
 // Email rules (#28, CAN-SPAM). Sign-in links and invites are transactional and exempt. Anything
 // else sent in bulk (news, waitlist updates, the finds email) carries an unsubscribe link and
@@ -37,7 +38,7 @@ export const unsubscribeHeaders = (apiLink: string) => ({ "List-Unsubscribe": `<
 
 /** The bottom of a bulk email: why they got it, how to stop it, and the postal address. */
 export function mailFooter(o: { why: string; link: string; address: string }) {
-  const html = `<p style="font-size:13px;line-height:1.5;color:#6B6358;margin:24px 0 0;padding-top:16px;border-top:1px solid #EEEAE4">${esc(o.why)} <a href="${esc(o.link)}" style="color:#6B6358">Unsubscribe</a>.${
+  const html = `<p style="font-size:13px;line-height:1.5;color:#6B6358;margin:24px 0 0;padding-top:16px;border-top:1px solid ${color.border}">${esc(o.why)} <a href="${esc(o.link)}" style="color:#6B6358">Unsubscribe</a>.${
     o.address ? `<br>Lookout · ${esc(o.address)}` : ""
   }</p>`;
   const text = `${o.why} Unsubscribe: ${o.link}${o.address ? `\nLookout · ${o.address}` : ""}`;

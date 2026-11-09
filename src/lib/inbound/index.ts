@@ -26,17 +26,27 @@ export function verifyWebhook(secret: string, h: { id: string | null; timestamp:
   });
 }
 
-/** Plain text of a message: the text part, else the HTML with tags dropped. */
+const ENTITIES: Record<string, string> = { amp: "&", lt: "<", gt: ">", quot: '"', apos: "'", nbsp: " ", rsquo: "’", lsquo: "‘", rdquo: "”", ldquo: "“", ndash: "–", mdash: "—", hellip: "…" };
+
+/** Named, decimal and hex entities in one pass, so "&amp;lt;" stays "&lt;". Unknown ones are left as written (#497). */
+const decodeEntities = (s: string) =>
+  s.replace(/&(#x[0-9a-f]+|#\d+|[a-z]+);/gi, (all, e: string) => {
+    if (!e.startsWith("#")) return ENTITIES[e.toLowerCase()] ?? all;
+    const n = /^#x/i.test(e) ? parseInt(e.slice(2), 16) : Number(e.slice(1));
+    return n > 0 && n <= 0x10ffff && !(n >= 0xd800 && n <= 0xdfff) ? String.fromCodePoint(n) : all;
+  });
+
+/** Plain text of a message: the text part, else the HTML with comments and tags dropped. */
 export function bodyText(text: string | null | undefined, html: string | null | undefined): string {
   if (text?.trim()) return text.slice(0, MAX_TEXT);
-  return (html ?? "")
-    .replace(/<(script|style)[\s\S]*?<\/\1>/gi, "")
-    .replace(/<br\s*\/?>|<\/(p|div|li|tr|h\d)>/gi, "\n")
-    .replace(/<[^>]+>/g, "")
-    .replace(/&nbsp;/g, " ")
-    .replace(/&amp;/g, "&")
-    .replace(/&lt;/g, "<")
-    .replace(/&gt;/g, ">")
+  return decodeEntities(
+    (html ?? "")
+      .replace(/<!--[\s\S]*?-->/g, "")
+      .replace(/<(script|style|head)[\s\S]*?<\/\1>/gi, "")
+      .replace(/<br\s*\/?>|<\/(p|div|li|tr|h\d)>/gi, "\n")
+      .replace(/<[^>]+>/g, ""),
+  )
+    .replace(/\u00a0/g, " ")
     .replace(/\n{3,}/g, "\n\n")
     .trim()
     .slice(0, MAX_TEXT);

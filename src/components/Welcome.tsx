@@ -8,7 +8,7 @@ import { color } from "@/lib/tokens";
 
 const label: React.CSSProperties = { fontSize: 14, fontWeight: 600, letterSpacing: ".06em", textTransform: "uppercase", color: color.t2 };
 const chip = (on: boolean): React.CSSProperties => ({
-  minHeight: 40, padding: "0 14px", borderRadius: 999, border: `1.5px solid ${on ? color.ink : "#E0D9CF"}`,
+  minHeight: 40, padding: "0 14px", borderRadius: 999, border: `1.5px solid ${on ? color.ink : color.border}`,
   background: on ? color.ink : "#fff", color: on ? "#fff" : color.ink, fontSize: 14, fontWeight: 600, cursor: "pointer",
 });
 
@@ -43,7 +43,7 @@ export function Welcome({ initialName, kind = "job" }: { initialName: string; ki
       <form onSubmit={submit} style={{ display: "flex", flexDirection: "column", gap: 22, marginTop: 24 }}>
         <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
           <label htmlFor="name" style={label}>Your name</label>
-          <input id="name" required autoComplete="name" value={name} onChange={(e) => setName(e.target.value)} placeholder="Full name" maxLength={120} className="f-brick" style={{ height: 46, border: "1.5px solid #E6E0D8", background: "#fff", borderRadius: 10, padding: "0 14px", fontSize: 15, outline: "none", color: color.ink }} />
+          <input id="name" required autoComplete="name" value={name} onChange={(e) => setName(e.target.value)} placeholder="Full name" maxLength={120} className="f-brick" style={{ height: 46, border: `1.5px solid ${color.border}`, background: "#fff", borderRadius: 10, padding: "0 14px", fontSize: 15, outline: "none", color: color.ink }} />
         </div>
         {kind !== "rfp" && (
         <fieldset style={{ border: 0, padding: 0, margin: 0, display: "flex", flexDirection: "column", gap: 8 }}>

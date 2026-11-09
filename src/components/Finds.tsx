@@ -208,7 +208,7 @@ export function Finds() {
             </div>
           </div>
           <div className="hdr-tools" style={{ display: "flex", gap: 8, alignItems: "center", maxWidth: "100%" }}>
-            <div className="board-search" style={{ display: "flex", alignItems: "center", gap: 10, background: "#F4F1EC", borderRadius: 999, padding: "0 16px", maxWidth: "100%" }}>
+            <div className="board-search" style={{ display: "flex", alignItems: "center", gap: 10, background: color.surface, borderRadius: 999, padding: "0 16px", maxWidth: "100%" }}>
               <SearchIcon />
               <input
                 value={q}
@@ -231,7 +231,7 @@ export function Finds() {
 
         <section className="board-sec" style={{ background: "#fff", overflow: "hidden" }}>
           {/* Desktop toolbar */}
-          <div className="desk-only" style={{ display: "flex", alignItems: "center", gap: 8, padding: "18px 22px", flexWrap: "wrap", borderBottom: "1px solid #EEEAE4" }}>
+          <div className="desk-only" style={{ display: "flex", alignItems: "center", gap: 8, padding: "18px 22px", flexWrap: "wrap", borderBottom: `1px solid ${color.border}` }}>
             {(["all", "new", "archived"] as Filter[]).map((k) => {
               const c = chip(filter === k);
               return (
@@ -255,7 +255,7 @@ export function Finds() {
               {fitMenu && (
                 <Menu style={{ top: 40, left: 0, minWidth: 150 }}>
                   {([["Any match", 0], ["5 only", 5], ["4 and up", 4], ["3 and up", 3]] as const).map(([label, k]) => (
-                    <button key={k} className="h-menu" onClick={() => { setFit(k); setFitMenu(false); }} style={{ display: "flex", justifyContent: "space-between", padding: "9px 12px", border: 0, borderRadius: 8, background: fit === k ? "#F6F2EC" : "transparent", fontSize: 14, fontWeight: 500, color: color.ink, cursor: "pointer", textAlign: "left" }}>
+                    <button key={k} className="h-menu" onClick={() => { setFit(k); setFitMenu(false); }} style={{ display: "flex", justifyContent: "space-between", padding: "9px 12px", border: 0, borderRadius: 8, background: fit === k ? color.surface : "transparent", fontSize: 14, fontWeight: 500, color: color.ink, cursor: "pointer", textAlign: "left" }}>
                       {label}
                       <span style={{ color: color.t2 }}>{fitCount(k)}</span>
                     </button>
@@ -267,9 +267,9 @@ export function Finds() {
           </div>
 
           {/* Mobile toolbar */}
-          <div className="mob-only" style={{ padding: "14px 12px 12px", borderBottom: "1px solid #EEEAE4" }}>
+          <div className="mob-only" style={{ padding: "14px 12px 12px", borderBottom: `1px solid ${color.border}` }}>
             <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(3,minmax(0,1fr))", gap: 4, padding: 4, background: "#F4F1EC", borderRadius: 12 }}>
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(3,minmax(0,1fr))", gap: 4, padding: 4, background: color.surface, borderRadius: 12 }}>
                 {(["all", "new", "archived"] as Filter[]).map((k) => {
                   const s = seg(filter === k);
                   return (
@@ -284,7 +284,7 @@ export function Finds() {
                 <div style={{ flex: 1, minWidth: 0, fontSize: 14, color: color.t2, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
                   {rows.length} shown · Sorted by {sortLabel} {arrow}
                 </div>
-                <button onClick={() => setSheetOpen(true)} style={{ display: "flex", alignItems: "center", gap: 8, height: 40, padding: "0 14px", borderRadius: 999, border: `1.5px solid ${filterCount ? color.ink : "#E0D9CF"}`, background: filterCount ? "#FBF8F4" : "#fff", color: color.ink, fontSize: 14, fontWeight: 600, cursor: "pointer", flex: "none" }}>
+                <button onClick={() => setSheetOpen(true)} style={{ display: "flex", alignItems: "center", gap: 8, height: 40, padding: "0 14px", borderRadius: 999, border: `1.5px solid ${filterCount ? color.ink : color.border}`, background: filterCount ? color.surface : "#fff", color: color.ink, fontSize: 14, fontWeight: 600, cursor: "pointer", flex: "none" }}>
                   <SlidersIcon />
                   Filter &amp; sort
                   {filterCount > 0 && (
@@ -299,7 +299,7 @@ export function Finds() {
           <div className="desk-only" style={{ overflowX: "auto" }}>
             <div style={{ minWidth: 1080 }} role="table" aria-label="Finds">
               <div role="rowgroup">
-              <div role="row" style={{ display: "grid", gridTemplateColumns: GRID, alignItems: "center", padding: "0 22px", height: 46, borderBottom: "1px solid #EEEAE4" }}>
+              <div role="row" style={{ display: "grid", gridTemplateColumns: GRID, alignItems: "center", padding: "0 22px", height: 46, borderBottom: `1px solid ${color.border}` }}>
                 {([["", null], ["Match", "score" as SortKey], ...cfg.board.columns.map((c) => [c.label, c.key as SortKey] as [string, SortKey]), [cfg.board.preStage.label, cfg.board.preStage.key as SortKey], ["Stage", "stage" as SortKey], [cfg.board.tail.label, cfg.board.tail.key as SortKey]] as [string, SortKey | null][]).map(([label, key]) => {
                   const on = key && sortKey === key;
                   return (
@@ -328,7 +328,7 @@ export function Finds() {
                     role="row"
                     className="h-row lk-in"
                     onClick={() => open(f.id)}
-                    style={{ animationDelay: `${Math.min(i, 14) * 28}ms`, position: "relative", zIndex: stageMenu === f.id ? 6 : undefined, display: "grid", gridTemplateColumns: GRID, alignItems: "center", padding: `${dense ? 9 : 16}px 22px`, borderBottom: "1px solid #F2EEE8", cursor: "pointer", background: f.pinned ? "#FFFBF6" : "#fff" }}
+                    style={{ animationDelay: `${Math.min(i, 14) * 28}ms`, position: "relative", zIndex: stageMenu === f.id ? 6 : undefined, display: "grid", gridTemplateColumns: GRID, alignItems: "center", padding: `${dense ? 9 : 16}px 22px`, borderBottom: `1px solid ${color.surface}`, cursor: "pointer", background: f.pinned ? "#FFFBF6" : "#fff" }}
                   >
                     <div role="cell" style={{ display: "flex", gap: 6, alignItems: "center", position: "relative" }}>
                       {isNew(f) && <span data-tip="New this week" style={{ position: "absolute", left: -15, top: "50%", marginTop: -4, width: 8, height: 8, borderRadius: "50%", background: "#427D33" }} />}
@@ -386,7 +386,7 @@ export function Finds() {
               const st = stageStyle(f.stage);
               const sc = scoreStyle(f.score);
               return (
-                <div key={f.id} className="lk-in" onClick={() => open(f.id)} style={{ animationDelay: `${Math.min(i, 14) * 28}ms`, position: "relative", zIndex: stageMenu === f.id ? 6 : undefined, display: "flex", gap: 12, alignItems: "flex-start", padding: "12px 12px 12px 20px", borderBottom: "1px solid #F2EEE8", background: f.pinned ? "#FFFBF6" : "#fff", cursor: "pointer" }}>
+                <div key={f.id} className="lk-in" onClick={() => open(f.id)} style={{ animationDelay: `${Math.min(i, 14) * 28}ms`, position: "relative", zIndex: stageMenu === f.id ? 6 : undefined, display: "flex", gap: 12, alignItems: "flex-start", padding: "12px 12px 12px 20px", borderBottom: `1px solid ${color.surface}`, background: f.pinned ? "#FFFBF6" : "#fff", cursor: "pointer" }}>
                   {isNew(f) && <span aria-label="New" style={{ position: "absolute", left: 7, top: 22, width: 8, height: 8, borderRadius: "50%", background: "#427D33" }} />}
                   <div style={{ width: 28, height: 28, borderRadius: "50%", background: sc.bg, color: sc.ink, border: `1.5px solid ${sc.border}`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 14, fontWeight: 700, flex: "none", marginTop: 1 }}>{f.score}</div>
                   <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: 3 }}>

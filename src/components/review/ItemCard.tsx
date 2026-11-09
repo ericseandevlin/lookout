@@ -54,7 +54,7 @@ export function ItemCard({ appId, item, locked, act, analysis, template, accent,
           {item.prompt}
           {item.required ? <span style={{ color: color.brick }}> *</span> : !outreach && <span style={{ ...muted, fontWeight: 400 }}> (optional)</span>}
         </label>
-        {isApproved && <span style={{ fontSize: 14, fontWeight: 600, color: "#35662A" }}>{item.kind === "field" ? "✓ Will be filled" : `✓ Approved v${shown.version}`}</span>}
+        {isApproved && <span style={{ fontSize: 14, fontWeight: 600, color: color.greenText }}>{item.kind === "field" ? "✓ Will be filled" : `✓ Approved v${shown.version}`}</span>}
       </div>
 
       {item.salary && item.salary.amount === null && !locked && (
@@ -64,7 +64,7 @@ export function ItemCard({ appId, item, locked, act, analysis, template, accent,
       )}
       {item.salary?.amount && !locked && (
         <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", padding: "8px 12px", borderRadius: 10, background: "#F3F7F1", border: "1px solid #CFE3C6" }}>
-          <span style={{ fontSize: 14, color: "#35662A" }}>Suggested ask</span>
+          <span style={{ fontSize: 14, color: color.greenText }}>Suggested ask</span>
           <span style={{ fontSize: 16, fontWeight: 700, color: color.ink }}>{item.salary.amount}</span>
           <InfoTip label="How this is calculated" text={item.salary.note} />
           {text.replace(/[^\d]/g, "") !== item.salary.amount.replace(/[^\d]/g, "") && (
@@ -80,7 +80,7 @@ export function ItemCard({ appId, item, locked, act, analysis, template, accent,
           <DocPreview md={text} template={template} accent={accent} header={header} />
         </>
       ) : item.options?.length && !locked ? (
-        <select id={`it-${item.id}`} value={text} onChange={(e) => setText(e.target.value)} style={{ height: 40, borderRadius: 10, border: "1.5px solid #E0D9CF", padding: "0 10px", fontSize: 15, maxWidth: 420 }}>
+        <select id={`it-${item.id}`} value={text} onChange={(e) => setText(e.target.value)} style={{ height: 40, borderRadius: 10, border: `1.5px solid ${color.border}`, padding: "0 10px", fontSize: 15, maxWidth: 420 }}>
           <option value="">Choose…</option>
           {item.options.map((o) => (
             <option key={o}>{o}</option>
@@ -93,7 +93,7 @@ export function ItemCard({ appId, item, locked, act, analysis, template, accent,
           readOnly={locked}
           onChange={(e) => setText(e.target.value)}
           rows={long ? (item.kind === "resume" ? 18 : 8) : 1}
-          style={{ borderRadius: 10, border: "1.5px solid #E0D9CF", padding: 10, fontSize: 15, lineHeight: 1.5, fontFamily: "inherit", resize: "vertical", background: locked ? "#FAF8F5" : "#fff" }}
+          style={{ borderRadius: 10, border: `1.5px solid ${color.border}`, padding: 10, fontSize: 15, lineHeight: 1.5, fontFamily: "inherit", resize: "vertical", background: locked ? "#FAF8F5" : "#fff" }}
         />
       )}
 
@@ -135,7 +135,7 @@ export function ItemCard({ appId, item, locked, act, analysis, template, accent,
               </a>
             )}
             {item.versions.length > 1 && (
-              <select aria-label="Version" value={shown?.id} onChange={(e) => setPick(e.target.value)} style={{ height: 38, borderRadius: 10, border: "1.5px solid #E0D9CF", padding: "0 8px", fontSize: 14 }}>
+              <select aria-label="Version" value={shown?.id} onChange={(e) => setPick(e.target.value)} style={{ height: 38, borderRadius: 10, border: `1.5px solid ${color.border}`, padding: "0 8px", fontSize: 14 }}>
                 {item.versions.map((v) => (
                   <option key={v.id} value={v.id}>
                     v{v.version} · {v.author === "ai" ? "Lookout" : "you"}
@@ -174,7 +174,7 @@ export function ItemCard({ appId, item, locked, act, analysis, template, accent,
                 value={instr}
                 onChange={(e) => setInstr(e.target.value)}
                 placeholder={item.kind === "resume" ? "Ask Lookout: lead with the platform work, cut to one page…" : outreach ? "Ask Lookout: shorter, warmer, change the request…" : "Ask Lookout: shorter, more specific, mention…"}
-                style={{ flex: "1 1 260px", height: 38, borderRadius: 10, border: "1.5px solid #E0D9CF", padding: "0 12px", fontSize: 14 }}
+                style={{ flex: "1 1 260px", height: 38, borderRadius: 10, border: `1.5px solid ${color.border}`, padding: "0 12px", fontSize: 14 }}
               />
               <button type="submit" disabled={!instr.trim() || !!busy} style={btn("outline")}>
                 {busy === "revise" ? "Revising…" : "Revise"}

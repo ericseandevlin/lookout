@@ -48,7 +48,8 @@ export function suggestSalary(i: { floor?: unknown; target?: unknown; min?: numb
     const note = `Their range (${range}) is total cash, but this question asks for base. Base is lower than total cash and the posting doesn't give the split, so Lookout left this blank instead of answering with a total-cash number.`;
     return { amount: null, note, question: `${note} What base salary do you want to ask for?` };
   }
-  const topQuarter = round5k(lo + 0.75 * (hi - lo));
+  // Rounding to $5k can step outside a narrow range ($101k-$102k rounds to $100k), so pull it back in (#507).
+  const topQuarter = Math.min(hi, Math.max(lo, round5k(lo + 0.75 * (hi - lo))));
   // The rule, and only the rule: the top quarter, or the person's target when it sits inside the range;
   // never below their floor, never above the posted max.
   const inRange = target && target >= lo && target <= hi ? target : null;

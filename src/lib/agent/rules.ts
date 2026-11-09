@@ -44,10 +44,13 @@ export function fingerprint(company: string, title: string, location: string) {
     .digest("hex");
 }
 
+// Tracking params only, matched by exact name, so job IDs like referenceId or refnum stay in the key (#487).
+const TRACKING = /^(utm_.*|gh_src|source|src|ref|refid|ref_src|referrer|trk|trackingid|lever-source|lever-origin)$/i;
+
 export function normUrl(u: string) {
   try {
     const url = new URL(u);
-    for (const k of [...url.searchParams.keys()]) if (/^(utm_|gh_src|source|ref|src)/i.test(k)) url.searchParams.delete(k);
+    for (const k of [...url.searchParams.keys()]) if (TRACKING.test(k)) url.searchParams.delete(k);
     return (url.host.replace(/^www\./, "") + url.pathname.replace(/\/$/, "") + url.search).toLowerCase();
   } catch {
     return u.toLowerCase();

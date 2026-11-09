@@ -29,7 +29,7 @@ export function SendForMe({ d, busy, onFill }: { d: Detail; busy: boolean; onFil
             Last {f.mode === "test" ? "test fill" : "send"}: {new Date(f.at).toLocaleString()}
           </div>
           {f.stopped && <div role="alert" style={{ fontSize: 14, color: color.brick }}>{f.stopped}</div>}
-          {f.confirmation && <div style={{ fontSize: 14, color: "#35662A" }}>Confirmation: {f.confirmation}</div>}
+          {f.confirmation && <div style={{ fontSize: 14, color: color.greenText }}>Confirmation: {f.confirmation}</div>}
           <ul style={{ margin: 0, paddingLeft: 18, fontSize: 14, color: "#3B362C" }}>
             {f.log.map((l) => (
               <li key={l.prompt}>

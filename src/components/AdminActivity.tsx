@@ -16,8 +16,8 @@ type Data = {
 type Row = { type: string; target: string | null; at: string; minutes?: number };
 
 const card: React.CSSProperties = { background: "#fff", borderRadius: 16, overflowX: "auto", marginTop: 8 };
-const th: React.CSSProperties = { fontSize: 14, fontWeight: 600, color: color.t2, textAlign: "left", padding: "10px 14px", borderBottom: "1px solid #EEEAE4", whiteSpace: "nowrap" };
-const td: React.CSSProperties = { fontSize: 14, padding: "10px 14px", borderBottom: "1px solid #F2EEE8", fontVariantNumeric: "tabular-nums" };
+const th: React.CSSProperties = { fontSize: 14, fontWeight: 600, color: color.t2, textAlign: "left", padding: "10px 14px", borderBottom: `1px solid ${color.border}`, whiteSpace: "nowrap" };
+const td: React.CSSProperties = { fontSize: 14, padding: "10px 14px", borderBottom: `1px solid ${color.surface}`, fontVariantNumeric: "tabular-nums" };
 const muted: React.CSSProperties = { fontSize: 14, color: color.t2 };
 const when = (iso: string) => new Date(iso).toLocaleString("en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" });
 const day = (iso: string) => new Date(iso).toLocaleDateString("en-US", { month: "short", day: "numeric" });
@@ -105,7 +105,7 @@ export function AdminActivity() {
                   <button
                     onClick={() => pick(p.id)}
                     aria-pressed={who === p.id}
-                    style={{ width: "100%", textAlign: "left", border: 0, borderBottom: "1px solid #F2EEE8", background: who === p.id ? "#F4F1EC" : "#fff", padding: "10px 14px", cursor: "pointer", fontSize: 14 }}
+                    style={{ width: "100%", textAlign: "left", border: 0, borderBottom: `1px solid ${color.surface}`, background: who === p.id ? color.surface : "#fff", padding: "10px 14px", cursor: "pointer", fontSize: 14 }}
                   >
                     <div style={{ fontWeight: 600 }}>{p.who}</div>
                     <div style={muted}>{p.next ? `Next: ${p.next}` : "Done every step"}</div>

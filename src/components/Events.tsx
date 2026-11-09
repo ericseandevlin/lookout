@@ -12,7 +12,7 @@ import { color } from "@/lib/tokens";
 type Prefs = { interests: string; reach: EventReach; miles: number; freq: EventFreq };
 
 const muted: React.CSSProperties = { fontSize: 14, color: color.t2 };
-const field: React.CSSProperties = { width: "100%", maxWidth: 520, height: 42, border: "1.5px solid #E6E0D8", background: "#fff", borderRadius: 10, padding: "0 13px", fontSize: 14, color: color.ink };
+const field: React.CSSProperties = { width: "100%", maxWidth: 520, height: 42, border: `1.5px solid ${color.border}`, background: "#fff", borderRadius: 10, padding: "0 13px", fontSize: 14, color: color.ink };
 
 
 /** /events: networking events the sweep found (#7), apart from job finds, with what to look for. */
@@ -98,7 +98,7 @@ export function Events() {
     <div className="page-pad settings lk-page w-page" style={{ display: "flex", flexDirection: "column", gap: 4 }}>
       <PageHead eyebrow="Networking" title="Events" intro="Meetups, panels, industry nights, conferences and talks that fit your field, found with each search. Kept apart from your job finds. Past events drop off on their own." />
       {msg && (
-        <div role={msg.ok ? "status" : "alert"} style={{ fontSize: 14, color: msg.ok ? "#35662A" : color.brick }}>
+        <div role={msg.ok ? "status" : "alert"} style={{ fontSize: 14, color: msg.ok ? color.greenText : color.brick }}>
           {msg.text}
         </div>
       )}
@@ -183,7 +183,7 @@ function InterestPicker({ chosen, suggestions, onToggle, onAdd }: { chosen: stri
       </button>
       {!chosen.length && <span style={muted}>Event search is off until you pick one.</span>}
       {open && at && createPortal(
-        <div ref={menu} role="dialog" aria-label="Add interests" onKeyDown={(e) => e.key === "Escape" && setOpen(false)} style={{ position: "fixed", top: at.top, left: at.left, zIndex: 1000, width: at.width, background: "#fff", border: "1px solid #E6E0D8", borderRadius: 12, boxShadow: "0 16px 40px rgba(29,26,15,.14)", padding: 10, display: "flex", flexDirection: "column", gap: 8 }}>
+        <div ref={menu} role="dialog" aria-label="Add interests" onKeyDown={(e) => e.key === "Escape" && setOpen(false)} style={{ position: "fixed", top: at.top, left: at.left, zIndex: 1000, width: at.width, background: "#fff", border: `1px solid ${color.border}`, borderRadius: 12, boxShadow: "0 16px 40px rgba(29,26,15,.14)", padding: 10, display: "flex", flexDirection: "column", gap: 8 }}>
           <input
             autoFocus
             value={q}

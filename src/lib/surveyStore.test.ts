@@ -51,6 +51,18 @@ describe("nextQuestion (#367)", () => {
     expect(Object.keys(q!).sort()).toEqual(["id", "kind", "options", "prompt"]);
   });
 
+  it("asks a question about the email only when the person's summary email is on (#514)", async () => {
+    const { nextQuestion } = await import("./surveyStore");
+    const q = await question("Do you read your Lookout new-matches email, use the site, or both?", { onlyIfDigest: true });
+    const on = await user("on@x.com", 30);
+    const off = await user("off@x.com", 30);
+    const unset = await user("unset@x.com", 30);
+    await db.insert(schema.settings).values([{ userId: on.id, digest: true }, { userId: off.id, digest: false }]);
+    expect((await nextQuestion(on))?.id).toBe(q.id);
+    expect(await nextQuestion(off)).toBeNull();
+    expect((await nextQuestion(unset))?.id).toBe(q.id); // no settings row yet: the summary email is on by default
+  });
+
   it("waits N days after an answer or a skip, then moves to the next question", async () => {
     const { nextQuestion } = await import("./surveyStore");
     const first = await question("First", { createdAt: ago(20) });

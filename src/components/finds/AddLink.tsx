@@ -52,7 +52,7 @@ export function AddLink({ open, setOpen }: { open: boolean; setOpen: (v: boolean
                 placeholder="https://..."
                 aria-label="Posting link"
                 className="f-brick"
-                style={{ flex: 1, minWidth: 0, height: 40, borderRadius: 10, border: "1.5px solid #E6E0D8", padding: "0 12px", fontSize: 14, outline: "none" }}
+                style={{ flex: 1, minWidth: 0, height: 40, borderRadius: 10, border: `1.5px solid ${color.border}`, padding: "0 12px", fontSize: 14, outline: "none" }}
               />
               <button onClick={submit} disabled={busy} style={{ height: 40, padding: "0 14px", borderRadius: 10, border: 0, background: color.brick, color: "#fff", fontSize: 14, fontWeight: 600, cursor: "pointer" }}>
                 {busy ? "Adding…" : "Add"}

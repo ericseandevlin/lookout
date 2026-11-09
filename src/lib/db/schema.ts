@@ -535,6 +535,8 @@ export const surveyQuestions = pgTable("survey_questions", {
   /** Choices for "choice"; empty otherwise. A scale is always 1-5. */
   options: jsonb("options").$type<string[]>().notNull().default([]),
   active: boolean("active").notNull().default(true),
+  /** Only asked of people whose weekly email summary is on (a question about the email). */
+  onlyIfDigest: boolean("only_if_digest").notNull().default(false),
   createdAt: createdAt(),
 });
 

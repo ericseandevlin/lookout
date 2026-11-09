@@ -59,12 +59,21 @@ function fromGreenhouse(html: string): Pay | null {
 const AMT = String.raw`\d{1,3}(?:,\d{3})+(?:\.\d+)?|\d+(?:\.\d+)?\s?[kK]\b|\d{4,7}(?:\.\d+)?|\d{2,3}(?:\.\d{2})?`;
 const RANGE = new RegExp(String.raw`\$\s?(${AMT})\s*(?:-|–|—|to)\s*\$?\s?(${AMT})([^\n]{0,40})`, "g");
 
+// What the range is per, from the words after it. A stated year wins, so "per year, paid monthly" stays yearly (#484).
+const UNITS: [string, RegExp][] = [
+  ["YEAR", /\/\s?y(?:ea)?r\b|\b(?:per|a|an|each) year\b|\bannual(?:ly)?\b|\byearly\b/i],
+  ["HOUR", /\/\s?h(?:ou)?r\b|\/\s?h\b|\b(?:per|a|an|each) hour\b|\bhourly\b/i],
+  ["WEEK", /\/\s?w(?:ee)?k\b|\b(?:per|a|each) week\b|\bweekly\b/i],
+  ["MONTH", /\/\s?mo(?:nth)?\b|\b(?:per|a|each) month\b|\bmonthly\b/i],
+];
+const payUnit = (tail: string) => UNITS.find(([, re]) => re.test(tail))?.[0] ?? "YEAR";
+
 function fromText(text: string): Pay | null {
   for (const m of text.matchAll(RANGE)) {
     const a = money(m[1]), b = money(m[2]);
     if (!a || !b) continue;
     const tail = m[3] ?? "";
-    const unit = /\/\s?h(ou)?r|per hour|hourly/i.test(tail) ? "HOUR" : /\/\s?mo|per month|monthly/i.test(tail) ? "MONTH" : "YEAR";
+    const unit = payUnit(tail);
     const p = annual(a, b, unit, /CAD/.test(tail) ? "CAD" : /EUR|€/.test(tail) ? "EUR" : /GBP|£/.test(tail) ? "GBP" : "USD", "text");
     if (p) return p;
   }
