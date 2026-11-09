@@ -8,6 +8,7 @@ on:
   pull_request:
     paths:
       - scripts/screenshots.mjs
+      - scripts/demo-data.ts
       - .github/workflows/screenshots.yml
 
 permissions:
