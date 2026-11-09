@@ -33,7 +33,7 @@ export const when = (iso: string | null) =>
   iso ? new Date(iso).toLocaleString("en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" }) : "Never";
 export const input: React.CSSProperties = { width: "100%", maxWidth: 420, height: 42, border: `1.5px solid ${color.border}`, background: "#fff", borderRadius: 10, padding: "0 13px", fontSize: 14, outline: "none", color: color.ink };
 export const card: React.CSSProperties = { background: "#fff", borderRadius: 16, padding: "16px 18px" };
-export const th: React.CSSProperties = { fontSize: 14, fontWeight: 600, letterSpacing: ".08em", textTransform: "uppercase", color: color.t2, textAlign: "left", padding: "12px 14px", borderBottom: `1px solid ${color.border}`, whiteSpace: "nowrap" };
+export const th: React.CSSProperties = { fontSize: 13, fontWeight: 600, letterSpacing: ".06em", textTransform: "uppercase", color: color.t2, textAlign: "left", padding: "12px 14px", borderBottom: `1px solid ${color.border}`, whiteSpace: "nowrap" };
 export const td: React.CSSProperties = { fontSize: 14, padding: "12px 14px", borderBottom: `1px solid ${color.surface}`, verticalAlign: "top" };
 
 export function Tabs() {

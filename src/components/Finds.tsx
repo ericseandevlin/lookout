@@ -60,7 +60,7 @@ export function Finds() {
   // Board columns, headers and stage list come from the profile's kind (#8).
   const cfg = kindOf(state.profile.kind);
   const SORTS = sortsFor(cfg);
-  const GRID = `82px 76px ${cfg.board.columns.map((c) => WIDTH[c.key]).join(" ")} ${WIDTH[cfg.board.preStage.key]} 136px ${WIDTH[cfg.board.tail.key]}`;
+  const GRID = `82px 76px ${cfg.board.columns.map((c) => WIDTH[c.key]).join(" ")} ${WIDTH[cfg.board.preStage.key]} 156px ${WIDTH[cfg.board.tail.key]}`;
 
   const [filter, setFilter] = useState<Filter>("all");
   const [fit, setFit] = useState(0);
@@ -297,7 +297,7 @@ export function Finds() {
 
           {/* Desktop table */}
           <div className="desk-only" style={{ overflowX: "auto" }}>
-            <div style={{ minWidth: 1080 }} role="table" aria-label="Finds">
+            <div style={{ minWidth: 1100 }} role="table" aria-label="Finds">
               <div role="rowgroup">
               <div role="row" style={{ display: "grid", gridTemplateColumns: GRID, alignItems: "center", padding: "0 22px", height: 46, borderBottom: `1px solid ${color.border}` }}>
                 {([["", null], ["Match", "score" as SortKey], ...cfg.board.columns.map((c) => [c.label, c.key as SortKey] as [string, SortKey]), [cfg.board.preStage.label, cfg.board.preStage.key as SortKey], ["Stage", "stage" as SortKey], [cfg.board.tail.label, cfg.board.tail.key as SortKey]] as [string, SortKey | null][]).map(([label, key]) => {
@@ -307,7 +307,7 @@ export function Finds() {
                       <button
                         className="no-tint"
                         onClick={() => key && (setSortDir(sortKey === key && sortDir === "desc" ? "asc" : "desc"), setSortKey(key))}
-                        style={{ display: "flex", alignItems: "center", gap: 5, border: 0, background: "transparent", padding: 0, fontSize: 14, fontWeight: 600, letterSpacing: ".08em", textTransform: "uppercase", color: on ? color.ink : color.t2, cursor: key ? "pointer" : "default", textAlign: "left" }}
+                        style={{ display: "flex", alignItems: "center", gap: 5, border: 0, background: "transparent", padding: 0, fontSize: 13, fontWeight: 600, letterSpacing: ".06em", textTransform: "uppercase", color: on ? color.ink : color.t2, cursor: key ? "pointer" : "default", textAlign: "left" }}
                       >
                         {label}
                         <span style={{ color: on ? color.brick : "#CFC6B9", marginRight: 16 }}>{key ? (on ? arrow : "↕") : ""}</span>
@@ -362,7 +362,7 @@ export function Finds() {
                       <button
                         data-tip="Change stage"
                         onClick={(e) => toggleStageMenu(e, f.id, "left")}
-                        style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "4px 10px", borderRadius: 999, fontSize: 14, fontWeight: 600, border: "1.5px solid rgba(29,26,15,.14)", background: st.bg, color: st.ink, cursor: "pointer" }}
+                        style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "4px 10px", borderRadius: 999, fontSize: 14, fontWeight: 600, border: "1.5px solid rgba(29,26,15,.14)", background: st.bg, color: st.ink, cursor: "pointer", whiteSpace: "nowrap" }}
                       >
                         {f.stage}
                         <ChevronDown />
