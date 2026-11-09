@@ -18,6 +18,11 @@ describe("jobKey (#169)", () => {
   it("falls back to host and path, ignoring www, query, trailing slash and /apply", () => {
     expect(jobKey("https://www.example.com/Jobs/42/apply/?ref=x")).toBe("url:example.com/jobs/42");
   });
+  it("keeps a job ID that lives in the query, and drops tracking params (#508)", () => {
+    expect(jobKey("https://www.indeed.com/viewjob?jk=abc123&from=serp&utm_source=x")).toBe("url:indeed.com/viewjob?jk=abc123");
+    expect(jobKey("https://careers.example.com/job?ref=li&jobId=R-42")).toBe("url:careers.example.com/job?jobid=r-42");
+    expect(jobKey("https://careers.example.com/job?job_id=R-42")).toBe(jobKey("https://careers.example.com/job?jobId=R-42&src=mail"));
+  });
   it("returns null for junk", () => {
     expect(jobKey("not a url")).toBeNull();
     expect(jobKey(undefined)).toBeNull();
@@ -30,5 +35,9 @@ describe("sameJob", () => {
   });
   it("does not match a different job on the same board", () => {
     expect(sameJob(["https://boards.greenhouse.io/redventures/jobs/1"], ["https://boards.greenhouse.io/redventures/jobs/2"])).toBe(false);
+  });
+  it("does not match two Indeed jobs that differ only by ?jk= (#508)", () => {
+    expect(sameJob(["https://www.indeed.com/viewjob?jk=abc123"], ["https://www.indeed.com/viewjob?jk=def456"])).toBe(false);
+    expect(sameJob(["https://www.indeed.com/viewjob?jk=abc123&from=serp"], ["https://indeed.com/viewjob?jk=abc123"])).toBe(true);
   });
 });
