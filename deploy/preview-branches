@@ -1,0 +1,8 @@
+# Branches waiting for Eric's review. Staging builds release/stage with each of these merged on top (Release
+# workflow), so they can be seen on staging before they reach main. One branch per line. A merged or deleted
+# branch is skipped and a conflicting one is left out (both named in the run summary). Remove a line once the
+# branch merges or Eric rejects it. Changes here take effect when they reach main.
+feat/512-review-layout
+feat/517-signin-page
+feat/523-polish
+feat/525-signin-consent
