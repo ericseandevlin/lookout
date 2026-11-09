@@ -69,6 +69,15 @@ describe("interests (#264)", () => {
     expect(suggestInterests(null)).toEqual([]);
     expect(suggestInterests(sp, 2)).toEqual(["UX Engineering", "Design Systems"]);
   });
+  it("keeps a title that is all level words as the role chip (#501)", () => {
+    const only = (t: string) => suggestInterests({ targetTitles: [t], industries: [], strengths: [], searchTerms: [] });
+    expect(only("Chief of Staff")).toEqual(["Chief of Staff"]);
+    expect(only("Managing Director")).toEqual(["Managing Director"]);
+    expect(only("Executive Director (Nonprofit)")).toEqual(["Executive Director"]);
+    expect(only("VP")).toEqual(["VP"]);
+    expect(only("Head of Design")).toEqual(["Design"]);
+    expect(only("Senior Product Designer (Contract)")).toEqual(["Product Designer"]);
+  });
   it("round-trips the saved string event search reads", () => {
     expect(splitInterests("design systems; AI product,\nDesign Systems, ")).toEqual(["design systems", "AI product"]);
     expect(joinInterests(["design systems", "AI product", "ai product"])).toBe("design systems, AI product");

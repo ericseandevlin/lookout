@@ -85,8 +85,12 @@ export function splitInterests(interests: string) {
 export const joinInterests = (list: string[]) => splitInterests(list.join(", ")).join(", ");
 
 // "VP of UX Engineering" -> "UX Engineering", "Senior Product Designer" -> "Product Designer".
+// A title that is all level words ("Chief of Staff", "Managing Director") stays whole (#501).
 const LEVEL = /^(?:(?:senior|sr\.?|junior|jr\.?|lead|principal|staff|chief|head|director|vp|svp|evp|avp|vice president|associate|executive|managing|group)\b[\s,]*(?:of\b|for\b)?[\s,]*)+/i;
-const role = (title: string) => title.replace(LEVEL, "").replace(/\s*\(.*\)$/, "").trim();
+const role = (title: string) => {
+  const t = title.replace(/\s*\(.*\)$/, "").trim();
+  return t.replace(LEVEL, "").trim() || t;
+};
 
 /**
  * Interest chips for the Events page (#264), from the search profile: their role, industries,
