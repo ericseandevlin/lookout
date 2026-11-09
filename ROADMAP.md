@@ -2,6 +2,8 @@
 
 Lookout is a personal search agent. You tell it what you want, it searches the web on a schedule, scores what it finds against your profile, and puts the matches on a board you triage. Jobs are the first opportunity type. The goal is one engine for any kind of find. Its edge is context: the more it knows about you, the better it judges fit, and it takes the grind out of looking.
 
+The strategy behind it (problem, users, the bet, non-goals, how we'll know) and a Now / Next / Later view are in [STRATEGY.md](STRATEGY.md).
+
 Work items live as GitHub issues, labeled by area (`feature`, `security`, `hardening`, `accessibility`, `code-quality`, `marketing`) and by milestone.
 
 ## Goals
