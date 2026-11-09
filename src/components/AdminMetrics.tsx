@@ -18,6 +18,7 @@ type Data = {
   week8: Rate & { retained: number };
   activation: Rate & { activated: number };
   offers: number;
+  outcomes: { board: { interviews: number; offers: number }; survey: { interviews: number; offers: number }; questions: number };
   quality: { days: number; added: number; acted: number; notFit: number; topReason: { reason: string; count: number } | null; score: { acted: number | null; ignored: number | null } };
   search: { searches: number; succeeded: number; rate: number | null };
   costMonth: number;
@@ -34,6 +35,7 @@ const day = (week: string) => new Date(`${week}T12:00:00Z`).toLocaleDateString("
 const one = (n: number) => (Math.round(n * 10) / 10).toString();
 const usd = (n: number) => `$${n.toFixed(2)}`;
 const percent = (r: number | null) => (r === null ? "–" : `${Math.round(r * 100)}%`);
+const plural = (n: number, one: string, many: string) => `${n} ${n === 1 ? one : many}`;
 const share = (n: number, of: number) => (of ? `${Math.round((n / of) * 100)}%` : "–");
 
 /** /admin/metrics (#36): the beta goals from ROADMAP > Goals and where each one stands. */
@@ -44,11 +46,18 @@ export function AdminMetrics() {
     api<Data>("/api/admin/metrics").then(setD).catch((e) => setErr(e instanceof Error ? e.message : "Couldn't load"));
   }, []);
 
+  /** Where an outcome count comes from: finds on the board, plus people who said so in the survey (#526). */
+  const from = (board: number, survey: number, stage: string, noun: string) =>
+    !d
+      ? ""
+      : `${plural(board, "find", "finds")} at ${stage} on the board, all time` +
+        (d.outcomes.questions ? `, plus ${plural(survey, "person", "people")} who reported ${noun} in the survey with none on the board` : ". No survey question counts yet (tag one in Surveys)");
+
   const rows = d
     ? [
         { goal: "People active in a week", now: String(d.weeklyActives), target: `${d.goals.weeklyActives}`, met: d.weeklyActives >= d.goals.weeklyActives, note: `Week of ${day(d.lastWeek)}` },
         { goal: "Finds acted on per active person, per week", now: one(d.actedPerActive), target: `${d.goals.actedPerActive}+`, met: d.weeklyActives > 0 && d.actedPerActive >= d.goals.actedPerActive, note: `Week of ${day(d.lastWeek)}` },
-        { goal: "Interviews from a find", now: String(d.interviews), target: `${d.goals.interviews}+`, met: d.interviews >= d.goals.interviews, note: "Finds at Interview or Offer, all time" },
+        { goal: "Interviews from a find", now: String(d.interviews), target: `${d.goals.interviews}+`, met: d.interviews >= d.goals.interviews, note: from(d.outcomes.board.interviews, d.outcomes.survey.interviews, "Interview or Offer", "an interview") },
         {
           goal: "Week-4 retention",
           now: percent(d.retention.rate),
@@ -87,7 +96,7 @@ export function AdminMetrics() {
           now: d.quality.score.acted === null ? "–" : one(d.quality.score.acted),
           note: d.quality.score.ignored === null ? "No finds left alone" : `${one(d.quality.score.ignored)} for finds nobody acted on`,
         },
-        { measure: "Offers from a find", now: String(d.offers), note: "Finds at Offer, all time" },
+        { measure: "Offers from a find", now: String(d.offers), note: from(d.outcomes.board.offers, d.outcomes.survey.offers, "Offer", "an offer") },
         { measure: "Searches that read a page", now: percent(d.search.rate), note: `${d.search.succeeded} of ${d.search.searches} finished searches, last 30 days` },
       ]
     : [];
@@ -177,7 +186,7 @@ export function AdminMetrics() {
               </tbody>
             </table>
           </div>
-          <p style={muted}>Not measured here yet: zero data incidents, outcomes people report in the beta survey, and growth (waitlist signups by channel, invite acceptance, referrals).</p>
+          <p style={muted}>Not measured here yet: zero data incidents, and growth (waitlist signups by channel, invite acceptance, referrals).</p>
         </>
       )}
     </div>

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { actedOn, activation, activeSince, retention, scoreSplit, searchSuccess, week4Retention, weekly, type MetricEvent } from "./metrics";
+import { actedOn, activation, activeSince, outcomes, retention, scoreSplit, searchSuccess, week4Retention, weekly, type MetricEvent } from "./metrics";
 
 const ev = (userId: string, type: string, at: string, target: string | null = null, meta: Record<string, unknown> | null = null): MetricEvent => ({ userId, type, target, meta, at: new Date(at) });
 
@@ -109,5 +109,24 @@ describe("searchSuccess", () => {
       ]),
     ).toEqual({ searches: 3, succeeded: 1, rate: 1 / 3 });
     expect(searchSuccess([]).rate).toBeNull();
+  });
+});
+
+describe("outcomes (#526)", () => {
+  it("adds survey yeses only for people with nothing on the board, and counts an offer as an interview", () => {
+    const r = (userId: string, outcome: "interview" | "offer", boardInterview = false, boardOffer = false) => ({ userId, outcome, boardInterview, boardOffer });
+    expect(outcomes({ interviews: 2, offers: 1 }, [])).toEqual({ interviews: 2, offers: 1, survey: { interviews: 0, offers: 0 } });
+    expect(
+      outcomes({ interviews: 2, offers: 1 }, [
+        r("a", "interview"),
+        // Same person on both questions counts once for interviews.
+        r("a", "offer"),
+        // Already on the board.
+        r("b", "interview", true),
+        r("c", "offer", true, true),
+        // Interview on the board, offer only in the survey.
+        r("d", "offer", true),
+      ]),
+    ).toEqual({ interviews: 3, offers: 3, survey: { interviews: 1, offers: 2 } });
   });
 });

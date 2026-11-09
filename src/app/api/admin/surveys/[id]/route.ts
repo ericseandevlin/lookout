@@ -1,7 +1,8 @@
 import { z } from "zod";
 import { adminRoute, body, HttpError, json } from "@/lib/api";
 import { answersCsv } from "@/lib/survey";
-import { answersFor, setActive } from "@/lib/surveyStore";
+import { SURVEY_OUTCOMES } from "@/lib/db/schema";
+import { answersFor, setActive, setOutcome } from "@/lib/surveyStore";
 
 type Ctx = { params: Promise<{ id: string }> };
 
@@ -21,8 +22,13 @@ export const GET = adminRoute<Ctx>(async (req, { params }) => {
   return json({ rows: rows.map((r) => ({ ...r, at: r.at.toISOString() })) });
 });
 
+const Patch = z.union([z.object({ active: z.boolean() }), z.object({ outcome: z.enum(SURVEY_OUTCOMES).nullable(), outcomeAnswer: z.string().max(200).nullable().default(null) })]);
+
+/** Turn a question on or off, or set what it counts as in Admin > Metrics (#526). */
 export const PATCH = adminRoute<Ctx>(async (req, { params }) => {
-  const { active } = await body(req, z.object({ active: z.boolean() }));
-  await setActive(await idOf(params), active);
+  const p = await body(req, Patch);
+  const id = await idOf(params);
+  if ("active" in p) await setActive(id, p.active);
+  else await setOutcome(id, p.outcome, p.outcomeAnswer);
   return json({ ok: true });
 });

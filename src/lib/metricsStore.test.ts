@@ -64,13 +64,26 @@ describe("metrics (#369)", () => {
       { userId: off.id, type: "heartbeat", at: ago(1) },
     ]);
 
+    // Survey (#526): the seeded interviews and offers questions. b reports both with nothing on the board;
+    // a's interview is already on the board, and the disabled account is left out.
+    const qs = await db.select().from(schema.surveyQuestions);
+    const asks = (o: string) => qs.find((q) => q.outcome === o)!.id;
+    await db.insert(schema.surveyAnswers).values([
+      { questionId: asks("interview"), userId: a.id, answer: "Yes" },
+      { questionId: asks("interview"), userId: b.id, answer: "Yes" },
+      { questionId: asks("offer"), userId: b.id, answer: "Yes" },
+      { questionId: asks("offer"), userId: a.id, answer: "Not yet" },
+      { questionId: asks("offer"), userId: off.id, answer: "Yes" },
+    ]);
+
     const m = await metrics(NOW);
     expect(m.weeklyActives).toBe(2);
     expect(m.actedPerActive).toBe(0.5);
     expect(m.weeks).toHaveLength(8);
     expect(m.weeks[m.weeks.length - 1].week).toBe(m.lastWeek);
-    expect(m.interviews).toBe(1);
-    expect(m.offers).toBe(0);
+    expect(m.interviews).toBe(2);
+    expect(m.offers).toBe(1);
+    expect(m.outcomes).toEqual({ board: { interviews: 1, offers: 0 }, survey: { interviews: 1, offers: 1 }, questions: 2 });
     expect(m.activation).toEqual({ eligible: 2, activated: 1, rate: 0.5 });
     expect(m.quality).toEqual({ days: 90, added: 3, acted: 2, notFit: 1, topReason: { reason: "Too junior", count: 1 }, score: { acted: 7, ignored: 4 } });
     expect(m.search).toEqual({ searches: 2, succeeded: 1, rate: 0.5 });
