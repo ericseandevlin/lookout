@@ -76,6 +76,16 @@ describe("metrics (#369)", () => {
       { questionId: asks("offer"), userId: off.id, answer: "Yes" },
     ]);
 
+    // Growth (#527): a and b came from reddit, joined and were active last week. A pending direct request,
+    // and the disabled account's request, which is left out. Three invites: one revoked, one accepted, one not yet.
+    await db.insert(schema.accessRequests).values([
+      { email: "a@example.com", channel: "reddit" },
+      { email: "b@example.com", channel: "reddit" },
+      { email: "new@example.com" },
+      { email: "off@example.com", channel: "hn" },
+    ]);
+    await db.insert(schema.invites).values([{ email: "a@example.com" }, { email: "waiting@example.com" }, { email: "gone@example.com", revokedAt: ago(1) }]);
+
     const m = await metrics(NOW);
     expect(m.weeklyActives).toBe(2);
     expect(m.actedPerActive).toBe(0.5);
@@ -91,5 +101,10 @@ describe("metrics (#369)", () => {
     expect(m.costMonth).toBe(1.75);
     expect(m.monthActives).toBe(2);
     expect(m.costPerActiveMonth).toBe(0.875);
+    expect(m.growth.channels).toEqual([
+      { channel: "reddit", signups: 2, joined: 2, active: 2 },
+      { channel: "direct", signups: 1, joined: 0, active: 0 },
+    ]);
+    expect(m.growth.invites).toEqual({ sent: 2, accepted: 1, rate: 0.5 });
   });
 });

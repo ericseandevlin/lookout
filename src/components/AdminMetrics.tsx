@@ -25,6 +25,7 @@ type Data = {
   monthActives: number;
   costPerActiveMonth: number | null;
   weeks: { week: string; active: number; acted: number; actedPerActive: number }[];
+  growth: { channels: { channel: string; signups: number; joined: number; active: number }[]; invites: { sent: number; accepted: number; rate: number | null } };
 };
 
 const card: React.CSSProperties = { background: "#fff", borderRadius: 16, overflowX: "auto", marginTop: 8 };
@@ -186,7 +187,54 @@ export function AdminMetrics() {
               </tbody>
             </table>
           </div>
-          <p style={muted}>Not measured here yet: zero data incidents, and growth (waitlist signups by channel, invite acceptance, referrals).</p>
+
+          <Section>Growth</Section>
+          <div style={card}>
+            <table style={{ width: "100%", borderCollapse: "collapse" }}>
+              <caption style={{ ...muted, textAlign: "left", padding: "12px 14px 0" }}>
+                Waitlist requests by where they came from, all time. Tag a channel test&apos;s link to the sign-in page with ?ref=, for example /?ref=reddit. No tag counts as direct. Active means active in the week of {day(d.lastWeek)}.
+              </caption>
+              <thead>
+                <tr>
+                  <th scope="col" style={th}>Channel</th>
+                  <th scope="col" style={th}>Signups</th>
+                  <th scope="col" style={th}>Joined</th>
+                  <th scope="col" style={th}>Weekly active</th>
+                </tr>
+              </thead>
+              <tbody>
+                {d.growth.channels.length === 0 && (
+                  <tr>
+                    <td colSpan={4} style={{ ...td, ...muted }}>No waitlist requests yet</td>
+                  </tr>
+                )}
+                {d.growth.channels.map((c) => (
+                  <tr key={c.channel}>
+                    <th scope="row" style={{ ...td, fontWeight: 400, textAlign: "left" }}>{c.channel}</th>
+                    <td style={td}>{c.signups}</td>
+                    <td style={td}>{c.joined}</td>
+                    <td style={td}>
+                      {c.active} <span style={muted}>({share(c.active, c.signups)} of signups)</span>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          <div style={card}>
+            <table style={{ width: "100%", borderCollapse: "collapse" }}>
+              <tbody>
+                <tr>
+                  <th scope="row" style={{ ...td, fontWeight: 400, textAlign: "left" }}>
+                    Invite acceptance
+                    <div style={muted}>{d.growth.invites.sent ? `${d.growth.invites.accepted} of ${d.growth.invites.sent} invites not revoked led to an account` : "No invites yet"}</div>
+                  </th>
+                  <td style={{ ...td, fontWeight: 600 }}>{percent(d.growth.invites.rate)}</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          <p style={muted}>Not measured here yet: zero data incidents, and referrals.</p>
         </>
       )}
     </div>

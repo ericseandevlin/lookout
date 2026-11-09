@@ -6,14 +6,14 @@ import { WAITLIST_NOTICE } from "@/lib/legal";
 import { NEXT_MOVES } from "@/lib/onboarding";
 import { color } from "@/lib/tokens";
 
-export function Login({ emailEnabled, inviteOnly, turnstileSiteKey = "", kinds = false, signedOut = false }: { emailEnabled: boolean; inviteOnly: boolean; turnstileSiteKey?: string; kinds?: boolean; signedOut?: boolean }) {
+export function Login({ emailEnabled, inviteOnly, turnstileSiteKey = "", kinds = false, signedOut = false, channel = null }: { emailEnabled: boolean; inviteOnly: boolean; turnstileSiteKey?: string; kinds?: boolean; signedOut?: boolean; channel?: string | null }) {
   const [mode, setMode] = useState<"signin" | "request">(inviteOnly && !emailEnabled ? "request" : "signin");
   return (
     <AuthCard>
       {mode === "signin" ? (
         <SignIn emailEnabled={emailEnabled} inviteOnly={inviteOnly} signedOut={signedOut} onRequest={() => setMode("request")} />
       ) : (
-        <RequestAccess emailEnabled={emailEnabled} turnstileSiteKey={turnstileSiteKey} kinds={kinds} onSignIn={() => setMode("signin")} />
+        <RequestAccess emailEnabled={emailEnabled} turnstileSiteKey={turnstileSiteKey} kinds={kinds} channel={channel} onSignIn={() => setMode("signin")} />
       )}
     </AuthCard>
   );
@@ -84,7 +84,7 @@ function SignIn({ emailEnabled, inviteOnly, signedOut, onRequest }: { emailEnabl
   );
 }
 
-function RequestAccess({ emailEnabled, turnstileSiteKey, kinds, onSignIn }: { emailEnabled: boolean; turnstileSiteKey: string; kinds: boolean; onSignIn: () => void }) {
+function RequestAccess({ emailEnabled, turnstileSiteKey, kinds, channel, onSignIn }: { emailEnabled: boolean; turnstileSiteKey: string; kinds: boolean; channel: string | null; onSignIn: () => void }) {
   const [email, setEmail] = useState("");
   const [kind, setKind] = useState<string>("job");
   const [move, setMove] = useState<string | null>(null);
@@ -99,7 +99,7 @@ function RequestAccess({ emailEnabled, turnstileSiteKey, kinds, onSignIn }: { em
     const res = await fetch("/api/auth/request-access", {
       method: "POST",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify({ email, kind, nextMove: kind === "job" ? move ?? undefined : undefined, turnstileToken: token || undefined }),
+      body: JSON.stringify({ email, kind, nextMove: kind === "job" ? move ?? undefined : undefined, turnstileToken: token || undefined, channel: channel ?? undefined }),
     }).catch(() => null);
     if (res?.ok) return setState("sent");
     const data = await res?.json().catch(() => ({}));
