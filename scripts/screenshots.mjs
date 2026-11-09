@@ -72,21 +72,25 @@ try {
     if (!box) throw new Error("nothing to move to");
     await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2, { steps });
   };
-  await page.waitForTimeout(1400);
-  await moveTo(firstFind);
-  await page.waitForTimeout(350);
-  await page.mouse.down();
-  await page.mouse.up();
-  await drawer.waitFor();
-  await page.waitForTimeout(2600);
-  await moveTo(drawer.getByRole("button", { name: "Close" }));
-  await page.waitForTimeout(350);
-  await page.mouse.down();
-  await page.mouse.up();
-  await drawer.waitFor({ state: "detached" });
-  await page.waitForTimeout(1400);
-  recording = false;
-  await recorder;
+  try {
+    await page.waitForTimeout(1400);
+    await moveTo(firstFind);
+    await page.waitForTimeout(350);
+    await page.mouse.down();
+    await page.mouse.up();
+    await drawer.waitFor();
+    await page.waitForTimeout(2600);
+    // exact, or "Closed" in the stage picker matches too
+    await moveTo(drawer.getByRole("button", { name: "Close", exact: true }));
+    await page.waitForTimeout(350);
+    await page.mouse.down();
+    await page.mouse.up();
+    await drawer.waitFor({ state: "detached" });
+    await page.waitForTimeout(1400);
+  } finally {
+    recording = false;
+    await recorder;
+  }
   shots.push({ ...shots.at(-1), at: Date.now() });
 
   // Each frame lasts until the next one; the concat demuxer wants the last file listed twice.
