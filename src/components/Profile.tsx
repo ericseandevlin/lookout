@@ -14,7 +14,7 @@ import { useStore } from "./store";
 import { color } from "@/lib/tokens";
 
 const inputBase: React.CSSProperties = {
-  border: "1.5px solid #E6E0D8", background: "#fff", borderRadius: 10, fontSize: 14, outline: "none", color: color.ink,
+  border: `1.5px solid ${color.border}`, background: "#fff", borderRadius: 10, fontSize: 14, outline: "none", color: color.ink,
 };
 
 /** Tabs across the Profile pages: what you want, what you've done, and what searches use. */
@@ -37,7 +37,7 @@ export function ProfileTabs() {
   const anyOn = tabs.some(([href]) => href === path);
   return (
     // Drawn as tabs, not pills: one baseline, the open page underlined (#277).
-    <div role="tablist" aria-label="Profile sections" onKeyDown={onKey} style={{ display: "flex", gap: 24, overflowX: "auto", overflowY: "hidden", boxShadow: "inset 0 -1px 0 #E0D9CF", marginBottom: 22 }}>
+    <div role="tablist" aria-label="Profile sections" onKeyDown={onKey} style={{ display: "flex", gap: 24, overflowX: "auto", overflowY: "hidden", boxShadow: `inset 0 -1px 0 ${color.border}`, marginBottom: 22 }}>
       {tabs.map(([href, label]) => {
         const on = path === href;
         return (
@@ -130,7 +130,7 @@ function BlankSentence({ chunks, fills, onFill, onDone }: { chunks: Chunk[]; fil
   return (
     <div
       onKeyDown={(e) => { if (e.key === "Enter" || e.key === "Escape") { e.preventDefault(); onDone(); } }}
-      style={{ display: "flex", alignItems: "center", gap: "6px 10px", flexWrap: "wrap", padding: "10px 12px", borderRadius: 10, background: "#FBF8F4", border: "1.5px dashed #E0D9CF" }}
+      style={{ display: "flex", alignItems: "center", gap: "6px 10px", flexWrap: "wrap", padding: "10px 12px", borderRadius: 10, background: color.surface, border: `1.5px dashed ${color.border}` }}
     >
       <div style={{ display: "flex", alignItems: "baseline", flexWrap: "wrap", gap: "6px 0", fontSize: 14.5, lineHeight: 1.5, flex: "1 1 auto" }}>
         {chunks.flatMap((ch, c) =>
@@ -189,7 +189,7 @@ function Starters({ mode, options, value, onChange }: { mode: "insert" | "toggle
               type="button"
               onClick={() => pick(o.text)}
               aria-pressed={mode !== "insert" ? on : undefined}
-              style={{ height: 32, padding: "0 12px", borderRadius: 999, border: `1.5px solid ${on ? color.ink : "#E0D9CF"}`, background: on ? color.ink : "#fff", color: on ? "#fff" : color.ink, fontSize: 14, fontWeight: 600, cursor: "pointer" }}
+              style={{ height: 32, padding: "0 12px", borderRadius: 999, border: `1.5px solid ${on ? color.ink : color.border}`, background: on ? color.ink : "#fff", color: on ? "#fff" : color.ink, fontSize: 14, fontWeight: 600, cursor: "pointer" }}
             >
               {mode === "insert" ? `+ ${o.label}` : on ? `✓ ${o.label}` : o.label}
             </button>
@@ -280,7 +280,7 @@ export function Profile() {
             : "Your resume and LinkedIn show what you've done. These answers tell the search what you want next, and they shape every score and fit rating on your board."}
         >
           <div style={{ display: "flex", alignItems: "center", gap: 12, marginTop: 16 }}>
-            <div role="progressbar" aria-valuemin={0} aria-valuemax={total} aria-valuenow={answered} style={{ flex: 1, maxWidth: 320, height: 6, borderRadius: 999, background: "#E0D9CF", overflow: "hidden" }}>
+            <div role="progressbar" aria-valuemin={0} aria-valuemax={total} aria-valuenow={answered} style={{ flex: 1, maxWidth: 320, height: 6, borderRadius: 999, background: color.border, overflow: "hidden" }}>
               <div style={{ height: "100%", width: `${(answered / total) * 100}%`, background: color.brick, borderRadius: 999, transition: "width .2s" }} />
             </div>
             <div style={{ fontSize: 14, fontWeight: 600, color: color.t2 }}>{answered} of {total} answered</div>
@@ -333,7 +333,7 @@ export function Profile() {
                           key={m}
                           aria-pressed={on}
                           onClick={() => editAnswers({ [q.modesKey]: on ? modes.filter((x) => x !== m) : [...modes, m] }, [q.modesKey, q.areaKey])}
-                          style={{ height: 34, padding: "0 15px", borderRadius: 999, border: `1.5px solid ${on ? color.ink : "#E0D9CF"}`, background: on ? color.ink : "#fff", color: on ? "#fff" : color.ink, fontSize: 14, fontWeight: 600, cursor: "pointer" }}
+                          style={{ height: 34, padding: "0 15px", borderRadius: 999, border: `1.5px solid ${on ? color.ink : color.border}`, background: on ? color.ink : "#fff", color: on ? "#fff" : color.ink, fontSize: 14, fontWeight: 600, cursor: "pointer" }}
                         >
                           {m}
                         </button>

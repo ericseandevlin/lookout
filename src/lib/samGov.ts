@@ -12,13 +12,18 @@ const PTYPES = "o,k,p";
 const MAX_NAICS = 3;
 const LOOKBACK_DAYS = 30;
 
-/** Certifications the rfp profile offers, as SAM.gov set-aside codes. */
-const SET_ASIDES: [RegExp, string][] = [
-  [/\b8\s*\(?a\)?/i, "8A"],
-  [/\bwosb\b|women[- ]owned/i, "WOSB"],
-  [/\bsdvosb\b|service[- ]disabled/i, "SDVOSBC"],
-  [/\bhub\s*zone\b/i, "HZC"],
-  [/small business/i, "SBA"],
+/**
+ * Certifications the rfp profile offers, as SAM.gov set-aside code prefixes (keepRfps matches by prefix, so "8A"
+ * covers 8AN sole source and "SDVOSB" covers SDVOSBC and SDVOSBS). Each program requires small business status,
+ * so it also opens total and partial small business set-asides (SBA, SBP); SDVOSB firms are veteran-owned too (#489).
+ */
+const SMALL = ["SBA", "SBP"];
+const SET_ASIDES: [RegExp, string[]][] = [
+  [/\b8\s*\(\s*a\s*\)|\b8a\b/i, ["8A", ...SMALL]],
+  [/\bwosb\b|women[- ]owned/i, ["WOSB", ...SMALL]],
+  [/\bsdvosb\b|service[- ]disabled/i, ["SDVOSB", "VSA", "VSS", ...SMALL]],
+  [/\bhub\s*zone\b/i, ["HZ", ...SMALL]],
+  [/small business/i, SMALL],
 ];
 
 const str = (v: string | string[] | undefined) => (Array.isArray(v) ? v.join(", ") : v ?? "");
@@ -31,7 +36,7 @@ export function naicsCodes(answer: string | string[] | undefined) {
 /** Set-aside codes the business qualifies for, from the certifications answer. */
 export function setAsideCodes(answer: string | string[] | undefined) {
   const s = str(answer);
-  return SET_ASIDES.filter(([re]) => re.test(s)).map(([, code]) => code);
+  return [...new Set(SET_ASIDES.filter(([re]) => re.test(s)).flatMap(([, codes]) => codes))];
 }
 
 /** SAM.gov wants MM/dd/yyyy. */

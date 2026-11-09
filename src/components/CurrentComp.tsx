@@ -34,7 +34,7 @@ export function CompCompare({ f, current, style }: { f: Find; current: number | 
 }
 
 const inputStyle: React.CSSProperties = {
-  border: "1.5px solid #E6E0D8", background: "#fff", borderRadius: 10, fontSize: 14.5, outline: "none", color: color.ink, height: 42, padding: "0 13px",
+  border: `1.5px solid ${color.border}`, background: "#fff", borderRadius: 10, fontSize: 14.5, outline: "none", color: color.ink, height: 42, padding: "0 13px",
 };
 
 /** Profile section: set, change or delete current pay. Saved on its own, apart from the five answers. */
@@ -64,7 +64,7 @@ export function CurrentCompField() {
   const remove = () => run(() => api("/api/profile/current-comp", { method: "DELETE" }), "Deleted. Your board no longer compares against it.");
 
   return (
-    <section aria-labelledby="current-comp" style={{ padding: "18px 0", borderTop: "1px solid #F2EEE8", display: "flex", flexDirection: "column", gap: 10 }}>
+    <section aria-labelledby="current-comp" style={{ padding: "18px 0", borderTop: `1px solid ${color.surface}`, display: "flex", flexDirection: "column", gap: 10 }}>
       <label id="current-comp" htmlFor="current-comp-input" style={{ fontSize: 17, fontWeight: 600 }}>Current pay</label>
       <div style={{ fontSize: 14, color: color.t2, lineHeight: 1.5, maxWidth: 560 }}>
         Optional. Your current yearly base pay in USD. Posted ranges are usually base pay, so use base here. Your board shows each posted range against it. Only you see it: it is stored encrypted, never shared with the AI that writes your drafts, and left out of exports.
@@ -88,7 +88,7 @@ export function CurrentCompField() {
           Save pay
         </button>
         {amount !== null && (
-          <button onClick={remove} disabled={busy} style={{ height: 42, padding: "0 16px", borderRadius: 10, border: "1.5px solid #E0D9CF", background: "#fff", color: color.ink, fontSize: 14.5, fontWeight: 600, cursor: "pointer" }}>
+          <button onClick={remove} disabled={busy} style={{ height: 42, padding: "0 16px", borderRadius: 10, border: `1.5px solid ${color.border}`, background: "#fff", color: color.ink, fontSize: 14.5, fontWeight: 600, cursor: "pointer" }}>
             Delete
           </button>
         )}

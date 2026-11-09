@@ -65,7 +65,7 @@ export function SearchProfileView() {
       {!data && !err && (
         <div style={{ ...card, display: "flex", flexDirection: "column", gap: 10 }}>
           <div style={{ fontSize: 14, fontWeight: 600 }}>Reading your answers and materials…</div>
-          <div style={{ height: 4, borderRadius: 999, background: "#F4F1EC", overflow: "hidden" }}>
+          <div style={{ height: 4, borderRadius: 999, background: color.surface, overflow: "hidden" }}>
             <div className="scan-bar" style={{ height: "100%", width: "40%", background: color.orange, borderRadius: 999 }} />
           </div>
           <div style={{ fontSize: 14, color: color.t2 }}>This takes a few seconds the first time, and after you change something.</div>
@@ -147,7 +147,7 @@ export function SearchProfileView() {
   );
 }
 
-const card: React.CSSProperties = { background: "#fff", border: "1.5px solid #E6E0D8", borderRadius: 14, padding: 20 };
+const card: React.CSSProperties = { background: "#fff", border: `1.5px solid ${color.border}`, borderRadius: 14, padding: 20 };
 
 function Part({ title, edit, children }: { title: string; edit?: [string, string]; children: React.ReactNode }) {
   return (
@@ -167,7 +167,7 @@ function Chips({ items, strong, muted }: { items: string[]; strong?: boolean; mu
   return (
     <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
       {items.map((t) => (
-        <span key={t} style={{ padding: "5px 11px", borderRadius: 999, fontSize: 14, fontWeight: strong ? 600 : 500, background: strong ? color.ink : muted ? "#F4F1EC" : "#FDE7D3", color: strong ? "#fff" : muted ? "#3B362C" : "#7A3A10" }}>{t}</span>
+        <span key={t} style={{ padding: "5px 11px", borderRadius: 999, fontSize: 14, fontWeight: strong ? 600 : 500, background: strong ? color.ink : muted ? color.surface : "#FDE7D3", color: strong ? "#fff" : muted ? "#3B362C" : "#7A3A10" }}>{t}</span>
       ))}
     </div>
   );

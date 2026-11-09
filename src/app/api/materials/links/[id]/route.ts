@@ -20,7 +20,10 @@ export const PATCH = authed<Ctx>(async (req, { user, params }) => {
   const set: Partial<typeof schema.materials.$inferInsert> = {};
   if (p.url !== undefined) set.url = p.url;
   if (p.kind !== undefined) set.linkKind = p.kind;
-  const r = await db.update(schema.materials).set(set).where(whereLink(user.id, id)).returning({ id: schema.materials.id });
+  // Nothing to change: an empty update is a SQL error, so just confirm the link is theirs (#461).
+  const r = Object.keys(set).length
+    ? await db.update(schema.materials).set(set).where(whereLink(user.id, id)).returning({ id: schema.materials.id })
+    : await db.select({ id: schema.materials.id }).from(schema.materials).where(whereLink(user.id, id));
   if (!r.length) throw new HttpError(404, "Not found");
   if (p.url) void readLink(id, p.url).catch((e) => console.error("link read failed", e));
   return json({ ok: true });

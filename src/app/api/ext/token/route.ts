@@ -1,6 +1,10 @@
 import { authed, HttpError, json } from "@/lib/api";
 import { canUseAutoApply } from "@/lib/apply";
-import { createExtensionToken, extensionStatus, revokeExtensionToken } from "@/lib/extension";
+import {
+  createExtensionToken,
+  extensionStatus,
+  revokeExtensionToken,
+} from "@/lib/extension";
 
 /** The Firefox extension's token, managed from Auto-apply settings (#169). */
 export const GET = authed(async (_req, { user }) => {

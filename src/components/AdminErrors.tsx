@@ -50,7 +50,7 @@ export function AdminErrors() {
           ) : (
             <ul style={{ ...card, listStyle: "none", padding: 0 }}>
               {d.rows.map((r) => (
-                <li key={r.id} style={{ borderBottom: "1px solid #F2EEE8", padding: "10px 14px" }}>
+                <li key={r.id} style={{ borderBottom: `1px solid ${color.surface}`, padding: "10px 14px" }}>
                   <details>
                     <summary style={{ cursor: "pointer", fontSize: 14 }}>
                       <span style={{ ...muted, fontVariantNumeric: "tabular-nums" }}>{when(r.at)}</span> · <span style={{ fontWeight: 600 }}>{r.source}</span>
@@ -58,7 +58,7 @@ export function AdminErrors() {
                       <div style={{ marginTop: 4, overflowWrap: "anywhere" }}>{r.message}</div>
                     </summary>
                     {r.digest && <div style={{ ...muted, marginTop: 6 }}>Digest {r.digest}</div>}
-                    {r.stack && <pre style={{ fontSize: 12, whiteSpace: "pre-wrap", overflowWrap: "anywhere", background: "#F4F1EC", borderRadius: 10, padding: 10, marginTop: 6 }}>{r.stack}</pre>}
+                    {r.stack && <pre style={{ fontSize: 12, whiteSpace: "pre-wrap", overflowWrap: "anywhere", background: color.surface, borderRadius: 10, padding: 10, marginTop: 6 }}>{r.stack}</pre>}
                   </details>
                 </li>
               ))}

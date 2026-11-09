@@ -59,3 +59,13 @@ The calls that shaped Lookout, what each one costs, and where it lives in the co
 **Cost.** A fix can wait up to a week to reach testers.
 
 **Where.** `CONTRIBUTING.md`, `.githooks/`.
+
+## 7. AGPL-3.0 license (2026-11-08)
+
+**Decision.** Lookout is open source under the GNU Affero General Public License v3.0, not MIT.
+
+**Why.** Anyone can read, run and change it, which is the point of showing it. The Affero clause closes the hosting gap: someone who runs a changed Lookout as a service has to give its users the source. A hosted Lookout can't be cloned into a closed product.
+
+**Cost.** Some companies won't touch AGPL code, so fewer people will reuse it at work. Outside contributions come in under AGPL too, so changing the license later means asking every contributor.
+
+**Where.** `LICENSE`, `license` in `package.json`, the License section of the README, `CONTRIBUTING.md`.

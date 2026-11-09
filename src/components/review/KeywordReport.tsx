@@ -51,7 +51,7 @@ export function KeywordReport({ d, rows, reload, locked }: { d: Detail; rows: Ke
         {rows.map((r) => {
           const editing = open === r.term;
           return (
-            <li key={r.term} style={{ padding: 12, borderRadius: 12, border: `1.5px solid ${r.removed ? color.border : r.support ? "#CFE3C6" : "#E8B4AA"}`, background: r.removed ? "#F4F1EC" : "#fff", display: "flex", flexDirection: "column", gap: 4 }}>
+            <li key={r.term} style={{ padding: 12, borderRadius: 12, border: `1.5px solid ${r.removed ? color.border : r.support ? "#CFE3C6" : "#E8B4AA"}`, background: r.removed ? color.surface : "#fff", display: "flex", flexDirection: "column", gap: 4 }}>
               <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
                 <span style={{ fontWeight: 700, fontSize: 15, textDecoration: r.removed ? "line-through" : "none", color: r.removed ? color.t2 : "inherit" }}>{r.term}</span>
                 {r.removed ? (
@@ -99,7 +99,7 @@ export function KeywordReport({ d, rows, reload, locked }: { d: Detail; rows: Ke
                     Where have you done “{r.term}”?
                   </label>
                   <div style={muted}>A role, a project, a result your resume leaves out. It goes into your experience notes and every later application can use it. You can edit it on your profile too.</div>
-                  <textarea id="kw-story" value={story} onChange={(e) => setStory(e.target.value)} rows={3} maxLength={1500} placeholder="e.g. I use Claude and Claude Code daily; I built a multi-agent setup that writes and ships code for my side project." style={{ borderRadius: 10, border: "1.5px solid #E0D9CF", padding: 10, fontSize: 15, fontFamily: "inherit", resize: "vertical" }} />
+                  <textarea id="kw-story" value={story} onChange={(e) => setStory(e.target.value)} rows={3} maxLength={1500} placeholder="e.g. I use Claude and Claude Code daily; I built a multi-agent setup that writes and ships code for my side project." style={{ borderRadius: 10, border: `1.5px solid ${color.border}`, padding: 10, fontSize: 15, fontFamily: "inherit", resize: "vertical" }} />
                   <div style={{ display: "flex", gap: 8 }}>
                     <button onClick={() => send(r.term, { action: "experience", term: r.term, story: story.trim() })} disabled={!!busy || !story.trim()} style={btn("solid")}>
                       Save
@@ -120,7 +120,7 @@ export function KeywordReport({ d, rows, reload, locked }: { d: Detail; rows: Ke
             Add your own keyword
           </label>
           <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-            <input id="kw-add" value={term} onChange={(e) => setTerm(e.target.value)} maxLength={80} placeholder="e.g. design systems" style={{ height: 40, borderRadius: 10, border: "1.5px solid #E0D9CF", padding: "0 10px", fontSize: 15, flex: "1 1 200px" }} />
+            <input id="kw-add" value={term} onChange={(e) => setTerm(e.target.value)} maxLength={80} placeholder="e.g. design systems" style={{ height: 40, borderRadius: 10, border: `1.5px solid ${color.border}`, padding: "0 10px", fontSize: 15, flex: "1 1 200px" }} />
             <button onClick={add} disabled={!!busy || !term.trim()} style={btn("outline")}>
               Add
             </button>
@@ -128,7 +128,7 @@ export function KeywordReport({ d, rows, reload, locked }: { d: Detail; rows: Ke
         </div>
       )}
       {!locked && (
-        <div style={{ display: "flex", flexDirection: "column", gap: 8, paddingTop: 8, borderTop: "1px solid #E6E0D8" }}>
+        <div style={{ display: "flex", flexDirection: "column", gap: 8, paddingTop: 8, borderTop: `1px solid ${color.border}` }}>
           <div style={{ fontSize: 14 }}>
             <span style={{ fontWeight: 600 }}>Final list ({used.length}): </span>
             {used.map((r) => r.term).join(", ") || "none yet"}

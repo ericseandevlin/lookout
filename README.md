@@ -54,6 +54,8 @@ Screenshots use a made-up demo account; no real user data.
 
 Why it's built this way (open models, zero-retention routing, rules in code, staging first): [docs/decisions](docs/decisions/README.md).
 
+Where the code lives and how a request flows through it: [docs/architecture.md](docs/architecture.md).
+
 ## Run it yourself
 
 Docker and your own AI key, about five minutes:
@@ -101,6 +103,7 @@ AI and search settings can live in env or be set in Admin > AI settings (the dat
 | `AI_PROVIDER`, `AI_BASE_URL`, `AI_MODEL`, `AI_API_KEY`, `AI_PRICE_IN`, `AI_PRICE_OUT`, `AI_JSON_MODE` | Default model settings (`openai`, `anthropic` or `agent`) |
 | `ANTHROPIC_API_KEY` | Used as the key when `AI_PROVIDER=anthropic` and `AI_API_KEY` is empty |
 | `AGENT_TOKEN` | 32+ chars; bearer token for the Claude agent queue |
+| `AGENT_ERRORS_TOKEN` | 32+ chars; staging only. Lets agents read server errors at `GET /api/agent/errors?since=<ISO>` (#486). Unset on prod, where the route is a 404 and errors stay in Admin > Errors |
 | `SEARCH_PROVIDER`, `SEARXNG_URL`, `BRAVE_API_KEY`, `SEARCH_PRICE` | Web search |
 | `SAM_API_KEY` | Free key from a SAM.gov account; turns on RFP searches (federal solicitations). RFP search stays off without it |
 | `TURNSTILE_SITE_KEY`, `TURNSTILE_SECRET_KEY` | Cloudflare Turnstile keys; with both set, Request access shows a bot check and the server verifies it (#13). Off without them |
@@ -129,7 +132,7 @@ Contributing? Start with [CONTRIBUTING.md](CONTRIBUTING.md). Security problems g
 
 - Every change starts as a GitHub issue. Branch from `main` as `feat/<issue>-<slug>` or `fix/<issue>-<slug>` (chores: `chore/...`).
 - Every commit message names its issue, e.g. `Drawer: previous/next on the edge (#48)`. One branch per issue; don't mix work.
-- Open a PR into `main`. CI runs on every PR: typecheck, lint, tests, a dependency audit (high severity), Semgrep and a gitleaks secret scan (`.github/workflows/ci.yml`). Merge only when it's green. Dependabot opens weekly update PRs. Merging deploys to staging; review happens on staging, not in the PR.
+- Open a PR into `main`. CI runs on every PR: typecheck, lint, tests, a dependency audit (high severity), Semgrep and a gitleaks secret scan (`.github/workflows/ci.yml`). Merge only when it's green. PRs that change only Markdown or `docs/` (not README.md) skip CI to save Actions minutes. Dependabot opens weekly update PRs. Merging deploys to staging; review happens on staging, not in the PR.
 - `prod` moves only at the weekly release meeting, by fast-forward to an approved `main` commit.
 - Every release gets a version (`vX.Y.Z`, Semantic Versioning: minor for features, patch for fixes and hotfixes), a section in [CHANGELOG.md](CHANGELOG.md), a git tag and a GitHub Release with the same notes. Unreleased work collects under "Unreleased".
 - Hooks enforce this (run once per clone: `git config core.hooksPath .githooks`): no commits directly on `main` or `prod`, no commit without an issue number.
@@ -175,3 +178,7 @@ Sign someone in without email (on the server): `docker compose exec app node scr
 - Pages the app fetches go through an SSRF-safe fetcher (see step 5 above). Fetched pages are untrusted input; model output is schema-bound and never executed.
 - The container runs as a non-root user on a read-only filesystem; Postgres is only on the internal Compose network.
 - Open items are tracked as GitHub issues labeled `security`, `hardening`, `accessibility` and `code-quality`.
+
+## License
+
+Copyright (C) 2026 Eric Devlin. Lookout is free software under the [GNU Affero General Public License v3.0](LICENSE) (`AGPL-3.0-only`). Use it, change it and run it yourself. If you run a changed version as a service for other people, you have to offer them its source too. Why AGPL and not MIT: [docs/decisions](docs/decisions/README.md#7-agpl-30-license-2026-11-08).
