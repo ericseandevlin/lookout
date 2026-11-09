@@ -143,6 +143,12 @@ export async function seedDemo(db: Db, email = DEMO_EMAIL, now = new Date()) {
       .returning();
     await tx.insert(schema.settings).values({ userId: user.id, activeSearchId: search.id });
     await tx.insert(schema.profiles).values({ userId: user.id });
+    // A resume already read, so the board skips the Getting started panel (no file behind it; nothing reads one).
+    await tx.insert(schema.materials).values({
+      userId: user.id, kind: "resume", fileName: "Maya Ortiz resume.pdf", mime: "application/pdf", status: "done", scannedAt: daysAgo(now, 30),
+      filledNote: "Filled in team size and venue capacity", createdAt: daysAgo(now, 30),
+      extracted: { summary: "Events manager, 8 years in Brooklyn venues: private events, weddings and corporate buyouts, team of 9." },
+    });
 
     for (const f of DEMO_FINDS) {
       const posted = daysAgo(now, f.postedDaysAgo);

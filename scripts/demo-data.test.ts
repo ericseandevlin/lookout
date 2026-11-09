@@ -37,6 +37,8 @@ describe("demo seed (#415)", () => {
     const [search] = await db.select().from(schema.searches).where(eq(schema.searches.id, second.searchId));
     expect(search.savedAt).not.toBeNull();
     expect(search.searchProfile?.targetTitles.length).toBeGreaterThan(0);
+    const mats = await db.select().from(schema.materials);
+    expect(mats).toMatchObject([{ userId: u.id, kind: "resume", status: "done" }]);
 
     expect(await db.select().from(schema.opportunities)).toHaveLength(DEMO_FINDS.length);
     const board = await db.select().from(schema.userOpportunities).where(eq(schema.userOpportunities.searchId, second.searchId));
