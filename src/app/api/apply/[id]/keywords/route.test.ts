@@ -79,7 +79,8 @@ describe("POST /api/apply/[id]/keywords gate (#551)", () => {
     expect((await report(a.id)).keywordChoices).toBeUndefined();
   });
 
-  it.each(["submitting", "submitted"] as const)("is 409 once the application is %s", async (status) => {
+  // The same lock as edit, revise and approve (#580).
+  it.each(["submitting", "submitted", "canceled", "queued", "scanning", "drafting"] as const)("is 409 while the application is %s", async (status) => {
     const a = await application(alice, status);
     expect((await send(a.id, { action: "remove", term: "Figma" })).status).toBe(409);
   });
