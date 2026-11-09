@@ -6,6 +6,7 @@ import path from "node:path";
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import * as schema from "@/lib/db/schema";
 import { hashToken } from "@/lib/auth/crypto";
+import { PRIVACY_VERSION, TERMS_VERSION } from "@/lib/legal";
 
 // An in-process Postgres with the real migrations, standing in for the app database.
 const pg = new PGlite();
@@ -20,9 +21,12 @@ const createSession = vi.fn();
 vi.mock("@/lib/auth/session", () => ({ createSession: (id: string) => createSession(id) }));
 
 const { POST } = await import("./route");
+const { consentDueFor } = await import("@/lib/auth/loginToken");
 
 const TOKEN = "t".repeat(40);
-const post = () => POST(new Request("https://lookout.test/api/auth/verify", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ token: TOKEN }) }), {});
+const post = (extra: object = {}) => POST(new Request("https://lookout.test/api/auth/verify", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ token: TOKEN, ...extra }) }), {});
+const addUser = (values: Partial<typeof schema.users.$inferInsert> = {}) => db.insert(schema.users).values({ email: "new@example.com", ...values });
+const reload = async () => (await db.select().from(schema.users).where(eq(schema.users.email, "new@example.com")))[0];
 const addToken = (purpose: "login" | "email_change") =>
   db.insert(schema.loginTokens).values({ tokenHash: hashToken(TOKEN), email: "new@example.com", expiresAt: new Date(Date.now() + 3600_000), purpose });
 
@@ -56,5 +60,43 @@ describe("POST /api/auth/verify", () => {
     // The token stays unused for confirm-email.
     const [row] = await db.select().from(schema.loginTokens);
     expect(row.usedAt).toBeNull();
+  });
+
+  it("records the terms agreement with the sign-in for an onboarded account (#525)", async () => {
+    await addUser({ onboardedAt: new Date() });
+    await addToken("login");
+    expect(await consentDueFor(TOKEN)).toEqual({ updated: false });
+    const res = await post({ agree: true });
+    expect(res.status).toBe(200);
+    expect(createSession).toHaveBeenCalledOnce();
+    const user = await reload();
+    expect(user.termsVersion).toBe(TERMS_VERSION);
+    expect(user.privacyVersion).toBe(PRIVACY_VERSION);
+    expect(user.acceptedAt).not.toBeNull();
+  });
+
+  it("still signs in without the agreement, leaving the terms screen to ask (#525)", async () => {
+    await addUser({ onboardedAt: new Date() });
+    await addToken("login");
+    expect((await post()).status).toBe(200);
+    expect((await reload()).acceptedAt).toBeNull();
+  });
+
+  it("leaves new accounts to agree on the welcome step (#525)", async () => {
+    await addToken("login");
+    expect(await consentDueFor(TOKEN)).toBeNull();
+    expect((await post({ agree: true })).status).toBe(200);
+    expect((await reload()).acceptedAt).toBeNull();
+  });
+
+  it("only asks when the account is behind and the token is live (#525)", async () => {
+    await addUser({ onboardedAt: new Date(), termsVersion: "2020-01-01", privacyVersion: PRIVACY_VERSION, acceptedAt: new Date() });
+    await addToken("login");
+    expect(await consentDueFor(TOKEN)).toEqual({ updated: true });
+    await db.update(schema.users).set({ termsVersion: TERMS_VERSION });
+    expect(await consentDueFor(TOKEN)).toBeNull();
+    await db.update(schema.users).set({ termsVersion: null });
+    await db.update(schema.loginTokens).set({ usedAt: new Date() });
+    expect(await consentDueFor(TOKEN)).toBeNull();
   });
 });
