@@ -108,7 +108,7 @@ export function AdminMetrics() {
         <Tabs />
       </PageHead>
       {err && <div role="alert" style={{ fontSize: 14, color: color.brick }}>{err}</div>}
-      {!d && !err && <div style={muted}>Loading…</div>}
+      {!d && !err && <div role="status" style={muted}>Loading…</div>}
       {d && (
         <>
           <Section>Goals</Section>

@@ -352,7 +352,7 @@ function MasterResumeSection() {
       <p style={{ margin: "0 0 4px", fontSize: 14, lineHeight: 1.5, color: color.t2, textWrap: "pretty" }}>
         Text pulled from a PDF loses its layout, so Lookout rebuilds your resume once: each job with its own bullets, in your exact words. Check that every bullet sits under the right job, fix anything, and confirm. Auto-apply drafts every tailored resume from the version you confirm.
       </p>
-      {!m && !err && <div style={{ fontSize: 14, color: color.t2 }}>Loading…</div>}
+      {!m && !err && <div role="status" style={{ fontSize: 14, color: color.t2 }}>Loading…</div>}
       {err && <div role="alert" style={{ fontSize: 14, color: color.brick }}>{err}</div>}
       {m && !m.md && (
         <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>

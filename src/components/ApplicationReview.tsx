@@ -117,7 +117,7 @@ export function ApplicationReview({ id }: { id: string }) {
     }
   };
 
-  if (!d) return <div className="page-pad lk-page" style={muted}>{err ?? "Loading…"}</div>;
+  if (!d) return <div className="page-pad lk-page" role="status" style={muted}>{err ?? "Loading…"}</div>;
 
   const st = applicationLabel(d.status, "user");
   const required = d.items.filter((i) => i.required);
