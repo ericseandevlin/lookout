@@ -28,7 +28,7 @@ const MODEL_OUT = {
   searchTerms: many(14, "term"),
   corrections: many(10, "Correction"),
 };
-const completeJSON = vi.fn(async (_req?: { user: string }) => MODEL_OUT);
+const completeJSON = vi.fn<(req?: { user: string }) => Promise<typeof MODEL_OUT>>(async () => MODEL_OUT);
 vi.mock("@/lib/ai/llm", async (orig) => ({ ...(await orig<typeof import("@/lib/ai/llm")>()), completeJSON: (req: { user: string }) => completeJSON(req) }));
 
 const { AiConfigError, emptyUsage } = await import("@/lib/ai/llm");
