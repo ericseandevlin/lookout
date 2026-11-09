@@ -6,12 +6,12 @@ import { WAITLIST_NOTICE } from "@/lib/legal";
 import { NEXT_MOVES } from "@/lib/onboarding";
 import { color } from "@/lib/tokens";
 
-export function Login({ emailEnabled, inviteOnly, turnstileSiteKey = "", kinds = false }: { emailEnabled: boolean; inviteOnly: boolean; turnstileSiteKey?: string; kinds?: boolean }) {
+export function Login({ emailEnabled, inviteOnly, turnstileSiteKey = "", kinds = false, signedOut = false }: { emailEnabled: boolean; inviteOnly: boolean; turnstileSiteKey?: string; kinds?: boolean; signedOut?: boolean }) {
   const [mode, setMode] = useState<"signin" | "request">(inviteOnly && !emailEnabled ? "request" : "signin");
   return (
     <AuthCard>
       {mode === "signin" ? (
-        <SignIn emailEnabled={emailEnabled} inviteOnly={inviteOnly} onRequest={() => setMode("request")} />
+        <SignIn emailEnabled={emailEnabled} inviteOnly={inviteOnly} signedOut={signedOut} onRequest={() => setMode("request")} />
       ) : (
         <RequestAccess emailEnabled={emailEnabled} turnstileSiteKey={turnstileSiteKey} kinds={kinds} onSignIn={() => setMode("signin")} />
       )}
@@ -23,7 +23,7 @@ const field: React.CSSProperties = { height: 46, border: `1.5px solid ${color.bo
 const label: React.CSSProperties = { fontSize: 14, fontWeight: 600, letterSpacing: ".06em", textTransform: "uppercase", color: color.t2 };
 const linkBtn: React.CSSProperties = { border: 0, background: "transparent", padding: 0, color: color.brick, fontWeight: 600, fontSize: "inherit", cursor: "pointer", textDecoration: "underline", textUnderlineOffset: 3 };
 
-function SignIn({ emailEnabled, inviteOnly, onRequest }: { emailEnabled: boolean; inviteOnly: boolean; onRequest: () => void }) {
+function SignIn({ emailEnabled, inviteOnly, signedOut, onRequest }: { emailEnabled: boolean; inviteOnly: boolean; signedOut: boolean; onRequest: () => void }) {
   const [email, setEmail] = useState("");
   const [state, setState] = useState<"idle" | "sending" | "sent" | "error">("idle");
   const [msg, setMsg] = useState("");
@@ -52,12 +52,15 @@ function SignIn({ emailEnabled, inviteOnly, onRequest }: { emailEnabled: boolean
 
   return (
     <>
-      <Eyebrow>Lookout</Eyebrow>
-      <h1 style={h1}>Find roles that actually fit</h1>
-      <p style={p}>
-        Tell Lookout what you want next. Each week it searches job boards and company sites, scores every role against your profile, and puts the
-        matches on your board.
-      </p>
+      {/* A plain sign-in page for people who already have an account (#517). Lookout has no passwords: the emailed link is the sign-in. */}
+      {signedOut && (
+        <div role="status" style={{ marginBottom: 16, padding: "8px 12px", borderRadius: 10, background: "#F3F7F1", border: "1px solid #CFE3C6", fontSize: 14, color: color.greenText }}>
+          You&apos;re signed out.
+        </div>
+      )}
+      <Eyebrow>Welcome back</Eyebrow>
+      <h1 style={h1}>Sign in to Lookout</h1>
+      <p style={p}>Enter the email you use for Lookout and we&apos;ll send you a one-time sign-in link. There&apos;s no password to remember or reset.</p>
       {emailEnabled ? (
         <form onSubmit={submit} style={{ display: "flex", flexDirection: "column", gap: 10, marginTop: 24 }}>
           <label htmlFor="email" style={label}>Email</label>
@@ -68,11 +71,13 @@ function SignIn({ emailEnabled, inviteOnly, onRequest }: { emailEnabled: boolean
       ) : (
         <p style={{ ...p, marginTop: 20, fontSize: 14 }}>Sign-in emails aren&apos;t on yet. If you were invited, open the sign-in link you were sent.</p>
       )}
-      <div style={{ fontSize: 14, color: color.t2, lineHeight: 1.5, marginTop: 18 }}>
+      <div style={{ fontSize: 14, color: color.t2, lineHeight: 1.5, marginTop: 22, paddingTop: 16, borderTop: `1px solid ${color.border}` }}>
+        <strong style={{ color: color.ink }}>New here?</strong> Lookout finds roles that actually fit. Each week it searches job boards and company sites, scores every role against your
+        profile, and puts the matches on your board.{" "}
         {inviteOnly ? (
-          <>New here? Lookout is invite only for now. <button onClick={onRequest} style={linkBtn}>Request access</button></>
+          <>It&apos;s invite only for now. <button onClick={onRequest} style={linkBtn}>Request access</button></>
         ) : (
-          "New here? The same link creates your account. No password."
+          "The same link creates your account."
         )}
       </div>
     </>
