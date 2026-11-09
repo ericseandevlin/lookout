@@ -89,13 +89,24 @@ const RESUME = /^(resume|cv|resume\s*\/\s*cv|résumé)\b/i;
 const COVER = /cover\s*letter/i;
 const FIELD = /^(first name|last name|preferred (first )?name|full name|name|email|e-mail|phone|phone number|mobile|linkedin( profile| url)?|website|portfolio( url| link)?|github( url)?|current company|current location|location|city|address)\b/i;
 
+/**
+ * A basic field is just its name ("Email address", "Current Location (City, State)"). Fields are approved
+ * without review, so a question that only starts with a field word ("Location: are you open to relocating?",
+ * "Email of your referrer") is an answer (#579).
+ */
+function isBasicField(label: string) {
+  if (!FIELD.test(label) || label.includes("?")) return false;
+  const words = label.replace(/\([^)]*\)/g, " ").replace(/[*:]/g, " ").trim().split(/\s+/);
+  return words.length <= 4 && !words.some((w) => /^(of|for)$/i.test(w));
+}
+
 /** Sort a question into what Lookout drafts for it. */
 export function kindFor(label: string, fieldType: string): ApplicationItemKind {
   const l = label.trim();
   if (RESUME.test(l)) return "resume";
   if (COVER.test(l)) return "cover_letter";
   if (/portfolio|work samples?/i.test(l) && /file/i.test(fieldType)) return "portfolio";
-  if (FIELD.test(l) && !/textarea|long/i.test(fieldType)) return "field";
+  if (isBasicField(l) && !/textarea|long/i.test(fieldType)) return "field";
   return "answer";
 }
 

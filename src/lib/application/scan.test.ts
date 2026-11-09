@@ -43,6 +43,19 @@ describe("kindFor", () => {
     expect(kindFor("Will you now or in the future require sponsorship?", "select")).toBe("answer");
     expect(kindFor("Website", "textarea")).toBe("answer");
   });
+
+  it("keeps field labels with their usual extras as fields", () => {
+    for (const l of ["Email Address", "Phone Number *", "LinkedIn Profile URL", "Current Location (City, State)", "Preferred First Name", "Name (first and last)", "Website or portfolio link", "Location:"]) expect(kindFor(l, "text"), l).toBe("field");
+  });
+
+  // Fields are approved without review, so these must reach the person (#579).
+  it("treats questions that start with a field word as answers", () => {
+    expect(kindFor("Location: are you open to relocating to New York?", "select")).toBe("answer");
+    expect(kindFor("Email address of your referrer", "text")).toBe("answer");
+    expect(kindFor("Name of the person who referred you", "text")).toBe("answer");
+    expect(kindFor("Address any gaps in your employment history", "text")).toBe("answer");
+    expect(kindFor("Phone number for a reference", "text")).toBe("answer");
+  });
 });
 
 describe("parseGreenhouse", () => {
