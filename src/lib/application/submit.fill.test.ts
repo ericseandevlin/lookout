@@ -19,7 +19,7 @@ vi.mock("@/lib/db", () => ({ db, schema }));
  * A fake application form in place of Chromium (#385). It answers the Playwright calls submit.ts
  * makes: controls found by label or role, a Submit button, and what the page shows after Submit.
  */
-type El = { kind: "control" | "file" | "button" | "option" | "confirm" | "captcha"; label: string; tag?: string; type?: string; role?: string; after?: boolean; options?: string[] };
+type El = { kind: "control" | "file" | "button" | "option" | "confirm" | "captcha" | "group"; label: string; tag?: string; type?: string; role?: string; after?: boolean; options?: string[] };
 type Page = ReturnType<typeof fakePage>;
 
 function fakePage(els: El[]) {
@@ -38,7 +38,8 @@ function fakePage(els: El[]) {
       or: (o) => loc(() => [...find(), ...o.all()]),
       filter: ({ hasText, has }) => loc(() => find().filter((e) => (!hasText || e.label.includes(hasText)) && (!has || has.all().includes(e)))),
       locator: (sel) => loc(() => (sel === "input[type=file]" ? find().filter((e) => e.kind === "file") : [])),
-      getByLabel: () => loc(() => []),
+      // Inside a checkbox group: one checkbox per option, found by its exact label.
+      getByLabel: (l) => loc(() => find().flatMap((g) => (g.kind === "group" && g.options?.includes(l) ? [{ kind: "control" as const, label: l, type: "checkbox" }] : []))),
       all: find,
       count: async () => find().length,
       isVisible: async () => find().length > 0,
@@ -78,10 +79,12 @@ function fakePage(els: El[]) {
     getByText: (re: RegExp) => loc(() => shown().filter((e) => e.kind === "confirm" && re.test(e.label))),
     locator: (sel: string) =>
       loc(() => {
-        if (sel === "form input, form textarea") return shown().filter((e) => e.kind === "control" || e.kind === "file");
+        if (sel === "form input, form textarea") return shown().filter((e) => e.kind === "control" || e.kind === "file" || e.kind === "group");
         // The file box (":is(div,...)" with an upload inside) and the upload itself are the same element here.
         if (sel === "input[type=file]" || sel.startsWith(":is(")) return shown().filter((e) => e.kind === "file");
         if (sel.startsWith("iframe")) return shown().filter((e) => e.kind === "captcha");
+        // A checkbox group and the checkboxes inside it are the same element here, like the file box.
+        if (sel === "fieldset, [role=group]" || sel === "input[type=checkbox]") return shown().filter((e) => e.kind === "group");
         return [];
       }),
   };
@@ -143,12 +146,12 @@ beforeEach(async () => {
   await db.insert(schema.userOpportunities).values({ userId, searchId: search.id, opportunityId: oppId, score: 4 });
 });
 
-type ItemSeed = { kind: schema.ApplicationItemKind; prompt: string; content: string; options?: string[]; required?: boolean };
+type ItemSeed = { kind: schema.ApplicationItemKind; prompt: string; content: string; options?: string[]; required?: boolean; fieldType?: string };
 
 async function seed(status: ApplicationStatus, items: ItemSeed[]) {
   const [a] = await db.insert(schema.applications).values({ userId, opportunityId: oppId, status, route: "browser", report: { applyUrl: "https://jobs.example.com/apply" } }).returning();
   for (const [position, s] of items.entries()) {
-    const [it] = await db.insert(schema.applicationItems).values({ applicationId: a.id, kind: s.kind, prompt: s.prompt, required: s.required ?? true, options: s.options, position }).returning();
+    const [it] = await db.insert(schema.applicationItems).values({ applicationId: a.id, kind: s.kind, prompt: s.prompt, required: s.required ?? true, options: s.options, fieldType: s.fieldType, position }).returning();
     const [v] = await db.insert(schema.itemVersions).values({ itemId: it.id, version: 1, content: s.content, author: "ai" }).returning();
     await db.update(schema.applicationItems).set({ approvedVersionId: v.id }).where(eq(schema.applicationItems.id, it.id));
   }
@@ -228,6 +231,130 @@ describe("runFill (#385)", () => {
     const r = await runFill(id, "test");
     expect(r.log[0]).toMatchObject({ ok: false, how: "no option Maybe" });
     expect(r.stopped).toBe("Couldn't fill: Are you authorized to work in the US?");
+  });
+});
+
+describe("runFill controls (#567)", () => {
+  const TOOLS = "Which tools do you use? Select any that apply.";
+  const GROUP: El = { kind: "group", label: TOOLS, options: ["Figma", "Sketch", "Framer"] };
+  const tools = (content: string, options = ["Figma", "Sketch", "Framer"]): ItemSeed => ({ kind: "answer", prompt: TOOLS, content, options });
+
+  it("ticks each picked option in a checkbox group with no single labeled control (#165)", async () => {
+    const id = await seed("approved", [tools("Figma\nFramer")]);
+    page = fakePage([GROUP]);
+    const r = await runFill(id, "test");
+    expect(r.log[0]).toMatchObject({ ok: true, how: "checked 2" });
+    expect(page.did).toEqual(expect.arrayContaining(["check Figma", "check Framer"]));
+    expect(page.did).not.toContain("check Sketch");
+  });
+
+  it("stops when a picked option isn't in the group on the page", async () => {
+    const id = await seed("approved", [tools("Figma\nAdobe XD", ["Figma", "Adobe XD"])]);
+    page = fakePage([GROUP]);
+    const r = await runFill(id, "test");
+    expect(r.log[0]).toMatchObject({ ok: false, how: "option not found: Adobe XD" });
+    expect(r.missing).toEqual([TOOLS]);
+  });
+
+  it("stops when the answer matches none of the options", async () => {
+    const id = await seed("approved", [tools("Pen and paper")]);
+    page = fakePage([GROUP]);
+    const r = await runFill(id, "test");
+    expect(r.log[0]).toMatchObject({ ok: false, how: "answer matches no option" });
+    expect(page.did.some((d) => d.startsWith("check"))).toBe(false);
+  });
+
+  it("a text answer whose label isn't on the page is not found, even with a checkbox group there", async () => {
+    const id = await seed("approved", [{ kind: "answer", prompt: TOOLS, content: "Figma" }]);
+    page = fakePage([GROUP]);
+    const r = await runFill(id, "test");
+    expect(r.log[0]).toMatchObject({ ok: false, how: "field not found" });
+  });
+
+  it("checks a single checkbox for yes and leaves it alone otherwise", async () => {
+    const agree = "I agree to the privacy policy";
+    const relocate = "Willing to relocate";
+    const id = await seed("approved", [
+      { kind: "field", prompt: agree, content: "I agree" },
+      { kind: "field", prompt: relocate, content: "No" },
+    ]);
+    page = fakePage([
+      { kind: "control", label: agree, type: "checkbox" },
+      { kind: "control", label: relocate, type: "checkbox" },
+    ]);
+    const r = await runFill(id, "test");
+    expect(r.log.map((l) => [l.ok, l.how])).toEqual([
+      [true, "checkbox"],
+      [true, "checkbox"],
+    ]);
+    expect(page.did).toContain(`check ${agree}`);
+    expect(page.did).not.toContain(`check ${relocate}`);
+  });
+
+  it("opens a custom dropdown, types the answer and clicks the exact option", async () => {
+    const id = await seed("approved", [{ kind: "field", prompt: "Location", content: "New York, NY" }]);
+    page = fakePage([
+      { kind: "control", label: "Location", role: "combobox" },
+      { kind: "option", label: "New York, NY, USA", role: "option" },
+      { kind: "option", label: "New York, NY", role: "option" },
+    ]);
+    const r = await runFill(id, "test");
+    expect(r.log[0]).toMatchObject({ ok: true, how: "picked option" });
+    expect(page.did).toEqual(["goto https://jobs.example.com/apply", "click Location", "fill Location=New York, NY", "click New York, NY", "screenshot filled.png"]);
+  });
+
+  it("presses Enter in a choice field when no exact option shows", async () => {
+    const id = await seed("approved", [{ kind: "field", prompt: "How did you hear about us?", content: "LinkedIn", options: ["LinkedIn", "Referral"] }]);
+    page = fakePage([{ kind: "control", label: "How did you hear about us?" }]);
+    const r = await runFill(id, "test");
+    expect(r.log[0]).toMatchObject({ ok: true, how: "picked option" });
+    expect(page.did).toContain("press How did you hear about us? Enter");
+  });
+
+  it("logs the phone country as not filled when United States isn't listed, without stopping", async () => {
+    const id = await seed("approved", [{ kind: "field", prompt: "Phone", content: "555-0100" }]);
+    page = fakePage([
+      { kind: "control", label: "Phone", type: "tel" },
+      { kind: "control", label: "Country", role: "combobox" },
+      { kind: "option", label: "United States Minor Outlying Islands", role: "option" },
+    ]);
+    const r = await runFill(id, "test");
+    expect(r.log.at(-1)).toEqual({ prompt: "Phone country", ok: false, how: "United States not in the list" });
+    expect(r.missing).toEqual([]);
+    expect(r.stopped).toBeUndefined();
+  });
+
+  it("leaves the phone country alone when the form asks Country as its own question", async () => {
+    const id = await seed("approved", [
+      { kind: "field", prompt: "Phone", content: "555-0100" },
+      { kind: "field", prompt: "Country", content: "Canada" },
+    ]);
+    page = fakePage([
+      { kind: "control", label: "Phone", type: "tel" },
+      { kind: "control", label: "Country", role: "combobox" },
+      { kind: "option", label: "Canada", role: "option" },
+      { kind: "option", label: "United States", role: "option" },
+    ]);
+    const r = await runFill(id, "test");
+    expect(r.log.map((l) => l.prompt)).toEqual(["Phone", "Country"]);
+    expect(page.did).toContain("click Canada");
+    expect(page.did).not.toContain("click United States");
+  });
+
+  it("an upload with nothing to upload counts as not filled", async () => {
+    const id = await seed("approved", [{ kind: "answer", prompt: "Portfolio", content: "", fieldType: "file" }]);
+    page = fakePage([{ kind: "file", label: "Portfolio", type: "file" }]);
+    const r = await runFill(id, "test");
+    expect(r.log[0]).toMatchObject({ ok: false, how: "no file" });
+    expect(r.missing).toEqual(["Portfolio"]);
+  });
+
+  it("fills the form straight away when there's no Apply button", async () => {
+    const id = await seed("approved", [{ kind: "field", prompt: "Phone", content: "555-0100" }]);
+    page = fakePage([{ kind: "control", label: "Phone", type: "tel" }]);
+    const r = await runFill(id, "test");
+    expect(r.log).toEqual([{ prompt: "Phone", ok: true, how: "typed" }]);
+    expect(page.did.some((d) => d.startsWith("click"))).toBe(false);
   });
 });
 
