@@ -57,6 +57,7 @@ jobs:
 
       - name: Take the screenshots
         run: |
+          sudo apt-get update -qq && sudo apt-get install -y -qq ffmpeg > /dev/null
           link=$(docker compose exec -T app node scripts/login-link.mjs "$DEMO" | head -1)
           CHROME_PATH=$(command -v google-chrome) node scripts/screenshots.mjs "$link" out
           ls -l out
