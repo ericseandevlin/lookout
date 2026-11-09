@@ -29,6 +29,7 @@ const send = (method: string, url: string, data?: unknown) =>
   new Request(`https://lookout.test${url}`, { method, headers: { "content-type": "application/json" }, body: data === undefined ? undefined : JSON.stringify(data) });
 const post = (findId: string) => queue.POST(send("POST", "/api/apply", { findId }), {});
 const cancel = (id: string) => one.DELETE(send("DELETE", `/api/apply/${id}`), { params: Promise.resolve({ id }) });
+const detail = (id: string) => one.GET(send("GET", `/api/apply/${id}`), { params: Promise.resolve({ id }) });
 
 let other: typeof schema.users.$inferSelect;
 let findId = "";
@@ -138,5 +139,46 @@ describe("DELETE /api/apply/[id] (#458)", () => {
     beta = false;
     expect((await cancel(id)).status).toBe(404);
     expect(await apps()).toHaveLength(1);
+  });
+});
+
+describe("GET /api/apply/[id] (#573)", () => {
+  it("returns your application with its items in order and each item's versions, newest first", async () => {
+    const { id } = await (await post(findId)).json();
+    const [letter, resume] = await db
+      .insert(schema.applicationItems)
+      .values([
+        { applicationId: id, kind: "cover_letter", prompt: "Cover letter", position: 1 },
+        { applicationId: id, kind: "resume", prompt: "Resume", position: 0, required: true },
+      ])
+      .returning();
+    await db.insert(schema.itemVersions).values([
+      { itemId: resume.id, version: 1, content: "First", author: "ai" },
+      { itemId: resume.id, version: 2, content: "Second", author: "user" },
+    ]);
+    const res = await detail(id);
+    expect(res.status).toBe(200);
+    const d = await res.json();
+    expect(d).toMatchObject({ id, findId, status: "queued", company: "Venue 1", role: "Director of Events" });
+    expect(d.items.map((i: { id: string }) => i.id)).toEqual([resume.id, letter.id]);
+    expect(d.items[0]).toMatchObject({ kind: "resume", required: true });
+    expect(d.items[0].versions.map((v: { content: string }) => v.content)).toEqual(["Second", "First"]);
+    expect(d.items[1].versions).toEqual([]);
+  });
+
+  it("answers 404 for someone else's application, an unknown one, or a bad id", async () => {
+    const [theirs] = await db.insert(schema.applications).values({ userId: other.id, opportunityId: notMine }).returning();
+    expect((await detail(theirs.id)).status).toBe(404);
+    expect((await detail("00000000-0000-4000-8000-000000000000")).status).toBe(404);
+    expect((await detail("not-a-uuid")).status).toBe(404);
+  });
+
+  it("needs a session and the auto-apply beta", async () => {
+    const { id } = await (await post(findId)).json();
+    beta = false;
+    expect((await detail(id)).status).toBe(404);
+    beta = true;
+    current = null;
+    expect((await detail(id)).status).toBe(401);
   });
 });
