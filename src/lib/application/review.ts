@@ -162,7 +162,8 @@ async function insertVersion(itemId: string, v: { content: string; note: string;
   });
 }
 
-function assertEditable(status: ApplicationStatus) {
+/** Every change to a draft goes through here: none once it's sent or canceled, none while Lookout is still writing it. */
+export function assertEditable(status: ApplicationStatus) {
   if (LOCKED.includes(status)) throw new HttpError(409, "This application was already sent, so it can't change.");
   if (!REVIEWABLE.includes(status)) throw new HttpError(409, "Lookout is still drafting this one. Try again in a minute.");
 }

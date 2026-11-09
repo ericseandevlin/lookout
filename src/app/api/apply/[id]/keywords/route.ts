@@ -3,7 +3,7 @@ import { z } from "zod";
 import { authed, body, HttpError, json } from "@/lib/api";
 import { canUseAutoApply } from "@/lib/apply";
 import { finalTerms } from "@/lib/application/evidence";
-import { keywordState, ownApplication } from "@/lib/application/review";
+import { assertEditable, keywordState, ownApplication } from "@/lib/application/review";
 import { redraftResume } from "@/lib/application/run";
 import { choose, upsertNote } from "@/lib/application/skills";
 import { db, schema } from "@/lib/db";
@@ -24,7 +24,7 @@ const Pick = z.discriminatedUnion("action", [
 export const POST = authed<Ctx>(async (req, { user, params }) => {
   if (!canUseAutoApply(user)) throw new HttpError(404, "Not found");
   const a = await ownApplication(user.id, (await params).id);
-  if (a.status === "submitted" || a.status === "submitting") throw new HttpError(409, "This application was already sent.");
+  assertEditable(a.status);
   const p = await body(req, Pick);
   const posting = a.report.postingText ?? "";
 

@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { authed, body, HttpError, json } from "@/lib/api";
 import { canUseAutoApply } from "@/lib/apply";
-import { analyzeItem, approveItem, editItem, ownApplication, reviseItem } from "@/lib/application/review";
+import { analyzeItem, approveItem, assertEditable, editItem, ownApplication, reviseItem } from "@/lib/application/review";
 import { redraftLetter, redraftResume } from "@/lib/application/run";
 import { db, schema } from "@/lib/db";
 import { and, eq } from "drizzle-orm";
@@ -26,7 +26,7 @@ export const POST = authed<Ctx>(async (req, { user, params }) => {
   if (a.action === "analyze") return json(await analyzeItem(user.id, id, itemId, a.versionId));
   if (a.action === "redraft") {
     const app = await ownApplication(user.id, id);
-    if (app.status === "submitted" || app.status === "submitting") throw new HttpError(409, "This application was already sent.");
+    assertEditable(app.status);
     const [it] = await db.select({ kind: schema.applicationItems.kind }).from(schema.applicationItems).where(and(eq(schema.applicationItems.id, itemId), eq(schema.applicationItems.applicationId, app.id)));
     if (it?.kind === "cover_letter") await redraftLetter(app.id);
     else if (it?.kind === "resume") await redraftResume(app.id);

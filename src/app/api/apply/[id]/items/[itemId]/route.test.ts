@@ -206,22 +206,23 @@ describe("POST /api/apply/[id]/items/[itemId] actions (#553)", () => {
   });
 
   it("redrafts the resume or the cover letter and returns the status", async () => {
-    const a = await application(alice);
+    const a = await application(alice, "approved");
     const resume = await item(a.id, "resume");
     const letter = await item(a.id, "cover_letter");
+    // A redraft sends an approved application back to review.
     steps.redraftResume.mockImplementationOnce(async () => {
       await db
         .update(schema.applications)
-        .set({ status: "drafting" })
+        .set({ status: "needs_review" })
         .where(eq(schema.applications.id, a.id));
     });
     expect(
       await (await send(a.id, resume.id, { action: "redraft" })).json(),
-    ).toEqual({ status: "drafting" });
+    ).toEqual({ status: "needs_review" });
     expect(steps.redraftResume).toHaveBeenCalledWith(a.id);
     expect(
       await (await send(a.id, letter.id, { action: "redraft" })).json(),
-    ).toEqual({ status: "drafting" });
+    ).toEqual({ status: "needs_review" });
     expect(steps.redraftLetter).toHaveBeenCalledWith(a.id);
   });
 
@@ -240,7 +241,7 @@ describe("POST /api/apply/[id]/items/[itemId] actions (#553)", () => {
     expect(steps.redraftLetter).not.toHaveBeenCalled();
   });
 
-  it("will not redraft someone else's application or one already sent", async () => {
+  it("will not redraft someone else's application, one already sent or canceled, or one still being drafted (#580)", async () => {
     const bobs = await application(await user("bob@example.com"));
     expect(
       (
@@ -249,7 +250,7 @@ describe("POST /api/apply/[id]/items/[itemId] actions (#553)", () => {
         })
       ).status,
     ).toBe(404);
-    for (const status of ["submitting", "submitted"] as const) {
+    for (const status of ["submitting", "submitted", "canceled", "queued", "scanning", "drafting"] as const) {
       const a = await application(alice, status);
       expect(
         (
