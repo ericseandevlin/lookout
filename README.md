@@ -8,11 +8,13 @@ Why it exists: I built it for my own job search. An agent read the postings and 
 
 Jobs are the first opportunity type. Type-specific pieces live in `src/lib/kinds` so other types (RFPs next) can reuse the engine. See [ROADMAP.md](ROADMAP.md) for what's next and [CHANGELOG.md](CHANGELOG.md) for every release. Live at https://lookout.ericdevlin.co (alias: paulfinds.pauljustinscott.com). Invite only.
 
+![Opening a find from the board and closing it again.](docs/screenshots/hero.gif)
+
 ![The Finds board: eight roles scored 1 to 5 against the profile, with pay, stage and location.](docs/screenshots/finds-board.png)
 
 ![A find opened: why it's a match, the stage picker and notes.](docs/screenshots/find-detail.png)
 
-Screenshots use a made-up demo account; no real user data.
+Screenshots use a made-up demo account; no real user data. The Screenshots workflow redraws them: run it from the Actions tab and copy its artifact into `docs/screenshots`.
 
 ## Stack
 
