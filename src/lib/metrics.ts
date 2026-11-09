@@ -109,3 +109,19 @@ export function searchSuccess(runs: { status: string; read: number | null }[]) {
 export function activeSince(events: MetricEvent[], since: Date) {
   return new Set(events.filter((e) => e.type !== "heartbeat" && e.at >= since).map((e) => e.userId)).size;
 }
+
+export type OutcomeReport = { userId: string; outcome: "interview" | "offer"; boardInterview: boolean; boardOffer: boolean };
+
+/**
+ * Interviews and offers (#526): finds at Interview or Offer on the board, plus one for each person who said
+ * yes in the survey and has none on their board, so nobody counts twice. An offer means an interview too.
+ */
+export function outcomes(board: { interviews: number; offers: number }, reports: OutcomeReport[]) {
+  const interviewed = new Set<string>();
+  const offered = new Set<string>();
+  for (const r of reports) {
+    if (!r.boardInterview) interviewed.add(r.userId);
+    if (r.outcome === "offer" && !r.boardOffer) offered.add(r.userId);
+  }
+  return { interviews: board.interviews + interviewed.size, offers: board.offers + offered.size, survey: { interviews: interviewed.size, offers: offered.size } };
+}
