@@ -45,7 +45,7 @@ export function AdminActivity() {
         <Tabs />
       </PageHead>
       {err && <div role="alert" style={{ fontSize: 14, color: color.brick }}>{err}</div>}
-      {!d && !err && <div style={muted}>Loading…</div>}
+      {!d && !err && <div role="status" style={muted}>Loading…</div>}
       {d && (
         <>
           <Section>Weekly actives</Section>
@@ -118,7 +118,7 @@ export function AdminActivity() {
               {!who ? (
                 <div style={muted}>Pick a person to see their timeline.</div>
               ) : rows === null ? (
-                <div style={muted}>Loading…</div>
+                <div role="status" style={muted}>Loading…</div>
               ) : !rows.length ? (
                 <div style={muted}>Nothing recorded yet.</div>
               ) : (

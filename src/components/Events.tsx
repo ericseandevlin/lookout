@@ -123,7 +123,7 @@ export function Events() {
       )}
 
       <Section>Events</Section>
-      {events === null && !msg && <div style={muted}>Loading…</div>}
+      {events === null && !msg && <div role="status" style={muted}>Loading…</div>}
       {events && !events.length && <div style={muted}>{prefs?.interests ? "Nothing yet. Events show up here after your next search, or press Search now." : "Pick an interest above and your searches will look for events too."}</div>}
       {events && (events.length > 0 || !!prefs?.interests) && (
         <EventsBoard events={events} searching={searching} canSearch={!!prefs?.interests} onSearch={searchNow} onPatch={patchEvents} onClear={clearEvents} />

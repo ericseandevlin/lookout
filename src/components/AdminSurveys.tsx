@@ -154,7 +154,7 @@ export function AdminSurveys() {
                 </div>
                 {open === q.id &&
                   (replies === null ? (
-                    <div style={{ fontSize: 14, color: color.t2 }}>Loading…</div>
+                    <div role="status" style={{ fontSize: 14, color: color.t2 }}>Loading…</div>
                   ) : !replies.length ? (
                     <div style={{ fontSize: 14, color: color.t2 }}>No answers yet.</div>
                   ) : (

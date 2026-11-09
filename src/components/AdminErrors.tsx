@@ -39,7 +39,7 @@ export function AdminErrors() {
         <input type="search" value={q} onChange={(e) => setQ(e.target.value)} placeholder="Message, path, source or digest" style={input} />
       </label>
       {err && <div role="alert" style={{ fontSize: 14, color: color.brick }}>{err}</div>}
-      {!d && !err && <div style={muted}>Loading…</div>}
+      {!d && !err && <div role="status" style={muted}>Loading…</div>}
       {d && (
         <>
           <div aria-live="polite" style={{ ...muted, marginTop: 8 }}>
