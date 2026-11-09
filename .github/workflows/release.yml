@@ -1,62 +1,134 @@
-# Build and ship. A push to release/stage or release/prod runs the CI checks, builds the image here
-# (not on a laptop or the VPS), scans it, and pushes it to the private registry ghcr.io/ericseandevlin/lookout.
-# The VPS pulls new images itself (deploy/pull-deploy.sh, root cron), so GitHub holds no key to the server.
-# Tags: sha-<commit> (every build) and the channel, stage or prod (what the server follows).
+# Build and ship. CI builds the image here (not on a laptop or the VPS), scans it, and pushes it to the private
+# registry ghcr.io/ericseandevlin/lookout. The VPS pulls new images itself (deploy/pull-deploy.sh, root cron),
+# so GitHub holds no key to the server. Tags: sha-<commit> (every build) and the channel the server follows.
+#   stage = release/stage plus the branches in deploy/preview-branches (read from main), merged on top.
+#           Rebuilt on a push to release/stage, to main (release/stage fast-forwards to main first, so merging
+#           to main still deploys staging), or to a branch on the preview list.
+#   prod  = release/prod exactly, after the CI checks. Only Eric can push release/prod (branch protection).
 # Plain docker commands instead of third-party build actions: fewer things that can be hijacked.
 name: Release
 
 on:
   push:
-    branches: [release/stage, release/prod]
+    branches: [main, release/stage, release/prod, 'feat/**', 'fix/**']
   workflow_dispatch:
 
 permissions:
   contents: read
 
-concurrency:
-  group: release-${{ github.ref }}
-  cancel-in-progress: false
-
 jobs:
+  plan:
+    name: Decide what to build
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      build: ${{ steps.plan.outputs.build }}
+      channel: ${{ steps.plan.outputs.channel }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+      - id: plan
+        run: |
+          build=false; channel=stage
+          case "$GITHUB_REF_NAME" in
+            release/prod) build=true; channel=prod ;;
+            release/stage|main) build=true ;;
+            *) git show origin/main:deploy/preview-branches 2>/dev/null | sed 's/#.*//' | tr -d ' \t' | grep -qxF "$GITHUB_REF_NAME" && build=true ;;
+          esac
+          echo "build=$build" >> "$GITHUB_OUTPUT"; echo "channel=$channel" >> "$GITHUB_OUTPUT"
+          echo "$GITHUB_REF_NAME: build=$build channel=$channel"
+
   checks:
-    if: startsWith(github.ref, 'refs/heads/release/')
+    needs: plan
+    if: needs.plan.outputs.build == 'true' && startsWith(github.ref, 'refs/heads/release/')
     uses: ./.github/workflows/ci.yml
+
+  # Merging to main deploys staging: move release/stage up to main. Fast-forward only, so a commit that is on
+  # release/stage and not on main is never thrown away; staging then builds from release/stage as it is.
+  promote:
+    name: Fast-forward release/stage to main
+    needs: plan
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+      - run: git push origin "$GITHUB_SHA:refs/heads/release/stage" || echo "::warning::release/stage has commits main lacks; built it as it is"
 
   image:
     name: Build, scan, push image
-    needs: checks
+    needs: [plan, checks, promote]
+    if: >-
+      always() && needs.plan.outputs.build == 'true' &&
+      contains(fromJSON('["success","skipped"]'), needs.checks.result) &&
+      contains(fromJSON('["success","skipped"]'), needs.promote.result)
     runs-on: ubuntu-latest
     timeout-minutes: 30
+    # Stage: the newest build wins. Prod: builds queue, none is cancelled.
+    concurrency:
+      group: release-image-${{ needs.plan.outputs.channel }}
+      cancel-in-progress: ${{ needs.plan.outputs.channel == 'stage' }}
     permissions:
       contents: read
       packages: write
     env:
       IMAGE: ghcr.io/ericseandevlin/lookout
-      CHANNEL: ${{ github.ref == 'refs/heads/release/prod' && 'prod' || 'stage' }}
+      CHANNEL: ${{ needs.plan.outputs.channel }}
       TRIVY: aquasec/trivy:0.76.2
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: release/${{ needs.plan.outputs.channel }}
+          fetch-depth: 0
+      # Same rules as the old VPS staging script: merged or deleted branches are skipped, and a branch that
+      # conflicts is left out and named in the run summary.
+      - name: Merge preview branches
+        id: src
+        run: |
+          base=$(git rev-parse HEAD); previews=""
+          if [ "$CHANNEL" = stage ]; then
+            for b in $(git show origin/main:deploy/preview-branches 2>/dev/null | sed 's/#.*//'); do
+              git rev-parse -q --verify "origin/$b" >/dev/null || { echo "::warning::preview $b is gone, skipped"; continue; }
+              git merge-base --is-ancestor "origin/$b" HEAD && continue
+              if git -c user.name=preview -c user.email=preview@local merge -q --no-edit "origin/$b" >/dev/null 2>&1; then previews="$previews $b"
+              else git merge --abort; echo "::warning::preview $b conflicts with release/stage, left out"; fi
+            done
+          fi
+          { echo "base=$base"; echo "short=$(git rev-parse --short=7 HEAD)"; echo "previews=${previews# }"; } >> "$GITHUB_OUTPUT"
+          { echo "### Source"; echo "release/$CHANNEL at \`${base::7}\`${previews:+, preview:$previews}"; } >> "$GITHUB_STEP_SUMMARY"
       - name: Log in to ghcr.io
         env:
           TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: echo "$TOKEN" | docker login ghcr.io -u "$GITHUB_ACTOR" --password-stdin
       - name: Build
+        env:
+          BASE: ${{ steps.src.outputs.base }}
+          SHORT: ${{ steps.src.outputs.short }}
+          PREVIEWS: ${{ steps.src.outputs.previews }}
         run: |
           docker buildx create --use --driver docker-container >/dev/null
           docker buildx build --platform linux/amd64 --load \
             --cache-from "type=registry,ref=$IMAGE:buildcache" \
             --cache-to "type=registry,ref=$IMAGE:buildcache,mode=max" \
-            --build-arg "GIT_COMMIT=${GITHUB_SHA::7}" \
-            --label "co.ericdevlin.commit=${GITHUB_SHA::7}" \
+            --build-arg "GIT_COMMIT=$SHORT" \
+            --label "co.ericdevlin.commit=$SHORT" \
+            --label "co.ericdevlin.previews=$PREVIEWS" \
             --label "co.ericdevlin.run=$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID" \
-            --label "org.opencontainers.image.revision=$GITHUB_SHA" \
+            --label "org.opencontainers.image.revision=$BASE" \
             --label "org.opencontainers.image.source=https://github.com/$GITHUB_REPOSITORY" \
-            -t "$IMAGE:sha-${GITHUB_SHA::7}" .
+            -t "$IMAGE:sha-$SHORT" .
       # Report every high and critical finding; fail only on critical ones that have a fix.
       - name: Scan image (Trivy)
+        env:
+          SHORT: ${{ steps.src.outputs.short }}
         run: |
           mkdir -p out
-          scan() { docker run --rm -v /var/run/docker.sock:/var/run/docker.sock -v "$PWD/out:/out" "$TRIVY" image --quiet "$@" "$IMAGE:sha-${GITHUB_SHA::7}"; }
+          scan() { docker run --rm -v /var/run/docker.sock:/var/run/docker.sock -v "$PWD/out:/out" "$TRIVY" image --quiet "$@" "$IMAGE:sha-$SHORT"; }
           scan --scanners vuln --severity HIGH,CRITICAL --format table --output /out/trivy.txt
           scan --format cyclonedx --output /out/sbom.cdx.json
           { echo '### Image scan'; echo '```'; cat out/trivy.txt; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
@@ -64,13 +136,15 @@ jobs:
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
         if: always()
         with:
-          name: image-scan-${{ github.sha }}
+          name: image-scan-${{ needs.plan.outputs.channel }}-${{ steps.src.outputs.short }}
           path: out/
           retention-days: 30
       - name: Push
+        env:
+          SHORT: ${{ steps.src.outputs.short }}
         run: |
-          docker push -q "$IMAGE:sha-${GITHUB_SHA::7}"
-          docker tag "$IMAGE:sha-${GITHUB_SHA::7}" "$IMAGE:$CHANNEL"
+          docker push -q "$IMAGE:sha-$SHORT"
+          docker tag "$IMAGE:sha-$SHORT" "$IMAGE:$CHANNEL"
           docker push -q "$IMAGE:$CHANNEL"
           digest=$(docker image inspect -f '{{index .RepoDigests 0}}' "$IMAGE:$CHANNEL")
-          { echo "### Pushed"; echo "\`$IMAGE:$CHANNEL\` = \`sha-${GITHUB_SHA::7}\`"; echo; echo "\`$digest\`"; echo; echo "The VPS pulls it within a few minutes."; } >> "$GITHUB_STEP_SUMMARY"
+          { echo "### Pushed"; echo "\`$IMAGE:$CHANNEL\` = \`sha-$SHORT\`"; echo; echo "\`$digest\`"; echo; echo "The VPS pulls it within a few minutes."; } >> "$GITHUB_STEP_SUMMARY"

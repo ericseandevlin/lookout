@@ -152,6 +152,19 @@ describe("admin (#367)", () => {
     await expect(setActive("00000000-0000-0000-0000-000000000000", false)).rejects.toMatchObject({ status: 404 });
   });
 
+  it("tags a choice question as an interview or offer, defaulting yes to its first choice (#526)", async () => {
+    const { setOutcome } = await import("./surveyStore");
+    const q = await question("Offers?", { kind: "choice", options: ["Yes", "Not yet"] });
+    const tag = async () => (await db.select().from(schema.surveyQuestions))[0];
+    await setOutcome(q.id, "offer", null);
+    expect(await tag()).toMatchObject({ outcome: "offer", outcomeAnswer: "Yes" });
+    await expect(setOutcome(q.id, "offer", "Maybe")).rejects.toMatchObject({ status: 400 });
+    await setOutcome(q.id, null, "Yes");
+    expect(await tag()).toMatchObject({ outcome: null, outcomeAnswer: null });
+    const text = await question("Why?");
+    await expect(setOutcome(text.id, "interview", null)).rejects.toMatchObject({ status: 400 });
+  });
+
   it("lists one question's replies newest first with who answered", async () => {
     const { answersFor } = await import("./surveyStore");
     const q = await question("Q");

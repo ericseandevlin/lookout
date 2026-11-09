@@ -134,11 +134,11 @@ export function EventsBoard({ events, searching, canSearch, onSearch, onPatch, o
               {([["Date", "date"], ["Event", null], ["Where", null], ["Distance", "distance"], ["Fit", "fit"], ["Cost", null]] as [string, EventSort | null][]).map(([label, k]) => (
                 <div key={label} role="columnheader" aria-sort={k && sort === k ? (dir === "asc" ? "ascending" : "descending") : undefined}>
                   {k ? (
-                    <button className="no-tint" onClick={() => sortBy(k)} style={{ display: "flex", gap: 5, border: 0, background: "transparent", padding: 0, fontSize: 14, fontWeight: 600, letterSpacing: ".08em", textTransform: "uppercase", color: sort === k ? color.ink : color.t2, cursor: "pointer" }}>
+                    <button className="no-tint" onClick={() => sortBy(k)} style={{ display: "flex", gap: 5, border: 0, background: "transparent", padding: 0, fontSize: 13, fontWeight: 600, letterSpacing: ".06em", textTransform: "uppercase", color: sort === k ? color.ink : color.t2, cursor: "pointer" }}>
                       {label} <span style={{ color: sort === k ? color.brick : "#CFC6B9" }}>{arrow(k)}</span>
                     </button>
                   ) : (
-                    <span style={{ fontSize: 14, fontWeight: 600, letterSpacing: ".08em", textTransform: "uppercase", color: color.t2 }}>{label}</span>
+                    <span style={{ fontSize: 13, fontWeight: 600, letterSpacing: ".06em", textTransform: "uppercase", color: color.t2 }}>{label}</span>
                   )}
                 </div>
               ))}

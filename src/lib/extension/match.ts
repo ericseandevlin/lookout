@@ -18,7 +18,18 @@ export function jobKey(raw: string | null | undefined): string | null {
   const uuid = u.pathname.match(/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i)?.[0];
   if (uuid && /(ashbyhq\.com|lever\.co)$/.test(host)) return `${host.includes("ashby") ? "ashby" : "lever"}:${uuid.toLowerCase()}`;
   const path = u.pathname.replace(/\/(apply|application)\/?$/i, "").replace(/\/+$/, "");
-  return `url:${host.replace(/^www\./, "")}${path.toLowerCase()}`;
+  return `url:${host.replace(/^www\./, "")}${path.toLowerCase()}${idQuery(u.searchParams)}`;
+}
+
+// Query params that name the job itself (indeed.com/viewjob?jk=..., careers pages with ?jobId=). Tracking params stay out (#508).
+const ID_PARAM = /^(v?jk|id|jid|job|jobs?id|jobreqid|req|reqid|requisitionid|postingid|openingid|positionid|currentjobid|pid)$/;
+
+function idQuery(params: URLSearchParams) {
+  const ids = [...params]
+    .filter(([k, v]) => v && ID_PARAM.test(k.toLowerCase().replace(/[_-]/g, "")))
+    .map(([k, v]) => `${k.toLowerCase().replace(/[_-]/g, "")}=${v.toLowerCase()}`)
+    .sort();
+  return ids.length ? `?${ids.join("&")}` : "";
 }
 
 /** True when any of the page's URLs (top page and frames) is the same job as any of the application's URLs. */

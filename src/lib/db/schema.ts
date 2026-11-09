@@ -327,6 +327,8 @@ export const accessRequests = pgTable("access_requests", {
     nextMove: text("next_move"),
     /** What they want Lookout to find (#8). Which kind's profile they get at sign-up. */
     kind: text("kind").notNull().default("job"),
+    /** Where they came from (#527): the landing link's ?ref= or ?utm_source=, kept from their first request. */
+    channel: text("channel"),
   status: text("status").$type<"pending" | "approved" | "declined">().notNull().default("pending"),
   createdAt: createdAt(),
   decidedAt: timestamp("decided_at", { withTimezone: true }),
@@ -526,6 +528,8 @@ export const inboundEmails = pgTable(
 
 export const SURVEY_KINDS = ["choice", "scale", "text"] as const;
 export type SurveyKind = (typeof SURVEY_KINDS)[number];
+export const SURVEY_OUTCOMES = ["interview", "offer"] as const;
+export type SurveyOutcome = (typeof SURVEY_OUTCOMES)[number];
 
 /** A question Eric asks beta users, one at a time. Only active questions are shown. */
 export const surveyQuestions = pgTable("survey_questions", {
@@ -537,6 +541,10 @@ export const surveyQuestions = pgTable("survey_questions", {
   active: boolean("active").notNull().default(true),
   /** Only asked of people whose weekly email summary is on (a question about the email). */
   onlyIfDigest: boolean("only_if_digest").notNull().default(false),
+  /** Admin > Metrics counts this question's yes answers as an interview or an offer (#526). */
+  outcome: text("outcome").$type<SurveyOutcome>(),
+  /** The choice that means yes, for a question with an outcome. */
+  outcomeAnswer: text("outcome_answer"),
   createdAt: createdAt(),
 });
 

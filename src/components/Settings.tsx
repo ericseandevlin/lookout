@@ -87,7 +87,7 @@ export function Settings() {
     } catch (e) {
       return fail(e);
     }
-    window.location.replace(window.location.origin);
+    window.location.replace(`${window.location.origin}/signin?out=1`);
   };
   const runNow = async () => {
     setSearchMsg(null);
@@ -332,7 +332,7 @@ function Devices({ onSignOutHere }: { onSignOutHere: () => void }) {
   };
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 6, maxWidth: 460 }}>
-      {list === null && <span style={{ fontSize: 14, color: color.t2 }}>Loading…</span>}
+      {list === null && <span role="status" style={{ fontSize: 14, color: color.t2 }}>Loading…</span>}
       {list?.map((d) => (
         <div key={d.id} style={{ display: "flex", alignItems: "center", gap: 10, padding: "9px 9px 9px 13px", borderRadius: 10, background: "#fff", border: `1.5px solid ${color.border}` }}>
           <div style={{ flex: 1, minWidth: 0 }}>

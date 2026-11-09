@@ -6,14 +6,14 @@ import { WAITLIST_NOTICE } from "@/lib/legal";
 import { NEXT_MOVES } from "@/lib/onboarding";
 import { color } from "@/lib/tokens";
 
-export function Login({ emailEnabled, inviteOnly, turnstileSiteKey = "", kinds = false }: { emailEnabled: boolean; inviteOnly: boolean; turnstileSiteKey?: string; kinds?: boolean }) {
+export function Login({ emailEnabled, inviteOnly, turnstileSiteKey = "", kinds = false, signedOut = false, channel = null }: { emailEnabled: boolean; inviteOnly: boolean; turnstileSiteKey?: string; kinds?: boolean; signedOut?: boolean; channel?: string | null }) {
   const [mode, setMode] = useState<"signin" | "request">(inviteOnly && !emailEnabled ? "request" : "signin");
   return (
     <AuthCard>
       {mode === "signin" ? (
-        <SignIn emailEnabled={emailEnabled} inviteOnly={inviteOnly} onRequest={() => setMode("request")} />
+        <SignIn emailEnabled={emailEnabled} inviteOnly={inviteOnly} signedOut={signedOut} onRequest={() => setMode("request")} />
       ) : (
-        <RequestAccess emailEnabled={emailEnabled} turnstileSiteKey={turnstileSiteKey} kinds={kinds} onSignIn={() => setMode("signin")} />
+        <RequestAccess emailEnabled={emailEnabled} turnstileSiteKey={turnstileSiteKey} kinds={kinds} channel={channel} onSignIn={() => setMode("signin")} />
       )}
     </AuthCard>
   );
@@ -23,7 +23,7 @@ const field: React.CSSProperties = { height: 46, border: `1.5px solid ${color.bo
 const label: React.CSSProperties = { fontSize: 14, fontWeight: 600, letterSpacing: ".06em", textTransform: "uppercase", color: color.t2 };
 const linkBtn: React.CSSProperties = { border: 0, background: "transparent", padding: 0, color: color.brick, fontWeight: 600, fontSize: "inherit", cursor: "pointer", textDecoration: "underline", textUnderlineOffset: 3 };
 
-function SignIn({ emailEnabled, inviteOnly, onRequest }: { emailEnabled: boolean; inviteOnly: boolean; onRequest: () => void }) {
+function SignIn({ emailEnabled, inviteOnly, signedOut, onRequest }: { emailEnabled: boolean; inviteOnly: boolean; signedOut: boolean; onRequest: () => void }) {
   const [email, setEmail] = useState("");
   const [state, setState] = useState<"idle" | "sending" | "sent" | "error">("idle");
   const [msg, setMsg] = useState("");
@@ -52,12 +52,15 @@ function SignIn({ emailEnabled, inviteOnly, onRequest }: { emailEnabled: boolean
 
   return (
     <>
-      <Eyebrow>Lookout</Eyebrow>
-      <h1 style={h1}>Find roles that actually fit</h1>
-      <p style={p}>
-        Tell Lookout what you want next. Each week it searches job boards and company sites, scores every role against your profile, and puts the
-        matches on your board.
-      </p>
+      {/* A plain sign-in page for people who already have an account (#517). Lookout has no passwords: the emailed link is the sign-in. */}
+      {signedOut && (
+        <div role="status" style={{ marginBottom: 16, padding: "8px 12px", borderRadius: 10, background: "#F3F7F1", border: "1px solid #CFE3C6", fontSize: 14, color: color.greenText }}>
+          You&apos;re signed out.
+        </div>
+      )}
+      <Eyebrow>Welcome back</Eyebrow>
+      <h1 style={h1}>Sign in to Lookout</h1>
+      <p style={p}>Enter the email you use for Lookout and we&apos;ll send you a one-time sign-in link. There&apos;s no password to remember or reset.</p>
       {emailEnabled ? (
         <form onSubmit={submit} style={{ display: "flex", flexDirection: "column", gap: 10, marginTop: 24 }}>
           <label htmlFor="email" style={label}>Email</label>
@@ -68,18 +71,20 @@ function SignIn({ emailEnabled, inviteOnly, onRequest }: { emailEnabled: boolean
       ) : (
         <p style={{ ...p, marginTop: 20, fontSize: 14 }}>Sign-in emails aren&apos;t on yet. If you were invited, open the sign-in link you were sent.</p>
       )}
-      <div style={{ fontSize: 14, color: color.t2, lineHeight: 1.5, marginTop: 18 }}>
+      <div style={{ fontSize: 14, color: color.t2, lineHeight: 1.5, marginTop: 22, paddingTop: 16, borderTop: `1px solid ${color.border}` }}>
+        <strong style={{ color: color.ink }}>New here?</strong> Lookout finds roles that actually fit. Each week it searches job boards and company sites, scores every role against your
+        profile, and puts the matches on your board.{" "}
         {inviteOnly ? (
-          <>New here? Lookout is invite only for now. <button onClick={onRequest} style={linkBtn}>Request access</button></>
+          <>It&apos;s invite only for now. <button onClick={onRequest} style={linkBtn}>Request access</button></>
         ) : (
-          "New here? The same link creates your account. No password."
+          "The same link creates your account."
         )}
       </div>
     </>
   );
 }
 
-function RequestAccess({ emailEnabled, turnstileSiteKey, kinds, onSignIn }: { emailEnabled: boolean; turnstileSiteKey: string; kinds: boolean; onSignIn: () => void }) {
+function RequestAccess({ emailEnabled, turnstileSiteKey, kinds, channel, onSignIn }: { emailEnabled: boolean; turnstileSiteKey: string; kinds: boolean; channel: string | null; onSignIn: () => void }) {
   const [email, setEmail] = useState("");
   const [kind, setKind] = useState<string>("job");
   const [move, setMove] = useState<string | null>(null);
@@ -94,7 +99,7 @@ function RequestAccess({ emailEnabled, turnstileSiteKey, kinds, onSignIn }: { em
     const res = await fetch("/api/auth/request-access", {
       method: "POST",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify({ email, kind, nextMove: kind === "job" ? move ?? undefined : undefined, turnstileToken: token || undefined }),
+      body: JSON.stringify({ email, kind, nextMove: kind === "job" ? move ?? undefined : undefined, turnstileToken: token || undefined, channel: channel ?? undefined }),
     }).catch(() => null);
     if (res?.ok) return setState("sent");
     const data = await res?.json().catch(() => ({}));
@@ -127,8 +132,8 @@ function RequestAccess({ emailEnabled, turnstileSiteKey, kinds, onSignIn }: { em
         <label htmlFor="req-email" style={label}>Email</label>
         <input id="req-email" type="email" required autoComplete="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@example.com" className="f-brick" style={field} />
         {kinds && (
-        <fieldset style={{ border: 0, padding: 0, margin: "8px 0 4px", display: "flex", flexDirection: "column", gap: 6 }}>
-          <legend style={{ ...label, marginBottom: 8 }}>What do you want Lookout to find?</legend>
+        <fieldset style={{ border: 0, padding: 0, margin: "18px 0 8px", display: "flex", flexDirection: "column", gap: 10 }}>
+          <legend style={{ ...label, marginBottom: 10 }}>What do you want Lookout to find?</legend>
           {([
             ["job", "A job or role", "Lookout searches job boards and company sites every week and scores what it finds."],
             ["rfp", "Contract opportunities (RFPs)", "Lookout watches solicitations and scores them against your business. Starting with federal."],
@@ -140,12 +145,12 @@ function RequestAccess({ emailEnabled, turnstileSiteKey, kinds, onSignIn }: { em
                 key={key}
                 aria-pressed={on}
                 onClick={() => setKind(key)}
-                style={{ display: "flex", alignItems: "center", gap: 10, minHeight: 42, padding: "0 14px", borderRadius: 10, border: `1.5px solid ${on ? color.ink : color.border}`, background: on ? color.ink : "#fff", color: on ? "#fff" : color.ink, fontSize: 14, fontWeight: 500, cursor: "pointer", textAlign: "left" }}
+                style={{ display: "flex", alignItems: "center", gap: 12, minHeight: 48, padding: "12px 16px", borderRadius: 10, border: `1.5px solid ${on ? color.ink : color.border}`, background: on ? color.ink : "#fff", color: on ? "#fff" : color.ink, fontSize: 14, fontWeight: 500, cursor: "pointer", textAlign: "left" }}
               >
                 <span style={{ width: 14, height: 14, borderRadius: "50%", border: `1.5px solid ${on ? color.orange : "#CFC6B9"}`, background: on ? color.orange : "transparent", flex: "none" }} />
                 <span>
                   {lab}
-                  <span style={{ display: "block", fontSize: 14, fontWeight: 400, opacity: 0.75 }}>{note}</span>
+                  <span style={{ display: "block", fontSize: 14, fontWeight: 400, lineHeight: 1.45, opacity: 0.75, marginTop: 3 }}>{note}</span>
                 </span>
               </button>
             );
@@ -153,8 +158,8 @@ function RequestAccess({ emailEnabled, turnstileSiteKey, kinds, onSignIn }: { em
         </fieldset>
         )}
         {kind === "job" && (
-        <fieldset style={{ border: 0, padding: 0, margin: "8px 0 4px", display: "flex", flexDirection: "column", gap: 6 }}>
-          <legend style={{ ...label, marginBottom: 8 }}>What&apos;s your next move? <span style={{ textTransform: "none", letterSpacing: 0, fontWeight: 500 }}>(optional)</span></legend>
+        <fieldset style={{ border: 0, padding: 0, margin: "18px 0 8px", display: "flex", flexDirection: "column", gap: 10 }}>
+          <legend style={{ ...label, marginBottom: 10 }}>What&apos;s your next move? <span style={{ textTransform: "none", letterSpacing: 0, fontWeight: 500 }}>(optional)</span></legend>
           {NEXT_MOVES.map((m) => {
             const on = move === m.key;
             return (
@@ -163,7 +168,7 @@ function RequestAccess({ emailEnabled, turnstileSiteKey, kinds, onSignIn }: { em
                 key={m.key}
                 aria-pressed={on}
                 onClick={() => setMove(on ? null : m.key)}
-                style={{ display: "flex", alignItems: "center", gap: 10, minHeight: 42, padding: "0 14px", borderRadius: 10, border: `1.5px solid ${on ? color.ink : color.border}`, background: on ? color.ink : "#fff", color: on ? "#fff" : color.ink, fontSize: 14, fontWeight: 500, cursor: "pointer", textAlign: "left" }}
+                style={{ display: "flex", alignItems: "center", gap: 12, minHeight: 48, padding: "12px 16px", borderRadius: 10, border: `1.5px solid ${on ? color.ink : color.border}`, background: on ? color.ink : "#fff", color: on ? "#fff" : color.ink, fontSize: 14, fontWeight: 500, cursor: "pointer", textAlign: "left" }}
               >
                 <span style={{ width: 14, height: 14, borderRadius: "50%", border: `1.5px solid ${on ? color.orange : "#CFC6B9"}`, background: on ? color.orange : "transparent", flex: "none" }} />
                 {m.label}

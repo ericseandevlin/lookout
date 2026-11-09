@@ -4,13 +4,17 @@
 
 A personal search agent. Each person answers five questions and adds their resume, LinkedIn PDF and links. On their schedule, Lookout searches the web, reads the postings, scores each one against their profile, and puts the matches on a board ("Finds"). There they pin, archive, take notes, move roles through stages, and mark things "Not a fit" so later searches learn.
 
+Why it exists: I built it for my own job search. An agent read the postings and scored them against me, and it worked well enough that friends asked if they could use it too. So it turned into an app where each person gets their own profile and their own search. - Eric
+
 Jobs are the first opportunity type. Type-specific pieces live in `src/lib/kinds` so other types (RFPs next) can reuse the engine. See [ROADMAP.md](ROADMAP.md) for what's next and [CHANGELOG.md](CHANGELOG.md) for every release. Live at https://lookout.ericdevlin.co (alias: paulfinds.pauljustinscott.com). Invite only.
+
+![Opening a find from the board and closing it again.](docs/screenshots/hero.gif)
 
 ![The Finds board: eight roles scored 1 to 5 against the profile, with pay, stage and location.](docs/screenshots/finds-board.png)
 
 ![A find opened: why it's a match, the stage picker and notes.](docs/screenshots/find-detail.png)
 
-Screenshots use a made-up demo account; no real user data.
+Screenshots use a made-up demo account; no real user data. The Screenshots workflow redraws them: run it from the Actions tab and copy its artifact into `docs/screenshots`.
 
 ## Stack
 
@@ -142,7 +146,7 @@ Contributing? Start with [CONTRIBUTING.md](CONTRIBUTING.md). Security problems g
 Three environments, promoted in order: **dev** is your machine (`npm run dev`, feature branches), **staging** is branch `main` (`deploy/deploy.sh staging`), **production** is branch `prod` (`deploy/deploy.sh`). Changes reach production only after review on staging at the weekly release meeting: `git checkout prod && git merge --ff-only <approved commit> && git push`, then deploy. The script refuses to deploy from the wrong branch, with uncommitted changes, or with unpushed commits, and labels each image with its commit.
 
 
-**From CI (#18, rolling out).** A push to `release/stage` or `release/prod` runs `.github/workflows/release.yml`: the same checks as CI, then the image is built in GitHub Actions, scanned with Trivy (high and critical findings in the run summary, a CycloneDX SBOM as an artifact, fails on fixable critical ones), and pushed to the private registry as `ghcr.io/ericseandevlin/lookout:sha-<commit>` plus `:stage` or `:prod`. The VPS pulls on its own: root cron runs `deploy/pull-deploy.sh stage|prod` every two minutes, which deploys a new image, checks `/api/health` and rolls back to the previous image if it fails. GitHub holds no key to the server; the server holds a read-only registry token. Promote to staging with `git push origin main:release/stage`. Install the server side once with `deploy/install-pull-deploy.sh` (as root, after a read-only `docker login` into `/root/.config/lookout-ghcr`; steps in its header). It covers staging only. Until it is installed, staging deploys with `sudo /root/bin/lookout-deploy-staging`; after, use `git push origin origin/main:release/stage` instead, or the two will undo each other. Production deploys as below.
+**From CI (#18).** `.github/workflows/release.yml` builds the image in GitHub Actions, scans it with Trivy (high and critical findings in the run summary, a CycloneDX SBOM as an artifact, fails on fixable critical ones), and pushes it to the private registry as `ghcr.io/ericseandevlin/lookout:sha-<commit>` plus `:stage` or `:prod`. **Staging** is `release/stage` with the branches in `deploy/preview-branches` merged on top; a merge to `main` fast-forwards `release/stage` and rebuilds it, and so does a push to a listed preview branch. Add or remove a preview with a PR that edits that file. **Production** is `release/prod` exactly, after the CI checks; only Eric can push it (branch protection), and pushing it is the release. The VPS pulls on its own: root cron runs `deploy/pull-deploy.sh stage|prod` every two minutes, deploys a new image, checks `/api/health` and rolls back if it fails. GitHub holds no key to the server; the server holds a read-only registry token. Install once per channel with `deploy/install-pull-deploy.sh [prod]` as root (steps in its header). Until staging is installed, it deploys with `sudo /root/bin/lookout-deploy-staging` from `/opt/lookout-staging/PREVIEW_BRANCHES`; after, that command only pulls. Until prod is installed, production deploys as below.
 
 **Deploy visibility (#292).** `/api/health` returns the running commit (`{"ok":true,"commit":"abc1234"}`; `null` if the image was built without `--build-arg GIT_COMMIT`). Every deploy, rollback or failed deploy by `pull-deploy.sh` appends one line to `/opt/lookout-staging/DEPLOYS.txt` (both channels, readable by everyone on the server): time, channel, what happened, the new and previous commit, the health answer and a link to the Release run with the image scan, e.g. `2026-11-07T07:00:00Z stage deployed abc1234 (was def5678), health={"ok":true,"commit":"abc1234"} scan=https://github.com/ericseandevlin/lookout/actions/runs/123`. To also post it somewhere (for example a Paperclip comment), set `LOOKOUT_DEPLOY_NOTIFY` in the cron line to an executable that reads the line on stdin; it stays on the server and a failing notifier never fails the deploy.
 

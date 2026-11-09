@@ -135,7 +135,7 @@ export function ApplyPage() {
       )}
 
       {err && <div role="alert" style={{ fontSize: 14, color: color.brick }}>{err}</div>}
-      {!apps && !err && <div style={{ fontSize: 14, color: color.t2 }}>Loading…</div>}
+      {!apps && !err && <div role="status" style={{ fontSize: 14, color: color.t2 }}>Loading…</div>}
 
       {apps && apps.length === 0 && (
         <div style={{ padding: 22, borderRadius: 14, background: "#fff", border: `1.5px solid ${color.border}`, display: "flex", flexDirection: "column", gap: 12 }}>

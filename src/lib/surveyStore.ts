@@ -3,7 +3,7 @@ import { and, asc, count, desc, eq, max, notExists, or, sql } from "drizzle-orm"
 import { db, schema } from "@/lib/db";
 import { HttpError } from "@/lib/api";
 import { getSurveyConfig } from "@/lib/config";
-import type { SurveyKind } from "@/lib/db/schema";
+import type { SurveyKind, SurveyOutcome } from "@/lib/db/schema";
 import { cleanAnswer, cleanOptions, isDue, type SurveyQuestion } from "./survey";
 
 /**
@@ -52,7 +52,7 @@ export async function listQuestions() {
     .from(schema.surveyAnswers)
     .groupBy(schema.surveyAnswers.questionId);
   const by = new Map(counts.map((c) => [c.id, c]));
-  return qs.map((q) => ({ id: q.id, kind: q.kind, prompt: q.prompt, options: q.options, active: q.active, createdAt: q.createdAt.toISOString(), answers: Number(by.get(q.id)?.n ?? 0) - Number(by.get(q.id)?.skipped ?? 0), skipped: Number(by.get(q.id)?.skipped ?? 0) }));
+  return qs.map((q) => ({ id: q.id, kind: q.kind, prompt: q.prompt, options: q.options, active: q.active, outcome: q.outcome, outcomeAnswer: q.outcomeAnswer, createdAt: q.createdAt.toISOString(), answers: Number(by.get(q.id)?.n ?? 0) - Number(by.get(q.id)?.skipped ?? 0), skipped: Number(by.get(q.id)?.skipped ?? 0) }));
 }
 
 export async function createQuestion(p: { kind: SurveyKind; prompt: string; options: string[] }) {
@@ -69,6 +69,16 @@ export async function createQuestion(p: { kind: SurveyKind; prompt: string; opti
 export async function setActive(id: string, active: boolean) {
   const r = await db.update(schema.surveyQuestions).set({ active }).where(eq(schema.surveyQuestions.id, id)).returning({ id: schema.surveyQuestions.id });
   if (!r.length) throw new HttpError(404, "Not found");
+}
+
+/** Count a choice question's yes answers in Admin > Metrics as interviews or offers (#526), or stop (null). */
+export async function setOutcome(id: string, outcome: SurveyOutcome | null, yes: string | null) {
+  const [q] = await db.select().from(schema.surveyQuestions).where(eq(schema.surveyQuestions.id, id));
+  if (!q) throw new HttpError(404, "Not found");
+  if (outcome && q.kind !== "choice") throw new HttpError(400, "Only a multiple-choice question can count as an outcome.");
+  const answer = outcome ? (yes ?? q.options[0]) : null;
+  if (outcome && !q.options.includes(answer!)) throw new HttpError(400, "Pick one of the question's choices as the yes answer.");
+  await db.update(schema.surveyQuestions).set({ outcome, outcomeAnswer: answer }).where(eq(schema.surveyQuestions.id, id));
 }
 
 /** Every reply to one question, newest first, with who and when. */

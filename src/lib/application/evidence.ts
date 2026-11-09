@@ -39,7 +39,7 @@ export function planFrom(d: z.infer<typeof KeywordPlanDraft>, posting: string): 
   const seen = new Set<string>();
   return d.keywords
     .map((k) => ({ term: k.term.trim(), cite: k.experience.trim() }))
-    .filter((k) => k.term && !isJunkKeyword(k.term) && hasKeyword(posting, k.term) && !seen.has(k.term.toLowerCase()) && seen.add(k.term.toLowerCase()))
+    .filter((k) => k.term && !isJunkKeyword(k.term, posting) && hasKeyword(posting, k.term) && !seen.has(k.term.toLowerCase()) && seen.add(k.term.toLowerCase()))
     .map((k) => ({ term: k.term, ...(k.cite ? { cite: k.cite } : {}) }));
 }
 

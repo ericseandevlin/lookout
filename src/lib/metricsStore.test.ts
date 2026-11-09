@@ -64,13 +64,36 @@ describe("metrics (#369)", () => {
       { userId: off.id, type: "heartbeat", at: ago(1) },
     ]);
 
+    // Survey (#526): the seeded interviews and offers questions. b reports both with nothing on the board;
+    // a's interview is already on the board, and the disabled account is left out.
+    const qs = await db.select().from(schema.surveyQuestions);
+    const asks = (o: string) => qs.find((q) => q.outcome === o)!.id;
+    await db.insert(schema.surveyAnswers).values([
+      { questionId: asks("interview"), userId: a.id, answer: "Yes" },
+      { questionId: asks("interview"), userId: b.id, answer: "Yes" },
+      { questionId: asks("offer"), userId: b.id, answer: "Yes" },
+      { questionId: asks("offer"), userId: a.id, answer: "Not yet" },
+      { questionId: asks("offer"), userId: off.id, answer: "Yes" },
+    ]);
+
+    // Growth (#527): a and b came from reddit, joined and were active last week. A pending direct request,
+    // and the disabled account's request, which is left out. Three invites: one revoked, one accepted, one not yet.
+    await db.insert(schema.accessRequests).values([
+      { email: "a@example.com", channel: "reddit" },
+      { email: "b@example.com", channel: "reddit" },
+      { email: "new@example.com" },
+      { email: "off@example.com", channel: "hn" },
+    ]);
+    await db.insert(schema.invites).values([{ email: "a@example.com" }, { email: "waiting@example.com" }, { email: "gone@example.com", revokedAt: ago(1) }]);
+
     const m = await metrics(NOW);
     expect(m.weeklyActives).toBe(2);
     expect(m.actedPerActive).toBe(0.5);
     expect(m.weeks).toHaveLength(8);
     expect(m.weeks[m.weeks.length - 1].week).toBe(m.lastWeek);
-    expect(m.interviews).toBe(1);
-    expect(m.offers).toBe(0);
+    expect(m.interviews).toBe(2);
+    expect(m.offers).toBe(1);
+    expect(m.outcomes).toEqual({ board: { interviews: 1, offers: 0 }, survey: { interviews: 1, offers: 1 }, questions: 2 });
     expect(m.activation).toEqual({ eligible: 2, activated: 1, rate: 0.5 });
     expect(m.quality).toEqual({ days: 90, added: 3, acted: 2, notFit: 1, topReason: { reason: "Too junior", count: 1 }, score: { acted: 7, ignored: 4 } });
     expect(m.search).toEqual({ searches: 2, succeeded: 1, rate: 0.5 });
@@ -78,5 +101,10 @@ describe("metrics (#369)", () => {
     expect(m.costMonth).toBe(1.75);
     expect(m.monthActives).toBe(2);
     expect(m.costPerActiveMonth).toBe(0.875);
+    expect(m.growth.channels).toEqual([
+      { channel: "reddit", signups: 2, joined: 2, active: 2 },
+      { channel: "direct", signups: 1, joined: 0, active: 0 },
+    ]);
+    expect(m.growth.invites).toEqual({ sent: 2, accepted: 1, rate: 0.5 });
   });
 });

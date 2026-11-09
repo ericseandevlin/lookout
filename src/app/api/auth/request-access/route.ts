@@ -1,9 +1,11 @@
 import { featureOn } from "@/lib/features";
+import { sql } from "drizzle-orm";
 import { z } from "zod";
 import { body, clientIp, HttpError, json, publicRoute } from "@/lib/api";
 import { db, schema } from "@/lib/db";
 import { kinds } from "@/lib/kinds";
 import { WAITLIST_NOTICE_VERSION } from "@/lib/legal";
+import { channelOf } from "@/lib/metrics";
 import { NEXT_MOVES } from "@/lib/onboarding";
 import { rateLimit } from "@/lib/ratelimit";
 import { turnstileSiteKey, verifyTurnstile } from "@/lib/turnstile";
@@ -14,6 +16,8 @@ const Input = z.object({
   /** What they want Lookout to find (#8); picks the kind of profile they get at sign-up. */
   kind: z.enum(Object.keys(kinds) as [string, ...string[]]).optional(),
   nextMove: z.enum(NEXT_MOVES.map((m) => m.key) as [string, ...string[]]).optional(),
+  /** Where they came from (#527): the landing link's ?ref= or ?utm_source=. */
+  channel: z.string().max(200).optional(),
   /** Cloudflare Turnstile token (#13); checked only when Turnstile is configured. */
   turnstileToken: z.string().max(2048).optional(),
 });
@@ -29,8 +33,8 @@ export const POST = publicRoute(async (req) => {
   const answers = { kind: featureOn("SEARCHES") ? p.kind ?? "job" : "job", nextMove: p.nextMove ?? null, consentVersion: WAITLIST_NOTICE_VERSION, consentAt: new Date() };
   await db
     .insert(schema.accessRequests)
-    .values({ email, ...answers })
-    // A repeat request refreshes the answers but never reopens a decision.
-    .onConflictDoUpdate({ target: schema.accessRequests.email, set: answers });
+    .values({ email, ...answers, channel: channelOf(p.channel) })
+    // A repeat request refreshes the answers but never reopens a decision, and keeps the channel they first came from.
+    .onConflictDoUpdate({ target: schema.accessRequests.email, set: { ...answers, channel: sql`coalesce(${schema.accessRequests.channel}, excluded.channel)` } });
   return json({ ok: true });
 });

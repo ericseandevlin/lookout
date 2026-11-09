@@ -383,7 +383,7 @@ function ModelPicker({ source, current, onPick }: { source: Catalog; current: st
             )}
           </div>
           {err && <div style={{ padding: 12 }}><Msg text={err} /></div>}
-          {!models && !err && <div style={{ padding: 12, fontSize: 14, color: color.t2 }}>Loading models…</div>}
+          {!models && !err && <div role="status" style={{ padding: 12, fontSize: 14, color: color.t2 }}>Loading models…</div>}
           {models && (
             <div style={{ maxHeight: 320, overflowY: "auto" }}>
               <div style={{ display: "grid", gridTemplateColumns: "minmax(0,1fr) 70px 70px", gap: 8, padding: "8px 12px", fontSize: 14, fontWeight: 600, letterSpacing: ".06em", textTransform: "uppercase", color: color.t2, position: "sticky", top: 0, background: "#fff", borderBottom: `1px solid ${color.border}` }}>

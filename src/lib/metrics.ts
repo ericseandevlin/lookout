@@ -109,3 +109,48 @@ export function searchSuccess(runs: { status: string; read: number | null }[]) {
 export function activeSince(events: MetricEvent[], since: Date) {
   return new Set(events.filter((e) => e.type !== "heartbeat" && e.at >= since).map((e) => e.userId)).size;
 }
+
+export type OutcomeReport = { userId: string; outcome: "interview" | "offer"; boardInterview: boolean; boardOffer: boolean };
+
+/**
+ * Interviews and offers (#526): finds at Interview or Offer on the board, plus one for each person who said
+ * yes in the survey and has none on their board, so nobody counts twice. An offer means an interview too.
+ */
+export function outcomes(board: { interviews: number; offers: number }, reports: OutcomeReport[]) {
+  const interviewed = new Set<string>();
+  const offered = new Set<string>();
+  for (const r of reports) {
+    if (!r.boardInterview) interviewed.add(r.userId);
+    if (r.outcome === "offer" && !r.boardOffer) offered.add(r.userId);
+  }
+  return { interviews: board.interviews + interviewed.size, offers: board.offers + offered.size, survey: { interviews: interviewed.size, offers: offered.size } };
+}
+
+/**
+ * A waitlist channel (#527) as a short lowercase slug, or null. Tag each channel test's link with
+ * ?ref=<channel> (or ?utm_source=); spaces and other characters become dashes.
+ */
+export function channelOf(raw: string | string[] | null | undefined): string | null {
+  const s = (Array.isArray(raw) ? raw[0] : raw) ?? "";
+  const slug = s.trim().toLowerCase().replace(/[^a-z0-9._-]+/g, "-").replace(/^[-._]+|[-._]+$/g, "").slice(0, 40);
+  return slug || null;
+}
+
+export type Signup = { channel: string | null; joined: boolean; active: boolean };
+
+/**
+ * Growth (#527): waitlist requests per channel, how many joined, and how many of those were active
+ * in the last full week. No channel counts as "direct". Most signups first.
+ */
+export function byChannel(signups: Signup[]) {
+  const per = new Map<string, { channel: string; signups: number; joined: number; active: number }>();
+  for (const s of signups) {
+    const channel = s.channel ?? "direct";
+    const c = per.get(channel) ?? { channel, signups: 0, joined: 0, active: 0 };
+    c.signups++;
+    if (s.joined) c.joined++;
+    if (s.joined && s.active) c.active++;
+    per.set(channel, c);
+  }
+  return [...per.values()].sort((a, b) => b.signups - a.signups || a.channel.localeCompare(b.channel));
+}

@@ -1,14 +1,14 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import type { SurveyKind } from "@/lib/db/schema";
+import type { SurveyKind, SurveyOutcome } from "@/lib/db/schema";
 import { Tabs } from "./Admin";
 import { PageHead } from "./Profile";
 import { btn, Row, Section, Seg } from "./Settings";
 import { api } from "./store";
 import { color } from "@/lib/tokens";
 
-type Question = { id: string; kind: SurveyKind; prompt: string; options: string[]; active: boolean; createdAt: string; answers: number; skipped: number };
+type Question = { id: string; kind: SurveyKind; prompt: string; options: string[]; active: boolean; outcome: SurveyOutcome | null; outcomeAnswer: string | null; createdAt: string; answers: number; skipped: number };
 type State = { questions: Question[]; config: { everyDays: number } };
 type Reply = { email: string; name: string; answer: string | null; at: string };
 
@@ -57,6 +57,15 @@ export function AdminSurveys() {
     try {
       await api(`/api/admin/surveys/${q.id}`, { method: "PATCH", json: { active: !q.active } });
       await call(api<State>("/api/admin/surveys"), q.active ? "Turned off. Nobody new is asked." : "Turned on.");
+    } catch (e) {
+      setMsg({ text: e instanceof Error ? e.message : "Couldn't save", ok: false });
+    }
+  };
+  const tag = async (q: Question, outcome: SurveyOutcome | null, outcomeAnswer: string | null) => {
+    setMsg(null);
+    try {
+      await api(`/api/admin/surveys/${q.id}`, { method: "PATCH", json: { outcome, outcomeAnswer } });
+      await call(api<State>("/api/admin/surveys"), outcome ? `Saved. "${outcomeAnswer ?? q.options[0]}" counts as ${outcome === "offer" ? "an offer" : "an interview"} in Metrics.` : "Saved. Not counted in Metrics.");
     } catch (e) {
       setMsg({ text: e instanceof Error ? e.message : "Couldn't save", ok: false });
     }
@@ -118,6 +127,18 @@ export function AdminSurveys() {
                   {KIND_LABEL[q.kind]}
                   {q.options.length ? `: ${q.options.join(" · ")}` : ""} · added {day(q.createdAt)} · {q.answers} {q.answers === 1 ? "answer" : "answers"}, {q.skipped} skipped
                 </div>
+                {q.kind === "choice" && (
+                  <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center", fontSize: 14, color: color.t2 }}>
+                    Counts in Metrics as
+                    <Seg opts={[["Nothing", ""], ["Interview", "interview"], ["Offer", "offer"]]} cur={q.outcome ?? ""} pick={(v) => tag(q, v || null, v ? q.outcomeAnswer : null)} />
+                    {q.outcome && (
+                      <>
+                        when they answer
+                        <Seg opts={q.options.map((o) => [o, o])} cur={q.outcomeAnswer ?? ""} pick={(v) => tag(q, q.outcome, v)} />
+                      </>
+                    )}
+                  </div>
+                )}
                 <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
                   <button onClick={() => toggle(q)} style={{ ...btn("outline"), height: 34 }}>
                     {q.active ? "Turn off" : "Turn on"}
@@ -133,7 +154,7 @@ export function AdminSurveys() {
                 </div>
                 {open === q.id &&
                   (replies === null ? (
-                    <div style={{ fontSize: 14, color: color.t2 }}>Loading…</div>
+                    <div role="status" style={{ fontSize: 14, color: color.t2 }}>Loading…</div>
                   ) : !replies.length ? (
                     <div style={{ fontSize: 14, color: color.t2 }}>No answers yet.</div>
                   ) : (

@@ -129,7 +129,7 @@ export function keywordReport(master: string, tailored: string, d: z.infer<typeo
   const choice = (t: string) => (choices?.include.some((x) => x.toLowerCase() === t.toLowerCase()) ? "include" : choices?.exclude.some((x) => x.toLowerCase() === t.toLowerCase()) ? "exclude" : undefined);
   return terms
     .map((t) => t.trim())
-    .filter((t) => t && (choice(t) || (!isJunkKeyword(t) && (!posting || hasKeyword(posting, t)))) && !seen.has(t.toLowerCase()) && seen.add(t.toLowerCase()))
+    .filter((t) => t && (choice(t) || (!isJunkKeyword(t, posting) && (!posting || hasKeyword(posting, t)))) && !seen.has(t.toLowerCase()) && seen.add(t.toLowerCase()))
     .map((term) => {
       const before = hasKeyword(master, term);
       const after = hasKeyword(tailored, term);
