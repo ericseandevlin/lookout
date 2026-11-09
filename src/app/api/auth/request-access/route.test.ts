@@ -60,6 +60,20 @@ describe("POST /api/auth/request-access (#454)", () => {
     expect(row.decidedAt).toEqual(new Date("2026-11-01"));
   });
 
+  it("records the channel they came from as a slug, and keeps the first one on a repeat (#527)", async () => {
+    await post({ email: "maya@example.com", channel: "Reddit Ads" });
+    await post({ email: "maya@example.com", channel: "hn" });
+    await post({ email: "lee@example.com" });
+    const byEmail = Object.fromEntries((await rows()).map((r) => [r.email, r.channel]));
+    expect(byEmail).toEqual({ "maya@example.com": "reddit-ads", "lee@example.com": null });
+  });
+
+  it("fills in a channel on a repeat when the first request had none (#527)", async () => {
+    await post({ email: "maya@example.com" });
+    await post({ email: "maya@example.com", channel: "hn" });
+    expect((await rows())[0].channel).toBe("hn");
+  });
+
   it("gives an approved address the same answer as a new one", async () => {
     await db.insert(schema.accessRequests).values({ email: "maya@example.com", status: "approved" });
     const res = await post({ email: "maya@example.com" });

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { actedOn, activation, activeSince, outcomes, retention, scoreSplit, searchSuccess, week4Retention, weekly, type MetricEvent } from "./metrics";
+import { actedOn, activation, activeSince, byChannel, channelOf, outcomes, retention, scoreSplit, searchSuccess, week4Retention, weekly, type MetricEvent } from "./metrics";
 
 const ev = (userId: string, type: string, at: string, target: string | null = null, meta: Record<string, unknown> | null = null): MetricEvent => ({ userId, type, target, meta, at: new Date(at) });
 
@@ -128,5 +128,35 @@ describe("outcomes (#526)", () => {
         r("d", "offer", true),
       ]),
     ).toEqual({ interviews: 3, offers: 3, survey: { interviews: 1, offers: 2 } });
+  });
+});
+
+describe("channelOf (#527)", () => {
+  it("turns a ref into a short lowercase slug, or null", () => {
+    expect(channelOf("Reddit")).toBe("reddit");
+    expect(channelOf("  LinkedIn post #2 ")).toBe("linkedin-post-2");
+    expect(channelOf(["hn", "x"])).toBe("hn");
+    expect(channelOf("x".repeat(60))).toHaveLength(40);
+    expect(channelOf("--")).toBeNull();
+    expect(channelOf("")).toBeNull();
+    expect(channelOf(undefined)).toBeNull();
+  });
+});
+
+describe("byChannel (#527)", () => {
+  it("counts signups, joins and weekly actives per channel, untagged as direct, most signups first", () => {
+    expect(
+      byChannel([
+        { channel: "reddit", joined: true, active: true },
+        { channel: "reddit", joined: true, active: false },
+        { channel: "reddit", joined: false, active: false },
+        { channel: null, joined: true, active: true },
+        { channel: "hn", joined: false, active: true },
+      ]),
+    ).toEqual([
+      { channel: "reddit", signups: 3, joined: 2, active: 1 },
+      { channel: "direct", signups: 1, joined: 1, active: 1 },
+      { channel: "hn", signups: 1, joined: 0, active: 0 },
+    ]);
   });
 });

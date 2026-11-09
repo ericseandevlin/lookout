@@ -125,3 +125,32 @@ export function outcomes(board: { interviews: number; offers: number }, reports:
   }
   return { interviews: board.interviews + interviewed.size, offers: board.offers + offered.size, survey: { interviews: interviewed.size, offers: offered.size } };
 }
+
+/**
+ * A waitlist channel (#527) as a short lowercase slug, or null. Tag each channel test's link with
+ * ?ref=<channel> (or ?utm_source=); spaces and other characters become dashes.
+ */
+export function channelOf(raw: string | string[] | null | undefined): string | null {
+  const s = (Array.isArray(raw) ? raw[0] : raw) ?? "";
+  const slug = s.trim().toLowerCase().replace(/[^a-z0-9._-]+/g, "-").replace(/^[-._]+|[-._]+$/g, "").slice(0, 40);
+  return slug || null;
+}
+
+export type Signup = { channel: string | null; joined: boolean; active: boolean };
+
+/**
+ * Growth (#527): waitlist requests per channel, how many joined, and how many of those were active
+ * in the last full week. No channel counts as "direct". Most signups first.
+ */
+export function byChannel(signups: Signup[]) {
+  const per = new Map<string, { channel: string; signups: number; joined: number; active: number }>();
+  for (const s of signups) {
+    const channel = s.channel ?? "direct";
+    const c = per.get(channel) ?? { channel, signups: 0, joined: 0, active: 0 };
+    c.signups++;
+    if (s.joined) c.joined++;
+    if (s.joined && s.active) c.active++;
+    per.set(channel, c);
+  }
+  return [...per.values()].sort((a, b) => b.signups - a.signups || a.channel.localeCompare(b.channel));
+}

@@ -327,6 +327,8 @@ export const accessRequests = pgTable("access_requests", {
     nextMove: text("next_move"),
     /** What they want Lookout to find (#8). Which kind's profile they get at sign-up. */
     kind: text("kind").notNull().default("job"),
+    /** Where they came from (#527): the landing link's ?ref= or ?utm_source=, kept from their first request. */
+    channel: text("channel"),
   status: text("status").$type<"pending" | "approved" | "declined">().notNull().default("pending"),
   createdAt: createdAt(),
   decidedAt: timestamp("decided_at", { withTimezone: true }),

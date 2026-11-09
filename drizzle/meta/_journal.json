@@ -225,6 +225,13 @@
       "when": 1795132800000,
       "tag": "0031_survey_outcomes",
       "breakpoints": true
+    },
+    {
+      "idx": 32,
+      "version": "7",
+      "when": 1795219200000,
+      "tag": "0032_waitlist_channel",
+      "breakpoints": true
     }
   ]
 }

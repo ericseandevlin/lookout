@@ -1,7 +1,8 @@
 import "server-only";
-import { and, eq, gte, inArray, isNotNull, ne, sql } from "drizzle-orm";
+import { and, eq, gte, inArray, isNotNull, isNull, ne, or, sql } from "drizzle-orm";
 import { db, schema } from "@/lib/db";
-import { actedOn, activation, activeSince, GOALS, outcomes, retention, scoreSplit, searchSuccess, weekly, type MetricEvent, type OutcomeReport } from "./metrics";
+import { weekOf } from "./events";
+import { actedOn, activation, activeSince, byChannel, GOALS, outcomes, retention, scoreSplit, searchSuccess, weekly, type MetricEvent, type OutcomeReport } from "./metrics";
 import { APPLIED, topReasons } from "./quality";
 
 const DAY = 864e5;
@@ -87,6 +88,20 @@ export async function metrics(now = new Date()) {
     .from(schema.runs)
     .innerJoin(schema.users, eq(schema.users.id, schema.runs.userId))
     .where(and(gte(schema.runs.startedAt, monthAgo), inArray(schema.runs.trigger, ["scheduled", "manual"]), eq(schema.users.disabled, false)));
+  // Growth (#527): waitlist requests by channel, joined meaning an account under that email, active meaning
+  // any event in the last full week; and invites not revoked, accepted meaning they signed in.
+  const lastWeekActive = new Set(events.filter((e) => weekOf(e.at) === last.week).map((e) => e.userId));
+  const signups = await db
+    .select({ channel: schema.accessRequests.channel, userId: schema.users.id })
+    .from(schema.accessRequests)
+    .leftJoin(schema.users, sql`lower(${schema.users.email}) = ${schema.accessRequests.email}`)
+    .where(or(isNull(schema.users.id), eq(schema.users.disabled, false)));
+  const [invited] = await db
+    .select({ sent: sql<number>`count(*)::int`, accepted: sql<number>`count(${schema.users.id})::int` })
+    .from(schema.invites)
+    .leftJoin(schema.users, sql`lower(${schema.users.email}) = ${schema.invites.email}`)
+    .where(and(isNull(schema.invites.revokedAt), or(isNull(schema.users.id), eq(schema.users.disabled, false))));
+
   const cost = Number(usd);
   return {
     goals: GOALS,
@@ -105,5 +120,9 @@ export async function metrics(now = new Date()) {
     monthActives,
     costPerActiveMonth: monthActives ? cost / monthActives : null,
     weeks: weeks.slice(0, -1),
+    growth: {
+      channels: byChannel(signups.map((r) => ({ channel: r.channel, joined: !!r.userId, active: !!r.userId && lastWeekActive.has(r.userId) }))),
+      invites: { ...invited, rate: invited.sent ? invited.accepted / invited.sent : null },
+    },
   };
 }
