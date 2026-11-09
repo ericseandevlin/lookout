@@ -127,8 +127,8 @@ function RequestAccess({ emailEnabled, turnstileSiteKey, kinds, onSignIn }: { em
         <label htmlFor="req-email" style={label}>Email</label>
         <input id="req-email" type="email" required autoComplete="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@example.com" className="f-brick" style={field} />
         {kinds && (
-        <fieldset style={{ border: 0, padding: 0, margin: "8px 0 4px", display: "flex", flexDirection: "column", gap: 6 }}>
-          <legend style={{ ...label, marginBottom: 8 }}>What do you want Lookout to find?</legend>
+        <fieldset style={{ border: 0, padding: 0, margin: "18px 0 2px", display: "flex", flexDirection: "column", gap: 8 }}>
+          <legend style={{ ...label, marginBottom: 10 }}>What do you want Lookout to find?</legend>
           {([
             ["job", "A job or role", "Lookout searches job boards and company sites every week and scores what it finds."],
             ["rfp", "Contract opportunities (RFPs)", "Lookout watches solicitations and scores them against your business. Starting with federal."],
@@ -140,12 +140,12 @@ function RequestAccess({ emailEnabled, turnstileSiteKey, kinds, onSignIn }: { em
                 key={key}
                 aria-pressed={on}
                 onClick={() => setKind(key)}
-                style={{ display: "flex", alignItems: "center", gap: 10, minHeight: 42, padding: "0 14px", borderRadius: 10, border: `1.5px solid ${on ? color.ink : color.border}`, background: on ? color.ink : "#fff", color: on ? "#fff" : color.ink, fontSize: 14, fontWeight: 500, cursor: "pointer", textAlign: "left" }}
+                style={{ display: "flex", alignItems: "center", gap: 12, minHeight: 46, padding: "11px 16px", borderRadius: 10, border: `1.5px solid ${on ? color.ink : color.border}`, background: on ? color.ink : "#fff", color: on ? "#fff" : color.ink, fontSize: 14, fontWeight: 500, cursor: "pointer", textAlign: "left" }}
               >
                 <span style={{ width: 14, height: 14, borderRadius: "50%", border: `1.5px solid ${on ? color.orange : "#CFC6B9"}`, background: on ? color.orange : "transparent", flex: "none" }} />
                 <span>
                   {lab}
-                  <span style={{ display: "block", fontSize: 14, fontWeight: 400, opacity: 0.75 }}>{note}</span>
+                  <span style={{ display: "block", marginTop: 3, fontSize: 14, lineHeight: 1.45, fontWeight: 400, opacity: 0.75 }}>{note}</span>
                 </span>
               </button>
             );
@@ -153,8 +153,8 @@ function RequestAccess({ emailEnabled, turnstileSiteKey, kinds, onSignIn }: { em
         </fieldset>
         )}
         {kind === "job" && (
-        <fieldset style={{ border: 0, padding: 0, margin: "8px 0 4px", display: "flex", flexDirection: "column", gap: 6 }}>
-          <legend style={{ ...label, marginBottom: 8 }}>What&apos;s your next move? <span style={{ textTransform: "none", letterSpacing: 0, fontWeight: 500 }}>(optional)</span></legend>
+        <fieldset style={{ border: 0, padding: 0, margin: "18px 0 2px", display: "flex", flexDirection: "column", gap: 8 }}>
+          <legend style={{ ...label, marginBottom: 10 }}>What&apos;s your next move? <span style={{ textTransform: "none", letterSpacing: 0, fontWeight: 500 }}>(optional)</span></legend>
           {NEXT_MOVES.map((m) => {
             const on = move === m.key;
             return (
@@ -163,7 +163,7 @@ function RequestAccess({ emailEnabled, turnstileSiteKey, kinds, onSignIn }: { em
                 key={m.key}
                 aria-pressed={on}
                 onClick={() => setMove(on ? null : m.key)}
-                style={{ display: "flex", alignItems: "center", gap: 10, minHeight: 42, padding: "0 14px", borderRadius: 10, border: `1.5px solid ${on ? color.ink : color.border}`, background: on ? color.ink : "#fff", color: on ? "#fff" : color.ink, fontSize: 14, fontWeight: 500, cursor: "pointer", textAlign: "left" }}
+                style={{ display: "flex", alignItems: "center", gap: 12, minHeight: 46, padding: "11px 16px", borderRadius: 10, border: `1.5px solid ${on ? color.ink : color.border}`, background: on ? color.ink : "#fff", color: on ? "#fff" : color.ink, fontSize: 14, fontWeight: 500, cursor: "pointer", textAlign: "left" }}
               >
                 <span style={{ width: 14, height: 14, borderRadius: "50%", border: `1.5px solid ${on ? color.orange : "#CFC6B9"}`, background: on ? color.orange : "transparent", flex: "none" }} />
                 {m.label}
@@ -173,7 +173,7 @@ function RequestAccess({ emailEnabled, turnstileSiteKey, kinds, onSignIn }: { em
         </fieldset>
         )}
         {turnstileSiteKey && <Turnstile siteKey={turnstileSiteKey} resetKey={resetKey} onToken={setToken} />}
-        <p style={{ fontSize: 14, lineHeight: 1.5, color: color.t2, margin: 0 }}>{WAITLIST_NOTICE}</p>
+        <p style={{ fontSize: 14, lineHeight: 1.5, color: color.t2, margin: "14px 0 4px" }}>{WAITLIST_NOTICE}</p>
         <button type="submit" disabled={state === "sending" || (!!turnstileSiteKey && !token)} style={primary}>{state === "sending" ? "Sending…" : "Request access"}</button>
         {state === "error" && <div role="alert" style={{ fontSize: 14, color: color.brick }}>{msg}</div>}
       </form>
