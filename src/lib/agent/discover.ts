@@ -268,11 +268,18 @@ async function scorePages(ctx: Context, pages: Page[], usage: Usage, report?: Re
 
 // --- save ----------------------------------------------------------------------
 
+/** A real calendar day, or null: "2026-02-30" passes a pattern check but Postgres rejects it and the run fails (#626). */
+const realDate = (d: string | null) => (d && /^\d{4}-\d{2}-\d{2}$/.test(d) && new Date(`${d}T00:00:00Z`).toISOString().slice(0, 10) === d ? d : null);
+
+/** Pay that fits the integer column, or null: a range in cents would overflow it (#626). */
+const pay = (n: number | null) => (n != null && Number.isFinite(n) && n >= 1 && n < 2 ** 31 ? Math.round(n) : null);
+
 export async function save(ctx: Context, finds: ScoredT[], via: "agent" | "manual"): Promise<RunTally & { newFinds: { id: string; score: number }[] }> {
   const known = new Set(ctx.knownUrls.map(normUrl));
   const t = emptyTally();
   const newFinds: { id: string; score: number }[] = [];
-  for (const f of finds) {
+  for (const raw of finds) {
+    const f = { ...raw, comp_min: pay(raw.comp_min), comp_max: pay(raw.comp_max) };
     if (!f.is_open_job_posting || !f.company || !f.title) {
       t.notPostings++;
       continue;
@@ -301,7 +308,6 @@ export async function save(ctx: Context, finds: ScoredT[], via: "agent" | "manua
     const top = f.comp_max ?? f.comp_min;
     if (ctx.floor && top && top < ctx.floor) t.belowFloor++;
     if (!f.location_fit) t.offLocation++;
-    const posted = f.posted_at && /^\d{4}-\d{2}-\d{2}$/.test(f.posted_at) ? f.posted_at : null;
     const [opp] = await db
       .insert(schema.opportunities)
       .values({
@@ -310,9 +316,9 @@ export async function save(ctx: Context, finds: ScoredT[], via: "agent" | "manua
         title: f.title.slice(0, 300),
         location: f.location.slice(0, 200),
         workMode: f.work_mode === "Unknown" ? null : f.work_mode,
-        compMin: f.comp_min ? Math.round(f.comp_min) : null,
-        compMax: f.comp_max ? Math.round(f.comp_max) : null,
-        postedAt: posted,
+        compMin: f.comp_min,
+        compMax: f.comp_max,
+        postedAt: realDate(f.posted_at),
         sourceUrl: f.url.slice(0, 1000),
         description: f.description.slice(0, 2000),
         fingerprint: fingerprint(f.company, f.title, f.location),
