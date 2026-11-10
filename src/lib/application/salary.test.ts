@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { isSalaryQuestion, rangeBasis, suggestSalary } from "./salary";
+import { asksBase, isSalaryQuestion, rangeBasis, suggestSalary } from "./salary";
 
 describe("suggestSalary", () => {
   // Quill's criteria 1 and 3 first: these are the cases where a wrong number looks confident.
@@ -85,6 +85,26 @@ describe("rangeBasis", () => {
     expect(rangeBasis("The range includes a target bonus.")).toBe("total");
     expect(rangeBasis("Base salary range: $100,000 - $140,000")).toBe("base");
     expect(rangeBasis("Salary: $100,000 - $140,000")).toBeNull();
+  });
+
+  it("reads a range that doesn't include bonus as base, not total cash (#650)", () => {
+    expect(rangeBasis("The base salary range is $150,000-$180,000. This range does not include bonus or equity.")).toBe("base");
+    expect(rangeBasis("Base pay: $150k-$180k. The pay range doesn't include a bonus.")).toBe("base");
+    expect(rangeBasis("Base salary $150k-$180k, excluding bonus")).toBe("base");
+  });
+
+  it("ignores a bonus in a benefits list (#650)", () => {
+    expect(rangeBasis("Base pay range: $150k-$180k. Our total rewards include a bonus program.")).toBe("base");
+    expect(rangeBasis("Perks include bonus eligibility and 401(k).")).toBeNull();
+  });
+});
+
+describe("asksBase", () => {
+  it("is base only when the question doesn't add bonus or commission (#650)", () => {
+    expect(asksBase("Expected base salary")).toBe(true);
+    expect(asksBase("Expected annual compensation (base + bonus)")).toBe(false);
+    expect(asksBase("Desired base plus commission")).toBe(false);
+    expect(asksBase("Salary expectations")).toBe(false);
   });
 });
 
