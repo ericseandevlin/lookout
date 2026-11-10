@@ -19,12 +19,15 @@ export async function sendDigest(userId: string, runId?: string) {
   const [last] = await db.select({ at: max(schema.digests.sentAt) }).from(schema.digests).where(eq(schema.digests.userId, userId));
   const dayAgo = new Date(Date.now() - 24 * 3600_000);
   const since = last?.at && last.at > dayAgo ? last.at : dayAgo;
-  const rows = await db
+  const scored = await db
     .select()
     .from(schema.userOpportunities)
     .innerJoin(schema.opportunities, eq(schema.opportunities.id, schema.userOpportunities.opportunityId))
     .where(and(eq(schema.userOpportunities.userId, userId), gt(schema.userOpportunities.addedAt, since), eq(schema.userOpportunities.archived, false)))
     .orderBy(desc(schema.userOpportunities.score));
+  // A posting two of their searches found is one find, shown with its best score (#657).
+  const seen = new Set<string>();
+  const rows = scored.filter((r) => !seen.has(r.opportunities.id) && !!seen.add(r.opportunities.id));
   const pinned = await db
     .select()
     .from(schema.userOpportunities)
