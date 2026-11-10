@@ -50,17 +50,40 @@ export type Trap = { text: string; words: string[]; hidden: boolean };
 
 const HIDDEN_STYLE = /display\s*:\s*none|visibility\s*:\s*hidden|font-size\s*:\s*0*(\.\d+)?(px|pt|em|rem)?\s*(;|"|')|font-size\s*:\s*[01]px|opacity\s*:\s*0(\.0*)?\s*(;|"|')|color\s*:\s*(#fff(fff)?|white|rgba?\(\s*255\s*,\s*255\s*,\s*255)|(left|top|text-indent)\s*:\s*-\d{3,}|height\s*:\s*0(px)?\s*;[^"']*overflow\s*:\s*hidden|clip\s*:\s*rect\(0/i;
 
+const isHiddenTag = (attrs: string) => {
+  const style = attrs.match(/\bstyle\s*=\s*("[^"]*"|'[^']*')/i);
+  return (!!style && HIDDEN_STYLE.test(style[1])) || /\shidden(?=[\s>=/]|$)/i.test(attrs);
+};
+
+/** Where the element opened just before `from` ends, counting nested tags of the same name (#616). */
+function closingTag(html: string, tag: string, from: number) {
+  const re = new RegExp(`<(/?)${tag}\\b[^>]*>`, "gi");
+  re.lastIndex = from;
+  let depth = 1;
+  for (let m = re.exec(html); m; m = re.exec(html)) {
+    if (m[1]) {
+      if (--depth === 0) return { start: m.index, end: re.lastIndex };
+    } else if (!m[0].endsWith("/>")) depth++;
+  }
+  return null;
+}
+
 /** Remove elements a human reader can't see. Only a scraper reads them, so they are never job content. */
 export function stripHidden(html: string): { html: string; hidden: string[] } {
   const hidden: string[] = [];
-  const take = (_m: string, inner: string) => {
-    const t = inner.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim();
+  let out = "";
+  let at = 0;
+  const re = /<(\w+)\b([^>]*)>/g;
+  for (let m = re.exec(html); m; m = re.exec(html)) {
+    if (m[0].endsWith("/>") || !isHiddenTag(m[2])) continue;
+    const close = closingTag(html, m[1], re.lastIndex);
+    if (!close) continue;
+    const t = html.slice(re.lastIndex, close.start).replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim();
     if (t) hidden.push(t);
-    return " ";
-  };
-  let out = html.replace(/<(\w+)\b[^>]*\bstyle\s*=\s*("[^"]*"|'[^']*')[^>]*>([\s\S]*?)<\/\1>/gi, (m, _tag, style, inner) => (HIDDEN_STYLE.test(style) ? take(m, inner) : m));
-  out = out.replace(/<(\w+)\b[^>]*\shidden(?=[\s>=])[^>]*>([\s\S]*?)<\/\1>/gi, (m, _t, inner) => take(m, inner));
-  return { html: out, hidden };
+    out += `${html.slice(at, m.index)} `;
+    at = re.lastIndex = close.end;
+  }
+  return { html: out + html.slice(at), hidden };
 }
 
 const TRAP = [
