@@ -163,4 +163,52 @@ describe("closeGonePostings", () => {
     expect(lc?.state).toBe("unknown");
     expect(lc?.goneSince).toBeUndefined();
   }, 10_000);
+  describe("company pages that embed an ATS (#678)", () => {
+    const GH = "https://boards-api.greenhouse.io/v1/boards/acme";
+    const PAGE = "https://acme.test/careers?gh_jid=123";
+    const gone404 = () => new FetchError("The page answered 404");
+
+    it("reads a Greenhouse embed as gone when its board no longer has the job", async () => {
+      const id = await addFind(PAGE);
+      pages.set(PAGE, "Careers at Acme <script src=https://boards.greenhouse.io/embed/job_board/js?for=acme></script>");
+      pages.set(`${GH}/jobs/123`, gone404());
+      await closeGonePostings(userId, T0);
+      expect((await find(id)).linkCheck).toMatchObject({ state: "gone", reason: "Greenhouse no longer lists the job" });
+    });
+
+    it("keeps a Greenhouse embed open while the board still has the job", async () => {
+      const id = await addFind(PAGE);
+      pages.set(PAGE, "Careers at Acme");
+      await closeGonePostings(userId, T0);
+      expect((await find(id)).linkCheck?.state).toBe("open");
+      expect(fetchPage).toHaveBeenCalledWith(`${GH}/jobs/123`);
+    });
+
+    it("never closes on a guessed board that doesn't exist", async () => {
+      const id = await addFind(PAGE);
+      pages.set(PAGE, "Careers at Acme");
+      pages.set(GH, gone404());
+      pages.set(`${GH}/jobs/123`, gone404());
+      await closeGonePostings(userId, T0);
+      expect((await find(id)).linkCheck?.state).toBe("open");
+      expect(fetchPage).not.toHaveBeenCalledWith(`${GH}/jobs/123`);
+    });
+
+    it("reads an Ashby embed as gone when the org no longer has the job", async () => {
+      const jid = "0b5c9f3e-1111-4222-8333-444455556666";
+      const url = `https://acme.test/careers?ashby_jid=${jid}`;
+      const id = await addFind(url);
+      pages.set(url, "Careers at Acme");
+      const post = vi.fn(async () => new Response(JSON.stringify({ data: { jobPosting: null } }), { headers: { "content-type": "application/json" } }));
+      vi.stubGlobal("fetch", post);
+      try {
+        await closeGonePostings(userId, T0);
+      } finally {
+        vi.unstubAllGlobals();
+      }
+      expect(fetchPage).toHaveBeenCalledWith("https://api.ashbyhq.com/posting-api/job-board/acme");
+      expect(JSON.parse((post.mock.calls[0] as unknown as [string, RequestInit])[1].body as string).variables).toEqual({ organizationHostedJobsPageName: "acme", jobPostingId: jid });
+      expect((await find(id)).linkCheck).toMatchObject({ state: "gone", reason: "Ashby no longer lists the job" });
+    });
+  });
 });
