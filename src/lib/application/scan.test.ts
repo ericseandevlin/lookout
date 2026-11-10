@@ -87,6 +87,11 @@ describe("parseGreenhouse", () => {
     expect(r.postingHtml).toBe("<p>Title: Group AI Product Manager | Digital</p><p>Location: New York, NY</p><p>Total cash: $230,000 – $260,000 USD</p><p>Own the P&amp;L.</p>");
   });
 
+  it("writes pay in other currencies without a dollar sign (#633)", () => {
+    const r = parseGreenhouse({ ...job, content: "<p>x</p>", pay_input_ranges: [{ min_cents: 8000000, max_cents: 10000000, currency_type: "EUR", title: null }] });
+    expect(r.postingHtml).toBe("<p>Pay: 80,000 – 100,000 EUR</p><p>x</p>");
+  });
+
   it("lists every question with kind, requiredness and options", () => {
     const r = parseGreenhouse(job);
     expect(r.items.map((i) => [i.kind, i.required])).toEqual([

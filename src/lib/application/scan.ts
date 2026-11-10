@@ -149,9 +149,13 @@ export function parseGreenhouse(json: unknown): Omit<ScanResult, "ats" | "route"
   items.push(...eeoItems);
   const hasEeo = eeoItems.length > 0;
   // Greenhouse escapes the description HTML once more, and keeps location and pay outside it.
+  // "$" only for dollars US: a euro or pound range keeps its own code and no dollar sign (#633).
   const pay = (job.pay_input_ranges ?? [])
     .filter((r) => r.min_cents || r.max_cents)
-    .map((r) => `${r.title ?? "Pay"}: ${[r.min_cents, r.max_cents].filter(Boolean).map((c) => `$${Math.round(c! / 100).toLocaleString("en-US")}`).join(" – ")} ${r.currency_type ?? ""}`.trim());
+    .map((r) => {
+      const sign = !r.currency_type || /^usd$/i.test(r.currency_type) ? "$" : "";
+      return `${r.title ?? "Pay"}: ${[r.min_cents, r.max_cents].filter(Boolean).map((c) => `${sign}${Math.round(c! / 100).toLocaleString("en-US")}`).join(" – ")} ${r.currency_type ?? ""}`.trim();
+    });
   const facts = [job.title && `<p>Title: ${job.title}</p>`, job.location?.name && `<p>Location: ${job.location.name}</p>`, ...pay.map((p) => `<p>${p}</p>`)].filter(Boolean).join("");
   const body = job.content?.replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&quot;/g, '"').replace(/&#39;/g, "'").replace(/&amp;/g, "&");
   return { items, hasEeo, ...(body ? { postingHtml: facts + body } : {}) };
