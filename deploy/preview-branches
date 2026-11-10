@@ -3,6 +3,6 @@
 # branch is skipped and a conflicting one is left out (both named in the run summary). Remove a line once the
 # branch merges or Eric rejects it. Changes here take effect when they reach main.
 feat/512-review-layout
-feat/517-signin-page
-feat/523-polish
-feat/525-signin-consent
+feat/600-landing
+feat/601-group-invite
+feat/602-next-page
