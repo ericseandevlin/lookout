@@ -17,6 +17,9 @@ export function jobKey(raw: string | null | undefined): string | null {
   if (gh && /^\d+$/.test(gh)) return `greenhouse:${gh}`;
   const uuid = u.pathname.match(/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i)?.[0];
   if (uuid && /(ashbyhq\.com|lever\.co)$/.test(host)) return `${host.includes("ashby") ? "ashby" : "lever"}:${uuid.toLowerCase()}`;
+  // Workday (#622): the form is at .../job/<location>/<title>_R123/apply/applyManually, with or without a locale prefix.
+  const wd = /myworkdayjobs\.com$/.test(host) && u.pathname.match(/\/(?:job|details)\/(?:[^/]+\/)*?([^/]+)\/*(?:\/apply\b.*)?$/i)?.[1];
+  if (wd) return `workday:${host}:${decodeURIComponent(wd).toLowerCase()}`;
   const path = u.pathname.replace(/\/(apply|application)\/?$/i, "").replace(/\/+$/, "");
   return `url:${host.replace(/^www\./, "")}${path.toLowerCase()}${idQuery(u.searchParams)}`;
 }
