@@ -18,6 +18,7 @@ import { closeGonePostings } from "./linkCheck";
 import { findEventsIfDue } from "./networking";
 import { featureOn } from "@/lib/features";
 import { discoverRfp } from "./rfp";
+import { jobKey } from "@/lib/extension/match";
 
 /**
  * Discovery pipeline, built to work with small, cheap models:
@@ -127,8 +128,18 @@ const AGGREGATOR = /(indeed|linkedin|glassdoor|ziprecruiter|simplyhired|monster|
 
 type Report = (pct: number, step: string) => Promise<void>;
 
+/**
+ * One key per job on Greenhouse, Lever, Ashby and Workday, whatever host or path the link uses. A posting is saved
+ * under the URL it redirected to, and search often returns the old one (boards.greenhouse.io for job-boards.greenhouse.io),
+ * so text alone missed it and the run read and scored it again (#670). Other sites keep the exact URL match.
+ */
+const atsKey = (u: string) => {
+  const k = jobKey(u);
+  return k && !k.startsWith("url:") ? k : null;
+};
+
 async function gatherHits(ctx: Context, queries: string[], usage: Usage, report: Report) {
-  const known = new Set(ctx.knownUrls.map(normUrl));
+  const known = new Set([...ctx.knownUrls.map(normUrl), ...ctx.knownUrls.map(atsKey).filter((k): k is string => !!k)]);
   const seen = new Set<string>();
   const hits: SearchHit[] = [];
   const results: PromiseSettledResult<SearchHit[]>[] = [];
@@ -139,9 +150,9 @@ async function gatherHits(ctx: Context, queries: string[], usage: Usage, report:
   for (const r of results) {
     if (r.status !== "fulfilled") continue;
     for (const h of r.value) {
-      const k = normUrl(h.url);
-      if (seen.has(k) || known.has(k) || AGGREGATOR.test(h.url)) continue;
-      seen.add(k);
+      const keys = [normUrl(h.url), atsKey(h.url)].filter((k): k is string => !!k);
+      if (keys.some((k) => seen.has(k) || known.has(k)) || AGGREGATOR.test(h.url)) continue;
+      for (const k of keys) seen.add(k);
       hits.push(h);
     }
   }
