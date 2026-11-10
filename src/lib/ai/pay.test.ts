@@ -47,6 +47,11 @@ describe("findPay", () => {
     expect(findPay("", "$120,000 - $140,000 / hybrid in NYC")).toMatchObject({ min: 120000, max: 140000 });
   });
 
+  it("keeps an hourly range hourly when a yearly word follows it (#646)", () => {
+    expect(findPay("", "$25.00 - $35.00 per hour, plus an annual bonus")).toMatchObject({ min: 52000, max: 72800 });
+    expect(findPay("", "$40 - $55/hr. Eligible for yearly raises")).toMatchObject({ min: 83200, max: 114400 });
+  });
+
   it("ignores amounts that aren't a salary range", () => {
     expect(findPay("", "We raised $50,000,000 in 2024 and serve 2,000 - 3,000 customers")).toBeNull();
     expect(findPay("", "401k match up to $5,000 - $6,000")).toBeNull();
