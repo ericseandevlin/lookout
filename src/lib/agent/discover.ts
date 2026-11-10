@@ -223,7 +223,8 @@ const Scored = z.object({
 export const ScoredList = z.object({ finds: z.array(Scored) });
 export type ScoredT = z.infer<typeof Scored> & { url: string };
 
-const SCORER_SYSTEM = `You score job postings for one candidate. Today is ${today()}.
+// Built per call: the server runs for days between deploys, and the date decides what still looks open (#608).
+const scorerSystem = () => `You score job postings for one candidate. Today is ${today()}.
 Only use facts on the page. Never invent pay or dates; use null when the page doesn't state them. Annualize hourly pay only if it is clearly full time.
 Reasons are read on a phone: short, concrete, no filler.`;
 
@@ -241,7 +242,7 @@ async function scorePages(ctx: Context, pages: Page[], usage: Usage, report?: Re
         schema: ScoredList,
         usage,
         maxTokens: 4000,
-        system: SCORER_SYSTEM,
+        system: scorerSystem(),
         user: `${profileBlock(ctx)}\n\n<pages>\n${body}\n</pages>\n\nReturn one entry per page, using its [n] as index.`,
       });
       for (const f of res.finds) {
