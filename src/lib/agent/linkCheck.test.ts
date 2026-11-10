@@ -108,6 +108,16 @@ describe("closeGonePostings", () => {
     expect(fetchPage).not.toHaveBeenCalled();
   });
 
+  it("never checks or counts finds they passed on (#614)", async () => {
+    const id = await addFind("https://jobs.test/1", { stage: "Nope", attributes: { linkCheck: { checkedAt: T0.toISOString(), state: "gone", reason: "x", goneSince: T0.toISOString() } } });
+    pages.set("https://jobs.test/1", "This job is no longer available.");
+    expect(await closeGonePostings(userId, hoursLater(48))).toBe(0);
+    const f = await find(id);
+    expect(f.stage).toBe("Nope");
+    expect(f.archived).toBe(false);
+    expect(fetchPage).not.toHaveBeenCalled();
+  });
+
   it("counts a 404 as gone without retrying", async () => {
     const id = await addFind("https://jobs.test/1");
     pages.set("https://jobs.test/1", new FetchError("The page answered 404"));

@@ -8,7 +8,8 @@ import { classifyPage, type LinkState } from "./linkState";
 type LinkCheck = { checkedAt: string; state: LinkState; reason: string; goneSince?: string };
 
 const CONFIRM_MS = 20 * 3600_000; // gone on two checks at least this far apart before anything closes
-const ACTIVE = ["Applied", "Interview", "Offer"];
+// Only these close. Finds they're pursuing (Applied, Interview, Offer) or already passed on (Nope) are never checked.
+const CLOSABLE = ["Not applied", "Auto-applying", "Ghosted", "Not selected"];
 
 // Some careers sites answer inconsistently (one server in maintenance, the next with the real page), so an
 // inconclusive answer is retried a few times before it counts as unknown.
@@ -33,7 +34,7 @@ async function checkOnce(url: string): Promise<{ state: LinkState; reason: strin
 
 /**
  * Re-checks the person's open finds and closes postings that are confirmed gone: stage Closed, archived, and a note
- * with the date it was first seen gone. Finds they're actively pursuing are never touched. Returns how many closed.
+ * with the date it was first seen gone. Finds they're actively pursuing or passed on are never touched. Returns how many closed.
  */
 export async function closeGonePostings(userId: string, now = new Date()): Promise<number> {
   const rows = await db
@@ -41,7 +42,7 @@ export async function closeGonePostings(userId: string, now = new Date()): Promi
     .from(schema.userOpportunities)
     .innerJoin(schema.opportunities, eq(schema.opportunities.id, schema.userOpportunities.opportunityId))
     .where(and(eq(schema.userOpportunities.userId, userId), eq(schema.userOpportunities.archived, false)));
-  const open = rows.filter((r) => r.o.sourceUrl && !ACTIVE.includes(r.uo.stage) && r.uo.stage !== "Closed");
+  const open = rows.filter((r) => r.o.sourceUrl && CLOSABLE.includes(r.uo.stage));
 
   let closed = 0;
   const queue = [...open];
@@ -60,11 +61,13 @@ export async function closeGonePostings(userId: string, now = new Date()): Promi
       if (lc.state === "gone" && lc.goneSince && now.getTime() - Date.parse(lc.goneSince) >= CONFIRM_MS) {
         const day = lc.goneSince.slice(0, 10);
         const line = `Closed: the posting was gone (${lc.reason}) as of ${day}. Lookout archived it.`;
-        await db
+        // The stage may have moved since the read (they applied mid-run); count only a find this actually closed (#614).
+        const done = await db
           .update(schema.userOpportunities)
           .set({ stage: "Closed", archived: true, notes: r.uo.notes ? `${r.uo.notes.trimEnd()}\n\n${line}` : line })
-          .where(and(eq(schema.userOpportunities.userId, userId), eq(schema.userOpportunities.opportunityId, r.o.id), inArray(schema.userOpportunities.stage, ["Not applied", "Auto-applying", "Ghosted", "Not selected"])));
-        closed++;
+          .where(and(eq(schema.userOpportunities.userId, userId), eq(schema.userOpportunities.opportunityId, r.o.id), inArray(schema.userOpportunities.stage, CLOSABLE)))
+          .returning({ stage: schema.userOpportunities.stage });
+        closed += done.length;
       }
     }
   };
