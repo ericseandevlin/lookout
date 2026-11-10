@@ -159,6 +159,21 @@ describe("discover (#379)", () => {
     expect((await board())[0].compMin).toBe(190000);
   });
 
+  it("tells the scorer today's date, not the date the server started (#608)", async () => {
+    results.set("design systems lead", [hit("https://jobs.example.com/a")]);
+    results.set("design systems lead site:greenhouse.io", []);
+    pages.set("https://jobs.example.com/a", posting());
+    vi.useFakeTimers({ toFake: ["Date"] });
+    try {
+      vi.setSystemTime(new Date("2031-03-14T12:00:00Z"));
+      await discover(searchId);
+    } finally {
+      vi.useRealTimers();
+    }
+    const score = completeJSON.mock.calls.map((c) => c[0] as Call & { system: string }).find((c) => c.name === "score");
+    expect(score?.system).toContain("Today is 2031-03-14.");
+  });
+
   it("keeps going when one search fails, and fails the run only when every search does", async () => {
     results.set("design systems lead", [hit("https://jobs.example.com/a")]);
     pages.set("https://jobs.example.com/a", posting());
