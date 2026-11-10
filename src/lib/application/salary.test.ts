@@ -94,6 +94,18 @@ describe("isSalaryQuestion", () => {
     expect(isSalaryQuestion("What is your base salary expectation?")).toBe(true);
     expect(isSalaryQuestion("What is your current salary?")).toBe(false);
   });
+
+  it("still sees the ask when the prompt mentions history or a current range (#640)", () => {
+    expect(isSalaryQuestion("What are your salary expectations? We do not ask about salary history.")).toBe(true);
+    expect(isSalaryQuestion("What is your expected salary? Our range is listed in the current posting.")).toBe(true);
+    expect(isSalaryQuestion("Expected salary (our current range is in the posting)")).toBe(true);
+    expect(isSalaryQuestion("What are your compensation expectations?\nLast day to apply is Friday.")).toBe(true);
+  });
+
+  it("leaves out questions about the person's own past pay (#640)", () => {
+    for (const q of ["Salary history", "What was your previous base salary?", "What is your most recent compensation?", "What was your salary at your last job?", "Please share your compensation history."])
+      expect(isSalaryQuestion(q)).toBe(false);
+  });
 });
 
 describe("salary note wording", () => {

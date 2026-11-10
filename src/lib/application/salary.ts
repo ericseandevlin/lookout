@@ -24,7 +24,15 @@ export const asksBase = (prompt: string) => /\bbase\b/i.test(prompt);
 /** The question asks for the lowest number the person would take. */
 export const asksMinimum = (prompt: string) => /\bminimum\b|\bat least\b|\blowest\b/i.test(prompt);
 
-export const isSalaryQuestion = (prompt: string) => /salary|compensation|pay (expectation|requirement)|expected (base|annual|pay)|desired (base|pay)/i.test(prompt) && !/history|current|previous|last/i.test(prompt);
+const SALARY_ASK = /salary|compensation|pay (expectation|requirement)|expected (base|annual|pay)|desired (base|pay)/i;
+const PAST_PAY =
+  /\b(current|previous|prior|last|most recent|present)\b[^.?!]{0,20}\b(salary|compensation|pay|base)\b|\b(salary|compensation|pay) history\b|\b(salary|compensation|pay)\b[^.?!]{0,25}\b(current|previous|prior|last) (job|role|position|employer)\b/i;
+
+/**
+ * A salary ask, not a question about the person's own past or current pay. Judged sentence by sentence,
+ * so a legal note after the ask ("We do not ask about salary history.") doesn't hide it (#640).
+ */
+export const isSalaryQuestion = (prompt: string) => prompt.split(/(?<=[.?!])\s+|\n+/).some((s) => SALARY_ASK.test(s) && !PAST_PAY.test(s));
 
 /**
  * amount is null when Lookout shouldn't put a number in: the floor is above their range, or their range
