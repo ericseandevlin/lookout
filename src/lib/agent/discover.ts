@@ -1,5 +1,5 @@
 import "server-only";
-import { and, eq, inArray } from "drizzle-orm";
+import { and, eq, inArray, sql } from "drizzle-orm";
 import { z } from "zod";
 import { db, schema } from "@/lib/db";
 import { parseMoney } from "@/lib/kinds";
@@ -307,9 +307,13 @@ export async function save(ctx: Context, finds: ScoredT[], via: "agent" | "manua
         description: f.description.slice(0, 2000),
         fingerprint: fingerprint(f.company, f.title, f.location),
       })
+      // The row is shared by everyone who has this find: keep its link and summary, only fill what's missing (#585).
       .onConflictDoUpdate({
         target: schema.opportunities.fingerprint,
-        set: { sourceUrl: f.url.slice(0, 1000), description: f.description.slice(0, 2000) },
+        set: {
+          sourceUrl: sql`coalesce(${schema.opportunities.sourceUrl}, excluded.source_url)`,
+          description: sql`coalesce(nullif(${schema.opportunities.description}, ''), excluded.description)`,
+        },
       })
       .returning();
     const inserted = await db
