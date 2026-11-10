@@ -35,15 +35,22 @@ export const asksBase = (prompt: string) => /\bbase\b/i.test(prompt) && !/\bbase
 /** The question asks for the lowest number the person would take. */
 export const asksMinimum = (prompt: string) => /\bminimum\b|\bat least\b|\blowest\b/i.test(prompt);
 
-const SALARY_ASK = /salary|compensation|pay (expectation|requirement)|expected (base|annual|pay)|desired (base|pay)/i;
+const SALARY_ASK = /salary|compensation|wages?\b|pay (expectation|requirement)|expected (base|annual|pay)|desired (base|pay)|expect to (earn|make)\b/i;
 const PAST_PAY =
-  /\b(current|previous|prior|last|most recent|present)\b[^.?!]{0,20}\b(salary|compensation|pay|base)\b|\b(salary|compensation|pay) history\b|\b(salary|compensation|pay)\b[^.?!]{0,25}\b(current|previous|prior|last) (job|role|position|employer)\b/i;
+  /\b(current|previous|prior|last|most recent|present)\b[^.?!]{0,20}\b(salary|compensation|pay|base|wages?)\b|\b(salary|compensation|pay|wage) history\b|\b(salary|compensation|pay|wages?)\b[^.?!]{0,25}\b(current|previous|prior|last) (job|role|position|employer)\b/i;
+// "Are you comfortable with the posted salary range?" wants yes or no, not a number (#687).
+// "Would you share your salary expectations?" is still an ask.
+const YES_NO = /^\W*(are|is|does|do|would|will|can)\b/i;
+const ABOUT_THEIR_RANGE = /\b(range|posted|listed|stated|above|acceptable|comfortable|work for you|align|meets?)\b/i;
+const NAMES_A_NUMBER = /\b(expectations?|requirements?|desired|expected|target|how much|what)\b/i;
+const rangeCheck = (s: string) => YES_NO.test(s) && ABOUT_THEIR_RANGE.test(s) && !NAMES_A_NUMBER.test(s);
 
 /**
  * A salary ask, not a question about the person's own past or current pay. Judged sentence by sentence,
- * so a legal note after the ask ("We do not ask about salary history.") doesn't hide it (#640).
+ * so a legal note after the ask ("We do not ask about salary history.") doesn't hide it (#640). A yes/no check on
+ * their posted range isn't an ask (#687).
  */
-export const isSalaryQuestion = (prompt: string) => sentences(prompt).some((s) => SALARY_ASK.test(s) && !asksPastPay(s));
+export const isSalaryQuestion = (prompt: string) => sentences(prompt).some((s) => SALARY_ASK.test(s) && !asksPastPay(s) && !rangeCheck(s));
 
 /** The sentence asks about past pay, not "we do not need your current salary" or "current salary not required" (#652). */
 function asksPastPay(s: string) {
