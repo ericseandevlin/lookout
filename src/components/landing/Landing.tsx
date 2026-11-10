@@ -118,7 +118,7 @@ export function Landing({ inviteOnly, channel }: { inviteOnly: boolean; channel:
           </section>
 
           <section className={s.final}>
-            <h2 className={s.h2} style={{ maxWidth: "12em" }}>Let it do the refreshing.</h2>
+            <h2 className={s.h2} style={{ maxWidth: "12em" }}>Let&apos;s find it.</h2>
             <p className={s.sub}>Free while Lookout is in testing.</p>
             <Link href={join} className={s.finalBtn}>{cta}</Link>
           </section>
