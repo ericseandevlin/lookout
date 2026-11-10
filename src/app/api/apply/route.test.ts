@@ -20,13 +20,16 @@ vi.mock("@/lib/auth/session", () => ({ getSessionUser: async () => current, refr
 vi.mock("@/lib/apply", async (orig) => ({ ...(await orig<typeof import("@/lib/apply")>()), canUseAutoApply: () => beta }));
 // Drafting and submitting are not under test: record which applications were started.
 const kick = vi.fn();
-vi.mock("@/lib/application/run", () => ({ kick, resumeFor: async () => {} }));
+const resumeFor = vi.fn(async () => {});
+vi.mock("@/lib/application/run", () => ({ kick, resumeFor }));
 
 const queue = await import("./route");
 const one = await import("./[id]/route");
 
 const send = (method: string, url: string, data?: unknown) =>
   new Request(`https://lookout.test${url}`, { method, headers: { "content-type": "application/json" }, body: data === undefined ? undefined : JSON.stringify(data) });
+const settings = () => queue.GET(send("GET", "/api/apply"), {});
+const patch = (data: unknown) => queue.PATCH(send("PATCH", "/api/apply", data), {});
 const post = (findId: string) => queue.POST(send("POST", "/api/apply", { findId }), {});
 const cancel = (id: string) => one.DELETE(send("DELETE", `/api/apply/${id}`), { params: Promise.resolve({ id }) });
 const detail = (id: string) => one.GET(send("GET", `/api/apply/${id}`), { params: Promise.resolve({ id }) });
@@ -54,6 +57,7 @@ afterAll(async () => {
 beforeEach(async () => {
   beta = true;
   kick.mockClear();
+  resumeFor.mockClear();
   await db.delete(schema.users);
   await db.delete(schema.opportunities);
   [current, other] = await db.insert(schema.users).values([{ email: "maya@example.com" }, { email: "other@example.com" }]).returning();
@@ -180,5 +184,74 @@ describe("GET /api/apply/[id] (#573)", () => {
     beta = true;
     current = null;
     expect((await detail(id)).status).toBe(401);
+  });
+});
+
+describe("GET /api/apply (#594)", () => {
+  it("returns the default settings and an empty queue for a new account", async () => {
+    const res = await settings();
+    expect(res.status).toBe(200);
+    expect(await res.json()).toEqual({ settings: { enabled: false, threshold: 5, dailyCap: 3 }, applications: [] });
+    expect(resumeFor).toHaveBeenCalledWith(current!.id);
+  });
+
+  it("lists only your applications, with the find they came from", async () => {
+    const { id } = await (await post(findId)).json();
+    await db.insert(schema.applications).values({ userId: other.id, opportunityId: notMine, queuedBy: "user" });
+    const { applications } = await (await settings()).json();
+    expect(applications).toEqual([
+      expect.objectContaining({ id, findId, company: "Venue 1", role: "Director of Events", score: 5, status: "queued", queuedBy: "user", items: 0, error: null }),
+    ]);
+  });
+
+  it("needs a session and the auto-apply beta", async () => {
+    beta = false;
+    expect((await settings()).status).toBe(404);
+    expect(resumeFor).not.toHaveBeenCalled();
+    beta = true;
+    current = null;
+    expect((await settings()).status).toBe(401);
+  });
+});
+
+describe("PATCH /api/apply (#594)", () => {
+  const events = () => db.select({ type: schema.events.type }).from(schema.events);
+
+  it("saves a partial change over the current settings and returns them", async () => {
+    const res = await patch({ enabled: true, dailyCap: 10 });
+    expect(res.status).toBe(200);
+    expect(await res.json()).toEqual({ settings: { enabled: true, threshold: 5, dailyCap: 10 } });
+    await patch({ threshold: 4, template: "modern", accent: "1A2B3c" });
+    expect((await (await settings()).json()).settings).toEqual({ enabled: true, threshold: 4, dailyCap: 10, template: "modern", accent: "1A2B3c" });
+    expect(resumeFor).toHaveBeenCalledWith(current!.id);
+  });
+
+  it("records turning auto-apply on and off, and not a change that leaves it as it was", async () => {
+    await patch({ enabled: true });
+    await patch({ dailyCap: 5 });
+    await patch({ enabled: false });
+    expect((await events()).map((e) => e.type)).toEqual(["auto_apply_on", "auto_apply_off"]);
+  });
+
+  it("refuses values outside what the settings page offers, and saves nothing", async () => {
+    for (const bad of [{ threshold: 3 }, { dailyCap: 0 }, { dailyCap: 21 }, { dailyCap: 2.5 }, { template: "fancy" }, { accent: "#1A2B3C" }, { accent: "red" }, { enabled: "yes" }]) {
+      expect((await patch(bad)).status).toBe(400);
+    }
+    expect((await (await settings()).json()).settings).toEqual({ enabled: false, threshold: 5, dailyCap: 3 });
+  });
+
+  it("doesn't touch another account's settings", async () => {
+    await patch({ enabled: true });
+    current = other;
+    expect((await (await settings()).json()).settings.enabled).toBe(false);
+  });
+
+  it("needs a session and the auto-apply beta", async () => {
+    beta = false;
+    expect((await patch({ enabled: true })).status).toBe(404);
+    beta = true;
+    expect((await (await settings()).json()).settings.enabled).toBe(false);
+    current = null;
+    expect((await patch({ enabled: true })).status).toBe(401);
   });
 });
