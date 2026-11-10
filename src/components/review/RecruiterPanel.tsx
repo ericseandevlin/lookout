@@ -3,15 +3,26 @@
 import { useState } from "react";
 import { DIMENSION_LABEL, DIMENSIONS, recruiterChecks, type Finding, type RecruiterAnalysis } from "@/lib/application/recruiter";
 import { btn } from "../Settings";
-import { muted } from "./shared";
+import { muted, type ActResult } from "./shared";
 import { color } from "@/lib/tokens";
 
 /**
  * Recruiter Analysis (#152): the code-held checks show as you edit; the scored analysis is one click
  * and is kept for the version it read. Each finding quotes its line and has a Fix that revises it.
  */
-export function RecruiterPanel({ kind, text, analysis, locked, busy, onAnalyze, onFix }: { kind: string; text: string; analysis?: RecruiterAnalysis; locked: boolean; busy: string | null; onAnalyze: () => void; onFix: (f: Finding) => void }) {
+export function RecruiterPanel({ kind, text, analysis, locked, busy, onAnalyze, onFix }: { kind: string; text: string; analysis?: RecruiterAnalysis; locked: boolean; busy: string | null; onAnalyze: () => void; onFix: (instruction: string) => Promise<ActResult> }) {
   const [open, setOpen] = useState(false);
+  // Inline Fix it (#512): which finding is running, and a question Lookout asked back (or one we ask first).
+  const [fixing, setFixing] = useState<number | null>(null);
+  const [asked, setAsked] = useState<{ i: number; question: string; answer: string } | null>(null);
+  const fix = async (i: number, f: Finding, answer?: string) => {
+    setFixing(i);
+    const r = await onFix(answer ? `${f.fix}\n\nMy answer: ${answer}` : f.fix);
+    setFixing(null);
+    setAsked(r && r.question ? { i, question: r.question, answer: "" } : null);
+  };
+  // A fix that needs a number I may not have given asks for it first, instead of a round trip that ends in a question.
+  const needsNumber = (f: Finding) => /ask me for/i.test(f.fix);
   const findings = analysis?.findings ?? recruiterChecks(kind, text);
   const label = kind === "resume" ? "resume" : "cover letter";
   return (
@@ -61,10 +72,43 @@ export function RecruiterPanel({ kind, text, analysis, locked, busy, onAnalyze, 
                   {!locked && (
                     <div style={{ display: "flex", alignItems: "baseline", gap: 8, flexWrap: "wrap" }}>
                       <span style={{ ...muted, fontSize: 13, flex: "1 1 240px" }}>Fix: {f.fix}</span>
-                      <button onClick={() => onFix(f)} disabled={!!busy} style={{ ...btn("outline"), height: 30 }}>
-                        Fix it
+                      <button
+                        onClick={() => (needsNumber(f) ? setAsked({ i, question: "What number goes on this line? Team size, users, revenue, money or time saved. Only what's true.", answer: "" }) : fix(i, f))}
+                        disabled={!!busy || asked?.i === i}
+                        style={{ ...btn("outline"), height: 30 }}
+                      >
+                        {fixing === i ? "Working…" : needsNumber(f) ? "Add a number" : "Fix it"}
                       </button>
                     </div>
+                  )}
+                  {!locked && asked?.i === i && (
+                    <form
+                      onSubmit={(e) => {
+                        e.preventDefault();
+                        if (asked.answer.trim()) fix(i, f, asked.answer.trim());
+                      }}
+                      style={{ marginTop: 6, padding: "10px 12px", borderRadius: 10, background: "#FFF9F3", border: `1px solid ${color.orange}`, display: "flex", flexDirection: "column", gap: 8 }}
+                    >
+                      <label htmlFor={`fix-${kind}-${i}`} style={{ fontSize: 14, fontWeight: 600 }}>
+                        {asked.question}
+                      </label>
+                      <textarea
+                        id={`fix-${kind}-${i}`}
+                        autoFocus
+                        rows={2}
+                        value={asked.answer}
+                        onChange={(e) => setAsked({ ...asked, answer: e.target.value })}
+                        style={{ borderRadius: 8, border: "1.5px solid #E0D9CF", padding: 8, fontSize: 14, fontFamily: "inherit", resize: "vertical" }}
+                      />
+                      <div style={{ display: "flex", gap: 8 }}>
+                        <button type="submit" disabled={!!busy || !asked.answer.trim()} style={{ ...btn("solid"), height: 32 }}>
+                          {fixing === i ? "Working…" : "Fix it with this"}
+                        </button>
+                        <button type="button" onClick={() => setAsked(null)} style={{ ...btn("text"), height: 32 }}>
+                          Cancel
+                        </button>
+                      </div>
+                    </form>
                   )}
                 </li>
               ))}

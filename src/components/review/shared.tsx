@@ -52,7 +52,9 @@ export type Detail = {
 export const card: React.CSSProperties = { padding: 18, borderRadius: 14, background: "#fff", border: `1.5px solid ${color.border}` };
 export const muted: React.CSSProperties = { fontSize: 14, color: color.t2 };
 
-export type Act = (itemId: string, payload: Record<string, unknown>, done: string) => Promise<boolean>;
+/** Resolves to the server's follow-up question (null when it has none) on success, or false when the call failed. */
+export type ActResult = { question: string | null } | false;
+export type Act = (itemId: string, payload: Record<string, unknown>, done: string) => Promise<ActResult>;
 
 /** The resume as it will go out: the approved version, else the latest. */
 export const resumeText = (d: Detail) => {
