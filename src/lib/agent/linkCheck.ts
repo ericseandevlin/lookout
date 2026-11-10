@@ -1,5 +1,5 @@
 import "server-only";
-import { and, eq, inArray } from "drizzle-orm";
+import { and, eq, inArray, sql } from "drizzle-orm";
 import { db, schema } from "@/lib/db";
 import { fetchPage, FetchError, pageToText } from "@/lib/ai/fetchPage";
 import { classifyPage, type LinkState } from "./linkState";
@@ -42,7 +42,8 @@ export async function closeGonePostings(userId: string, now = new Date()): Promi
     .from(schema.userOpportunities)
     .innerJoin(schema.opportunities, eq(schema.opportunities.id, schema.userOpportunities.opportunityId))
     .where(and(eq(schema.userOpportunities.userId, userId), eq(schema.userOpportunities.archived, false)));
-  const open = rows.filter((r) => r.o.sourceUrl && CLOSABLE.includes(r.uo.stage));
+  // One check per posting: the same posting on two of their searches is two rows here (#656).
+  const open = [...new Map(rows.filter((r) => r.o.sourceUrl && CLOSABLE.includes(r.uo.stage)).map((r) => [r.o.id, r])).values()];
 
   let closed = 0;
   const queue = [...open];
@@ -62,12 +63,14 @@ export async function closeGonePostings(userId: string, now = new Date()): Promi
         const day = lc.goneSince.slice(0, 10);
         const line = `Closed: the posting was gone (${lc.reason}) as of ${day}. Lookout archived it.`;
         // The stage may have moved since the read (they applied mid-run); count only a find this actually closed (#614).
+        // The line goes onto each row's notes as they are now, so a note typed during the run survives (#656).
+        const notes = schema.userOpportunities.notes;
         const done = await db
           .update(schema.userOpportunities)
-          .set({ stage: "Closed", archived: true, notes: r.uo.notes ? `${r.uo.notes.trimEnd()}\n\n${line}` : line })
+          .set({ stage: "Closed", archived: true, notes: sql`case when ${notes} ~ '\\S' then regexp_replace(${notes}, '\\s+$', '') || ${`\n\n${line}`} else ${line} end` })
           .where(and(eq(schema.userOpportunities.userId, userId), eq(schema.userOpportunities.opportunityId, r.o.id), inArray(schema.userOpportunities.stage, CLOSABLE)))
           .returning({ stage: schema.userOpportunities.stage });
-        closed += done.length;
+        if (done.length) closed++;
       }
     }
   };

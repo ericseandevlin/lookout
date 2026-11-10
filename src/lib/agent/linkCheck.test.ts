@@ -83,6 +83,34 @@ describe("closeGonePostings", () => {
     expect(f.linkCheck?.goneSince).toBe(T0.toISOString());
   });
 
+  it("keeps a note they typed while the run was checking links (#656)", async () => {
+    const id = await addFind("https://jobs.test/1", { notes: "Old note" });
+    pages.set("https://jobs.test/1", "This job is no longer available.");
+    await closeGonePostings(userId, T0);
+    fetchPage.mockImplementationOnce(async (url: string) => {
+      await db.update(schema.userOpportunities).set({ notes: "Typed mid-run" });
+      return { url, html: "<p>This job is no longer available.</p>" };
+    });
+    expect(await closeGonePostings(userId, hoursLater(20))).toBe(1);
+    expect((await find(id)).notes).toBe("Typed mid-run\n\nClosed: the posting was gone (page says it's closed) as of 2026-11-01. Lookout archived it.");
+  });
+
+  it("checks a posting on two searches once and keeps each search's note (#656)", async () => {
+    const id = await addFind("https://jobs.test/1", { notes: "From search one" });
+    const [s2] = await db.insert(schema.searches).values({ userId, name: "Second search" }).returning();
+    await db.insert(schema.userOpportunities).values({ userId, searchId: s2.id, opportunityId: id, score: 80, notes: "" });
+    pages.set("https://jobs.test/1", "This job is no longer available.");
+    await closeGonePostings(userId, T0);
+    expect(fetchPage).toHaveBeenCalledOnce();
+    expect(await closeGonePostings(userId, hoursLater(20))).toBe(1);
+    const line = "Closed: the posting was gone (page says it's closed) as of 2026-11-01. Lookout archived it.";
+    const notes = (await db.select().from(schema.userOpportunities)).map((r) => [r.searchId === searchId ? 1 : 2, r.notes, r.stage]).sort();
+    expect(notes).toEqual([
+      [1, `From search one\n\n${line}`, "Closed"],
+      [2, line, "Closed"],
+    ]);
+  });
+
   it("keeps goneSince through an unknown result and clears it when the posting is up", async () => {
     const id = await addFind("https://jobs.test/1");
     pages.set("https://jobs.test/1", "Page not found");
