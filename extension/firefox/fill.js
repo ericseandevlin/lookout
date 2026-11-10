@@ -63,12 +63,19 @@
     return itemKind === "cover_letter" ? inputs[1] || null : inputs[0] || null;
   }
 
-  /** Same rule as pickOptions in src/lib/application/fillPlan.ts: one answer per line, exact text first, then a prefix either way. */
+  /** a starts b and ends on a word boundary there: "no" starts "no, thanks" but not "none" (#632). */
+  const startsWord = (a, b) => b.startsWith(a) && (b.length === a.length || /\W/.test(b[a.length]) || /\W/.test(a[a.length - 1]));
+
+  /**
+   * Same rule as pickOptions in src/lib/application/fillPlan.ts: one answer per line, exact text first, then a prefix
+   * either way, at a word boundary, closest length first.
+   */
   function pickOptions(content, options) {
     const out = [];
     for (const part of (content || "").split(/\n+/).map((t) => t.trim()).filter(Boolean)) {
       const p = norm(part);
-      const hit = (options || []).find((o) => norm(o) === p) || (options || []).find((o) => norm(o).startsWith(p) || p.startsWith(norm(o)));
+      const near = (options || []).filter((o) => startsWord(norm(o), p) || startsWord(p, norm(o))).sort((a, b) => Math.abs(norm(a).length - p.length) - Math.abs(norm(b).length - p.length));
+      const hit = (options || []).find((o) => norm(o) === p) || near[0];
       const label = hit || ((options || []).length ? null : part);
       if (label && !out.includes(label)) out.push(label);
     }
@@ -140,7 +147,9 @@
         const picks = pickOptions(step.content, step.options);
         if (!picks.length) return { ok: false, how: "answer matches no option" };
         for (const label of picks) {
-          const box = [...group.querySelectorAll("input[type=checkbox], input[type=radio]")].find((b) => labelOf(b) === norm(label) || sameText(labelOf(b), label));
+          // Exact label first: the loose match alone puts "None of the above" on the "No" box (#632).
+          const boxes = [...group.querySelectorAll("input[type=checkbox], input[type=radio]")];
+          const box = boxes.find((b) => labelOf(b) === norm(label)) || boxes.find((b) => sameText(labelOf(b), label));
           if (!box) return { ok: false, how: `option not found: ${label.slice(0, 60)}` };
           if (!box.checked) box.click();
         }

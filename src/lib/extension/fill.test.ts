@@ -145,6 +145,17 @@ describe("extension fill: choices", () => {
     expect(checked).toEqual(pickOptions(content, options));
   });
 
+  it("ticks the closest option, not a shorter one that shares a prefix (#632)", async () => {
+    const options = ["No", "None of the above"];
+    const p = page(`<fieldset><legend>Do any of these apply?</legend>
+      ${options.map((o, i) => `<label><input type="checkbox" id="c${i}"> ${o}</label>`).join("")}</fieldset>`);
+    const [r] = await p.fill({ steps: [{ prompt: "Do any of these apply?", kind: "choice", content: "None", options }] });
+    expect(r).toMatchObject({ ok: true, how: "checked 1" });
+    expect((p.doc.querySelector("#c0") as HTMLInputElement).checked).toBe(false);
+    expect((p.doc.querySelector("#c1") as HTMLInputElement).checked).toBe(true);
+    expect(pickOptions("None", options)).toEqual(["None of the above"]);
+  });
+
   it("ticks nothing when no line of the answer matches an option", async () => {
     const p = page(`<fieldset><legend>Preferred office</legend><label><input type="radio" name="o" id="o1"> Austin</label></fieldset>`);
     const [r] = await p.fill({ steps: [{ prompt: "Preferred office", kind: "choice", content: "Remote", options: ["Austin"] }] });

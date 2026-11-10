@@ -19,16 +19,21 @@ export function planFill(items: ItemRow[], versions: { id: string; content: stri
   return out;
 }
 
+/** a starts b and ends on a word boundary there: "no" starts "no, thanks" but not "none" (#632). */
+const startsWord = (a: string, b: string) => b.startsWith(a) && (b.length === a.length || /\W/.test(b[a.length]) || /\W/.test(a[a.length - 1]));
+
 /**
  * Which option labels to tick on a "select any that apply" question (#165). One answer per line.
  * Exact text first, then a prefix match either way, so a long label cut short in the answer still lands.
+ * Prefixes stop at a word boundary and the closest length wins, so "None" is "None of the above", not "No" (#632).
  */
 export function pickOptions(content: string, options: string[] = []): string[] {
   const norm = (t: string) => t.replace(/\s+/g, " ").trim().toLowerCase();
   const out: string[] = [];
   for (const part of content.split(/\n+/).map((t) => t.trim()).filter(Boolean)) {
     const p = norm(part);
-    const hit = options.find((o) => norm(o) === p) ?? options.find((o) => norm(o).startsWith(p) || p.startsWith(norm(o)));
+    const near = options.filter((o) => startsWord(norm(o), p) || startsWord(p, norm(o))).sort((a, b) => Math.abs(norm(a).length - p.length) - Math.abs(norm(b).length - p.length));
+    const hit = options.find((o) => norm(o) === p) ?? near[0];
     const label = hit ?? (options.length ? null : part);
     if (label && !out.includes(label)) out.push(label);
   }
