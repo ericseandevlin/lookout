@@ -60,12 +60,12 @@ The calls that shaped Lookout, what each one costs, and where it lives in the co
 
 **Where.** `CONTRIBUTING.md`, `.githooks/`.
 
-## 7. AGPL-3.0 license (2026-11-08)
+## 7. MIT license (2026-11-10)
 
-**Decision.** Lookout is open source under the GNU Affero General Public License v3.0, not MIT.
+**Decision.** Lookout is open source under the MIT License. It was AGPL-3.0 for two days (#424, PR #521) before any release; Eric switched it to MIT (#598).
 
-**Why.** Anyone can read, run and change it, which is the point of showing it. The Affero clause closes the hosting gap: someone who runs a changed Lookout as a service has to give its users the source. A hosted Lookout can't be cloned into a closed product.
+**Why.** Lookout is a portfolio project, so reach matters most: anyone can read, run, change and reuse it, including at work, with no license review. It matches Taste Engine, which is also MIT.
 
-**Cost.** Some companies won't touch AGPL code, so fewer people will reuse it at work. Outside contributions come in under AGPL too, so changing the license later means asking every contributor.
+**Cost.** Someone can run a changed Lookout as a closed hosted service without sharing their changes. AGPL would have prevented that; for a project meant to be shown and reused, that risk is acceptable.
 
 **Where.** `LICENSE`, `license` in `package.json`, the License section of the README, `CONTRIBUTING.md`.

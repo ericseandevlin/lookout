@@ -185,4 +185,4 @@ Sign someone in without email (on the server): `docker compose exec app node scr
 
 ## License
 
-Copyright (C) 2026 Eric Devlin. Lookout is free software under the [GNU Affero General Public License v3.0](LICENSE) (`AGPL-3.0-only`). Use it, change it and run it yourself. If you run a changed version as a service for other people, you have to offer them its source too. Why AGPL and not MIT: [docs/decisions](docs/decisions/README.md#7-agpl-30-license-2026-11-08).
+Copyright (c) 2026 Eric Devlin. Lookout is open source under the [MIT License](LICENSE). Use it, change it, run it yourself or build on it; keep the copyright notice. Why MIT: [docs/decisions](docs/decisions/README.md#7-mit-license-2026-11-10).
