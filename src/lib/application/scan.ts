@@ -53,6 +53,9 @@ export function detectAts(raw: string): AtsRef {
     const j = parts.indexOf("jobs");
     const id = j > 0 ? parts[j + 1] : u.searchParams.get("token") ?? undefined;
     const board = j > 0 ? parts[j - 1] : u.searchParams.get("for") ?? parts[0];
+    // EU boards (job-boards.eu.greenhouse.io) aren't on the US API or US host: read them like an embed, so a miss
+    // falls back to the page on its own host instead of reading as closed (#634).
+    if (id && /^\d+$/.test(id) && /\.eu\.greenhouse\.io$/.test(host)) return { ats: "greenhouse", board: "", id };
     if (board && id && /^\d+$/.test(id)) return { ats: "greenhouse", board, id };
   }
   const ghJid = u.searchParams.get("gh_jid");

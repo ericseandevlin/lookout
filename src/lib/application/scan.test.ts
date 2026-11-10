@@ -21,6 +21,12 @@ describe("detectAts", () => {
     expect(boardGuesses("careers.red-ventures.com")).toEqual(["red-ventures", "redventures"]);
   });
 
+  it("reads EU Greenhouse links like an embed, keeping the EU host (#634)", () => {
+    const eu = "https://job-boards.eu.greenhouse.io/acme/jobs/4500123101";
+    expect(detectAts(eu)).toEqual({ ats: "greenhouse", board: "", id: "4500123101" });
+    expect(applyUrlFor(detectAts(eu), eu)).toBe(eu);
+  });
+
   it("names Workday and SmartRecruiters, and falls back to other", () => {
     expect(detectAts("https://citi.wd5.myworkdayjobs.com/en-US/2/job/123").ats).toBe("workday");
     expect(detectAts("https://jobs.smartrecruiters.com/Acme/7444").ats).toBe("smartrecruiters");
