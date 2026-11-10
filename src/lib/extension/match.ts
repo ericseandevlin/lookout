@@ -22,8 +22,10 @@ export function jobKey(raw: string | null | undefined): string | null {
   const uuid = u.pathname.match(UUID)?.[0];
   if (uuid && /(ashbyhq\.com|lever\.co)$/.test(host)) return `${host.includes("ashby") ? "ashby" : "lever"}:${uuid.toLowerCase()}`;
   // Workday (#622): the form is at .../job/<location>/<title>_R123/apply/applyManually, with or without a locale prefix.
-  const wd = /myworkdayjobs\.com$/.test(host) && u.pathname.match(/\/(?:job|details)\/(?:[^/]+\/)*?([^/]+)\/*(?:\/apply\b.*)?$/i)?.[1];
-  if (wd) return `workday:${host}:${decodeURIComponent(wd).toLowerCase()}`;
+  // wdN.myworkdaysite.com/recruiting/<tenant>/... serves many employers, so the tenant joins the key (#666).
+  const wdHost = /myworkdayjobs\.com$/.test(host) ? host : /myworkdaysite\.com$/.test(host) ? `${host}/${u.pathname.match(/\/recruiting\/([^/]+)/i)?.[1]?.toLowerCase() ?? ""}` : null;
+  const wd = wdHost && u.pathname.match(/\/(?:job|details)\/(?:[^/]+\/)*?([^/]+)\/*(?:\/apply\b.*)?$/i)?.[1];
+  if (wd) return `workday:${wdHost}:${decodeURIComponent(wd).toLowerCase()}`;
   const path = u.pathname.replace(/\/(apply|application)\/?$/i, "").replace(/\/+$/, "");
   return `url:${host.replace(/^www\./, "")}${path.toLowerCase()}${idQuery(u.searchParams)}`;
 }

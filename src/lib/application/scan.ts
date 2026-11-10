@@ -63,7 +63,7 @@ export function detectAts(raw: string): AtsRef {
   if (ghJid && /^\d+$/.test(ghJid)) return { ats: "greenhouse", board: "", id: ghJid };
   if ((host === "jobs.lever.co" || host === "jobs.eu.lever.co") && parts.length >= 2) return { ats: "lever", host, site: parts[0], id: parts[1] };
   if (host === "jobs.ashbyhq.com" && parts.length >= 2) return { ats: "ashby", org: decodeURIComponent(parts[0]), id: parts[1] };
-  if (/myworkdayjobs\.com$|myworkday\.com$/.test(host)) return { ats: "workday" };
+  if (/myworkdayjobs\.com$|myworkday\.com$|myworkdaysite\.com$/.test(host)) return { ats: "workday" };
   if (/smartrecruiters\.com$/.test(host)) return { ats: "smartrecruiters" };
   return { ats: "other" };
 }

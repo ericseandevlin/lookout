@@ -36,6 +36,7 @@ describe("detectAts", () => {
 
   it("names Workday and SmartRecruiters, and falls back to other", () => {
     expect(detectAts("https://citi.wd5.myworkdayjobs.com/en-US/2/job/123").ats).toBe("workday");
+    expect(detectAts("https://wd3.myworkdaysite.com/recruiting/acme/Careers/job/Newark-NJ/Designer_R1").ats).toBe("workday");
     expect(detectAts("https://jobs.smartrecruiters.com/Acme/7444").ats).toBe("smartrecruiters");
     expect(detectAts("https://careers.blackrock.com/job/new-york/director/45831/1").ats).toBe("other");
     expect(detectAts("not a url").ats).toBe("other");
