@@ -455,9 +455,10 @@ export async function addByUrl(searchId: string, url: string) {
     await progress(run.id, 45, "Reading the posting and scoring it against your profile");
     const scored = await scorePages(ctx, [page], usage, undefined, true);
     const one = scored.slice(0, 1).map((s) => ({ ...s, url, is_open_job_posting: s.is_open_job_posting || !!s.title }));
-    const { added } = await save(ctx, one, "manual");
-    if (one.length) await progress(run.id, 100, added ? `Added ${one[0].title} at ${one[0].company}` : "That posting is already on your board");
-    await finishRun(run.id, usage, { found: one.length, added, error: one.length ? null : "That page didn't look like a job posting" });
+    // save() counts an entry with no company or title as not a posting; only a counted posting can be "already on your board" (#668).
+    const { added, postings } = await save(ctx, one, "manual");
+    if (postings) await progress(run.id, 100, added ? `Added ${one[0].title} at ${one[0].company}` : "That posting is already on your board");
+    await finishRun(run.id, usage, { found: postings, added, error: postings ? null : "That page didn't look like a job posting" });
     return { added };
   } catch (e) {
     await finishRun(run.id, usage, { error: e instanceof Error ? e.message : String(e) });

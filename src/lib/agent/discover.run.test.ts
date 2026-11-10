@@ -318,6 +318,19 @@ describe("addByUrl (#379)", () => {
     expect(await runRow()).toMatchObject({ status: "failed", error: "That page didn't look like a job posting" });
   });
 
+  it("records an error, not 'already on your board', when the scorer finds no company or title (#668)", async () => {
+    pages.set(URL_A, posting());
+    for (const v of [{ company: "" }, { title: "", is_open_job_posting: false }]) {
+      await db.delete(schema.runs);
+      verdicts.set(URL_A, v);
+      await expect(addByUrl(searchId, URL_A)).resolves.toEqual({ added: 0 });
+      const run = await runRow();
+      expect(run).toMatchObject({ status: "failed", found: 0, error: "That page didn't look like a job posting" });
+      expect(run.progress).not.toMatchObject({ step: "That posting is already on your board" });
+    }
+    expect(await board()).toEqual([]);
+  });
+
   it("says scoring failed, not that the page isn't a posting, when the model call fails (#628)", async () => {
     pages.set(URL_A, posting());
     replies.score = () => {
