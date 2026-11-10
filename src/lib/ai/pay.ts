@@ -21,6 +21,9 @@ function annual(min: number, max: number, unit: string, currency: string, source
   return plausible(lo) && plausible(hi) && hi <= lo * 4 ? { min: lo, max: hi, currency, source } : null;
 }
 
+/** A structured-data amount: a number, or a string like "120,000" or "$120K". NaN when it's neither. */
+const amount = (x: unknown) => (typeof x === "number" ? x : typeof x === "string" ? (money(x) ?? NaN) : NaN);
+
 function fromJsonLd(html: string): Pay | null {
   for (const m of html.matchAll(/<script[^>]+application\/ld\+json[^>]*>([\s\S]*?)<\/script>/gi)) {
     let data: unknown;
@@ -34,10 +37,11 @@ function fromJsonLd(html: string): Pay | null {
       for (const n of graph) {
         const bs = n?.baseSalary as Record<string, unknown> | undefined;
         if (!bs) continue;
-        const v = (bs.value ?? {}) as Record<string, unknown>;
-        const min = Number(v.minValue ?? v.value), max = Number(v.maxValue ?? v.value);
+        // schema.org lets value be a QuantitativeValue or a plain number, with min/max and unitText on either level (#647).
+        const v = (typeof bs.value === "object" && bs.value ? bs.value : { value: bs.value }) as Record<string, unknown>;
+        const min = amount(v.minValue ?? bs.minValue ?? v.value), max = amount(v.maxValue ?? bs.maxValue ?? v.value);
         if (Number.isFinite(min) && Number.isFinite(max) && min > 0) {
-          const p = annual(min, max, String(v.unitText ?? "YEAR"), String(bs.currency ?? "USD"), "structured data");
+          const p = annual(min, max, String(v.unitText ?? bs.unitText ?? "YEAR"), String(bs.currency ?? "USD"), "structured data");
           if (p) return p;
         }
       }
