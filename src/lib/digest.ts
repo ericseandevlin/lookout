@@ -1,5 +1,5 @@
 import "server-only";
-import { and, desc, eq, gte } from "drizzle-orm";
+import { and, desc, eq, gt, gte, max } from "drizzle-orm";
 import { db, schema } from "@/lib/db";
 import { emailShell, escapeHtml, sendMail } from "@/lib/email";
 import { unsubscribeParts } from "@/lib/bulkMail";
@@ -15,11 +15,15 @@ export async function sendDigest(userId: string, runId?: string) {
   const [u] = await db.select().from(schema.users).where(eq(schema.users.id, userId));
   const [s] = await db.select().from(schema.settings).where(eq(schema.settings.userId, userId));
   if (!u || !s?.digest) return;
+  // New since the last finds email, at most a day back: a run less than 24h after the last one must not repeat it (#586).
+  const [last] = await db.select({ at: max(schema.digests.sentAt) }).from(schema.digests).where(eq(schema.digests.userId, userId));
+  const dayAgo = new Date(Date.now() - 24 * 3600_000);
+  const since = last?.at && last.at > dayAgo ? last.at : dayAgo;
   const rows = await db
     .select()
     .from(schema.userOpportunities)
     .innerJoin(schema.opportunities, eq(schema.opportunities.id, schema.userOpportunities.opportunityId))
-    .where(and(eq(schema.userOpportunities.userId, userId), gte(schema.userOpportunities.addedAt, new Date(Date.now() - 24 * 3600_000))))
+    .where(and(eq(schema.userOpportunities.userId, userId), gt(schema.userOpportunities.addedAt, since), eq(schema.userOpportunities.archived, false)))
     .orderBy(desc(schema.userOpportunities.score));
   const pinned = await db
     .select()
