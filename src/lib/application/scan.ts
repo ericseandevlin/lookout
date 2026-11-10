@@ -102,7 +102,8 @@ export function boardGuesses(host: string): string[] {
   return [...new Set([name, name.replace(/-/g, "")])].filter(Boolean);
 }
 
-const RESUME = /^(resume|cv|resume\s*\/\s*cv|résumé)\b/i;
+// \b only knows ASCII letters, so it never follows the "é" of "Résumé": end on anything that isn't a letter (#680).
+const RESUME = /^((upload|attach)( your| a)? )?(r[eé]sum[eé]|cv|curriculum vitae)(?![\p{L}\p{N}])/iu;
 const COVER = /cover\s*letter/i;
 const FIELD = /^(first name|last name|preferred (first )?name|full name|name|email|e-mail|phone|phone number|mobile|linkedin( profile| url)?|website|portfolio( url| link)?|github( url)?|current company|current location|location|city|address)\b/i;
 
@@ -120,7 +121,8 @@ function isBasicField(label: string) {
 /** Sort a question into what Lookout drafts for it. */
 export function kindFor(label: string, fieldType: string): ApplicationItemKind {
   const l = label.trim();
-  if (RESUME.test(l)) return "resume";
+  // "Resume gaps: anything to explain?" is a question, not the upload.
+  if (RESUME.test(l) && !l.includes("?")) return "resume";
   if (COVER.test(l)) return "cover_letter";
   if (/portfolio|work samples?/i.test(l) && /file/i.test(fieldType)) return "portfolio";
   if (isBasicField(l) && !/textarea|long/i.test(fieldType)) return "field";
