@@ -233,7 +233,8 @@ const scorerSystem = () => `You score job postings for one candidate. Today is $
 Only use facts on the page. Never invent pay or dates; use null when the page doesn't state them. Annualize hourly pay only if it is clearly full time.
 Reasons are read on a phone: short, concrete, no filler.`;
 
-async function scorePages(ctx: Context, pages: Page[], usage: Usage, report?: Report): Promise<ScoredT[]> {
+/** strict: a failed scoring call throws instead of skipping the batch, for a single page someone added (#628). */
+async function scorePages(ctx: Context, pages: Page[], usage: Usage, report?: Report, strict = false): Promise<ScoredT[]> {
   const out: ScoredT[] = [];
   const batches = Math.ceil(pages.length / BATCH);
   for (let i = 0; i < pages.length; i += BATCH) {
@@ -261,6 +262,7 @@ async function scorePages(ctx: Context, pages: Page[], usage: Usage, report?: Re
       }
     } catch (e) {
       console.error("[discover] scoring batch failed", e);
+      if (strict) throw new Error("Lookout couldn't score that posting just now. Try adding it again.");
     }
   }
   return out;
@@ -434,7 +436,7 @@ export async function addByUrl(searchId: string, url: string) {
       throw new Error(e instanceof FetchError ? e.message : "Couldn't load that page");
     }
     await progress(run.id, 45, "Reading the posting and scoring it against your profile");
-    const scored = await scorePages(ctx, [page], usage);
+    const scored = await scorePages(ctx, [page], usage, undefined, true);
     const one = scored.slice(0, 1).map((s) => ({ ...s, url, is_open_job_posting: s.is_open_job_posting || !!s.title }));
     const { added } = await save(ctx, one, "manual");
     if (one.length) await progress(run.id, 100, added ? `Added ${one[0].title} at ${one[0].company}` : "That posting is already on your board");
