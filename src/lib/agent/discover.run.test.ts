@@ -18,7 +18,8 @@ let provider = "openrouter";
 vi.mock("@/lib/config", () => ({ getAiConfig: async () => ({ provider, model: "test-model" }) }));
 const assertBudget = vi.fn(async () => {});
 vi.mock("@/lib/ai/runs", async (orig) => ({ ...(await orig<typeof import("@/lib/ai/runs")>()), assertBudget }));
-vi.mock("./searchProfile", async (orig) => ({ ...(await orig<typeof import("./searchProfile")>()), ensureSearchProfile: async () => ({ profile: null, rebuilt: false }) }));
+let searchProfile: schema.SearchProfile | null = null;
+vi.mock("./searchProfile", async (orig) => ({ ...(await orig<typeof import("./searchProfile")>()), ensureSearchProfile: async () => ({ profile: searchProfile, rebuilt: false }) }));
 const autoQueue = vi.fn(async () => {});
 vi.mock("@/lib/apply", () => ({ autoQueue }));
 vi.mock("./linkCheck", () => ({ closeGonePostings: async () => 0 }));
@@ -107,6 +108,7 @@ beforeEach(async () => {
   userId = u.id;
   searchId = s.id;
   provider = "openrouter";
+  searchProfile = null;
   results.clear();
   pages.clear();
   verdicts.clear();
@@ -183,6 +185,22 @@ describe("discover (#379)", () => {
     results.clear();
     await expect(discover(searchId)).rejects.toThrow("Search backend down");
     expect(await runRow()).toMatchObject({ status: "failed", error: "Search backend down" });
+  });
+
+  it("searches the profile's target titles when the model writes no usable queries (#609)", async () => {
+    replies.queries = () => ({ queries: ["  ", ""] });
+    searchProfile = { summary: "", targetTitles: ["Design Systems Lead", " "], seniority: "", industries: [], strengths: [], proof: [], where: "", pay: "", avoid: [], searchTerms: [] };
+    results.set("Design Systems Lead jobs", [hit("https://jobs.example.com/a")]);
+    pages.set("https://jobs.example.com/a", posting());
+    await expect(discover(searchId)).resolves.toMatchObject({ added: 1 });
+    expect(webSearch.mock.calls.map((c) => c[0])).toEqual(["Design Systems Lead jobs"]);
+  });
+
+  it("fails with a plain message when there are no queries and no target titles (#609)", async () => {
+    replies.queries = () => ({ queries: [] });
+    await expect(discover(searchId)).rejects.toThrow("Couldn't plan any searches from your profile");
+    expect(webSearch).not.toHaveBeenCalled();
+    expect(await runRow()).toMatchObject({ status: "failed", error: expect.stringContaining("Couldn't plan any searches") });
   });
 
   it("asks the model to pick when there are more than 15 results, and falls back to the top 15 if that fails", async () => {

@@ -113,7 +113,12 @@ Write 4 to 6 search queries for open roles that fit. Mix:
 - queries aimed at employer job pages, e.g. "Director of Events" New York site:greenhouse.io OR site:lever.co OR site:myworkdayjobs.com OR site:ashbyhq.com
 Use the candidate's target titles, close variants, and their city. Keep each under 120 characters.`,
   });
-  return out.queries.map((q) => q.trim()).filter(Boolean).slice(0, MAX_QUERIES);
+  const queries = out.queries.map((q) => q.trim()).filter(Boolean).slice(0, MAX_QUERIES);
+  if (queries.length) return queries;
+  // No usable queries from the model: search the profile's target titles instead (#609).
+  const titles = (ctx.searchProfile?.targetTitles ?? []).map((t) => t.trim()).filter(Boolean).slice(0, MAX_QUERIES);
+  if (!titles.length) throw new Error("Couldn't plan any searches from your profile. Try again, or add target titles to your profile.");
+  return titles.map((t) => `${t} jobs`);
 }
 
 // --- 2+3. search and pick ----------------------------------------------------
@@ -140,7 +145,7 @@ async function gatherHits(ctx: Context, queries: string[], usage: Usage, report:
       hits.push(h);
     }
   }
-  if (!hits.length && results.every((r) => r.status === "rejected")) {
+  if (!hits.length && results.length && results.every((r) => r.status === "rejected")) {
     throw (results[0] as PromiseRejectedResult).reason;
   }
   return hits.slice(0, 60);
