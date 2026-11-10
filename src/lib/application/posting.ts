@@ -8,18 +8,23 @@ const BOILERPLATE = [
   // recruiting-fraud notices
   /never (ask|request).*(payment|money|bank|fee)|official (company )?email|do not hire (someone )?through|verify (the|that the) (opportunity|recruiter)|real human connection|live conversations? with/i,
   // EEO, accommodation, legal
-  /equal (employment )?opportunity|\beeo\b|discriminat|reasonable accommodation|affirmative action|e-verify|protected (veteran|class)|without regard to (race|sex|age)|fair chance|arrest (and|or) conviction|background check (is|will be)|pay transparency (act|law)/i,
+  /equal (employment )?opportunity|\beeo\b|reasonable accommodation|affirmative action|e-verify|protected (veteran|class)|without regard to (race|sex|age)|fair chance|arrest (and|or) conviction|background check (is|will be)|pay transparency (act|law)/i,
   // privacy and legal links
-  /privacy (notice|policy|statement)|california residents|personal (information|data) (we|that we) collect|\bccpa\b|\bgdpr\b|employeerights@|data protection (laws?|regulations?|officer|notice|act|rights)/i,
+  /california residents|personal (information|data) (we|that we) collect|employeerights@/i,
   // tracking tags and link stubs
   /^#\S+$|^(click|learn more) here\.?$|curious how .* fits into/i,
 ];
+
+// Privacy law and discrimination are the job for privacy, compliance and ML fairness roles; they're a notice only
+// when the line speaks to applicants or links out (#651), the same way fraud needs hiring words (#509).
+const LEGAL = /discriminat|privacy (notice|policy|statement)|\bccpa\b|\bgdpr\b|data protection (laws?|regulations?|officer|notice|act|rights)/i;
+const NOTICE = /applicant|candidate|employee|employer|\bapplying\b|we collect|your (personal|data|information)|click here|learn more|https?:\/\/|residents|on the basis of|because of|regardless of/i;
 
 // "Fraud" alone is the job for fraud and trust and safety roles; it's a notice only when it talks about hiring (#509).
 const FRAUD = /scam|fraud|phishing|impersonat/i;
 const HIRING = /recruit|candidate|applicant|job (offer|seeker|opening|posting)|offer letter|hiring process|\binterviews?\b|employment (offer|opportunit)|on (our )?behalf/i;
 
-const isBoilerplate = (p: string) => BOILERPLATE.some((re) => re.test(p)) || (FRAUD.test(p) && HIRING.test(p));
+const isBoilerplate = (p: string) => BOILERPLATE.some((re) => re.test(p)) || (FRAUD.test(p) && HIRING.test(p)) || (LEGAL.test(p) && NOTICE.test(p));
 
 /** Drop boilerplate paragraphs, keep everything that describes the job and the company. */
 export function stripBoilerplate(text: string) {
