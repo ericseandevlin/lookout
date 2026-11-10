@@ -304,6 +304,16 @@ describe("addByUrl (#379)", () => {
     expect(await runRow()).toMatchObject({ status: "failed", error: "That page didn't look like a job posting" });
   });
 
+  it("says scoring failed, not that the page isn't a posting, when the model call fails (#628)", async () => {
+    pages.set(URL_A, posting());
+    replies.score = () => {
+      throw new Error("Model timed out");
+    };
+    const msg = "Lookout couldn't score that posting just now. Try adding it again.";
+    await expect(addByUrl(searchId, URL_A)).rejects.toThrow(msg);
+    expect(await runRow()).toMatchObject({ status: "failed", error: msg });
+  });
+
   it("queues for the search agent when one is set", async () => {
     provider = "agent";
     await expect(addByUrl(searchId, URL_A)).resolves.toEqual({ added: 0, queued: true });
