@@ -1,4 +1,5 @@
 import Image from "next/image";
+import Link from "next/link";
 import { LegalLinks } from "@/components/LegalLinks";
 import s from "./landing.module.css";
 
@@ -12,7 +13,7 @@ export function Landing({ card }: { card: React.ReactNode }) {
     <div className={s.page}>
       <div className={s.wrap}>
         <header className={s.nav}>
-          <a href="/" className="wordmark" style={{ fontSize: 24, color: "#1D1A0F", textDecoration: "none" }}>Lookout</a>
+          <Link href="/" className="wordmark" style={{ fontSize: 24, color: "#1D1A0F", textDecoration: "none" }}>Lookout</Link>
           <nav className={s.navLinks} aria-label="Site">
             <a href="#how" className={s.hideSm}>How it works</a>
             <a href="/signin">Sign in</a>
