@@ -152,6 +152,20 @@ describe("discover (#379)", () => {
     expect(Number(run.costUsd)).toBeCloseTo(0.02);
   });
 
+  it("skips a known posting found under another URL for the same job, and reads one job once (#670)", async () => {
+    // Saved under the address Greenhouse redirected to; search returns the old one.
+    const [old] = await db.insert(schema.opportunities).values({ company: "Acme", title: "Lead", fingerprint: "acme", sourceUrl: "https://job-boards.greenhouse.io/acme/jobs/123" }).returning();
+    await db.insert(schema.userOpportunities).values({ userId, searchId, opportunityId: old.id, score: 4, addedVia: "agent" });
+    results.set("design systems lead", [hit("https://boards.greenhouse.io/acme/jobs/123?gh_src=x"), hit("https://jobs.lever.co/beta/0f4c3a2e-1b2c-4d5e-8f90-123456789abc")]);
+    results.set("design systems lead site:greenhouse.io", [hit("https://jobs.lever.co/beta/0f4c3a2e-1b2c-4d5e-8f90-123456789abc/apply"), hit("https://jobs.example.com/a?id=1"), hit("https://jobs.example.com/a?id=2")]);
+    for (const u of ["https://jobs.lever.co/beta/0f4c3a2e-1b2c-4d5e-8f90-123456789abc", "https://jobs.example.com/a?id=1", "https://jobs.example.com/a?id=2"]) pages.set(u, posting());
+
+    await discover(searchId);
+
+    // Other sites still match on the exact URL, so the two example.com jobs are both read.
+    expect(fetchPage.mock.calls.map((c) => c[0]).sort()).toEqual(["https://jobs.example.com/a?id=1", "https://jobs.example.com/a?id=2", "https://jobs.lever.co/beta/0f4c3a2e-1b2c-4d5e-8f90-123456789abc"]);
+  });
+
   it("fills pay from the page when the model misses it", async () => {
     results.set("design systems lead", [hit("https://jobs.example.com/a")]);
     results.set("design systems lead site:greenhouse.io", []);
