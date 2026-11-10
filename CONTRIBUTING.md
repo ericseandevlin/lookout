@@ -7,7 +7,7 @@ Thanks for looking. Lookout is a small side project, so the process is light, bu
 - Every change starts as a GitHub issue. If there isn't one, open one (bug or idea template) and say what you want to change and why.
 - Issues labeled `good first issue` are a good way in. `agent-ok` means the fix is clear enough to just do.
 - Security problems: don't open an issue. See [SECURITY.md](SECURITY.md).
-- Lookout is licensed under [AGPL-3.0](LICENSE). By opening a PR you agree your change is released under the same license.
+- Lookout is licensed under [MIT](LICENSE). By opening a PR you agree your change is released under the same license.
 
 ## Run it locally
 
