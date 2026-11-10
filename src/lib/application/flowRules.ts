@@ -16,6 +16,14 @@ export function optionAnswerAllowed(options: string[] | null, content: string, m
   return multi ? content.split("\n").every((line) => options.includes(line)) : options.includes(content);
 }
 
+/** Tick or untick one option on a select-any answer (#627): one option per line, kept in form order. */
+export function toggleOption(content: string, options: string[], option: string): string {
+  const picked = new Set(content.split("\n").filter(Boolean));
+  if (picked.has(option)) picked.delete(option);
+  else picked.add(option);
+  return options.filter((o) => picked.has(o)).join("\n");
+}
+
 /** Basic fields need no separate review once they have an answer. */
 export function autoApproveField(kind: ApplicationItemKind, content: string): boolean {
   return kind === "field" && !!content.trim();

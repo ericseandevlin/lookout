@@ -9,7 +9,7 @@ import { InfoTip } from "./InfoTip";
 import { RecruiterPanel } from "./RecruiterPanel";
 import { TemplatePicker } from "./TemplatePicker";
 import { VersionNotes } from "./VersionNotes";
-import { card, muted, type Act, type Item } from "./shared";
+import { card, muted, OptionChecks, type Act, type Item } from "./shared";
 import { color } from "@/lib/tokens";
 
 export function ItemCard({ appId, item, locked, act, analysis, template, accent, header, onTemplate, onAccent }: { appId: string; item: Item; locked: boolean; act: Act; analysis?: RecruiterAnalysis; template: Template; accent: string | null; header: { name: string; contact: string; headline?: string } | null; onTemplate: (t: Template) => void; onAccent: (hex: string) => void }) {
@@ -79,6 +79,8 @@ export function ItemCard({ appId, item, locked, act, analysis, template, accent,
           {!locked && <TemplatePicker value={template} accent={accent} onPick={onTemplate} onAccent={onAccent} />}
           <DocPreview md={text} template={template} accent={accent} header={header} />
         </>
+      ) : item.options?.length && item.fieldType === "multiselect" ? (
+        <OptionChecks id={`it-${item.id}`} label={item.prompt} options={item.options} value={text} onChange={setText} disabled={locked} />
       ) : item.options?.length && !locked ? (
         <select id={`it-${item.id}`} value={text} onChange={(e) => setText(e.target.value)} style={{ height: 40, borderRadius: 10, border: `1.5px solid ${color.border}`, padding: "0 10px", fontSize: 15, maxWidth: 420 }}>
           <option value="">Choose…</option>

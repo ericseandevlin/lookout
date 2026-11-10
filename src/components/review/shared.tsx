@@ -4,6 +4,7 @@ import type { ApplicationReport, ApplicationStatus } from "@/lib/db/schema";
 import type { Template } from "@/lib/application/resumeLayout";
 import type { KeywordRow } from "@/lib/application/evidence";
 import type { SubmitMode } from "@/lib/application/submitMode";
+import { toggleOption } from "@/lib/application/flowRules";
 import { color } from "@/lib/tokens";
 
 /** Shared by the review page parts: the response types, the card styles and the resume lookup. */
@@ -51,6 +52,21 @@ export type Detail = {
 
 export const card: React.CSSProperties = { padding: 18, borderRadius: 14, background: "#fff", border: `1.5px solid ${color.border}` };
 export const muted: React.CSSProperties = { fontSize: 14, color: color.t2 };
+
+/** A select-any question (#627): one checkbox per option; the answer is the ticked options, one per line. */
+export function OptionChecks({ id, label, options, value, onChange, disabled }: { id: string; label: string; options: string[]; value: string; onChange: (next: string) => void; disabled?: boolean }) {
+  const picked = new Set(value.split("\n"));
+  return (
+    <div id={id} role="group" aria-label={label} style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+      {options.map((o) => (
+        <label key={o} style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 15 }}>
+          <input type="checkbox" checked={picked.has(o)} disabled={disabled} onChange={() => onChange(toggleOption(value, options, o))} />
+          {o}
+        </label>
+      ))}
+    </div>
+  );
+}
 
 export type Act = (itemId: string, payload: Record<string, unknown>, done: string) => Promise<boolean>;
 

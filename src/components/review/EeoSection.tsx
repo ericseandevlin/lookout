@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { card, muted, type Act, type Detail } from "./shared";
+import { card, muted, OptionChecks, type Act, type Detail } from "./shared";
 import { color } from "@/lib/tokens";
 
 /** Voluntary EEO questions (#122): filled only from the person's own answers, with their permission. */
@@ -21,17 +21,21 @@ export function EeoSection({ d, act }: { d: Detail; act: Act }) {
         {qs.map((q) => (
           <div key={q.id} style={{ display: "flex", flexDirection: "column", gap: 6 }}>
             <label htmlFor={`eeo-${q.id}`} style={{ fontSize: 15, fontWeight: 600 }}>{q.prompt}</label>
-            <select
-              id={`eeo-${q.id}`}
-              value={q.eeoAnswer ?? ""}
-              onChange={(e) => act(q.id, { action: "edit", content: e.target.value, note: "" }, "Saved for this wording.")}
-              style={{ height: 40, borderRadius: 10, border: `1.5px solid ${color.border}`, padding: "0 10px", fontSize: 15, maxWidth: 520 }}
-            >
-              <option value="">Leave blank</option>
-              {(q.options ?? []).map((o) => (
-                <option key={o}>{o}</option>
-              ))}
-            </select>
+            {q.fieldType === "multiselect" ? (
+              <OptionChecks id={`eeo-${q.id}`} label={q.prompt} options={q.options ?? []} value={q.eeoAnswer ?? ""} onChange={(content) => act(q.id, { action: "edit", content, note: "" }, "Saved for this wording.")} />
+            ) : (
+              <select
+                id={`eeo-${q.id}`}
+                value={q.eeoAnswer ?? ""}
+                onChange={(e) => act(q.id, { action: "edit", content: e.target.value, note: "" }, "Saved for this wording.")}
+                style={{ height: 40, borderRadius: 10, border: `1.5px solid ${color.border}`, padding: "0 10px", fontSize: 15, maxWidth: 520 }}
+              >
+                <option value="">Leave blank</option>
+                {(q.options ?? []).map((o) => (
+                  <option key={o}>{o}</option>
+                ))}
+              </select>
+            )}
             <div style={muted}>{q.eeoAnswer ? "✓ Will be filled" : "Blank. Lookout couldn't match your answer to this wording; pick one or leave it blank."}</div>
           </div>
         ))}
