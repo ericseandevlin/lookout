@@ -17,6 +17,16 @@ describe("applyRules", () => {
     expect(r.score).toBe(5);
     expect(r.reasonsGap).toContain("No comp posted");
   });
+  it("still notes missing comp when a gap only mentions company or payments (#658)", () => {
+    for (const g of ["Company is early stage", "Competitive market for this title", "Needs payments experience"]) {
+      expect(applyRules({ ...base, compMin: null, compMax: null, reasonsGap: [g] }, null)!.reasonsGap).toContain("No comp posted");
+    }
+  });
+  it("doesn't repeat missing comp when a gap already says it", () => {
+    for (const g of ["Pay isn't listed", "No salary range given", "Comp not posted", "Compensation unknown"]) {
+      expect(applyRules({ ...base, compMin: null, compMax: null, reasonsGap: [g] }, null)!.reasonsGap).toEqual([g]);
+    }
+  });
   it("caps at 3 outside preferred locations", () => {
     expect(applyRules({ ...base, locationFit: false }, null)!.score).toBe(3);
   });
