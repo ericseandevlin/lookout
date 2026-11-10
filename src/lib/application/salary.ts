@@ -14,12 +14,23 @@ const parse = (v: unknown) => {
 const round5k = (n: number) => Math.round(n / 5000) * 5000;
 const usd = (n: number) => `$${n.toLocaleString("en-US")}`;
 
+const sentences = (t: string) => t.split(/(?<=[.?!])\s+|\n+/);
+// "Includes a bonus" counts only in a sentence about the pay itself and not negated: "this range does not include bonus"
+// is a base range, and "our total rewards include a bonus program" is a benefits list (#650).
+const INCLUDES_BONUS = /includ\w* (a )?(target )?bonus/i;
+const ABOUT_PAY = /\b(range|salary|pay|compensation|amount|figure)\b/i;
+const NEGATED = /(\bnot|n't)\s+includ/i;
+
 /** What the posted range covers: total cash (bonus included), base, or the posting doesn't say. */
 export const rangeBasis = (posting: string): "total" | "base" | null =>
-  /total cash|includ\w* (a )?(target )?bonus|\bOTE\b/i.test(posting) ? "total" : /\bbase (salary|pay|compensation)\b/i.test(posting) ? "base" : null;
+  /total cash|\bOTE\b/i.test(posting) || sentences(posting).some((s) => INCLUDES_BONUS.test(s) && ABOUT_PAY.test(s) && !NEGATED.test(s))
+    ? "total"
+    : /\bbase (salary|pay|compensation)\b/i.test(posting)
+      ? "base"
+      : null;
 
-/** The question asks for base pay. */
-export const asksBase = (prompt: string) => /\bbase\b/i.test(prompt);
+/** The question asks for base pay, not base plus bonus or commission (#650). */
+export const asksBase = (prompt: string) => /\bbase\b/i.test(prompt) && !/\bbase\s*(\+|plus|and|&)\s*(target )?(bonus|commission)/i.test(prompt);
 
 /** The question asks for the lowest number the person would take. */
 export const asksMinimum = (prompt: string) => /\bminimum\b|\bat least\b|\blowest\b/i.test(prompt);
@@ -32,7 +43,7 @@ const PAST_PAY =
  * A salary ask, not a question about the person's own past or current pay. Judged sentence by sentence,
  * so a legal note after the ask ("We do not ask about salary history.") doesn't hide it (#640).
  */
-export const isSalaryQuestion = (prompt: string) => prompt.split(/(?<=[.?!])\s+|\n+/).some((s) => SALARY_ASK.test(s) && !PAST_PAY.test(s));
+export const isSalaryQuestion = (prompt: string) => sentences(prompt).some((s) => SALARY_ASK.test(s) && !PAST_PAY.test(s));
 
 /**
  * amount is null when Lookout shouldn't put a number in: the floor is above their range, or their range
