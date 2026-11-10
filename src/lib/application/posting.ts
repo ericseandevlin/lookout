@@ -48,7 +48,7 @@ export const isJunkKeyword = (term: string, posting?: string) => {
 
 export type Trap = { text: string; words: string[]; hidden: boolean };
 
-const HIDDEN_STYLE = /display\s*:\s*none|visibility\s*:\s*hidden|font-size\s*:\s*0*(\.\d+)?(px|pt|em|rem)?\s*(;|"|')|font-size\s*:\s*[01]px|opacity\s*:\s*0(\.0*)?\s*(;|"|')|color\s*:\s*(#fff(fff)?|white|rgba?\(\s*255\s*,\s*255\s*,\s*255)|(left|top|text-indent)\s*:\s*-\d{3,}|height\s*:\s*0(px)?\s*;[^"']*overflow\s*:\s*hidden|clip\s*:\s*rect\(0/i;
+const HIDDEN_STYLE = /display\s*:\s*none|visibility\s*:\s*hidden|font-size\s*:\s*(0+(\.0*)?|\.0+)(px|pt|em|rem|%)?\s*(;|"|'|!)|font-size\s*:\s*1px|opacity\s*:\s*0(\.0*)?\s*(;|"|')|(?<![\w-])color\s*:\s*(#fff(fff)?\b|white\b|rgba?\(\s*255\s*,\s*255\s*,\s*255)|(?<![\w-])(left|top|text-indent)\s*:\s*-\d{3,}|height\s*:\s*0(px)?\s*;[^"']*overflow\s*:\s*hidden|clip\s*:\s*rect\(0/i;
 
 const isHiddenTag = (attrs: string) => {
   const style = attrs.match(/\bstyle\s*=\s*("[^"]*"|'[^']*')/i);
