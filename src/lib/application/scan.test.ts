@@ -21,6 +21,12 @@ describe("detectAts", () => {
     expect(boardGuesses("careers.red-ventures.com")).toEqual(["red-ventures", "redventures"]);
   });
 
+  it("reads an embed link with only ?token= as an embed, not board \"embed\" (#674)", () => {
+    const u = "https://job-boards.greenhouse.io/embed/job_app?token=8008090";
+    expect(detectAts(u)).toEqual({ ats: "greenhouse", board: "", id: "8008090" });
+    expect(applyUrlFor(detectAts(u), u)).toBe(u);
+  });
+
   it("reads EU Greenhouse links like an embed, keeping the EU host (#634)", () => {
     const eu = "https://job-boards.eu.greenhouse.io/acme/jobs/4500123101";
     expect(detectAts(eu)).toEqual({ ats: "greenhouse", board: "", id: "4500123101" });

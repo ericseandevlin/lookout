@@ -334,6 +334,23 @@ describe("embedded Greenhouse boards and Ashby outages (#438)", () => {
     expect(scan.items.map((i) => i.prompt)).toEqual(["Portfolio link"]);
   });
 
+  it("finds the board on a token-only embed page instead of calling the job closed (#674)", async () => {
+    const embed = "https://job-boards.greenhouse.io/embed/job_app?token=123";
+    pages.set(embed, `<form action="https://boards.greenhouse.io/embed/job_app?for=engines&token=123"></form>`);
+    const scan = await scanPosting(embed, emptyUsage());
+    expect(scan).toMatchObject({ ats: "greenhouse", source: "form", applyUrl: "https://job-boards.greenhouse.io/embed/job_app?for=engines&token=123" });
+    expect(fetchPage.mock.calls.map((c) => c[0])).toEqual([embed, GH_API]);
+  });
+
+  it("reads a token-only embed page when it names no board, without guessing one from greenhouse.io (#674)", async () => {
+    const embed = "https://job-boards.greenhouse.io/embed/job_app?token=123";
+    pages.set(embed, "<label>Portfolio link</label>");
+    replies["apply-scan"] = () => ({ hasForm: true, hasEeo: false, howToApply: "", items: [{ prompt: "Portfolio link", required: false, fieldType: "text", options: [] }] });
+    const scan = await scanPosting(embed, emptyUsage());
+    expect(scan).toMatchObject({ ats: "greenhouse", source: "page", applyUrl: embed });
+    expect(fetchPage.mock.calls.map((c) => c[0])).toEqual([embed, embed]);
+  });
+
   it("reads an EU Greenhouse posting's page when the API doesn't know it, not as closed (#634)", async () => {
     const eu = "https://job-boards.eu.greenhouse.io/acme/jobs/123";
     pages.set(eu, "<label>Portfolio link</label>");
