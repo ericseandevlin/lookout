@@ -63,7 +63,14 @@ function fromGreenhouse(html: string): Pay | null {
 const AMT = String.raw`\d{1,3}(?:,\d{3})+(?:\.\d+)?|\d+(?:\.\d+)?\s?[kK]\b|\d{4,7}(?:\.\d+)?|\d{2,3}(?:\.\d{2})?`;
 // A unit right after the first end, as in "$95/hr - $110/hr" or "$95 an hour - $110 an hour" (#682).
 const FIRST_UNIT = String.raw`\s?(?:\/\s?|(?:per|an?)\s)(?:hours?|hr|h|years?|yr|months?|mo|weeks?|wk)\b`;
-const RANGE = new RegExp(String.raw`\$\s?(${AMT})(${FIRST_UNIT})?\s*(?:-|–|—|to)\s*\$?\s?(${AMT})([^\n]{0,40})`, "gi");
+// Either end may carry a currency: "US$120,000 - US$150,000", "CA$...", "$120,000 USD - $150,000 USD" (#686).
+const PRE = String.raw`(?:\b(US|CA|C|A)(?=\$))?`;
+const CODE = String.raw`(?:\s?(USD|CAD|AUD)\b)?`;
+const range = (start: string, sep: string) =>
+  new RegExp(String.raw`${start}${PRE}\$\s?(${AMT})(${FIRST_UNIT})?${CODE}\s*${sep}\s*${PRE}\$?\s?(${AMT})([^\n]{0,40})`, "gi");
+// "and" joins a range only after "between": "between $150,000 and $180,000" (#686).
+const RANGES = [range("", "(?:-|–|—|to)"), range(String.raw`\bbetween\s+`, "and")];
+const PREFIX: Record<string, string> = { us: "USD", ca: "CAD", c: "CAD", a: "AUD" };
 
 // What the range is per, from the words after it. The unit named first wins, so "per year, paid monthly" stays yearly (#484)
 // and "per hour, plus an annual bonus" stays hourly (#646).
@@ -83,15 +90,18 @@ function payUnit(tail: string) {
 }
 
 function fromText(text: string): Pay | null {
-  for (const m of text.matchAll(RANGE)) {
-    let a = money(m[1]);
-    const b = money(m[3]);
+  // In page order, so the first range on the page still wins.
+  for (const m of RANGES.flatMap((re) => [...text.matchAll(re)]).sort((x, y) => x.index - y.index)) {
+    const [, pre1, first, firstUnit, code, pre2, second, tail = ""] = m;
+    let a = money(first);
+    const b = money(second);
     if (!a || !b) continue;
     // "$150-200K": the K on the second end covers a bare first end too (#682).
-    if (a < 1000 && /k$/i.test(m[3]) && !/k$/i.test(m[1])) a *= 1000;
-    const tail = m[4] ?? "";
-    const unit = payUnit(`${m[2] ?? ""} ${tail}`);
-    const p = annual(a, b, unit, /CAD/.test(tail) ? "CAD" : /EUR|€/.test(tail) ? "EUR" : /GBP|£/.test(tail) ? "GBP" : "USD", "text");
+    if (a < 1000 && /k$/i.test(second) && !/k$/i.test(first)) a *= 1000;
+    const unit = payUnit(`${firstUnit ?? ""} ${tail}`);
+    const named = PREFIX[(pre1 ?? pre2 ?? "").toLowerCase()] ?? code?.toUpperCase();
+    const currency = named ?? (/CAD/.test(tail) ? "CAD" : /AUD/.test(tail) ? "AUD" : /EUR|€/.test(tail) ? "EUR" : /GBP|£/.test(tail) ? "GBP" : "USD");
+    const p = annual(a, b, unit, currency, "text");
     if (p) return p;
   }
   return null;

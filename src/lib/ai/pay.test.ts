@@ -75,6 +75,23 @@ describe("findPay", () => {
     expect(findPay("", `Pay: ${text}. Benefits included.`)).toMatchObject({ min, max });
   });
 
+  it.each([
+    ["The salary for this role is between $150,000 and $180,000 annually.", 150000, 180000, "USD"],
+    ["Base pay range: US$120,000 - US$150,000", 120000, 150000, "USD"],
+    ["$120,000 USD - $150,000 USD", 120000, 150000, "USD"],
+    ["CA$120,000 - CA$150,000", 120000, 150000, "CAD"],
+    ["A$140,000 - A$160,000", 140000, 160000, "AUD"],
+    ["$110,000 CAD - $130,000 CAD", 110000, 130000, "CAD"],
+  ])("reads %s (#686)", (text, min, max, currency) => {
+    expect(findPay("", text)).toEqual({ min, max, currency, source: "text" });
+  });
+
+  it('joins with "and" only after "between", and keeps page order (#686)', () => {
+    expect(findPay("", "A $5,000 signing bonus and $10,000 relocation")).toBeNull();
+    expect(findPay("", "Get $5,000 and $120,000 - $150,000 base")).toMatchObject({ min: 120000, max: 150000 });
+    expect(findPay("", "Pay is $130,000 - $160,000. Offers are between $140,000 and $150,000.")).toMatchObject({ min: 130000, max: 160000 });
+  });
+
   it("ignores amounts that aren't a salary range", () => {
     expect(findPay("", "We raised $50,000,000 in 2024 and serve 2,000 - 3,000 customers")).toBeNull();
     expect(findPay("", "401k match up to $5,000 - $6,000")).toBeNull();
