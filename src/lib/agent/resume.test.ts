@@ -148,4 +148,11 @@ describe("applyResumeResult", () => {
     expect(readLink).toHaveBeenCalledTimes(1);
     expect(readLink).toHaveBeenCalledWith(expect.any(String), "https://github.com/patlee");
   });
+
+  it("reads links the resume lists without https:// and skips mail and phone links (#664)", async () => {
+    await applyResumeResult(userId, materialId, fills({ links: ["patlee.design/work", "mailto:pat@lee.design", "tel:5551234"] }));
+    expect((await others("link")).map((m) => m.url)).toEqual(["patlee.design/work"]);
+    expect(readLink).toHaveBeenCalledTimes(1);
+    expect(readLink).toHaveBeenCalledWith(expect.any(String), "patlee.design/work");
+  });
 });

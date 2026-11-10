@@ -59,6 +59,13 @@ describe("readLink", () => {
     expect(m.scannedAt).toBeInstanceOf(Date);
   });
 
+  it("reads a link saved without https:// (#664)", async () => {
+    page = article(20);
+    await readLink(id, "sam.example.com/work");
+    expect(fetchPage).toHaveBeenCalledWith("https://sam.example.com/work");
+    expect((await material()).status).toBe("done");
+  });
+
   it("fails a thin page and says why", async () => {
     page = article(3);
     await readLink(id, URL);
