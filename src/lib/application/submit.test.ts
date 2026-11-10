@@ -133,20 +133,33 @@ describe("startFill", () => {
     expect(uo.stage).toBe("Not applied");
   });
 
-  it.each([
-    ["approved", "submitting"],
-    ["needs_review", "needs_review"],
-    ["manual", "manual"],
-  ] as const)("submit: while filling, a %s application shows as %s", async (from, during) => {
-    const id = await seed(from, [{ kind: "field", prompt: "Phone", content: "555-0100" }]);
+  it("submit: while filling, an approved application shows as submitting", async () => {
+    const id = await seed("approved", [{ kind: "field", prompt: "Phone", content: "555-0100" }]);
     // Hold the browser open so the status can be read mid-fill.
     let release = () => {};
     launch.mockImplementationOnce(() => new Promise((_, reject) => (release = () => reject(new Error("stopped")))));
-    await startFill(id, "submit");
-    expect((await app(id)).status).toBe(during);
+    expect(await startFill(id, "submit")).toBe(true);
+    expect((await app(id)).status).toBe("submitting");
     await vi.waitFor(() => expect(launch).toHaveBeenCalledOnce());
     release();
     expect((await settled(id)).status).toBe("manual");
+  });
+
+  it.each(["needs_review", "manual", "submitting", "submitted"] as const)("submit: a %s application isn't sent and keeps its status", async (from) => {
+    const id = await seed(from, [{ kind: "field", prompt: "Phone", content: "555-0100" }]);
+    expect(await startFill(id, "submit")).toBe(false);
+    const a = await app(id);
+    expect(a.status).toBe(from);
+    expect(a.report.fill).toBeUndefined();
+    expect(launch).not.toHaveBeenCalled();
+  });
+
+  it("submit: two presses at once send it only once (#615)", async () => {
+    const id = await seed("approved", [{ kind: "field", prompt: "Phone", content: "555-0100" }]);
+    const started = await Promise.all([startFill(id, "submit"), startFill(id, "submit")]);
+    expect(started.filter(Boolean)).toHaveLength(1);
+    await settled(id);
+    expect(launch).toHaveBeenCalledOnce();
   });
 
   it("test: records the fill report and keeps the status", async () => {

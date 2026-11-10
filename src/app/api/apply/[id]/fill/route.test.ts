@@ -20,7 +20,7 @@ let beta = true;
 vi.mock("@/lib/auth/session", () => ({ getSessionUser: async () => current, refreshSession: async () => {} }));
 vi.mock("@/lib/apply", async (orig) => ({ ...(await orig<typeof import("@/lib/apply")>()), canUseAutoApply: () => beta }));
 // The browser worker has its own tests; here only whether the route starts it, and where screenshots are read from.
-const worker = vi.hoisted(() => ({ autoSubmit: true, dir: "", startFill: vi.fn(async () => {}) }));
+const worker = vi.hoisted(() => ({ autoSubmit: true, dir: "", startFill: vi.fn(async () => true) }));
 vi.mock("@/lib/application/submit", () => ({
   canAutoSubmit: () => worker.autoSubmit,
   startFill: worker.startFill,
@@ -99,6 +99,14 @@ describe("POST /api/apply/[id]/fill (#574)", () => {
     expect(res.status).toBe(409);
     expect((await res.json()).error).toMatch(/already sending/);
     expect(worker.startFill).not.toHaveBeenCalled();
+  });
+
+  it("is 409 when another press already claimed it (#615)", async () => {
+    const a = await application(current!.id, "approved");
+    worker.startFill.mockResolvedValueOnce(false);
+    const res = await start(a.id, { mode: "submit" });
+    expect(res.status).toBe(409);
+    expect((await res.json()).error).toMatch(/already sending/);
   });
 
   it("answers 404 for someone else's application, an unknown one, or a bad id", async () => {

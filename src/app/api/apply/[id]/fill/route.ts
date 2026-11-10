@@ -16,6 +16,7 @@ export const POST = authed<Ctx>(async (req, { user, params }) => {
   const a = await ownApplication(user.id, (await params).id);
   if (a.route !== "browser") throw new HttpError(409, "This site needs the manual checklist.");
   if (a.status !== "approved") throw new HttpError(409, a.status === "submitting" ? "It's already sending." : "Approve every required item first.");
-  await startFill(a.id, mode);
+  // Two presses can both read "approved"; only the one that claims it sends (#615).
+  if (!(await startFill(a.id, mode))) throw new HttpError(409, "It's already sending.");
   return json({ ok: true });
 });
