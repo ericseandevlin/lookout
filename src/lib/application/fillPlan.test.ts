@@ -43,6 +43,14 @@ describe("pickOptions (#165)", () => {
   it("accepts an answer cut short, and drops lines that match nothing", () => {
     expect(pickOptions("Yes, but I will require employer support\nMaybe", work)).toEqual([work[1]]);
   });
+  it("picks the closest option, not the first that shares a prefix (#632)", () => {
+    expect(pickOptions("None", ["No", "None of the above"])).toEqual(["None of the above"]);
+    expect(pickOptions("JavaScript (ES6)", ["Java", "JavaScript"])).toEqual(["JavaScript"]);
+    expect(pickOptions("Yes, I am authorized", ["Yes", "No"])).toEqual(["Yes"]);
+  });
+  it("matches a prefix only at a word boundary (#632)", () => {
+    expect(pickOptions("Nonprofit", ["No", "Yes"])).toEqual([]);
+  });
   it("uses the answer as-is when the question listed no options", () => {
     expect(pickOptions("Remote", [])).toEqual(["Remote"]);
   });
