@@ -12,6 +12,7 @@ const db = drizzle(pg, { schema });
 vi.mock("@/lib/db", () => ({ db, schema }));
 
 const { loadContext, save } = await import("./discover");
+const { fingerprint } = await import("./rules");
 type Ctx = Awaited<ReturnType<typeof loadContext>>;
 type Find = Parameters<typeof save>[1][number];
 
@@ -142,6 +143,23 @@ describe("save", () => {
     expect(r.added).toBe(1);
     expect(await db.select().from(schema.opportunities)).toHaveLength(1);
     expect(await board(s2.id)).toHaveLength(1);
+  });
+
+  it("keeps the shared posting's link and summary when someone finds it again at another URL (#585)", async () => {
+    const [u2] = await db.insert(schema.users).values({ email: "b@example.com" }).returning();
+    const [s2] = await db.insert(schema.searches).values({ userId: u2.id, name: "Job search", answers: {} }).returning();
+    await save(ctx(), [find()], "agent");
+    await save(ctx({ userId: u2.id, searchId: s2.id }), [find({ url: "https://boards.example.org/acme-director", description: "Someone else's summary." })], "agent");
+    await save(ctx(), [find({ url: "https://aggregator.example.net/job/9", description: "Another summary." })], "agent");
+    const [o] = await db.select().from(schema.opportunities);
+    expect(o).toMatchObject({ sourceUrl: "https://jobs.example.com/acme/123", description: "Lead the design team." });
+  });
+
+  it("fills a shared posting's link and summary when it has none", async () => {
+    await db.insert(schema.opportunities).values({ company: "Acme", title: "Director of Design", fingerprint: fingerprint("Acme", "Director of Design", "New York, NY (hybrid)") });
+    await save(ctx(), [find()], "agent");
+    const [o] = await db.select().from(schema.opportunities);
+    expect(o).toMatchObject({ sourceUrl: "https://jobs.example.com/acme/123", description: "Lead the design team." });
   });
 });
 
