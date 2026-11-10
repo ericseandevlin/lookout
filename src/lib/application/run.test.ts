@@ -155,6 +155,28 @@ describe("scanPosting (#378)", () => {
     expect(scan.items.map((i) => i.prompt)).toEqual(["Name", "Resume"]);
   });
 
+  it("reads the Ashby form behind a company page's ?ashby_jid= (#676)", async () => {
+    const id = "ec0690d5-be5e-4e8b-be78-d832f166b242";
+    const page = `https://careers.engines.com/jobs?ashby_jid=${id}`;
+    pages.set(page, `<script src="https://jobs.ashbyhq.com/engines/embed?version=2"></script>`);
+    ashby.mockResolvedValue({ ok: true, json: async () => ({ data: { jobPosting: { applicationForm: { sections: [{ title: "Apply", fieldEntries: [{ isRequired: true, field: { title: "Resume", type: "File" } }] }] } } } }) });
+    const scan = await scanPosting(page, emptyUsage());
+    expect(JSON.parse(ashby.mock.calls[0][1].body).variables).toEqual({ organizationHostedJobsPageName: "engines", jobPostingId: id });
+    expect(scan).toMatchObject({ ats: "ashby", source: "form", route: "browser", applyUrl: `https://jobs.ashbyhq.com/engines/${id}/application` });
+    expect(completeJSON).not.toHaveBeenCalled();
+  });
+
+  it("guesses the Ashby org from the host when the page doesn't name it (#676)", async () => {
+    const id = "ec0690d5-be5e-4e8b-be78-d832f166b242";
+    const page = `https://careers.analytical-engines.com/jobs?ashby_jid=${id}`;
+    pages.set(page, "<div id='ashby_embed'></div>");
+    const form = { data: { jobPosting: { applicationForm: { sections: [{ title: "Apply", fieldEntries: [{ isRequired: true, field: { title: "Name", type: "String" } }] }] } } } };
+    ashby.mockResolvedValueOnce({ ok: true, json: async () => ({ data: { jobPosting: null } }) }).mockResolvedValueOnce({ ok: true, json: async () => form });
+    const scan = await scanPosting(page, emptyUsage());
+    expect(ashby.mock.calls.map((c) => JSON.parse(c[1].body).variables.organizationHostedJobsPageName)).toEqual(["analytical-engines", "analyticalengines"]);
+    expect(scan).toMatchObject({ ats: "ashby", source: "form", applyUrl: `https://jobs.ashbyhq.com/analyticalengines/${id}/application` });
+  });
+
   it("calls an Ashby posting closed when the API has no such posting", async () => {
     ashby.mockResolvedValue({ ok: true, json: async () => ({ data: { jobPosting: null } }) });
     await expect(scanPosting("https://jobs.ashbyhq.com/engines/gone", emptyUsage())).rejects.toThrow("closed or doesn't exist");
