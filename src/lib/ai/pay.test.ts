@@ -64,6 +64,17 @@ describe("findPay", () => {
     expect(findPay("", "$40 - $55/hr. Eligible for yearly raises")).toMatchObject({ min: 83200, max: 114400 });
   });
 
+  it.each([
+    ["$150-200K", 150000, 200000],
+    ["$150 - $200K per year", 150000, 200000],
+    ["$95/hr - $110/hr", 197600, 228800],
+    ["$95/hour - $110/hour", 197600, 228800],
+    ["$95 an hour - $110 an hour", 197600, 228800],
+    ["$8,000/month - $10,000/month", 96000, 120000],
+  ])("reads %s (#682)", (text, min, max) => {
+    expect(findPay("", `Pay: ${text}. Benefits included.`)).toMatchObject({ min, max });
+  });
+
   it("ignores amounts that aren't a salary range", () => {
     expect(findPay("", "We raised $50,000,000 in 2024 and serve 2,000 - 3,000 customers")).toBeNull();
     expect(findPay("", "401k match up to $5,000 - $6,000")).toBeNull();

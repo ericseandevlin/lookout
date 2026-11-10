@@ -61,7 +61,9 @@ function fromGreenhouse(html: string): Pay | null {
 
 // A dollar amount: $224,000 / $224K / $224000 / $55.50 (hourly). The second end of a range may drop the "$" ("$224,000 - 308,000").
 const AMT = String.raw`\d{1,3}(?:,\d{3})+(?:\.\d+)?|\d+(?:\.\d+)?\s?[kK]\b|\d{4,7}(?:\.\d+)?|\d{2,3}(?:\.\d{2})?`;
-const RANGE = new RegExp(String.raw`\$\s?(${AMT})\s*(?:-|–|—|to)\s*\$?\s?(${AMT})([^\n]{0,40})`, "g");
+// A unit right after the first end, as in "$95/hr - $110/hr" or "$95 an hour - $110 an hour" (#682).
+const FIRST_UNIT = String.raw`\s?(?:\/\s?|(?:per|an?)\s)(?:hours?|hr|h|years?|yr|months?|mo|weeks?|wk)\b`;
+const RANGE = new RegExp(String.raw`\$\s?(${AMT})(${FIRST_UNIT})?\s*(?:-|–|—|to)\s*\$?\s?(${AMT})([^\n]{0,40})`, "gi");
 
 // What the range is per, from the words after it. The unit named first wins, so "per year, paid monthly" stays yearly (#484)
 // and "per hour, plus an annual bonus" stays hourly (#646).
@@ -82,10 +84,13 @@ function payUnit(tail: string) {
 
 function fromText(text: string): Pay | null {
   for (const m of text.matchAll(RANGE)) {
-    const a = money(m[1]), b = money(m[2]);
+    let a = money(m[1]);
+    const b = money(m[3]);
     if (!a || !b) continue;
-    const tail = m[3] ?? "";
-    const unit = payUnit(tail);
+    // "$150-200K": the K on the second end covers a bare first end too (#682).
+    if (a < 1000 && /k$/i.test(m[3]) && !/k$/i.test(m[1])) a *= 1000;
+    const tail = m[4] ?? "";
+    const unit = payUnit(`${m[2] ?? ""} ${tail}`);
     const p = annual(a, b, unit, /CAD/.test(tail) ? "CAD" : /EUR|€/.test(tail) ? "EUR" : /GBP|£/.test(tail) ? "GBP" : "USD", "text");
     if (p) return p;
   }
