@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { autoApproveField, optionAnswerAllowed, settledStatus, statusAfterFill } from "./flowRules";
+import { autoApproveField, optionAnswerAllowed, settledStatus, statusAfterFill, toggleOption } from "./flowRules";
 
 const approved = { required: true, approvedVersionId: "version-1" };
 
@@ -76,5 +76,25 @@ describe("statusAfterFill", () => {
   it("treats an empty confirmation as a confirmation, but a stop reason as manual", () => {
     expect(statusAfterFill({ confirmation: "" })).toBe("submitted");
     expect(statusAfterFill({ confirmation: "Application received", stopped: "Check the result" })).toBe("manual");
+  });
+});
+
+describe("toggleOption (#627)", () => {
+  const opts = ["Design", "Engineering", "Research"];
+
+  it("adds a ticked option in form order, one per line", () => {
+    expect(toggleOption("Research", opts, "Design")).toBe("Design\nResearch");
+    expect(toggleOption("", opts, "Engineering")).toBe("Engineering");
+  });
+
+  it("removes an unticked option and gives an empty answer when none are left", () => {
+    expect(toggleOption("Design\nResearch", opts, "Design")).toBe("Research");
+    expect(toggleOption("Research", opts, "Research")).toBe("");
+  });
+
+  it("drops lines that are not options, so the answer always passes the option check", () => {
+    const out = toggleOption("Design\nSomething else", opts, "Research");
+    expect(out).toBe("Design\nResearch");
+    expect(optionAnswerAllowed(opts, out, true)).toBe(true);
   });
 });
