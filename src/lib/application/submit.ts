@@ -203,9 +203,19 @@ async function fillOne(page: Page, s: FillStep): Promise<{ ok: boolean; how: str
   }
 }
 
-/** Run a test fill or a real submit in the background and record the result on the application. */
-export async function startFill(appId: string, mode: "test" | "submit") {
-  if (mode === "submit") await db.update(schema.applications).set({ status: "submitting", updatedAt: new Date() }).where(and(eq(schema.applications.id, appId), eq(schema.applications.status, "approved")));
+/**
+ * Run a test fill or a real submit in the background and record the result on the application.
+ * A submit first claims the approved application; returns false when it isn't approved (another request is already sending it, #615).
+ */
+export async function startFill(appId: string, mode: "test" | "submit"): Promise<boolean> {
+  if (mode === "submit") {
+    const claimed = await db
+      .update(schema.applications)
+      .set({ status: "submitting", updatedAt: new Date() })
+      .where(and(eq(schema.applications.id, appId), eq(schema.applications.status, "approved")))
+      .returning({ id: schema.applications.id });
+    if (!claimed.length) return false;
+  }
   void (async () => {
     let fill: FillReport;
     try {
@@ -239,4 +249,5 @@ export async function startFill(appId: string, mode: "test" | "submit") {
       await db.update(schema.applications).set({ status: "manual", report, updatedAt: new Date() }).where(eq(schema.applications.id, appId));
     }
   })().catch((e) => console.error("[apply] fill", e));
+  return true;
 }
