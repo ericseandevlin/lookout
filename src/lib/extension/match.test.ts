@@ -23,6 +23,16 @@ describe("jobKey (#169)", () => {
     expect(jobKey("https://careers.example.com/job?ref=li&jobId=R-42")).toBe("url:careers.example.com/job?jobid=r-42");
     expect(jobKey("https://careers.example.com/job?job_id=R-42")).toBe(jobKey("https://careers.example.com/job?jobId=R-42&src=mail"));
   });
+  it("keys a Workday job by tenant and job slug, ignoring locale and the apply steps (#622)", () => {
+    const post = "https://acme.wd5.myworkdayjobs.com/en-US/External/job/New-York-NY/Senior-Designer_R12345";
+    const key = "workday:acme.wd5.myworkdayjobs.com:senior-designer_r12345";
+    for (const u of [post, `${post}/`, `${post}/apply`, `${post}/apply/applyManually`, `${post}/apply/autofillWithResume?source=x`, "https://acme.wd5.myworkdayjobs.com/External/job/New-York-NY/Senior-Designer_R12345/apply", "https://acme.wd5.myworkdayjobs.com/en-US/External/details/Senior-Designer_R12345"]) {
+      expect(jobKey(u), u).toBe(key);
+    }
+    expect(jobKey("https://acme.wd5.myworkdayjobs.com/en-US/External/job/New-York-NY/Senior-Designer_R67890")).not.toBe(key);
+    expect(jobKey("https://other.wd1.myworkdayjobs.com/External/job/New-York-NY/Senior-Designer_R12345")).not.toBe(key);
+    expect(jobKey("https://acme.wd5.myworkdayjobs.com/en-US/External")).toBe("url:acme.wd5.myworkdayjobs.com/en-us/external");
+  });
   it("returns null for junk", () => {
     expect(jobKey("not a url")).toBeNull();
     expect(jobKey(undefined)).toBeNull();
