@@ -67,7 +67,10 @@ describe("checksBox (#669)", () => {
   it("ticks on yes, true and the consent verbs, alone or leading the answer", () => {
     for (const a of ["yes", "Yes", "TRUE", "agree", "I agree", "I acknowledge", "I confirm", "I consent", "I certify the above is true", "Accept", "Yes, I agree", "yes - happy to", "  yes  "]) expect(checksBox(a), a).toBe(true);
   });
+  it("ticks on past tense and read-and-agree answers (#681)", () => {
+    for (const a of ["Agreed", "Acknowledged.", "Confirmed", "Accepted", "Consented", "Certified", "I have read and agree", "I've read and acknowledge", "I’ve read and acknowledge", "I read and agree", "I understand and agree", "I understand", "I agreed to the terms"]) expect(checksBox(a), a).toBe(true);
+  });
   it("leaves the box on no, empty or anything else", () => {
-    for (const a of ["", "No", "false", "No, I do not agree", "I do not agree", "I don't consent", "Yesterday", "Agreement pending", "N/A", "Maybe"]) expect(checksBox(a), a).toBe(false);
+    for (const a of ["", "No", "false", "No, I do not agree", "I do not agree", "I don't consent", "Yesterday", "Agreement pending", "N/A", "Maybe", "I have read the terms", "I do not understand", "Disagreed", "Acceptance pending"]) expect(checksBox(a), a).toBe(false);
   });
 });
