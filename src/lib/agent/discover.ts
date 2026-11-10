@@ -250,7 +250,11 @@ async function scorePages(ctx: Context, pages: Page[], usage: Usage, report?: Re
         system: scorerSystem(),
         user: `${profileBlock(ctx)}\n\n<pages>\n${body}\n</pages>\n\nReturn one entry per page, using its [n] as index.`,
       });
+      // One entry per page: small models sometimes repeat an index, which would count the posting twice (#612).
+      const seen = new Set<number>();
       for (const f of res.finds) {
+        if (seen.has(f.index)) continue;
+        seen.add(f.index);
         const page = batch[f.index];
         // The model sometimes misses pay even when it's on the page; the deterministic read fills the gap.
         if (page) out.push({ ...f, url: page.url, ...(f.comp_min == null && f.comp_max == null && page.pay && page.pay.currency === "USD" && { comp_min: page.pay.min, comp_max: page.pay.max }) });

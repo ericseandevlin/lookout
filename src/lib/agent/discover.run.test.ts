@@ -176,6 +176,18 @@ describe("discover (#379)", () => {
     expect(score?.system).toContain("Today is 2031-03-14.");
   });
 
+  it("counts a page once when the scorer repeats its index (#612)", async () => {
+    results.set("design systems lead", [hit("https://jobs.example.com/a")]);
+    results.set("design systems lead site:greenhouse.io", []);
+    pages.set("https://jobs.example.com/a", posting());
+    replies.score = (c) => {
+      const [first] = scoreReply(c).finds;
+      return { finds: [first, { ...first, is_open_job_posting: false }] };
+    };
+    await expect(discover(searchId)).resolves.toMatchObject({ found: 1, added: 1 });
+    expect((await runRow()).report?.tally).toMatchObject({ postings: 1, notPostings: 0, known: 0, added: 1 });
+  });
+
   it("keeps going when one search fails, and fails the run only when every search does", async () => {
     results.set("design systems lead", [hit("https://jobs.example.com/a")]);
     pages.set("https://jobs.example.com/a", posting());
