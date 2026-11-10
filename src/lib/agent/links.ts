@@ -2,6 +2,7 @@ import "server-only";
 import { eq } from "drizzle-orm";
 import { db, schema } from "@/lib/db";
 import { fetchPage, pageToText } from "@/lib/ai/fetchPage";
+import { hrefOf } from "@/lib/links";
 
 /**
  * Read a link the user added (portfolio, site, writing) and keep its text so
@@ -11,7 +12,8 @@ import { fetchPage, pageToText } from "@/lib/ai/fetchPage";
 export async function readLink(materialId: string, url: string) {
   await db.update(schema.materials).set({ status: "scanning", filledNote: null }).where(eq(schema.materials.id, materialId));
   try {
-    const { html } = await fetchPage(url);
+    // Links are saved as typed ("sam.design/work"); read them the way the page links them (#664).
+    const { html } = await fetchPage(hrefOf(url));
     const text = pageToText(html, 4000);
     // The <title> also shows up in the page text; a page with only a title isn't enough to use.
     const title = text.match(/^TITLE: (.*)$/m)?.[1] ?? "";

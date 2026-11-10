@@ -154,10 +154,10 @@ async function addMissingLinks(userId: string, links: string[]) {
   const have = new Set(rows.filter((r) => r.kind === "link").map((r) => norm(r.url ?? "")));
   let pos = have.size;
   for (const url of links.slice(0, 6)) {
-    if (!url || /linkedin\.com/i.test(url) || /^(javascript|data):/i.test(url) || have.has(norm(url))) continue;
+    if (!url || /linkedin\.com/i.test(url) || /^(javascript|data|vbscript|file|mailto|tel):/i.test(url) || have.has(norm(url))) continue;
     have.add(norm(url));
     const [row] = await db.insert(schema.materials).values({ userId, kind: "link", url: url.slice(0, 500), position: pos++ }).returning();
-    if (/^https?:\/\//i.test(row.url ?? "")) void readLink(row.id, row.url!).catch(() => {});
+    void readLink(row.id, row.url!).catch(() => {});
   }
 }
 
