@@ -158,6 +158,33 @@ describe("sendDigest", () => {
     expect(sendMail).toHaveBeenCalledTimes(2);
   });
 
+  it("lists only finds added since the last finds email, even when it was under a day ago (#586)", async () => {
+    await find("Already emailed", { ago: 21 * 3600_000 });
+    await db.insert(schema.digests).values({ userId, finds: 1, sentAt: new Date(Date.now() - 20 * 3600_000) });
+    await find("Since then", { ago: 3600_000 });
+    await sendDigest(userId);
+    const [m] = sent();
+    expect(m.subject).toBe("Lookout: 1 new find");
+    expect(m.text).toContain("Since then");
+    expect(m.text).not.toContain("Already emailed");
+  });
+
+  it("sends nothing when every find since the last email is already covered (#586)", async () => {
+    await find("Already emailed", { ago: 2 * 3600_000 });
+    await db.insert(schema.digests).values({ userId, finds: 1, sentAt: new Date(Date.now() - 3600_000) });
+    await sendDigest(userId);
+    expect(sendMail).not.toHaveBeenCalled();
+  });
+
+  it("leaves out finds archived since they were added (#586)", async () => {
+    await find("Archived", { archived: true });
+    await find("Kept");
+    await sendDigest(userId);
+    const [m] = sent();
+    expect(m.subject).toBe("Lookout: 1 new find");
+    expect(m.text).not.toContain("Archived");
+  });
+
   it("drops the digest record when the send fails", async () => {
     sendMail.mockRejectedValueOnce(new Error("SMTP down"));
     await find("Design Director");
