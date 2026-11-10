@@ -35,7 +35,8 @@ export type ScanResult = {
 export type AtsRef =
   /** board is "" for a company page that embeds Greenhouse (?gh_jid=); the runner finds it on the page. */
   | { ats: "greenhouse"; board: string; id: string }
-  | { ats: "lever"; site: string; id: string }
+  /** host is jobs.lever.co, or jobs.eu.lever.co for EU boards (#638). */
+  | { ats: "lever"; host: string; site: string; id: string }
   | { ats: "ashby"; org: string; id: string }
   | { ats: "workday" | "smartrecruiters" | "other" };
 
@@ -60,7 +61,7 @@ export function detectAts(raw: string): AtsRef {
   }
   const ghJid = u.searchParams.get("gh_jid");
   if (ghJid && /^\d+$/.test(ghJid)) return { ats: "greenhouse", board: "", id: ghJid };
-  if (host === "jobs.lever.co" && parts.length >= 2) return { ats: "lever", site: parts[0], id: parts[1] };
+  if ((host === "jobs.lever.co" || host === "jobs.eu.lever.co") && parts.length >= 2) return { ats: "lever", host, site: parts[0], id: parts[1] };
   if (host === "jobs.ashbyhq.com" && parts.length >= 2) return { ats: "ashby", org: decodeURIComponent(parts[0]), id: parts[1] };
   if (/myworkdayjobs\.com$|myworkday\.com$/.test(host)) return { ats: "workday" };
   if (/smartrecruiters\.com$/.test(host)) return { ats: "smartrecruiters" };
@@ -71,7 +72,7 @@ export function detectAts(raw: string): AtsRef {
 export function applyUrlFor(ref: AtsRef, postingUrl: string) {
   // Embedded boards are filled on the company's own page.
   if (ref.ats === "greenhouse") return ref.board ? `https://job-boards.greenhouse.io/${ref.board}/jobs/${ref.id}` : postingUrl;
-  if (ref.ats === "lever") return `https://jobs.lever.co/${ref.site}/${ref.id}/apply`;
+  if (ref.ats === "lever") return `https://${ref.host}/${ref.site}/${ref.id}/apply`;
   if (ref.ats === "ashby") return `https://jobs.ashbyhq.com/${encodeURIComponent(ref.org)}/${ref.id}/application`;
   return postingUrl;
 }

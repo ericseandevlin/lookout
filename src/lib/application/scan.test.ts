@@ -27,6 +27,13 @@ describe("detectAts", () => {
     expect(applyUrlFor(detectAts(eu), eu)).toBe(eu);
   });
 
+  it("reads EU Lever links as Lever, keeping the EU host (#638)", () => {
+    const eu = "https://jobs.eu.lever.co/acme/1b2c3d4e-0000-4000-8000-000000000000";
+    expect(detectAts(eu)).toEqual({ ats: "lever", host: "jobs.eu.lever.co", site: "acme", id: "1b2c3d4e-0000-4000-8000-000000000000" });
+    expect(applyUrlFor(detectAts(eu), eu)).toBe(`${eu}/apply`);
+    expect(routeFor(detectAts(eu).ats)).toBe("browser");
+  });
+
   it("names Workday and SmartRecruiters, and falls back to other", () => {
     expect(detectAts("https://citi.wd5.myworkdayjobs.com/en-US/2/job/123").ats).toBe("workday");
     expect(detectAts("https://jobs.smartrecruiters.com/Acme/7444").ats).toBe("smartrecruiters");
@@ -36,6 +43,7 @@ describe("detectAts", () => {
 
   it("builds the page a person applies on", () => {
     expect(applyUrlFor(detectAts("https://jobs.ashbyhq.com/archive/cb7678cf"), "x")).toBe("https://jobs.ashbyhq.com/archive/cb7678cf/application");
+    expect(applyUrlFor(detectAts("https://jobs.lever.co/acme/1b2c3d4e-0000-4000-8000-000000000000"), "x")).toBe("https://jobs.lever.co/acme/1b2c3d4e-0000-4000-8000-000000000000/apply");
     expect(applyUrlFor({ ats: "other" }, "https://example.com/job")).toBe("https://example.com/job");
   });
 });
