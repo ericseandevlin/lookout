@@ -2,7 +2,7 @@ import { readFileSync } from "node:fs";
 import path from "node:path";
 import { JSDOM } from "jsdom";
 import { describe, expect, it } from "vitest";
-import { pickOptions } from "@/lib/application/fillPlan";
+import { checksBox, pickOptions } from "@/lib/application/fillPlan";
 
 /**
  * The Firefox extension's form filler (#589): extension/firefox/fill.js, run in a real DOM and driven
@@ -176,6 +176,38 @@ describe("extension fill: choices", () => {
     const [r] = await p.fill({ steps: [{ prompt: "Preferred office", kind: "choice", content: "Remote", options: ["Austin"] }] });
     expect(r).toMatchObject({ ok: false, how: "answer matches no option" });
     expect((p.doc.querySelector("#o1") as HTMLInputElement).checked).toBe(false);
+  });
+
+  it("ticks a lone labeled checkbox on any yes, by the same rule as the server (#669)", async () => {
+    const answers = ["Yes, I agree", "I acknowledge", "I certify", "No", "", "I do not agree"];
+    const p = page(answers.map((_, i) => `<label><input type="checkbox" id="b${i}"> Consent ${i}</label>`).join(""));
+    const log = await p.fill({ steps: answers.map((content, i) => ({ prompt: `Consent ${i}`, kind: "text", content, required: false })) });
+    const ticked = answers.map((_, i) => (p.doc.querySelector(`#b${i}`) as HTMLInputElement).checked);
+    expect(ticked).toEqual([true, true, true, false, false, false]);
+    expect(ticked).toEqual(answers.map(checksBox));
+    expect(log.map((l) => l.how)).toEqual(["checked", "checked", "checked", "left unchecked", "left unchecked", "left unchecked"]);
+  });
+
+  it("reports a required checkbox it can't tick or can't find (#669)", async () => {
+    const p = page(`<input type="checkbox" id="pp" aria-label="I agree to the privacy policy">`);
+    const log = await p.fill({
+      steps: [
+        { prompt: "I agree to the privacy policy", kind: "text", content: "No", required: true },
+        { prompt: "I certify the above is true", kind: "text", content: "Yes", required: true },
+      ],
+    });
+    expect(log.map((l) => [l.ok, l.how])).toEqual([
+      [false, "answer is not a yes"],
+      [false, "field not found"],
+    ]);
+    expect((p.doc.querySelector("#pp") as HTMLInputElement).checked).toBe(false);
+  });
+
+  it("does not untick a lone checkbox that is already ticked", async () => {
+    const p = page(`<label><input type="checkbox" id="t" checked> I agree to the terms</label>`);
+    const [r] = await p.fill({ steps: [{ prompt: "I agree to the terms", kind: "text", content: "Yes" }] });
+    expect(r).toMatchObject({ ok: true, how: "checked" });
+    expect((p.doc.querySelector("#t") as HTMLInputElement).checked).toBe(true);
   });
 
   it("does not uncheck a box that is already checked", async () => {

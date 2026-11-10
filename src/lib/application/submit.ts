@@ -5,7 +5,7 @@ import { and, asc, eq, inArray } from "drizzle-orm";
 import { db, schema } from "@/lib/db";
 import { env } from "@/lib/env";
 import { draftToDocx } from "./docx";
-import { pickOptions, planFill, type FillStep } from "./fillPlan";
+import { checksBox, pickOptions, planFill, type FillStep } from "./fillPlan";
 import { letterHeaderFrom, type Template } from "./resumeLayout";
 import { getAutoApplySettings } from "@/lib/apply";
 import { resolve } from "./eeo";
@@ -184,8 +184,10 @@ async function fillOne(page: Page, s: FillStep): Promise<{ ok: boolean; how: str
       return { ok: true, how: "selected" };
     }
     if (tag.includes(":checkbox:")) {
-      if (/^(yes|true|i agree|agree)$/i.test(s.content)) await field.check();
-      return { ok: true, how: "checkbox" };
+      // A required box the answer doesn't tick is reported missing, not filled (#669).
+      if (!checksBox(s.content)) return s.required ? { ok: false, how: "answer is not a yes" } : { ok: true, how: "left unchecked" };
+      await field.check();
+      return { ok: true, how: "checked" };
     }
     if (tag.includes("combobox") || s.kind === "choice") {
       // Custom dropdowns (react-select on Greenhouse, Ashby's own): open, type, pick the exact option.

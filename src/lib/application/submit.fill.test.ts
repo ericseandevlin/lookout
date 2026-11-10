@@ -271,24 +271,35 @@ describe("runFill controls (#567)", () => {
     expect(r.log[0]).toMatchObject({ ok: false, how: "field not found" });
   });
 
-  it("checks a single checkbox for yes and leaves it alone otherwise", async () => {
+  it("ticks a single checkbox on any yes, and reports a required one it can't tick (#669)", async () => {
     const agree = "I agree to the privacy policy";
+    const certify = "I certify the above is true";
     const relocate = "Willing to relocate";
+    const terms = "I accept the terms";
     const id = await seed("approved", [
-      { kind: "field", prompt: agree, content: "I agree" },
-      { kind: "field", prompt: relocate, content: "No" },
+      { kind: "field", prompt: agree, content: "Yes, I agree" },
+      { kind: "field", prompt: certify, content: "I certify" },
+      { kind: "field", prompt: relocate, content: "No", required: false },
+      { kind: "field", prompt: terms, content: "No" },
     ]);
     page = fakePage([
       { kind: "control", label: agree, type: "checkbox" },
+      { kind: "control", label: certify, type: "checkbox" },
       { kind: "control", label: relocate, type: "checkbox" },
+      { kind: "control", label: terms, type: "checkbox" },
     ]);
     const r = await runFill(id, "test");
     expect(r.log.map((l) => [l.ok, l.how])).toEqual([
-      [true, "checkbox"],
-      [true, "checkbox"],
+      [true, "checked"],
+      [true, "checked"],
+      [true, "left unchecked"],
+      [false, "answer is not a yes"],
     ]);
     expect(page.did).toContain(`check ${agree}`);
+    expect(page.did).toContain(`check ${certify}`);
     expect(page.did).not.toContain(`check ${relocate}`);
+    expect(page.did).not.toContain(`check ${terms}`);
+    expect(r.missing).toEqual([terms]);
   });
 
   it("opens a custom dropdown, types the answer and clicks the exact option", async () => {

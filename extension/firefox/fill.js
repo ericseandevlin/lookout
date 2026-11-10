@@ -43,6 +43,12 @@
     return all.find((el) => labelOf(el) === norm(prompt)) || all.find((el) => sameText(labelOf(el), prompt)) || null;
   }
 
+  /** A lone checkbox labeled with the question itself ("I agree to the privacy policy", #669). */
+  function checkboxFor(prompt) {
+    const all = [...document.querySelectorAll("input[type=checkbox]")];
+    return all.find((el) => labelOf(el) === norm(prompt)) || all.find((el) => sameText(labelOf(el), prompt)) || null;
+  }
+
   /** A "select any that apply" or radio question: one heading over several boxes. */
   function groupFor(prompt) {
     const key = norm(prompt).slice(0, 60);
@@ -80,6 +86,11 @@
       if (label && !out.includes(label)) out.push(label);
     }
     return out;
+  }
+
+  /** Same rule as checksBox in src/lib/application/fillPlan.ts: yes, true or a consent verb, alone or leading the answer. */
+  function checksBox(answer) {
+    return /^(yes|true|(i )?(agree|acknowledge|confirm|consent|certify|accept))\b/.test(norm(answer));
   }
 
   /**
@@ -156,8 +167,15 @@
     try {
       if (step.kind === "file") return await fillFile(step);
       const el = controlFor(step.prompt);
+      if (!el && step.kind !== "choice") {
+        const box = checkboxFor(step.prompt);
+        if (!box) return { ok: false, how: "field not found" };
+        if (!checksBox(step.content)) return step.required ? { ok: false, how: "answer is not a yes" } : { ok: true, how: "left unchecked" };
+        if (!box.checked) box.click();
+        return { ok: true, how: "checked" };
+      }
       if (!el) {
-        const group = step.kind === "choice" ? groupFor(step.prompt) : null;
+        const group = groupFor(step.prompt);
         if (!group) return { ok: false, how: "field not found" };
         const picks = pickOptions(step.content, step.options);
         if (!picks.length) return { ok: false, how: "answer matches no option" };
@@ -203,7 +221,7 @@
 
   function probe(packet) {
     let score = 0;
-    for (const s of packet.steps) if (s.kind === "file" ? document.querySelector("input[type=file]") : controlFor(s.prompt) || groupFor(s.prompt)) score++;
+    for (const s of packet.steps) if (s.kind === "file" ? document.querySelector("input[type=file]") : controlFor(s.prompt) || groupFor(s.prompt) || checkboxFor(s.prompt)) score++;
     return { score };
   }
 
