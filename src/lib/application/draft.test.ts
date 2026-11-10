@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { linkedinUrl, checkAnswer, fillField, hasKeyword, keywordReport, newNumbers, resumeNote, type DraftInputs } from "./draft";
+import { answersPrompt, linkedinUrl, checkAnswer, fillField, hasKeyword, keywordReport, newNumbers, resumeNote, type DraftInputs } from "./draft";
 
 const inp: DraftInputs = {
   name: "Maya Ortiz Reyes",
@@ -102,6 +102,31 @@ describe("checkAnswer", () => {
   it("asks when the model left it blank or skipped it", () => {
     expect(checkAnswer(sel, undefined).question).toMatch(/sponsorship/);
     expect(checkAnswer({ ...sel, options: null }, { index: 3, content: "", sources: [], question: "", note: "" }).question).toMatch(/sponsorship/);
+  });
+
+  describe("select-any questions (#624)", () => {
+    const multi = { index: 4, kind: "answer" as const, prompt: "Which areas have you worked in?", required: false, options: ["Design systems", "Research", "Front-end"], multi: true };
+    const raw = (content: string) => ({ index: 4, content, sources: [], question: "", note: "" });
+
+    it("keeps every real option, one per line, in the form's spelling", () => {
+      expect(checkAnswer(multi, raw("design systems\n- Front-end\n\nDesign systems"))).toMatchObject({ content: "Design systems\nFront-end", question: null });
+    });
+
+    it("asks when any line isn't an option", () => {
+      const d = checkAnswer(multi, raw("Design systems\nMarketing"));
+      expect(d.content).toBe("");
+      expect(d.question).toMatch(/Design systems, Research, Front-end/);
+    });
+
+    it("still wants a single option when the question isn't select-any", () => {
+      expect(checkAnswer({ ...multi, multi: false }, raw("Design systems\nResearch")).content).toBe("");
+    });
+  });
+
+  it("marks select-any questions in the prompt (#624)", () => {
+    const p = answersPrompt(inp, [{ index: 0, kind: "answer", prompt: "Areas?", required: false, options: ["A", "B"], multi: true }, { index: 1, kind: "answer", prompt: "Sponsorship?", required: true, options: ["Yes", "No"] }]);
+    expect(p).toContain("0. [answer, select any] Areas?");
+    expect(p).toContain("1. [answer, required] Sponsorship?");
   });
 });
 
