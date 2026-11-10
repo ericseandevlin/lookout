@@ -134,6 +134,22 @@ describe("isSalaryQuestion", () => {
     for (const q of ["Salary history", "What was your previous base salary?", "What is your most recent compensation?", "What was your salary at your last job?", "Please share your compensation history."])
       expect(isSalaryQuestion(q)).toBe(false);
   });
+
+  it("leaves out yes/no questions about their posted range (#687)", () => {
+    for (const q of [
+      "Are you comfortable with the posted salary range for this role?",
+      "Is the compensation range listed acceptable to you?",
+      "Does the salary range above work for you?",
+      "Do you agree the stated pay range meets your needs?",
+    ])
+      expect(isSalaryQuestion(q)).toBe(false);
+  });
+
+  it("still sees asks phrased as a yes/no or with other words (#687)", () => {
+    for (const q of ["Would you share your salary expectations?", "Can you tell us your desired compensation?", "Wage expectations", "How much do you expect to earn?", "What is your expected salary range?"])
+      expect(isSalaryQuestion(q)).toBe(true);
+    expect(isSalaryQuestion("What is your current hourly wage?")).toBe(false);
+  });
 });
 
 describe("salary note wording", () => {
