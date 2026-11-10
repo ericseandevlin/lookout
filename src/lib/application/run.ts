@@ -55,7 +55,10 @@ async function ghJob(board: string, id: string) {
 async function ghEmbedOrJob(board: string, id: string, postingUrl: string) {
   if (board) return { board, job: await ghJob(board, id) };
   const found = boardFromHtml((await fetchPage(postingUrl)).html);
-  for (const b of found ? [found] : boardGuesses(new URL(postingUrl).hostname)) {
+  const host = new URL(postingUrl).hostname;
+  // A greenhouse.io host says nothing about the company, so there is nothing to guess (#674).
+  const guesses = /(^|\.)greenhouse\.io$/i.test(host) ? [] : boardGuesses(host);
+  for (const b of found ? [found] : guesses) {
     try {
       return { board: b, job: await ghJob(b, id) };
     } catch {
