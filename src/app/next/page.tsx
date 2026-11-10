@@ -12,10 +12,11 @@ const ITEMS: Item[] = [
   { title: "Events worth showing up to", status: "On staging", body: "The same search, pointed at meetups, panels and conferences where the people hiring for your next role will be. Each one gets a score and a reason, like a job find." },
   { title: "More than one search", status: "On staging", body: "Keep your job search, and add a second one next to it: freelance work, RFPs for your studio, an apartment, a car. One board each, same five-question setup." },
   { title: "Requests for proposals", status: "Building", body: "For freelancers and small agencies. Lookout reads public RFPs and puts the ones that fit your work and your rate on the board, with the deadline up front." },
-  { title: "An inbox that sorts itself", status: "On staging", body: "Give recruiters your Lookout address. It reads the replies, matches them to the find they're about, and tells you which ones need an answer." },
+  { title: "An inbox that sorts itself", status: "Idea", body: "Your own Lookout email address to put on applications. Lookout reads the replies, matches each one to its find, and tells you which ones need an answer." },
   { title: "Who to talk to", status: "Building", body: "For each find: the people at the company worth a message, and a short note you can edit and send yourself." },
   { title: "Your network, mapped to your finds", status: "Idea", body: "Import your contacts and see who you already know at the companies on your board, before you apply cold." },
 ];
+const link = { color: color.brick, fontWeight: 600 } as const;
 const tone = { "On staging": [color.greenText, "#E8F2E3"], Building: [color.peachInk, "#FCE3CC"], Idea: [color.t2, color.surface] } as const;
 
 /** /next (#602): features still being built, for demos. 404 unless FEATURE_PREVIEW=on, so it comes down with one switch. */
@@ -42,7 +43,15 @@ export default function NextPage() {
             </section>
           ))}
         </div>
-        <p style={{ fontSize: 15, color: color.t2, marginTop: 36 }}>Want one of these first? Tell Eric. That&apos;s how the order gets picked.</p>
+        <div style={{ fontSize: 16, lineHeight: 1.6, color: "#4A4339", marginTop: 40 }}>
+          <p style={{ margin: 0 }}>
+            Want one of these first? <a href="mailto:ericdevlin@me.com?subject=Lookout" style={link}>Tell Eric.</a>
+          </p>
+          <p style={{ margin: "6px 0 0" }}>
+            Got your own idea? <a href="https://github.com/ericseandevlin/lookout/issues/new?template=idea.yml" style={link}>Add it on GitHub</a>, or{" "}
+            <a href="https://github.com/ericseandevlin/lookout/blob/main/CONTRIBUTING.md" style={link}>build it with me</a>. Lookout is open source.
+          </p>
+        </div>
         <LegalLinks style={{ marginTop: 28 }} />
       </div>
     </main>
