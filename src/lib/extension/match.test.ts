@@ -46,6 +46,12 @@ describe("sameJob", () => {
   it("does not match a different job on the same board", () => {
     expect(sameJob(["https://boards.greenhouse.io/redventures/jobs/1"], ["https://boards.greenhouse.io/redventures/jobs/2"])).toBe(false);
   });
+  it("keys a company page that embeds Ashby by its ?ashby_jid= (#639)", () => {
+    const id = "0b5f3a1c-2d4e-4f60-8a7b-9c0d1e2f3a4b";
+    expect(jobKey(`https://acme.com/careers?ashby_jid=${id.toUpperCase()}&utm_source=x`)).toBe(`ashby:${id}`);
+    expect(sameJob([`https://acme.com/careers?ashby_jid=${id}`], [`https://jobs.ashbyhq.com/acme/${id}`])).toBe(true);
+    expect(sameJob([`https://acme.com/careers?ashby_jid=${id}`], ["https://acme.com/careers?ashby_jid=1b5f3a1c-2d4e-4f60-8a7b-9c0d1e2f3a4b"])).toBe(false);
+  });
   it("does not match two Indeed jobs that differ only by ?jk= (#508)", () => {
     expect(sameJob(["https://www.indeed.com/viewjob?jk=abc123"], ["https://www.indeed.com/viewjob?jk=def456"])).toBe(false);
     expect(sameJob(["https://www.indeed.com/viewjob?jk=abc123&from=serp"], ["https://indeed.com/viewjob?jk=abc123"])).toBe(true);
