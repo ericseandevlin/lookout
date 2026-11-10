@@ -82,6 +82,19 @@
     return out;
   }
 
+  /**
+   * The index of the one option a dropdown answer means: exact text, then the pickOptions rule, then the long-label
+   * match (first 80 characters). A plain prefix put "No" on "None of the above" (#644).
+   */
+  function pickOne(answer, labels) {
+    const a = norm(answer);
+    const exact = labels.findIndex((l) => norm(l) === a);
+    if (exact >= 0) return exact;
+    const [hit] = pickOptions(answer, labels);
+    if (hit != null) return labels.indexOf(hit);
+    return labels.findIndex((l) => Math.min(a.length, norm(l).length) >= 80 && sameText(l, answer));
+  }
+
   /** Set a value the way typing would, so React and friends notice. */
   function setValue(el, value) {
     const proto = el instanceof HTMLTextAreaElement ? HTMLTextAreaElement.prototype : HTMLInputElement.prototype;
@@ -104,9 +117,11 @@
    * click, match against the open list, and type to filter only when the answer isn't showing.
    */
   async function pickFromCombobox(el, answer, matches) {
-    const is = matches || ((text) => norm(text) === norm(answer) || sameText(text, answer));
     const options = () => [...document.querySelectorAll("[role=option], [class*=select__option]")].filter(visible);
-    const find = () => options().find((o) => norm(o.textContent) === norm(answer) && is(o.textContent)) || options().find((o) => is(o.textContent));
+    const find = () => {
+      const opts = options();
+      return matches ? opts.find((o) => matches(o.textContent)) : opts[pickOne(answer, opts.map((o) => o.textContent))];
+    };
     press(el);
     let option = await waitFor(find, 1500);
     if (!option && el.tagName === "INPUT") {
@@ -156,7 +171,7 @@
         return { ok: true, how: `checked ${picks.length}` };
       }
       if (el.tagName === "SELECT") {
-        const opt = [...el.options].find((o) => norm(o.textContent) === norm(step.content)) || [...el.options].find((o) => sameText(o.textContent, step.content));
+        const opt = el.options[pickOne(step.content, [...el.options].map((o) => o.textContent))];
         if (!opt) return { ok: false, how: "option not in the list" };
         el.value = opt.value;
         el.dispatchEvent(new Event("change", { bubbles: true }));

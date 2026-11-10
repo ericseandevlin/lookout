@@ -123,6 +123,21 @@ describe("extension fill: choices", () => {
     expect(r).toMatchObject({ ok: false, how: "option not in the list" });
   });
 
+  it("selects the <select> option the answer means, not one that only starts with its letters (#644)", async () => {
+    const p = page(`<label for="s">Do you have a disability?</label><select id="s"><option value="">Select</option><option value="x">None of the above</option><option value="n">No, I do not have a disability</option></select>`);
+    const [r] = await p.fill({ steps: [{ prompt: "Do you have a disability?", kind: "choice", content: "No" }] });
+    expect(r).toMatchObject({ ok: true, how: "selected" });
+    expect(p.value("#s")).toBe("n");
+  });
+
+  it("still matches a long <select> option by its first 80 characters", async () => {
+    const long = "I acknowledge that I have read and understood the privacy notice for job applicants in the United States";
+    const p = page(`<label for="s">Privacy notice</label><select id="s"><option value="">Select</option><option value="ok">${long} (2026 edition)</option></select>`);
+    const [r] = await p.fill({ steps: [{ prompt: "Privacy notice", kind: "choice", content: `${long}.` }] });
+    expect(r).toMatchObject({ ok: true, how: "selected" });
+    expect(p.value("#s")).toBe("ok");
+  });
+
   it("checks a radio in a fieldset by its label", async () => {
     const p = page(`<fieldset><legend>Will you require sponsorship?</legend>
       <label><input type="radio" name="sp" id="y"> Yes</label><label><input type="radio" name="sp" id="n"> No</label></fieldset>`);
@@ -197,6 +212,14 @@ describe("extension fill: custom dropdowns", () => {
     const [r] = await p.fill({ steps: [{ prompt: "Which office?", kind: "choice", content: "New York", options: ["Austin", "New York", "Remote"] }] });
     expect(r).toMatchObject({ ok: true, how: "picked option" });
     expect((p.doc.querySelector("#loc") as HTMLInputElement).dataset.picked).toBe("New York");
+  });
+
+  it("picks the option at a word boundary, not a longer word that starts the same (#644)", async () => {
+    const p = page(`<label for="vet">Veteran status</label><input id="vet" role="combobox">`);
+    combobox(p.w, "vet", ["Not applicable", "No, I am not a protected veteran", "Yes"]);
+    const [r] = await p.fill({ steps: [{ prompt: "Veteran status", kind: "choice", content: "No" }] });
+    expect(r).toMatchObject({ ok: true, how: "picked option" });
+    expect((p.doc.querySelector("#vet") as HTMLInputElement).dataset.picked).toBe("No, I am not a protected veteran");
   });
 
   it("gives up with a reason when the answer isn't in the list", async () => {
