@@ -17,13 +17,20 @@ const usd = (n: number) => `$${n.toLocaleString("en-US")}`;
 const sentences = (t: string) => t.split(/(?<=[.?!])\s+|\n+/);
 // "Includes a bonus" counts only in a sentence about the pay itself and not negated: "this range does not include bonus"
 // is a base range, and "our total rewards include a bonus program" is a benefits list (#650).
-const INCLUDES_BONUS = /includ\w* (a )?(target )?bonus/i;
+const INCLUDES_BONUS = /\b(includ|reflect)\w*\b[^.?!]{0,40}?\b(bonus|commission|incentive)/i;
 const ABOUT_PAY = /\b(range|salary|pay|compensation|amount|figure)\b/i;
-const NEGATED = /(\bnot|n't)\s+includ/i;
+const NEGATED = /(\bnot|n't)\s+(includ|reflect)|\bexclud|in addition to|on top of|\bseparate/i;
+// Other ways a posting says its range is total cash (#690): "base pay plus bonus", "on-target earnings",
+// "Total compensation range: $200,000 - $250,000".
+const BASE_PLUS = /\bbase\b[^.?!]{0,30}?(\+|\bplus\b|\band\b)[^.?!]{0,20}?\b(bonus|commission|incentive)/i;
+const THE_RANGE = /\b(range|figure|amount)s?\b/i;
+const ON_TARGET = /\bon[- ]target earnings\b|\btotal (target )?(cash|compensation|comp|pay)\b[^.?!]{0,10}(range|:|\$)/i;
+const SAYS_TOTAL = (s: string) =>
+  !NEGATED.test(s) && ((INCLUDES_BONUS.test(s) && ABOUT_PAY.test(s)) || (BASE_PLUS.test(s) && THE_RANGE.test(s)) || ON_TARGET.test(s));
 
 /** What the posted range covers: total cash (bonus included), base, or the posting doesn't say. */
 export const rangeBasis = (posting: string): "total" | "base" | null =>
-  /total cash|\bOTE\b/i.test(posting) || sentences(posting).some((s) => INCLUDES_BONUS.test(s) && ABOUT_PAY.test(s) && !NEGATED.test(s))
+  /total cash|\bOTE\b/i.test(posting) || sentences(posting).some(SAYS_TOTAL)
     ? "total"
     : /\bbase (salary|pay|compensation)\b/i.test(posting)
       ? "base"
