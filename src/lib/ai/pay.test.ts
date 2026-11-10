@@ -21,6 +21,18 @@ describe("findPay", () => {
     expect(findPay(html)).toMatchObject({ min: 124800, max: 166400, source: "structured data" });
   });
 
+  it.each([
+    ["a plain number value", { value: 150000, unitText: "YEAR" }, 150000, 150000],
+    ["min and max on the MonetaryAmount", { minValue: 140000, maxValue: 170000 }, 140000, 170000],
+    ["formatted strings", { value: { minValue: "120,000", maxValue: "$150,000", unitText: "YEAR" } }, 120000, 150000],
+    ["an hourly plain number", { value: 60, unitText: "HOUR" }, 124800, 124800],
+  ])("reads baseSalary with %s (#647)", (_, salary, min, max) => {
+    const ld = { "@type": "JobPosting", baseSalary: { "@type": "MonetaryAmount", currency: "USD", ...salary } };
+    // Text pay that differs, so a pass proves the structured data was read.
+    const html = `<script type="application/ld+json">${JSON.stringify(ld)}</script><p>$10,000 - $20,000</p>`;
+    expect(findPay(html)).toMatchObject({ min, max, source: "structured data" });
+  });
+
   it("finds a range in plain text, with or without the second $", () => {
     expect(findPay("", "Base Compensation Range $224,000 - $308,000 USD")).toMatchObject({ min: 224000, max: 308000 });
     expect(findPay("", "Salary: $180K to 220K per year")).toMatchObject({ min: 180000, max: 220000 });
