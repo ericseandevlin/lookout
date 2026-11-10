@@ -8,6 +8,16 @@ const clearGender = ["Man", "Non-binary", "Woman", "I prefer to self-describe", 
 const eeocGender = ["Decline To Self Identify", "Female", "Male"];
 const clearVeteran = ["Yes, I am a veteran or active member", "No, I am not a veteran or active member", "I prefer to self-describe", "I don't wish to answer"];
 const eeocVeteran = ["I don't wish to answer", "I identify as one or more of the classifications of protected veteran", "I am not a protected veteran"];
+// Workday race list (alphabetical, "Not Hispanic" on each race) and the federal CC-305 disability form (#662).
+const workdayRace = [
+  "American Indian or Alaska Native (Not Hispanic or Latino) (United States of America)",
+  "Asian (Not Hispanic or Latino) (United States of America)",
+  "Black or African American (Not Hispanic or Latino) (United States of America)",
+  "Hispanic or Latino (United States of America)",
+  "White (Not Hispanic or Latino) (United States of America)",
+  "I do not wish to answer. (United States of America)",
+];
+const cc305 = ["Yes, I have a disability, or have had one in the past", "No, I do not have a disability and have not had one in the past", "I do not want to answer"];
 const clearRace = ["Black or of African descent", "East Asian", "Hispanic, Latinx or of Spanish Origin", "White", "I don't wish to answer"];
 
 describe("classify", () => {
@@ -46,6 +56,31 @@ describe("matchOption", () => {
   it("returns nothing rather than guess", () => {
     expect(matchOption("Asian", clearRace)).toBe("East Asian");
     expect(matchOption("Middle Eastern or North African", clearRace)).toBeNull();
+  });
+});
+
+describe("matchOption on Workday and federal forms (#662)", () => {
+  it("never gives a Hispanic person a Not Hispanic option", () => {
+    expect(matchOption("Hispanic or Latino", workdayRace)).toBe("Hispanic or Latino (United States of America)");
+    expect(matchOption("White", workdayRace)).toBe("White (Not Hispanic or Latino) (United States of America)");
+    expect(matchOption(DECLINE, workdayRace)).toBe("I do not wish to answer. (United States of America)");
+  });
+
+  it("reads Asian as a word, not inside Caucasian", () => {
+    expect(matchOption("Asian", ["White/Caucasian", "Asian", "Decline to self-identify"])).toBe("Asian");
+    expect(matchOption("Asian", ["Caucasian", "Black"])).toBeNull();
+  });
+
+  it("finds the CC-305 decline and keeps No on the real No", () => {
+    expect(matchOption(DECLINE, cc305)).toBe("I do not want to answer");
+    expect(matchOption("No", cc305)).toBe("No, I do not have a disability and have not had one in the past");
+    expect(matchOption("Yes", cc305)).toBe("Yes, I have a disability, or have had one in the past");
+  });
+
+  it("answers a Hispanic question worded without yes or no", () => {
+    const opts = ["Hispanic or Latino", "Not Hispanic or Latino", "Decline to self-identify"];
+    expect(matchOption("Yes", opts)).toBe("Hispanic or Latino");
+    expect(matchOption("No", opts)).toBe("Not Hispanic or Latino");
   });
 });
 

@@ -47,7 +47,7 @@ export function classify(prompt: string): EeoCategory | null {
   return null;
 }
 
-const DECLINES = /decline|don.?t wish|do not wish|prefer not|not to (answer|disclose|say|self)|choose not|rather not|wish not/i;
+const DECLINES = /decline|don.?t (wish|want)|do not (wish|want)|prefer not|not to (answer|disclose|say|self)|choose not|rather not|wish not/i;
 
 /** How each profile choice shows up in form options. Order matters: the first option that matches wins. */
 const SYNONYMS: Record<string, RegExp> = {
@@ -61,7 +61,7 @@ const SYNONYMS: Record<string, RegExp> = {
   Queer: /^queer\b/i,
   Asexual: /asexual/i,
   "American Indian or Alaska Native": /american indian|alaska|indigenous/i,
-  Asian: /asian/i,
+  Asian: /\basian\b/i,
   "Black or African American": /black|african american|of african descent/i,
   "Hispanic or Latino": /hispanic|latin/i,
   "Middle Eastern or North African": /middle eastern|north african/i,
@@ -70,8 +70,8 @@ const SYNONYMS: Record<string, RegExp> = {
   "Two or more races": /two or more|multiracial|multiple races/i,
   "Not a veteran": /\bnot\b[^.]*veteran|^no\b|i am not/i,
   Veteran: /^yes|i am a veteran|identify as one or more|protected veteran/i,
-  No: /^no\b|do not have|don.?t have/i,
-  Yes: /^yes\b|i have a/i,
+  No: /^no\b|do not have|don.?t have|^not (hispanic|latin)/i,
+  Yes: /^yes\b|i have a|^(hispanic|latin)/i,
 };
 
 /** The form option for the person's answer, if one clearly matches. */
@@ -82,7 +82,9 @@ export function matchOption(choice: string, options: string[]): string | null {
   const re = SYNONYMS[choice];
   // "Not a veteran" must not match "I am a veteran", and the reverse: test the negative form first.
   if (choice === "Veteran") return options.find((o) => !SYNONYMS["Not a veteran"].test(o) && re.test(o)) ?? null;
-  return re ? (options.find((o) => !DECLINES.test(o) && re.test(o)) ?? null) : null;
+  // Workday race lists say "White (Not Hispanic or Latino)": a Hispanic person must not get one of those (#662).
+  const negated = (o: string) => choice === "Hispanic or Latino" && /\bnot\s+(hispanic|latin)/i.test(o);
+  return re ? (options.find((o) => !DECLINES.test(o) && re.test(o) && !negated(o)) ?? null) : null;
 }
 
 /** The answer to fill for one EEO question: the exact wording first, then the category answer. */
