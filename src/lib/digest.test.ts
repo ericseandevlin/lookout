@@ -116,6 +116,19 @@ describe("sendDigest", () => {
     expect(m.html).not.toContain("No comp posted");
   });
 
+  it("lists a posting two searches found once, with its best score (#657)", async () => {
+    const id = await find("Found twice", { score: 3 });
+    const [s2] = await db.insert(schema.searches).values({ userId, name: "Second search", answers: {} }).returning();
+    await db.insert(schema.userOpportunities).values({ userId, searchId: s2.id, opportunityId: id, score: 5 });
+    await find("Other find", { score: 4 });
+    await sendDigest(userId);
+    const [m] = sent();
+    expect(m.subject).toBe("Lookout: 2 new finds");
+    expect(m.text.match(/Found twice/g)).toHaveLength(1);
+    expect(m.text).toContain("5/5  Found twice");
+    expect((await digests())[0].finds).toBe(2);
+  });
+
   it("says one find, not one finds", async () => {
     await find("Only one");
     await sendDigest(userId);
