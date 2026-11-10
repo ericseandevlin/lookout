@@ -10,6 +10,9 @@ export type Scored = {
   compMax: number | null;
 };
 
+// A gap already about pay. Whole words, so "Company is early stage" or "payments experience" don't count (#658).
+const PAY_GAP = /\b(comp|compensation|pay|salary|salaries|wages?)\b/i;
+
 /**
  * Hard rules applied on top of the model's score. The model's score is a
  * ceiling candidate; rules can only lower it. Returns null when the find
@@ -25,7 +28,7 @@ export function applyRules(s: Scored, floor: number | null) {
     if (!gap.some((g) => /floor/i.test(g))) gap.unshift("Top of the posted range is below your floor");
   }
   if (!s.locationFit) cap = Math.min(cap, 3);
-  if (!topComp && !gap.some((g) => /comp|pay|salary/i.test(g))) gap.push("No comp posted");
+  if (!topComp && !gap.some((g) => PAY_GAP.test(g))) gap.push("No comp posted");
   const score = Math.max(1, Math.min(5, Math.round(s.score), cap));
   return { score, reasonsMatch: s.reasonsMatch.slice(0, 5), reasonsGap: gap.slice(0, 5) };
 }
