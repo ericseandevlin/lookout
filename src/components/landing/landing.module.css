@@ -7,16 +7,12 @@
 .navLinks a:hover { text-decoration: underline; text-underline-offset: 4px; }
 .navCta { background: #1D1A0F; color: #fff !important; padding: 10px 16px; border-radius: 999px; }
 .navCta:hover { text-decoration: none !important; background: #000; }
-.hero { display: grid; grid-template-columns: 1.15fr 1fr; gap: 56px; align-items: center; padding: 48px 0 64px; }
+.hero { display: grid; grid-template-columns: 1fr 1.05fr; gap: 56px; align-items: center; padding: 28px 0 72px; }
 .eyebrow { font-size: 13px; font-weight: 700; letter-spacing: .14em; text-transform: uppercase; color: #99220F; }
 .h1 { font-family: var(--wordmark); font-size: clamp(44px, 6.4vw, 84px); line-height: .98; letter-spacing: -0.035em; margin: 14px 0 0; }
 .lede { font-size: 19px; line-height: 1.5; color: #4A4339; margin: 22px 0 0; max-width: 34em; text-wrap: pretty; }
-.facts { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 26px; }
-.fact { font-size: 14px; font-weight: 600; background: #fff; border: 1px solid #E6E0D8; border-radius: 999px; padding: 6px 12px; }
-.heroCard { display: flex; justify-content: flex-end; }
 .shot { border-radius: 14px; overflow: hidden; box-shadow: 0 1px 0 rgba(29,26,15,.06), 0 30px 80px rgba(29,26,15,.16); background: #fff; line-height: 0; }
 .shot img { width: 100%; height: auto; display: block; }
-.board { margin: 0 auto; transform: perspective(2200px) rotateX(4deg); transform-origin: top center; }
 .section { padding: 96px 0 0; }
 .h2 { font-family: var(--wordmark); font-size: clamp(32px, 4.2vw, 52px); line-height: 1.02; letter-spacing: -0.03em; margin: 10px 0 0; max-width: 16em; }
 .sub { font-size: 18px; line-height: 1.55; color: #4A4339; margin: 16px 0 0; max-width: 38em; text-wrap: pretty; }
@@ -25,8 +21,7 @@
 .stepN { font-family: var(--wordmark); font-size: 15px; color: #fff; background: #99220F; width: 30px; height: 30px; border-radius: 999px; display: grid; place-items: center; }
 .stepT { font-size: 21px; font-weight: 700; letter-spacing: -0.01em; margin: 14px 0 0; }
 .stepP { font-size: 15.5px; line-height: 1.5; color: #4A4339; margin: 8px 0 20px; flex: 1; }
-.stepImg { margin: 0 -22px; border-top: 1px solid #E6E0D8; line-height: 0; aspect-ratio: 16 / 11; overflow: hidden; }
-.stepImg img { width: 100%; height: 100%; object-fit: cover; object-position: left top; }
+.stepImg { margin: 0 -22px; border-top: 1px solid #E6E0D8; line-height: 0; aspect-ratio: 16 / 10; overflow: hidden; position: relative; }
 .split { display: grid; grid-template-columns: 1fr 1.2fr; gap: 56px; align-items: center; }
 .splitFlip { grid-template-columns: 1.2fr 1fr; }
 .list { list-style: none; padding: 0; margin: 22px 0 0; display: grid; gap: 12px; font-size: 16.5px; line-height: 1.45; }
@@ -47,23 +42,75 @@
 .beta { display: inline-block; font-size: 12px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; color: #7A3A10; background: #FCE3CC; border-radius: 999px; padding: 3px 10px; vertical-align: middle; margin-left: 8px; }
 @media (max-width: 960px) {
   .hero, .split, .splitFlip { grid-template-columns: 1fr; gap: 36px; }
-  .heroCard { justify-content: stretch; }
-  .heroCard > * { max-width: none !important; }
   .steps { grid-template-columns: 1fr; }
   .trust { grid-template-columns: 1fr 1fr; }
   .dark { padding: 36px 24px; border-radius: 18px; }
-  .board { transform: none; }
   .splitFlip > :first-child { order: 2; }
 }
 @media (max-width: 560px) {
   .wrap { padding: 0 16px; }
   .navLinks .hideSm { display: none; }
-  .hero { padding: 28px 0 40px; }
+  .hero { padding: 16px 0 40px; }
   .lede { font-size: 17px; }
   .section { padding-top: 64px; }
   .trust { grid-template-columns: 1fr; }
 }
+
+/* Hero: buttons and the desktop + phone pair (#600). */
+.heroText { max-width: 560px; }
+.ctas { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; margin-top: 30px; }
+.btn { background: #99220F; color: #fff; font-weight: 600; font-size: 16px; padding: 15px 24px; border-radius: 12px; text-decoration: none; }
+.btn:hover { background: #7f1c0c; }
+.btnGhost { color: #1D1A0F; font-weight: 600; font-size: 16px; padding: 14px 22px; border-radius: 12px; border: 1.5px solid #D9D2C7; text-decoration: none; background: #fff; }
+.btnGhost:hover { border-color: #1D1A0F; }
+.devices { position: relative; padding: 0 6% 8% 0; }
+.laptop { border-radius: 12px; overflow: hidden; background: #fff; box-shadow: 0 1px 0 rgba(29,26,15,.06), 0 30px 70px rgba(29,26,15,.18); line-height: 0; }
+.laptop img { width: 100%; height: auto; display: block; }
+.chrome { display: flex; align-items: center; gap: 6px; height: 30px; padding: 0 12px; background: #E6E1DA; line-height: 1; }
+.chrome i { width: 9px; height: 9px; border-radius: 9px; background: #C9C1B5; }
+.chrome span { margin: 0 auto; font-size: 11.5px; color: #6B6358; background: #F4F1EC; border-radius: 6px; padding: 4px 18px; transform: translateX(-14px); }
+.phone { position: absolute; right: 0; bottom: 0; width: 27%; border-radius: 26px; border: 6px solid #1D1A0F; background: #1D1A0F; overflow: hidden; line-height: 0; box-shadow: 0 24px 50px rgba(29,26,15,.28); aspect-ratio: 9 / 19; }
+.phone img { width: 100%; height: 100%; object-fit: cover; object-position: top; display: block; }
+
+/* Product video under the hero. */
+.product { position: relative; border-radius: 16px; overflow: hidden; background: #EFEEEC; box-shadow: 0 1px 0 rgba(29,26,15,.06), 0 30px 80px rgba(29,26,15,.16); line-height: 0; aspect-ratio: 16 / 9; }
+.product video { width: 100%; height: 100%; display: block; object-fit: cover; }
+.sound { position: absolute; right: 14px; bottom: 14px; font: inherit; font-size: 13px; font-weight: 600; color: #fff; background: rgba(29,26,15,.72); border: 0; border-radius: 999px; padding: 8px 14px; cursor: pointer; line-height: 1.2; }
+.sound:hover { background: #1D1A0F; }
+@media (prefers-reduced-motion: reduce) { .sound { display: none; } }
+
+/* Hover clips: the poster sits on top until the clip plays. */
+.clip { position: relative; width: 100%; height: 100%; line-height: 0; background: #fff; }
+.clip video, .poster { width: 100%; height: 100%; object-fit: cover; object-position: left top; display: block; }
+.poster { position: absolute; inset: 0; transition: opacity .25s ease; }
+.poster[data-hide] { opacity: 0; }
+.shot .clip { aspect-ratio: 16 / 10; }
+.playHint { position: absolute; left: 12px; bottom: 12px; display: inline-flex; align-items: center; gap: 6px; font-size: 12.5px; font-weight: 600; line-height: 1; color: #fff; background: rgba(29,26,15,.72); border-radius: 999px; padding: 7px 11px; transition: opacity .2s ease; pointer-events: none; }
+.playHint[data-hide] { opacity: 0; }
+@media (hover: none) { .playHint { display: none; } }
+
+/* Step 1: the five questions, one at a time. */
+.qs { position: relative; height: 100%; background: #F6F4F1; padding: 16px 20px; line-height: 1.3; overflow: hidden; }
+.qBar { height: 4px; border-radius: 4px; background: #E6E0D8; overflow: hidden; }
+.qBar span { display: block; height: 100%; background: #99220F; transition: width .5s ease; }
+.qCount { font-size: 12px; font-weight: 600; color: #6B6358; margin-top: 8px; }
+.qSlide { margin-top: 10px; }
+.qN { font-family: var(--wordmark); font-size: 18px; color: #99220F; }
+.qQ { font-size: 14.5px; font-weight: 700; margin-top: 2px; text-wrap: balance; }
+.qOpts { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+.qOpt { font-size: 12px; font-weight: 600; background: #fff; border: 1px solid #E6E0D8; border-radius: 999px; padding: 5px 9px; }
+.qOpt[data-pick] { background: #1D1A0F; color: #fff; border-color: #1D1A0F; }
+.qOpt b { font-weight: 600; }
 @media (prefers-reduced-motion: no-preference) {
-  .board { transition: transform .6s ease; }
-  .board:hover { transform: none; }
+  .qSlide[data-anim] { animation: qOut .35s ease-in 1.85s both; }
+  .qSlide[data-anim] .qN, .qSlide[data-anim] .qQ { animation: qIn .4s cubic-bezier(.2,.7,.2,1) both; }
+  .qSlide[data-anim] .qOpt { animation: qIn .35s cubic-bezier(.2,.7,.2,1) both; }
+  .qSlide[data-anim] .qOpt[data-pick] { animation: qIn .35s cubic-bezier(.2,.7,.2,1) both, qPick .25s ease .95s both; }
+}
+@keyframes qIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
+@keyframes qOut { to { opacity: 0; transform: translateY(-10px); } }
+@keyframes qPick { from { background: #fff; color: #1D1A0F; border-color: #E6E0D8; } to { background: #1D1A0F; color: #fff; border-color: #1D1A0F; } }
+@media (max-width: 960px) {
+  .heroText { max-width: none; }
+  .devices { max-width: 640px; }
 }
