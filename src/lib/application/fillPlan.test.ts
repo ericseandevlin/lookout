@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { pickOptions, planFill } from "./fillPlan";
+import { checksBox, pickOptions, planFill } from "./fillPlan";
 
 const item = (o: Partial<Parameters<typeof planFill>[0][number]>) => ({ id: "i", kind: "answer" as const, prompt: "Q", required: true, fieldType: "text", options: null, approvedVersionId: null, ...o });
 
@@ -60,5 +60,14 @@ describe("planFill options", () => {
   it("carries a choice item's options to the browser step", () => {
     const [s] = planFill([item({ id: "1", prompt: "Work authorization", options: ["Yes", "No"], approvedVersionId: "v1" })], [{ id: "v1", content: "Yes" }]);
     expect(s.options).toEqual(["Yes", "No"]);
+  });
+});
+
+describe("checksBox (#669)", () => {
+  it("ticks on yes, true and the consent verbs, alone or leading the answer", () => {
+    for (const a of ["yes", "Yes", "TRUE", "agree", "I agree", "I acknowledge", "I confirm", "I consent", "I certify the above is true", "Accept", "Yes, I agree", "yes - happy to", "  yes  "]) expect(checksBox(a), a).toBe(true);
+  });
+  it("leaves the box on no, empty or anything else", () => {
+    for (const a of ["", "No", "false", "No, I do not agree", "I do not agree", "I don't consent", "Yesterday", "Agreement pending", "N/A", "Maybe"]) expect(checksBox(a), a).toBe(false);
   });
 });

@@ -39,3 +39,13 @@ export function pickOptions(content: string, options: string[] = []): string[] {
   }
   return out;
 }
+
+/**
+ * Whether an answer to a lone checkbox ("I agree to the privacy policy") means tick it (#669).
+ * Yes, true and the consent verbs, alone or leading the answer ("Yes, I agree", "I certify the above").
+ * Anything else, including empty, leaves the box as it is.
+ */
+export function checksBox(answer: string): boolean {
+  const a = answer.replace(/\*/g, "").replace(/\s+/g, " ").trim().toLowerCase();
+  return /^(yes|true|(i )?(agree|acknowledge|confirm|consent|certify|accept))\b/.test(a);
+}
