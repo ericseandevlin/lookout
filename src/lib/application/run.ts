@@ -342,7 +342,7 @@ async function draftAll(id: string, userId: string, opp: typeof schema.opportuni
     const savedHit = match(inp.saved ?? [], it.prompt, it.options);
     const fact = (it.kind === "field" ? fillField(it.prompt, inp) : null) ?? (savedHit ? { content: savedHit, note: "From your saved answers. Edit them on your profile.", sources: ["saved answer"], question: null } : null);
     if (fact) out.set(it.id, fact);
-    else rest.push({ id: it.id, index, kind: it.kind, prompt: it.prompt, required: it.required, options: it.options });
+    else rest.push({ id: it.id, index, kind: it.kind, prompt: it.prompt, required: it.required, options: it.options, multi: it.fieldType === "multiselect" });
   }
   if (rest.length) {
     const r = await completeJSON({ name: "apply-answers", schema: AnswersDraft, system: ANSWERS_SYSTEM, user: answersPrompt(inp, rest), maxTokens: 8000, usage });

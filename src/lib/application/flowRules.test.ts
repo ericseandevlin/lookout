@@ -44,6 +44,12 @@ describe("optionAnswerAllowed", () => {
     expect(optionAnswerAllowed(["Yes", "No"], "yes")).toBe(false);
     expect(optionAnswerAllowed(["Yes", "No"], "Yes ")).toBe(false);
   });
+
+  it("accepts one exact option per line on a select-any question (#624)", () => {
+    expect(optionAnswerAllowed(["A", "B", "C"], "A\nC", true)).toBe(true);
+    expect(optionAnswerAllowed(["A", "B", "C"], "A\nD", true)).toBe(false);
+    expect(optionAnswerAllowed(["A", "B", "C"], "A\nC")).toBe(false);
+  });
 });
 
 describe("autoApproveField", () => {

@@ -10,9 +10,10 @@ export function settledStatus(route: Route, items: ReviewItem[], autoSubmit: boo
   return route === "browser" && autoSubmit ? "approved" : "manual";
 }
 
-/** Choice questions accept exactly one form option, or an empty answer to clear it. */
-export function optionAnswerAllowed(options: string[] | null, content: string): boolean {
-  return !options?.length || !content || options.includes(content);
+/** Choice questions accept exactly one form option, or an empty answer to clear it. Select-any questions take one option per line (#624). */
+export function optionAnswerAllowed(options: string[] | null, content: string, multi = false): boolean {
+  if (!options?.length || !content) return true;
+  return multi ? content.split("\n").every((line) => options.includes(line)) : options.includes(content);
 }
 
 /** Basic fields need no separate review once they have an answer. */

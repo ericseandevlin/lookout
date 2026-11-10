@@ -172,7 +172,8 @@ export async function editItem(userId: string, appId: string, itemId: string, co
   const a = await ownApplication(userId, appId);
   assertEditable(a.status);
   const it = await ownItem(appId, itemId);
-  if (!optionAnswerAllowed(it.options, content)) throw new HttpError(400, `Pick one of: ${it.options!.join(", ")}`);
+  const multi = it.fieldType === "multiselect";
+  if (!optionAnswerAllowed(it.options, content, multi)) throw new HttpError(400, `${multi ? "Pick from, one per line" : "Pick one of"}: ${it.options!.join(", ")}`);
   if (it.kind === "eeo") {
     // Remembered for this exact wording, in the encrypted profile only.
     const { consent, profile } = await loadEeo(userId);
