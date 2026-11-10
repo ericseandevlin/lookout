@@ -37,7 +37,7 @@ import {
   type DraftItem,
   type Drafted,
 } from "./draft";
-import { ASHBY_QUERY, PAGE_SYSTEM, PageItems, applyUrlFor, boardFromHtml, boardGuesses, detectAts, fromPage, parseAshby, parseGreenhouse, routeFor, withBasics, type ScanResult } from "./scan";
+import { ASHBY_QUERY, PAGE_SYSTEM, PageItems, applyUrlFor, ashbyOrgFromHtml, boardFromHtml, boardGuesses, detectAts, fromPage, parseAshby, parseGreenhouse, routeFor, withBasics, type ScanResult } from "./scan";
 import { addUsd, patchReport } from "./reportStore";
 import { autoApproveField } from "./flowRules";
 
@@ -80,6 +80,21 @@ async function ashbyForm(org: string, id: string) {
   return (await res.json()) as unknown;
 }
 
+/** A company page with ?ashby_jid=: find its org on the page, else try the obvious names (#676). */
+async function ashbyEmbedOrForm(org: string, id: string, postingUrl: string) {
+  if (org) return { org, form: parseAshby(await ashbyForm(org, id)) };
+  const found = ashbyOrgFromHtml((await fetchPage(postingUrl)).html);
+  if (found) return { org: found, form: parseAshby(await ashbyForm(found, id)) };
+  for (const o of boardGuesses(new URL(postingUrl).hostname)) {
+    try {
+      return { org: o, form: parseAshby(await ashbyForm(o, id)) };
+    } catch {
+      // try the next guess
+    }
+  }
+  throw new Error("Couldn't find this company's Ashby board");
+}
+
 /** Read the application. Published forms first; the model reads the page only when there is no form to fetch. */
 export async function scanPosting(postingUrl: string, usage: Usage): Promise<ScanResult> {
   const ref = detectAts(postingUrl);
@@ -92,7 +107,11 @@ export async function scanPosting(postingUrl: string, usage: Usage): Promise<Sca
       const url = ref.board ? applyUrl : `https://job-boards.greenhouse.io/embed/job_app?for=${encodeURIComponent(board)}&token=${ref.id}`;
       return { ats: ref.ats, route, applyUrl: url, source: "form", ...parseGreenhouse(job) };
     }
-    if (ref.ats === "ashby") return { ats: ref.ats, route, applyUrl, source: "form", ...parseAshby(await ashbyForm(ref.org, ref.id)) };
+    if (ref.ats === "ashby") {
+      const { org, form } = await ashbyEmbedOrForm(ref.org, ref.id, postingUrl);
+      // The embed is an iframe on the company page; Ashby's hosted form is the same application.
+      return { ats: ref.ats, route, applyUrl: applyUrlFor({ ...ref, org }, postingUrl), source: "form", ...form };
+    }
   } catch (e) {
     // A closed posting is final; anything else (API change, outage) falls back to reading the page.
     if (e instanceof Error && /answered 404/.test(e.message)) throw new Error("This posting is closed: the job board no longer lists it.");

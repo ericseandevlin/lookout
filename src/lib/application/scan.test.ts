@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { applyUrlFor, boardFromHtml, boardGuesses, detectAts, fromPage, kindFor, parseAshby, parseGreenhouse, routeFor, withBasics } from "./scan";
+import { applyUrlFor, ashbyOrgFromHtml, boardFromHtml, boardGuesses, detectAts, fromPage, kindFor, parseAshby, parseGreenhouse, routeFor, withBasics } from "./scan";
 
 describe("detectAts", () => {
   it("reads Greenhouse, Lever and Ashby URLs", () => {
@@ -25,6 +25,17 @@ describe("detectAts", () => {
     const u = "https://job-boards.greenhouse.io/embed/job_app?token=8008090";
     expect(detectAts(u)).toEqual({ ats: "greenhouse", board: "", id: "8008090" });
     expect(applyUrlFor(detectAts(u), u)).toBe(u);
+  });
+
+  it("spots company pages that embed Ashby (#676)", () => {
+    const page = "https://www.acme.com/careers?ashby_jid=ec0690d5-be5e-4e8b-be78-d832f166b242";
+    expect(detectAts(page)).toEqual({ ats: "ashby", org: "", id: "ec0690d5-be5e-4e8b-be78-d832f166b242" });
+    expect(applyUrlFor(detectAts(page), page)).toBe(page);
+    expect(detectAts("https://www.acme.com/careers?ashby_jid=nope")).toEqual({ ats: "other" });
+    expect(ashbyOrgFromHtml(`<script src="https://jobs.ashbyhq.com/Acme%20Co/embed?version=2"></script>`)).toBe("Acme Co");
+    expect(ashbyOrgFromHtml(`<iframe src="https://jobs.ashbyhq.com/acme/ec0690d5-be5e-4e8b-be78-d832f166b242/embed">`)).toBe("acme");
+    expect(ashbyOrgFromHtml(`fetch("https://jobs.ashbyhq.com/api/non-user-graphql")`)).toBeNull();
+    expect(ashbyOrgFromHtml("<p>no board</p>")).toBeNull();
   });
 
   it("reads EU Greenhouse links like an embed, keeping the EU host (#634)", () => {
