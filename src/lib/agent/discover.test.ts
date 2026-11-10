@@ -135,6 +135,14 @@ describe("save", () => {
     expect(o).toMatchObject({ postedAt: null, workMode: null, compMin: 200000, compMax: null });
   });
 
+  it("stores impossible dates and out-of-range pay as empty instead of failing the run (#626)", async () => {
+    const out = await save(ctx(), [find({ posted_at: "2026-02-30", comp_min: 20000000000, comp_max: -5 }), find({ url: "https://jobs.example.com/acme/124", title: "Head of Design", posted_at: "2024-02-29" })], "agent");
+    expect(out.added).toBe(2);
+    const rows = await db.select().from(schema.opportunities);
+    expect(rows.find((o) => o.title === "Director of Design")).toMatchObject({ postedAt: null, compMin: null, compMax: null });
+    expect(rows.find((o) => o.title === "Head of Design")?.postedAt).toBe("2024-02-29");
+  });
+
   it("keeps one shared posting when two people find it", async () => {
     const [u2] = await db.insert(schema.users).values({ email: "b@example.com" }).returning();
     const [s2] = await db.insert(schema.searches).values({ userId: u2.id, name: "Job search", answers: {} }).returning();
