@@ -43,7 +43,15 @@ const PAST_PAY =
  * A salary ask, not a question about the person's own past or current pay. Judged sentence by sentence,
  * so a legal note after the ask ("We do not ask about salary history.") doesn't hide it (#640).
  */
-export const isSalaryQuestion = (prompt: string) => sentences(prompt).some((s) => SALARY_ASK.test(s) && !PAST_PAY.test(s));
+export const isSalaryQuestion = (prompt: string) => sentences(prompt).some((s) => SALARY_ASK.test(s) && !asksPastPay(s));
+
+/** The sentence asks about past pay, not "we do not need your current salary" or "current salary not required" (#652). */
+function asksPastPay(s: string) {
+  const m = s.match(PAST_PAY);
+  if (!m || m.index === undefined) return false;
+  const before = s.slice(0, m.index), after = s.slice(m.index + m[0].length);
+  return !/(\bnot|n't|\bnever|\bno need to)\b[^.?!]{0,30}$/i.test(before) && !/^\s*(is |are )?(not (required|needed|necessary)|optional)\b/i.test(after);
+}
 
 /**
  * amount is null when Lookout shouldn't put a number in: the floor is above their range, or their range

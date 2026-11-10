@@ -122,6 +122,14 @@ describe("isSalaryQuestion", () => {
     expect(isSalaryQuestion("What are your compensation expectations?\nLast day to apply is Friday.")).toBe(true);
   });
 
+  it("still sees the ask when the prompt says it doesn't need past pay (#652)", () => {
+    expect(isSalaryQuestion("Desired salary (we do not need your current salary)")).toBe(true);
+    expect(isSalaryQuestion("Expected salary (current salary not required)")).toBe(true);
+    expect(isSalaryQuestion("What are your salary expectations? Please don't include your current compensation.")).toBe(true);
+    expect(isSalaryQuestion("Desired compensation, we won't ask for your previous salary")).toBe(true);
+    expect(isSalaryQuestion("What is your current salary? This is optional.")).toBe(false);
+  });
+
   it("leaves out questions about the person's own past pay (#640)", () => {
     for (const q of ["Salary history", "What was your previous base salary?", "What is your most recent compensation?", "What was your salary at your last job?", "Please share your compensation history."])
       expect(isSalaryQuestion(q)).toBe(false);
