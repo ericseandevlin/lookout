@@ -15,7 +15,11 @@ export function jobKey(raw: string | null | undefined): string | null {
   const host = u.hostname.toLowerCase();
   const gh = u.searchParams.get("gh_jid") ?? (/greenhouse\.io$/.test(host) ? (u.searchParams.get("token") ?? u.pathname.match(/\/jobs\/(\d+)/)?.[1]) : null);
   if (gh && /^\d+$/.test(gh)) return `greenhouse:${gh}`;
-  const uuid = u.pathname.match(/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i)?.[0];
+  const UUID = /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i;
+  // Company pages that embed Ashby name the job in ?ashby_jid=, like Greenhouse's gh_jid (#639).
+  const ashbyJid = u.searchParams.get("ashby_jid")?.match(UUID)?.[0];
+  if (ashbyJid) return `ashby:${ashbyJid.toLowerCase()}`;
+  const uuid = u.pathname.match(UUID)?.[0];
   if (uuid && /(ashbyhq\.com|lever\.co)$/.test(host)) return `${host.includes("ashby") ? "ashby" : "lever"}:${uuid.toLowerCase()}`;
   // Workday (#622): the form is at .../job/<location>/<title>_R123/apply/applyManually, with or without a locale prefix.
   const wd = /myworkdayjobs\.com$/.test(host) && u.pathname.match(/\/(?:job|details)\/(?:[^/]+\/)*?([^/]+)\/*(?:\/apply\b.*)?$/i)?.[1];
