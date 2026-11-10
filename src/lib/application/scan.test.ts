@@ -88,6 +88,11 @@ describe("kindFor", () => {
     expect(kindFor("Address any gaps in your employment history", "text")).toBe("answer");
     expect(kindFor("Phone number for a reference", "text")).toBe("answer");
   });
+
+  it("reads accented and spelled-out resume labels as the resume (#680)", () => {
+    for (const l of ["Résumé", "Résumé/CV", "Résumé *", "Resume", "resume/cv", "CV (PDF)", "Curriculum Vitae", "Upload your resume", "Attach a CV"]) expect(kindFor(l, "file"), l).toBe("resume");
+    for (const l of ["Resume gaps: anything to explain?", "Résumé gaps?", "Resumes reviewed by", "CVS Health experience", "Cvent experience"]) expect(kindFor(l, "textarea"), l).toBe("answer");
+  });
 });
 
 describe("parseGreenhouse", () => {
