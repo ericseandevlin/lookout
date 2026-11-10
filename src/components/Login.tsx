@@ -6,16 +6,18 @@ import { WAITLIST_NOTICE } from "@/lib/legal";
 import { NEXT_MOVES } from "@/lib/onboarding";
 import { color } from "@/lib/tokens";
 
-export function Login({ emailEnabled, inviteOnly, turnstileSiteKey = "", kinds = false, signedOut = false, channel = null }: { emailEnabled: boolean; inviteOnly: boolean; turnstileSiteKey?: string; kinds?: boolean; signedOut?: boolean; channel?: string | null }) {
-  const [mode, setMode] = useState<"signin" | "request">(inviteOnly && !emailEnabled ? "request" : "signin");
+export function Login({ emailEnabled, inviteOnly, turnstileSiteKey = "", kinds = false, signedOut = false, channel = null, inline = false, start }: { emailEnabled: boolean; inviteOnly: boolean; turnstileSiteKey?: string; kinds?: boolean; signedOut?: boolean; channel?: string | null; inline?: boolean; start?: "signin" | "request" }) {
+  const [mode, setMode] = useState<"signin" | "request">(start ?? (inviteOnly && !emailEnabled ? "request" : "signin"));
+  // The landing page (#600) shows the same card inside the page instead of as a full screen.
+  const Frame = inline ? InlineCard : AuthCard;
   return (
-    <AuthCard>
+    <Frame>
       {mode === "signin" ? (
         <SignIn emailEnabled={emailEnabled} inviteOnly={inviteOnly} signedOut={signedOut} onRequest={() => setMode("request")} />
       ) : (
         <RequestAccess emailEnabled={emailEnabled} turnstileSiteKey={turnstileSiteKey} kinds={kinds} channel={channel} onSignIn={() => setMode("signin")} />
       )}
-    </AuthCard>
+    </Frame>
   );
 }
 
@@ -261,6 +263,14 @@ export function AuthCard({ children }: { children: React.ReactNode }) {
         <div style={{ padding: "28px 26px 30px" }}>{children}</div>
       </div>
       <LegalLinks style={{ marginTop: 16 }} />
+    </div>
+  );
+}
+
+function InlineCard({ children }: { children: React.ReactNode }) {
+  return (
+    <div id="get-in" style={{ width: "100%", maxWidth: 460, background: "#fff", borderRadius: 16, overflow: "hidden", boxShadow: "0 24px 60px rgba(29,26,15,.10)", scrollMarginTop: 24 }}>
+      <div style={{ padding: "26px 26px 28px" }}>{children}</div>
     </div>
   );
 }
