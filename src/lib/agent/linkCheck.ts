@@ -2,6 +2,7 @@ import "server-only";
 import { and, eq, inArray, sql } from "drizzle-orm";
 import { db, schema } from "@/lib/db";
 import { fetchPage, FetchError, pageToText } from "@/lib/ai/fetchPage";
+import { ashbyOrgFromHtml, boardFromHtml, boardGuesses, detectAts } from "@/lib/application/scan";
 import { classifyPage, type LinkState } from "./linkState";
 
 /** Stored on opportunities.attributes so every person's board shares one check per posting. */
@@ -25,11 +26,74 @@ async function check(url: string): Promise<{ state: LinkState; reason: string }>
 async function checkOnce(url: string): Promise<{ state: LinkState; reason: string }> {
   try {
     const { url: finalUrl, html } = await fetchPage(url);
-    return classifyPage(200, pageToText(html, 4000), finalUrl);
+    const page = classifyPage(200, pageToText(html, 4000), finalUrl);
+    return page.state === "open" ? ((await embedVerdict(url, html)) ?? page) : page;
   } catch (e) {
-    const status = e instanceof FetchError ? Number(e.message.match(/answered (\d{3})/)?.[1]) : NaN;
+    const status = statusOf(e);
     return Number.isFinite(status) ? classifyPage(status, "") : { state: "unknown", reason: "couldn't reach it" };
   }
+}
+
+const statusOf = (e: unknown) => (e instanceof FetchError ? Number(e.message.match(/answered (\d{3})/)?.[1]) : NaN);
+
+/** True when the URL answers, false on a 404, null when it says nothing either way. */
+async function answers(url: string): Promise<boolean | null> {
+  try {
+    await fetchPage(url);
+    return true;
+  } catch (e) {
+    return statusOf(e) === 404 ? false : null;
+  }
+}
+
+async function ashbyJobExists(org: string, id: string): Promise<boolean | null> {
+  try {
+    // Fixed public host, so the plain client is fine (fetchPage only does GET).
+    const res = await fetch("https://jobs.ashbyhq.com/api/non-user-graphql?op=ApiJobPosting", {
+      method: "POST",
+      headers: { "content-type": "application/json", "user-agent": "Mozilla/5.0 (compatible; LookoutBot/1.0)" },
+      body: JSON.stringify({
+        operationName: "ApiJobPosting",
+        variables: { organizationHostedJobsPageName: org, jobPostingId: id },
+        query: "query ApiJobPosting($organizationHostedJobsPageName: String!, $jobPostingId: String!) { jobPosting(organizationHostedJobsPageName: $organizationHostedJobsPageName, jobPostingId: $jobPostingId) { id } }",
+      }),
+      signal: AbortSignal.timeout(15_000),
+    });
+    if (!res.ok) return null;
+    const body = (await res.json()) as { data?: { jobPosting?: unknown } };
+    return body.data && "jobPosting" in body.data ? !!body.data.jobPosting : null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * A company page that embeds Greenhouse (?gh_jid=) or Ashby (?ashby_jid=) stays up after the job closes, so ask the ATS (#678).
+ * Gone only when a board that exists no longer has the job; a wrong guess or a failed call keeps the page's verdict.
+ */
+async function embedVerdict(url: string, html: string): Promise<{ state: LinkState; reason: string } | null> {
+  const ref = detectAts(url);
+  const host = new URL(url).hostname;
+  if (ref.ats === "greenhouse" && !ref.board) {
+    const found = boardFromHtml(html);
+    // A greenhouse.io host says nothing about the company, so there is nothing to guess (#674).
+    const boards = found ? [found] : /(^|\.)greenhouse\.io$/i.test(host) ? [] : boardGuesses(host);
+    for (const b of boards) {
+      const api = `https://boards-api.greenhouse.io/v1/boards/${encodeURIComponent(b)}`;
+      if ((await answers(api)) !== true) continue;
+      const job = await answers(`${api}/jobs/${ref.id}`);
+      return job === false ? { state: "gone", reason: "Greenhouse no longer lists the job" } : null;
+    }
+  }
+  if (ref.ats === "ashby" && !ref.org) {
+    const found = ashbyOrgFromHtml(html);
+    for (const o of found ? [found] : boardGuesses(host)) {
+      if ((await answers(`https://api.ashbyhq.com/posting-api/job-board/${encodeURIComponent(o)}`)) !== true) continue;
+      const job = await ashbyJobExists(o, ref.id);
+      return job === false ? { state: "gone", reason: "Ashby no longer lists the job" } : null;
+    }
+  }
+  return null;
 }
 
 /**
