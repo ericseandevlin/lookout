@@ -52,10 +52,14 @@
 
   function fileInputFor(prompt, itemKind) {
     const inputs = [...document.querySelectorAll("input[type=file]")];
-    for (const input of inputs) {
-      let n = input.parentElement;
-      for (let i = 0; n && i < 6; i++, n = n.parentElement) if (norm(n.textContent).includes(norm(prompt).slice(0, 40))) return input;
-    }
+    const key = norm(prompt).slice(0, 40);
+    // Nearest labeled box wins, one level at a time: a section holding both uploads holds both labels (#590).
+    for (let depth = 0; depth < 6; depth++)
+      for (const input of inputs) {
+        let n = input.parentElement;
+        for (let i = 0; n && i < depth; i++) n = n.parentElement;
+        if (n && norm(n.textContent).includes(key)) return input;
+      }
     return itemKind === "cover_letter" ? inputs[1] || null : inputs[0] || null;
   }
 

@@ -222,6 +222,24 @@ describe("extension fill: custom dropdowns", () => {
 describe("extension fill: uploads", () => {
   const docx = (name: string) => ({ name, base64: Buffer.from("PK fake docx").toString("base64") });
 
+  const both = [
+    { prompt: "Resume/CV", kind: "file", itemKind: "resume", file: docx("Pat Lee - Acme Resume.docx") },
+    { prompt: "Cover Letter", kind: "file", itemKind: "cover_letter", file: docx("Pat Lee - Acme Cover Letter.docx") },
+  ];
+  const fileName = (p: ReturnType<typeof page>, id: string) => (p.doc.getElementById(id) as unknown as { files: File[] }).files[0]?.name;
+
+  // One section holds both uploads, so it holds both labels; the nearest label decides (#590).
+  for (const [order, body] of [
+    ["resume first", `<section><div><div><label>Resume/CV</label><input type="file" id="cv"></div></div><div><div><label>Cover Letter</label><input type="file" id="cl"></div></div></section>`],
+    ["cover letter first", `<section><div><div><label>Cover Letter</label><input type="file" id="cl"></div></div><div><div><label>Resume/CV</label><input type="file" id="cv"></div></div></section>`],
+  ])
+    it(`puts the resume and cover letter in the inputs labeled for them, ${order} (#590)`, async () => {
+      const p = page(body);
+      const log = await p.fill({ steps: both });
+      expect(log.map((r) => r.how)).toEqual(["uploaded .docx", "uploaded .docx"]);
+      expect([fileName(p, "cv"), fileName(p, "cl")]).toEqual(["Pat Lee - Acme Resume.docx", "Pat Lee - Acme Cover Letter.docx"]);
+    });
+
   it("falls back to the first input for the resume and the second for the letter", async () => {
     const p = page(`<input type="file" id="a"><input type="file" id="b">`);
     await p.fill({
