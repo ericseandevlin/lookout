@@ -14,11 +14,12 @@ const db = drizzle(pg, { schema });
 vi.mock("@/lib/db", () => ({ db, schema }));
 
 const pages = new Map<string, string>();
-const fetchPage = vi.fn(async (url: string) => {
+const servePage = async (url: string) => {
   const html = pages.get(url);
   if (html === undefined) throw new Error("Page answered 500");
   return { html };
-});
+};
+const fetchPage = vi.fn(servePage);
 vi.mock("@/lib/ai/fetchPage", async (orig) => ({ ...(await orig<typeof import("@/lib/ai/fetchPage")>()), fetchPage }));
 const ashby = vi.fn();
 vi.mock("undici", async (orig) => ({ ...(await orig<typeof import("undici")>()), fetch: ashby }));
@@ -331,6 +332,24 @@ describe("embedded Greenhouse boards and Ashby outages (#438)", () => {
     const scan = await scanPosting(PAGE, emptyUsage());
     expect(scan).toMatchObject({ source: "page", applyUrl: PAGE });
     expect(scan.items.map((i) => i.prompt)).toEqual(["Portfolio link"]);
+  });
+
+  it("reads an EU Greenhouse posting's page when the API doesn't know it, not as closed (#634)", async () => {
+    const eu = "https://job-boards.eu.greenhouse.io/acme/jobs/123";
+    pages.set(eu, "<label>Portfolio link</label>");
+    // The US API has never heard of the board.
+    fetchPage.mockImplementation(async (url: string) => {
+      if (url.startsWith("https://boards-api.greenhouse.io/")) throw new Error("Page answered 404");
+      return servePage(url);
+    });
+    replies["apply-scan"] = () => ({ hasForm: true, hasEeo: false, howToApply: "", items: [{ prompt: "Portfolio link", required: false, fieldType: "text", options: [] }] });
+    try {
+      const scan = await scanPosting(eu, emptyUsage());
+      expect(scan).toMatchObject({ ats: "greenhouse", source: "page", applyUrl: eu });
+      expect(fetchPage.mock.calls.map((c) => c[0]).at(-1)).toBe(eu);
+    } finally {
+      fetchPage.mockImplementation(servePage);
+    }
   });
 
   it("reads the page when the Ashby API is down", async () => {
