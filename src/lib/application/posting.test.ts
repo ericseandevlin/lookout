@@ -55,6 +55,24 @@ describe("stripBoilerplate for roles about fraud and privacy (#509)", () => {
   });
 });
 
+const privacyRole = [
+  "3+ years implementing GDPR and CCPA programs",
+  "Draft and maintain our privacy policy and notices",
+  "Build tooling that detects discrimination in model outputs",
+  "Advise on data protection laws across the EU",
+];
+
+describe("stripBoilerplate for privacy, compliance and fairness roles (#651)", () => {
+  it("keeps the job's privacy and discrimination lines and still drops the notices", () => {
+    const notices = [
+      "We do not discriminate on the basis of race, religion, sex or age.",
+      "GDPR notice: if you are applying from the EU, see how we use your personal data at https://example.com/privacy.",
+      "Read our applicant privacy notice before you apply.",
+    ];
+    expect(stripBoilerplate([...privacyRole, ...notices].join("\n")).split("\n")).toEqual(privacyRole);
+  });
+});
+
 import { findTraps, removeTraps, stripHidden, trapWordsIn } from "./posting";
 
 describe("traps", () => {
