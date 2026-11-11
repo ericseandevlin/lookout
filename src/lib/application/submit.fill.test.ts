@@ -318,6 +318,42 @@ describe("runFill controls (#567)", () => {
     expect(r.missing).toEqual([]);
   });
 
+  it("answers the group named by the question, not a later one whose question starts the same (#720)", async () => {
+    const short = "Do you require sponsorship?";
+    const long = "Do you require sponsorship? (now or in the future)";
+    const id = await seed("approved", [{ kind: "field", prompt: short, content: "No", options: ["Yes", "No"] }]);
+    page = fakePage([
+      { kind: "group", type: "radio", role: "group", label: short, options: ["Yes", "No"] },
+      { kind: "group", type: "radio", role: "group", label: long, options: ["Yes", "Nope"] },
+    ]);
+    const r = await runFill(id, "test");
+    // The later group has no "No" box, so landing there would report "option not found".
+    expect(r.log[0]).toMatchObject({ ok: true, how: "checked 1" });
+    expect(page.did).toContain("check No");
+  });
+
+  it("checks the radio the answer means when the radio itself is labeled with the question (#720)", async () => {
+    const q = "Can you work onsite?";
+    const id = await seed("approved", [{ kind: "field", prompt: q, content: "No", options: ["Yes", "No"] }]);
+    page = fakePage([
+      { kind: "control", type: "radio", role: "radio", label: `${q} Yes` },
+      { kind: "control", type: "radio", role: "radio", label: `${q} No` },
+    ]);
+    const r = await runFill(id, "test");
+    expect(r.log[0]).toMatchObject({ ok: true, how: "checked 1" });
+    expect(page.did).toContain(`check ${q} No`);
+    expect(page.did.some((d) => d.includes(`${q} Yes`))).toBe(false);
+  });
+
+  it("reports a question-labeled radio as not found when no radio is the meant option (#720)", async () => {
+    const q = "Can you work onsite?";
+    const id = await seed("approved", [{ kind: "field", prompt: q, content: "No", options: ["Yes", "No"] }]);
+    page = fakePage([{ kind: "control", type: "radio", role: "radio", label: `${q} Yes` }]);
+    const r = await runFill(id, "test");
+    expect(r.log[0]).toMatchObject({ ok: false, how: "option not found: No" });
+    expect(page.did.some((d) => d.startsWith("click") || d.startsWith("check"))).toBe(false);
+  });
+
   it("checks a radio in a [role=radiogroup] named by its label (#694)", async () => {
     const q = "Are you 18 or older?";
     const id = await seed("approved", [{ kind: "field", prompt: q, content: "Yes", options: ["Yes", "No"] }]);
