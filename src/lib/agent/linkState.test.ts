@@ -19,6 +19,25 @@ describe("classifyPage", () => {
     expect(classifyPage(200, "Sorry, the job you’re looking for can’t be found").state).toBe("gone");
     expect(classifyPage(200, "The job you're looking for can't be found").state).toBe("gone");
   });
+  it.each([
+    "This job is closed",
+    "Oops! The job you are looking for has been filled or removed.",
+    "The position you’re trying to apply for has been closed",
+    "Sorry, this position is not available anymore.",
+    "This job ad has expired",
+    "Job expired",
+    "The page you are looking for doesn't exist.",
+    "Sorry, but we can’t find that page.",
+  ])("reads %s as closed (#747)", (text) => {
+    expect(classifyPage(200, text).state).toBe("gone");
+  });
+  it.each([
+    "TITLE: Product Designer\nApplications close December 1. This role is closely tied to our growth team.",
+    "TITLE: Design Lead\nYou will own the closed beta and the expired-session flows.",
+    "TITLE: UX Engineer\nThis position is not available to contractors.",
+  ])("keeps %s open (#747)", (text) => {
+    expect(classifyPage(200, text).state).toBe("open");
+  });
   it("closed wording beats a stray maintenance mention", () => {
     expect(classifyPage(200, "We're sorry, but it looks like this job may be no longer available or does not exist. Site maintenance notice").state).toBe("gone");
   });
