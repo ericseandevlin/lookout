@@ -1,5 +1,7 @@
+import { readFileSync } from "node:fs";
+import path from "node:path";
 import { describe, expect, it } from "vitest";
-import { checksBox, pickOne, pickOptions, planFill } from "./fillPlan";
+import { checksBox, CONFIRMATION, pickOne, pickOptions, planFill } from "./fillPlan";
 
 const item = (o: Partial<Parameters<typeof planFill>[0][number]>) => ({ id: "i", kind: "answer" as const, prompt: "Q", required: true, fieldType: "text", options: null, approvedVersionId: null, ...o });
 
@@ -89,5 +91,43 @@ describe("pickOne (#695)", () => {
     expect(pickOne("They/them", ["She/her", "He/him"])).toBe(-1);
     expect(pickOne("Maybe", ["Yes", "No"])).toBe(-1);
     expect(pickOne("Yes", [])).toBe(-1);
+  });
+});
+
+describe("CONFIRMATION (#692)", () => {
+  it("reads the usual thank-you pages as sent", () => {
+    for (const t of [
+      "Thank you for applying!",
+      "Thanks for applying to Acme",
+      "Thanks for your application. We'll be in touch.",
+      "Thank you for submitting your application",
+      "Application submitted!",
+      "Your application has been received",
+      "Your application was successfully submitted.",
+      "Application sent",
+      "We have successfully received your application",
+      "We’ve received your application",
+      "You have successfully applied for this position",
+      // innerText can run inline text together.
+      "Submit applicationThank you for applying",
+    ])
+      expect(CONFIRMATION.test(t), t).toBe(true);
+  });
+  it("does not read a form page as sent", () => {
+    for (const t of [
+      "Thank you for your interest in joining our team. Please complete the form below.",
+      "Thank you",
+      "Submit application",
+      "Apply for this job",
+      "Before your application is submitted, review your answers.",
+      "Application questions",
+    ])
+      expect(CONFIRMATION.test(t), t).toBe(false);
+  });
+  it("is the same pattern the extension scripts use", () => {
+    for (const f of ["fill.js", "background.js"]) {
+      const src = readFileSync(path.resolve(__dirname, "../../../extension/firefox", f), "utf8");
+      expect(src, f).toContain(`const THANKS = /${CONFIRMATION.source}/i;`);
+    }
   });
 });
