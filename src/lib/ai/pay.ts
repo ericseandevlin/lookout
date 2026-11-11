@@ -16,7 +16,7 @@ export function money(s: string): number | null {
 }
 
 function annual(min: number, max: number, unit: string, currency: string, source: string): Pay | null {
-  const k = /hour/i.test(unit) ? HOURS_PER_YEAR : /month/i.test(unit) ? 12 : /biweek/i.test(unit) ? 26 : /week/i.test(unit) ? 52 : 1;
+  const k = /hour/i.test(unit) ? HOURS_PER_YEAR : /semimonth/i.test(unit) ? 24 : /month/i.test(unit) ? 12 : /biweek/i.test(unit) ? 26 : /week/i.test(unit) ? 52 : 1;
   const lo = Math.round(Math.min(min, max) * k), hi = Math.round(Math.max(min, max) * k);
   return plausible(lo) && plausible(hi) && hi <= lo * 4 ? { min: lo, max: hi, currency, source } : null;
 }
@@ -81,6 +81,8 @@ const UNITS: [string, RegExp][] = [
   // "bi-weekly" is named before "weekly" inside it, so it wins as the unit named first (#708).
   ["BIWEEK", /\bbi-?weekly\b|\bevery (?:two|2) weeks\b/i],
   ["WEEK", /\/\s?w(?:ee)?k\b|\b(?:per|a|each) week\b|\bweekly\b/i],
+  // "semi-monthly" is named before "monthly" inside it, so it wins the same way: 24 pay periods (#714).
+  ["SEMIMONTH", /\bsemi-?monthly\b|\btwice (?:a|per|each) month\b/i],
   ["MONTH", /\/\s?mo(?:nth)?\b|\b(?:per|a|each) month\b|\bmonthly\b/i],
 ];
 function payUnit(tail: string) {
