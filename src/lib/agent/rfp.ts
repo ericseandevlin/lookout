@@ -77,7 +77,11 @@ async function saveRfps(ctx: Context, scored: Awaited<ReturnType<typeof scoreRfp
       t.dealbreaker++;
       continue;
     }
-    if (ctx.floor && item.value && item.value < ctx.floor) t.belowFloor++;
+    // Under the floor: left off (#740).
+    if (ctx.floor && item.value && item.value < ctx.floor) {
+      t.belowFloor++;
+      continue;
+    }
     if (!s.location_fit) t.offLocation++;
     const [opp] = await db
       .insert(schema.opportunities)

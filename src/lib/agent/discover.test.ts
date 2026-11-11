@@ -117,16 +117,32 @@ describe("save", () => {
     expect((await board())[0].via).toBe("manual");
   });
 
-  it("marks down pay under the floor and off-location roles but still adds them", async () => {
+  it("leaves off pay that tops out under the floor; marks down off-location roles (#740)", async () => {
     const r = await save(
       ctx({ floor: 180000 }),
       [find({ comp_min: 120000, comp_max: 150000 }), find({ url: "https://jobs.example.com/b", company: "Beta", location_fit: false })],
       "agent",
     );
-    expect(r).toMatchObject({ added: 2, belowFloor: 1, offLocation: 1 });
+    expect(r).toMatchObject({ added: 1, belowFloor: 1, offLocation: 1 });
     const rows = await board();
-    expect(rows.map((x) => x.score)).toEqual([3, 3]);
-    expect(rows.find((x) => x.company === "Acme")?.gap[0]).toMatch(/below your floor/);
+    expect(rows.map((x) => [x.company, x.score])).toEqual([["Beta", 3]]);
+  });
+
+  it("keeps a range that reaches the floor and a posting with no pay (#740)", async () => {
+    const r = await save(
+      ctx({ floor: 180000 }),
+      [find({ comp_min: 150000, comp_max: 180000 }), find({ url: "https://jobs.example.com/b", company: "Beta", comp_min: null, comp_max: null })],
+      "agent",
+    );
+    expect(r).toMatchObject({ added: 2, belowFloor: 0 });
+  });
+
+  it("still adds an under-floor role when the person adds the link, marked down (#740)", async () => {
+    const r = await save(ctx({ floor: 180000 }), [find({ comp_min: 120000, comp_max: 150000 })], "manual");
+    expect(r).toMatchObject({ added: 1, belowFloor: 1 });
+    const rows = await board();
+    expect(rows[0].score).toBe(3);
+    expect(rows[0].gap[0]).toMatch(/below your floor/);
   });
 
   it("stores bad dates and Unknown work mode as empty, and rounds pay", async () => {

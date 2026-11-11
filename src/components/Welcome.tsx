@@ -53,7 +53,7 @@ export function Welcome({ initialName, kind = "job" }: { initialName: string; ki
               <button type="button" key={r.key} aria-pressed={salary === r.key} onClick={() => setSalary(salary === r.key ? null : r.key)} style={chip(salary === r.key)}>{r.label}</button>
             ))}
           </div>
-          <div style={{ fontSize: 14, color: color.t2 }}>Roles below the low end get marked down, not hidden.</div>
+          <div style={{ fontSize: 14, color: color.t2 }}>Roles that top out below the low end are left off.</div>
         </fieldset>
         )}
         {kind !== "rfp" && (

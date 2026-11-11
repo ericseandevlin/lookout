@@ -29,6 +29,8 @@ describe("buildTips", () => {
     expect(tips.map((t) => t.href)).toEqual(["/profile#q-q5", "/profile#q-comp"]);
     expect(tips[0].text).toContain("No agencies, no crypto");
     expect(tips[1].text).toContain("$220K");
+    expect(tips[1].text).toContain("were left off");
+    expect(tips[1].text).not.toContain("marked down");
   });
 
   it("caps at two tips and never links the same field twice", () => {

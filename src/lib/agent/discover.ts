@@ -325,8 +325,12 @@ export async function save(ctx: Context, finds: ScoredT[], via: "agent" | "manua
       t.dealbreaker++;
       continue;
     }
+    // A range that tops out under the floor does not make the board (#740). A link the person adds still goes on, marked down.
     const top = f.comp_max ?? f.comp_min;
-    if (ctx.floor && top && top < ctx.floor) t.belowFloor++;
+    if (ctx.floor && top && top < ctx.floor) {
+      t.belowFloor++;
+      if (via !== "manual") continue;
+    }
     if (!f.location_fit) t.offLocation++;
     const [opp] = await db
       .insert(schema.opportunities)
