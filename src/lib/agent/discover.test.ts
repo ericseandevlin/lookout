@@ -135,6 +135,15 @@ describe("save", () => {
     expect(o).toMatchObject({ postedAt: null, workMode: null, compMin: 200000, compMax: null });
   });
 
+  it("stores an hourly or monthly rate as no pay, not an annual salary below the floor (#702)", async () => {
+    await save(ctx({ floor: 180000 }), [find({ comp_min: 65, comp_max: 8500 })], "agent");
+    const [o] = await db.select().from(schema.opportunities);
+    expect(o).toMatchObject({ compMin: null, compMax: null });
+    const [row] = await board();
+    expect(row.score).toBe(5);
+    expect(row.gap).toEqual(["No comp posted"]);
+  });
+
   it("stores impossible dates and out-of-range pay as empty instead of failing the run (#626)", async () => {
     const out = await save(ctx(), [find({ posted_at: "2026-02-30", comp_min: 20000000000, comp_max: -5 }), find({ url: "https://jobs.example.com/acme/124", title: "Head of Design", posted_at: "2024-02-29" })], "agent");
     expect(out.added).toBe(2);

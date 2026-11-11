@@ -268,8 +268,10 @@ async function scorePages(ctx: Context, pages: Page[], usage: Usage, report?: Re
         if (seen.has(f.index)) continue;
         seen.add(f.index);
         const page = batch[f.index];
-        // The model sometimes misses pay even when it's on the page; the deterministic read fills the gap.
-        if (page) out.push({ ...f, url: page.url, ...(f.comp_min == null && f.comp_max == null && page.pay && page.pay.currency === "USD" && { comp_min: page.pay.min, comp_max: page.pay.max }) });
+        // The model sometimes misses pay even when it's on the page, or gives the hourly rate of a part-time role (#702);
+        // the deterministic read fills the gap.
+        const comp = { comp_min: annualPay(f.comp_min), comp_max: annualPay(f.comp_max) };
+        if (page) out.push({ ...f, ...comp, url: page.url, ...(comp.comp_min == null && comp.comp_max == null && page.pay && page.pay.currency === "USD" && { comp_min: page.pay.min, comp_max: page.pay.max }) });
       }
     } catch (e) {
       console.error("[discover] scoring batch failed", e);
@@ -284,15 +286,18 @@ async function scorePages(ctx: Context, pages: Page[], usage: Usage, report?: Re
 /** A real calendar day, or null: "2026-02-30" passes a pattern check but Postgres rejects it and the run fails (#626). */
 const realDate = (d: string | null) => (d && /^\d{4}-\d{2}-\d{2}$/.test(d) && new Date(`${d}T00:00:00Z`).toISOString().slice(0, 10) === d ? d : null);
 
-/** Pay that fits the integer column, or null: a range in cents would overflow it (#626). */
-const pay = (n: number | null) => (n != null && Number.isFinite(n) && n >= 1 && n < 2 ** 31 ? Math.round(n) : null);
+/**
+ * An annual salary, or null. Under $10,000 is an hourly or monthly rate, not a year's pay: stored as annual it read as
+ * below the floor and capped the score (#702). Over the integer column is a range in cents (#626).
+ */
+const annualPay = (n: number | null) => (n != null && Number.isFinite(n) && n >= 10_000 && n < 2 ** 31 ? Math.round(n) : null);
 
 export async function save(ctx: Context, finds: ScoredT[], via: "agent" | "manual"): Promise<RunTally & { newFinds: { id: string; score: number }[] }> {
   const known = new Set(ctx.knownUrls.map(normUrl));
   const t = emptyTally();
   const newFinds: { id: string; score: number }[] = [];
   for (const raw of finds) {
-    const f = { ...raw, comp_min: pay(raw.comp_min), comp_max: pay(raw.comp_max) };
+    const f = { ...raw, comp_min: annualPay(raw.comp_min), comp_max: annualPay(raw.comp_max) };
     if (!f.is_open_job_posting || !f.company || !f.title) {
       t.notPostings++;
       continue;

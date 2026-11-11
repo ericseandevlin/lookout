@@ -175,6 +175,22 @@ describe("discover (#379)", () => {
     expect((await board())[0].compMin).toBe(190000);
   });
 
+  it("reads an hourly rate from the model as no annual pay, and takes the page's annualized range (#702)", async () => {
+    results.set("design systems lead", [hit("https://jobs.example.com/a"), hit("https://jobs.example.com/b")]);
+    results.set("design systems lead site:greenhouse.io", []);
+    pages.set("https://jobs.example.com/a", posting("<p>Pay: $95 to $110 per hour.</p>"));
+    pages.set("https://jobs.example.com/b", posting());
+    verdicts.set("https://jobs.example.com/a", { comp_min: 95, comp_max: 110 });
+    verdicts.set("https://jobs.example.com/b", { comp_min: 65, comp_max: 85 });
+    await discover(searchId);
+    const rows = await board();
+    expect(rows.find((r) => r.url === "https://jobs.example.com/a")?.compMin).toBe(197600);
+    expect(rows.find((r) => r.url === "https://jobs.example.com/b")?.compMin).toBeNull();
+    const gaps = await db.select({ score: schema.userOpportunities.score, gap: schema.userOpportunities.reasonsGap }).from(schema.userOpportunities).where(eq(schema.userOpportunities.searchId, searchId));
+    expect(gaps.every((g) => !g.gap.some((x) => /below your floor/.test(x)))).toBe(true);
+    expect(gaps.map((g) => g.score)).toEqual([5, 5]);
+  });
+
   it("tells the scorer today's date, not the date the server started (#608)", async () => {
     results.set("design systems lead", [hit("https://jobs.example.com/a")]);
     results.set("design systems lead site:greenhouse.io", []);
