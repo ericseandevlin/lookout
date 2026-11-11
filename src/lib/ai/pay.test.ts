@@ -95,6 +95,16 @@ describe("findPay", () => {
     expect(findPay("", text)).toEqual({ min, max, currency, source: "text" });
   });
 
+  it.each([
+    ["CAD $120,000 - $150,000", "CAD"],
+    ["Salary: CAD$120,000 - CAD$150,000", "CAD"],
+    ["AUD $120,000 - $150,000", "AUD"],
+    ["USD $120,000 - $150,000", "USD"],
+    ["Earn a $120,000 - $150,000 salary", "USD"],
+  ])("reads the code before the dollar sign in %s (#709)", (text, currency) => {
+    expect(findPay("", text)).toEqual({ min: 120000, max: 150000, currency, source: "text" });
+  });
+
   it('joins with "and" only after "between", and keeps page order (#686)', () => {
     expect(findPay("", "A $5,000 signing bonus and $10,000 relocation")).toBeNull();
     expect(findPay("", "Get $5,000 and $120,000 - $150,000 base")).toMatchObject({ min: 120000, max: 150000 });
