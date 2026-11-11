@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { ApplicationReport } from "@/lib/db/schema";
-import { approvedBlock, approvedFor, finalTerms, keywordRows, planFrom, postingSnippet, supportFor, unapprovedIn } from "./evidence";
+import { approvedBlock, approvedFor, finalTerms, keywordRows, keywordWeight, recommendedKeywords, planFrom, postingSnippet, supportFor, unapprovedIn } from "./evidence";
 import { upsertNote } from "./skills";
 
 const posting = `Role: Design Engineer
@@ -81,5 +81,26 @@ describe("keyword evidence (#121)", () => {
   it("flags unapproved terms a draft carries that the resume doesn't", () => {
     const rows = keywordRows(report(), posting, resume, []);
     expect(unapprovedIn("Led Kubernetes rollouts and design systems", resume, rows)).toEqual(["Kubernetes"]);
+  });
+});
+
+describe("which keywords are worth a line (#738)", () => {
+  it("weighs a term by its count, the role title and a requirement line", () => {
+    expect(keywordWeight(posting, "Kubernetes", "Experience with Kubernetes is a plus.")).toBe(1);
+    expect(keywordWeight(posting, "Design Engineer")).toBe(4);
+    expect(keywordWeight("Must have 5+ years of Kubernetes. Kubernetes daily.", "Kubernetes", "Must have 5+ years of Kubernetes.")).toBe(4);
+  });
+
+  it("recommends at most 3 unbacked keywords, heaviest first, and none that are too light", () => {
+    const row = (term: string, weight: number, seen = 0, o: object = {}) => ({ term, support: null, mine: false, removed: false, used: false, weight, seen, ...o });
+    const rows = [row("light", 1), row("a", 4), row("often", 1, 3), row("b", 5), row("c", 6), row("gone", 9, 0, { removed: true }), row("own", 9, 0, { mine: true }), row("backed", 9, 0, { support: { text: "x", from: "resume" } })];
+    expect(recommendedKeywords(rows as never)).toEqual(["often", "c", "b"]);
+    expect(recommendedKeywords([row("light", 1), row("once", 1, 1)] as never)).toEqual([]);
+  });
+
+  it("counts how many other applications asked for the same keyword", () => {
+    const rows = keywordRows(report(), posting, resume, [], [report(), { keywordPlan: [{ term: "kubernetes" }] }, {}]);
+    expect(rows.find((r) => r.term === "Kubernetes")).toMatchObject({ seen: 2, weight: 1 });
+    expect(recommendedKeywords(rows)).toEqual(["Kubernetes"]);
   });
 });

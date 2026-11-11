@@ -48,6 +48,8 @@ export type Detail = {
   /** Keywords with the posting line and the person's own line behind each (#121). */
   keywordRows: KeywordRow[] | null;
   keywordsApproved: boolean;
+  /** The few unbacked keywords worth one line of the person's time (#738). */
+  keywordPicks?: string[];
 };
 
 export const card: React.CSSProperties = { padding: 18, borderRadius: 14, background: "#fff", border: `1.5px solid ${color.border}` };

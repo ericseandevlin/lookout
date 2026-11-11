@@ -26,6 +26,8 @@ export type Finding = {
   why: string;
   /** Sent as a Revise instruction by the Fix button. */
   fix: string;
+  /** Set when the fix needs a fact only the person has (#738): the short question to put to them. */
+  ask?: string;
   from: "code" | "model";
 };
 
@@ -123,6 +125,7 @@ function resumeChecks(md: string): Finding[] {
       what: "No number in this line from your latest role.",
       why: "Recruiters scan for scale: team size, users, revenue, time saved. A line with none reads as a duty, not a result.",
       fix: `Add the scale or result to this line: "${short(l)}". Use only a number I've given; if you don't have one, ask me for it.`,
+      ask: "What was the scale or the result? A number, a team size, an outcome.",
       from: "code",
     });
   const withNumber = all.filter((l) => HAS_NUMBER.test(l)).length;
@@ -132,6 +135,7 @@ function resumeChecks(md: string): Finding[] {
       what: `Only ${withNumber} of ${all.length} bullets carry a number.`,
       why: "A resume with few numbers reads as a list of duties. Aim for a number in about half the bullets.",
       fix: "Find the bullets where my resume or notes already give a number, team size or result, and work it in. Ask me for the ones you don't have.",
+      ask: "Give one number for a recent role: team size, users, revenue, time saved.",
       from: "code",
     });
 
@@ -196,12 +200,12 @@ function letterChecks(text: string): Finding[] {
       break;
     }
   const n = words(body.join(" "));
-  if (n > 300)
+  if (n > 220)
     out.push({
       dim: "length",
       what: `About ${n} words.`,
-      why: "Recruiters give a cover letter less time than a resume. Under 250 words gets read to the end.",
-      fix: "Cut the letter to under 250 words: the opening, two short paragraphs of evidence, and a one-line close.",
+      why: "Recruiters give a cover letter less time than a resume. About 150 words gets read to the end.",
+      fix: "Cut the letter to about 150 words: the opening, one short paragraph of evidence, and a one-line close.",
       from: "code",
     });
   return out;
@@ -250,12 +254,13 @@ export const RecruiterDraft = z.object({
       z.object({
         dim: DimEnum,
         line: z.string().describe("The exact line it's about, copied from the document. Empty if it's about the whole document"),
-        what: z.string().describe("What a recruiter notices, one sentence"),
+        what: z.string().describe("What a recruiter notices, 12 words or fewer"),
         why: z.string().describe("Why it costs the applicant, one sentence"),
         fix: z.string().describe("The change, written as an instruction to the editor, starting with a verb. Never asks to add a fact that isn't in the materials; asks the applicant for it instead"),
+        ask: z.string().describe("Only when the fix needs a fact the materials don't hold (a number, a result, a name): the question to the applicant, 15 words or fewer. Otherwise empty").optional(),
       }),
     )
-    .describe("At most 6, most costly first. Skip anything in <already_found>"),
+    .describe("At most 4, most costly first. Skip anything in <already_found>"),
 });
 
 export const RECRUITER_SYSTEM = `You are a senior recruiter reviewing one application document for one job posting. You read it the way recruiters do: 10 seconds on the first pass, then the parts that caught your eye.
@@ -284,12 +289,12 @@ export function finishAnalysis(versionId: string, doc: string, d: z.infer<typeof
   const text = norm(doc);
   const seen = new Set(found.map((f) => f.line && norm(f.line)).filter(Boolean));
   const model: Finding[] = [];
-  for (const f of d.findings.slice(0, 6)) {
+  for (const f of d.findings.slice(0, 4)) {
     const q = norm(f.line);
     const line = q.length >= 8 && text.includes(q) ? f.line.trim() : undefined;
     if (line && seen.has(q)) continue;
     if (!f.what.trim() || !f.fix.trim()) continue;
-    model.push({ dim: f.dim, ...(line ? { line } : {}), what: f.what.trim(), why: f.why.trim(), fix: f.fix.trim(), from: "model" });
+    model.push({ dim: f.dim, ...(line ? { line } : {}), what: f.what.trim(), why: f.why.trim(), fix: f.fix.trim(), ...(f.ask?.trim() ? { ask: f.ask.trim() } : {}), from: "model" });
   }
   const scores = Object.fromEntries(DIMENSIONS.map((k) => [k, clamp(d.scores[k])])) as Record<Dimension, number>;
   const overall = Math.round((DIMENSIONS.reduce((a, k) => a + scores[k], 0) / DIMENSIONS.length) * 10);

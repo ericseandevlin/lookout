@@ -1,5 +1,5 @@
 import "server-only";
-import { and, asc, desc, eq, inArray, max } from "drizzle-orm";
+import { and, asc, desc, eq, inArray, max, ne } from "drizzle-orm";
 import { z } from "zod";
 import { db, schema } from "@/lib/db";
 import type { ApplicationReport, ApplicationStatus } from "@/lib/db/schema";
@@ -20,7 +20,7 @@ import { masterForDrafts, roleSwaps } from "./masterCheck";
 import { answerKey } from "./saved";
 import { canAutoSubmit } from "./submit";
 import { submitMode } from "./submitMode";
-import { approvedFor, keywordRows } from "./evidence";
+import { approvedFor, keywordRows, recommendedKeywords } from "./evidence";
 import { finishAnalysis, honestyFindings, RECRUITER_SYSTEM, RecruiterDraft, recruiterChecks, recruiterPrompt } from "./recruiter";
 import { addUsd, patchReport } from "./reportStore";
 import { autoApproveField, optionAnswerAllowed, settledStatus } from "./flowRules";
@@ -69,10 +69,13 @@ export async function keywordState(userId: string, a: { report: ApplicationRepor
   return { resume, rows: keywordRows(a.report, posting, resume, notes) };
 }
 
-async function keywordDetail(userId: string, report: ApplicationReport, posting: string) {
-  if (!report.keywordPlan && !report.keywords) return { keywordRows: null, keywordsApproved: false };
-  const { rows } = await keywordState(userId, { report }, posting);
-  return { keywordRows: rows, keywordsApproved: approvedFor(report, rows) };
+async function keywordDetail(userId: string, appId: string, report: ApplicationReport, posting: string) {
+  if (!report.keywordPlan && !report.keywords) return { keywordRows: null, keywordsApproved: false, keywordPicks: [] as string[] };
+  const { resume, notes } = await draftFacts(userId);
+  // The person's other applications say which keywords keep coming up; one saved line answers them all (#738).
+  const others = await db.select({ report: schema.applications.report }).from(schema.applications).where(and(eq(schema.applications.userId, userId), ne(schema.applications.id, appId)));
+  const rows = keywordRows(report, posting, resume, notes, others.map((o) => o.report));
+  return { keywordRows: rows, keywordsApproved: approvedFor(report, rows), keywordPicks: recommendedKeywords(rows) };
 }
 
 export async function getApplicationDetail(userId: string, id: string) {
@@ -109,7 +112,7 @@ export async function getApplicationDetail(userId: string, id: string) {
     ats: a.ats,
     route: a.route,
     report: { ...a.report, postingText: undefined },
-    ...(await keywordDetail(userId, a.report, postingText)),
+    ...(await keywordDetail(userId, a.id, a.report, postingText)),
     autoSubmit: a.route === "browser" && canAutoSubmit(),
     submit: submitMode({ ats: a.ats, url: o?.sourceUrl, autoSubmit: canAutoSubmit(), captcha: a.report.fill?.captcha }),
     submittedAt: a.submittedAt?.toISOString() ?? null,

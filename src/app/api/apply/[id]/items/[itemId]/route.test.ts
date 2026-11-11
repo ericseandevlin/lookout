@@ -223,7 +223,10 @@ describe("POST /api/apply/[id]/items/[itemId] actions (#553)", () => {
     expect(
       await (await send(a.id, letter.id, { action: "redraft" })).json(),
     ).toEqual({ status: "needs_review" });
-    expect(steps.redraftLetter).toHaveBeenCalledWith(a.id);
+    expect(steps.redraftLetter).toHaveBeenCalledWith(a.id, undefined);
+    await send(a.id, letter.id, { action: "redraft", strategy: "proof" });
+    expect(steps.redraftLetter).toHaveBeenLastCalledWith(a.id, "proof");
+    expect((await send(a.id, letter.id, { action: "redraft", strategy: "boast" })).status).toBe(400);
   });
 
   it("only redrafts the resume and cover letter", async () => {

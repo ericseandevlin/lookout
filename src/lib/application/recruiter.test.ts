@@ -144,4 +144,13 @@ describe("finishAnalysis", () => {
     const a = finishAnalysis("v1", doc, { scores: { scan: 5, impact: 5, relevance: 5, honesty: 5, length: 5 }, verdict: "", findings: [{ dim: "impact", line: flagged.line!, what: "Same thing.", why: "x", fix: "y" }] }, code);
     expect(a.findings.filter((f) => f.from === "model")).toEqual([]);
   });
+
+  it("carries the question for the person only when the model gave one (#738)", () => {
+    const a = finishAnalysis("v1", doc, { scores: { scan: 5, impact: 5, relevance: 5, honesty: 5, length: 5 }, verdict: "", findings: [{ dim: "impact", line: "", what: "No result.", why: "x", fix: "Add it.", ask: " How many users? " }, { dim: "scan", line: "", what: "Dense.", why: "x", fix: "Split it.", ask: " " }] }, []);
+    expect(a.findings.map((f) => f.ask)).toEqual(["How many users?", undefined]);
+  });
+
+  it("code findings that need a fact from the person carry a question", () => {
+    for (const f of code.filter((f) => /ask me/i.test(f.fix))) expect(f.ask).toBeTruthy();
+  });
 });

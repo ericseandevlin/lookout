@@ -10,6 +10,7 @@ import { kinds } from "@/lib/kinds";
 import { humanize, shapeResume } from "./resumeLayout";
 import { match, savedBlock } from "./saved";
 import { notesBlock } from "./skills";
+import { asStrategy, strategyLine, type LetterStrategy } from "./letter";
 import { checkStory } from "./stories";
 import { HttpError } from "@/lib/api";
 import { KEYWORD_PLAN_SYSTEM, KeywordPlanDraft, approvedBlock, approvedFor, finalTerms, keywordPlanPrompt, planFrom, unapprovedIn, type KeywordRow } from "./evidence";
@@ -276,7 +277,7 @@ async function draftResume(inp: DraftInputs, usage: Usage, rows: KeywordRow[]) {
  * user wants to start that one over. Every other item and approval stays as it is.
  */
 /** Write a fresh cover letter from the posting as a new version, with the current letter rules (#129). */
-export async function redraftLetter(appId: string) {
+export async function redraftLetter(appId: string, strategy?: LetterStrategy) {
   const [a] = await db.select().from(schema.applications).where(eq(schema.applications.id, appId));
   const [item] = await db.select().from(schema.applicationItems).where(and(eq(schema.applicationItems.applicationId, appId), eq(schema.applicationItems.kind, "cover_letter")));
   if (!a || !item) throw new Error("No cover letter on this application");
@@ -291,9 +292,10 @@ export async function redraftLetter(appId: string) {
   }
   const inp = await loadInputs(a.userId, opp, usage, postingHtml);
   const one: DraftItem = { index: 0, kind: "cover_letter", prompt: item.prompt, required: item.required, options: null };
-  const r = await completeJSON({ name: "apply-letter", schema: AnswersDraft, system: ANSWERS_SYSTEM, user: answersPrompt(inp, [one]), maxTokens: 4000, usage });
+  const r = await completeJSON({ name: "apply-letter", schema: AnswersDraft, system: ANSWERS_SYSTEM, user: answersPrompt(inp, [one], strategy), maxTokens: 4000, usage });
   const raw = r.items.find((x) => x.index === 0) ?? r.items[0];
   const d = checkStory(checkAnswer(one, raw), raw, inp.stories ?? [], opp.company);
+  const used = asStrategy(raw?.strategy) ?? strategy;
   const content = humanize(d.content);
   const hits = trapWordsIn(content, inp.traps ?? [], `${inp.resume}\n${inp.brief}`);
   const words = content.split(/\s+/).filter(Boolean).length;
@@ -303,7 +305,7 @@ export async function redraftLetter(appId: string) {
       itemId: item.id,
       version: (n ?? 0) + 1,
       content,
-      note: ["- Redrafted from the posting", `- ${words} words`, d.note && `- ${d.note}`, hits.length && `- Contains ${hits.map((h) => `"${h}"`).join(", ")} from an instruction planted in the posting`].filter(Boolean).join("\n"),
+      note: ["- Redrafted from the posting", used && strategyLine(used), `- ${words} words`, d.note && `- ${d.note}`, hits.length && `- Contains ${hits.map((h) => `"${h}"`).join(", ")} from an instruction planted in the posting`].filter(Boolean).join("\n"),
       author: "ai",
       sources: d.sources.length ? d.sources : ["master resume", "posting"],
     });
@@ -375,6 +377,9 @@ async function draftAll(id: string, userId: string, opp: typeof schema.opportuni
       const checked = checkAnswer(it, raw);
       // The personal line must come from a saved story, or Lookout asks for one (#155).
       const a = it.kind === "cover_letter" ? checkStory(checked, raw, inp.stories ?? [], opp.company) : checked;
+      // The review page reads the approach from the note, so the person can switch it (#738).
+      const approach = it.kind === "cover_letter" && a.content.trim() ? asStrategy(raw?.strategy) : null;
+      if (approach) a.note = [strategyLine(approach), a.note.trim() && `- ${a.note.trim()}`].filter(Boolean).join("\n");
       // Salary asks are math, not model judgment: the top quarter of their range, never below the floor (#139).
       const ask = !it.options?.length && isSalaryQuestion(it.prompt) ? suggestSalary({ ...inp.pay, min: opp.compMin, max: opp.compMax, basis: rangeBasis(inp.posting.text), asksBase: asksBase(it.prompt), asksMinimum: asksMinimum(it.prompt) }) : null;
       if (ask) out.set(it.id, { content: ask.amount ?? "", note: ask.note, sources: ["posting range", "your profile: comp floor and target"], question: ask.question ?? null });

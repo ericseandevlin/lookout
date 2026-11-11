@@ -92,12 +92,42 @@ export type KeywordRow = {
   removed: boolean;
   /** In the final list: not removed and backed by their experience. */
   used: boolean;
+  /** How much the posting leans on this term (#738): its count, the role title, a requirement line. */
+  weight: number;
+  /** How many of the person's other applications asked for the same term. */
+  seen: number;
 };
+
+const REQUIRED = /\b(require[sd]?|must|minimum|qualifications?|\d+\+? years|proven|expert(ise)?|strong)\b/i;
+
+/** Posting weight for a term: up to 3 for how often it appears, 3 for the role title, 2 for a requirement line. */
+export function keywordWeight(posting: string, term: string, snippet?: string) {
+  const esc = term.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const count = (posting.match(new RegExp(esc, "gi")) ?? []).length;
+  const role = posting.match(/^Role:\s*(.+)$/m)?.[1] ?? "";
+  return Math.min(count, 3) + (role && hasKeyword(role, term) ? 3 : 0) + (snippet && REQUIRED.test(snippet) ? 2 : 0);
+}
+
+/**
+ * The few keywords worth one line of the person's time (#738): not backed yet, weighed by the posting
+ * and by how many of their other applications asked for the same thing, since a saved line is reused
+ * on every later one. At most 3; none when nothing is worth the typing.
+ */
+export function recommendedKeywords(rows: KeywordRow[], max = 3) {
+  return rows
+    .filter((r) => !r.support && !r.removed && !r.mine)
+    .map((r) => ({ term: r.term, score: r.weight + Math.min(r.seen, 3) * 2 }))
+    .filter((r) => r.score >= 4)
+    .sort((a, b) => b.score - a.score)
+    .slice(0, max)
+    .map((r) => r.term);
+}
 
 /** Older drafts have no plan; their keyword report stands in for one. */
 export const planOf = (r: ApplicationReport): PlanEntry[] => r.keywordPlan ?? (r.keywords ?? []).map((k) => ({ term: k.term }));
 
-export function keywordRows(r: ApplicationReport, posting: string, resume: string, notes: SkillNote[]): KeywordRow[] {
+export function keywordRows(r: ApplicationReport, posting: string, resume: string, notes: SkillNote[], others: ApplicationReport[] = []): KeywordRow[] {
+  const elsewhere = others.map((o) => new Set(planOf(o).map((p) => p.term.toLowerCase())));
   const c = r.keywordChoices ?? { include: [], exclude: [] };
   const has = (xs: string[], t: string) => xs.some((x) => x.toLowerCase() === t.toLowerCase());
   const plan = planOf(r);
@@ -105,7 +135,9 @@ export function keywordRows(r: ApplicationReport, posting: string, resume: strin
   return [...plan.map((p) => ({ ...p, mine: false })), ...mine.map((p) => ({ ...p, cite: undefined, mine: true }))].map((p) => {
     const support = supportFor(p.term, p.cite, resume, notes);
     const removed = has(c.exclude, p.term);
-    return { term: p.term, snippet: postingSnippet(posting, p.term), support, mine: p.mine, removed, used: !removed && !!support };
+    const snippet = postingSnippet(posting, p.term);
+    const seen = elsewhere.filter((e) => e.has(p.term.toLowerCase())).length;
+    return { term: p.term, snippet, support, mine: p.mine, removed, used: !removed && !!support, weight: keywordWeight(posting, p.term, snippet), seen };
   });
 }
 
