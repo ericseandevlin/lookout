@@ -73,10 +73,10 @@
 .phone img { width: 100%; height: 100%; object-fit: cover; object-position: top; display: block; }
 
 /* Product video under the hero. */
-.product { position: relative; border-radius: 16px; overflow: hidden; background: #EFEEEC; box-shadow: 0 1px 0 rgba(29,26,15,.06), 0 30px 80px rgba(29,26,15,.16); line-height: 0; aspect-ratio: 16 / 9; }
+.product { position: relative; border-radius: 16px; overflow: hidden; background: #1D1A0F; box-shadow: 0 1px 0 rgba(29,26,15,.06), 0 30px 80px rgba(29,26,15,.16); line-height: 0; aspect-ratio: 16 / 9; }
 .product video { width: 100%; height: 100%; display: block; object-fit: cover; }
-.sound { position: absolute; right: 14px; bottom: 14px; font: inherit; font-size: 13px; font-weight: 600; color: #fff; background: rgba(29,26,15,.72); border: 0; border-radius: 999px; padding: 8px 14px; cursor: pointer; line-height: 1.2; }
-.sound:hover { background: #1D1A0F; }
+.sound { position: absolute; right: 14px; bottom: 14px; font: inherit; font-size: 13px; font-weight: 600; color: #1D1A0F; background: rgba(239,238,236,.9); border: 0; border-radius: 999px; padding: 8px 14px; cursor: pointer; line-height: 1.2; }
+.sound:hover { background: #fff; }
 @media (prefers-reduced-motion: reduce) { .sound { display: none; } }
 
 /* Hover clips: the poster sits on top until the clip plays. */
