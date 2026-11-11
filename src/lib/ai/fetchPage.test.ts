@@ -77,7 +77,8 @@ describe("Workday postings (#724)", () => {
     )!;
     const t = pageToText(html);
     expect(t).toContain("TITLE: Director of Product <AI>");
-    expect(t).toContain("Company: Acme & Co");
+    // The legal employer is not the name people know.
+    expect(t).not.toContain("Acme & Co");
     expect(t).toContain("Location: Remote");
     expect(t).toContain("Own the roadmap.");
     expect(t).not.toContain("no longer accepting");

@@ -24,7 +24,7 @@ function readDismissed() {
  * ready for a first search, a live search with steps and percent, or how the
  * last one ended. Only searches and link adds show here; resume scans show on Materials.
  */
-export function SearchPanel({ ready }: { ready: boolean }) {
+export function SearchPanel({ ready, reportOpen = false }: { ready: boolean; reportOpen?: boolean }) {
   const { state, searchNow } = useStore();
   const [dismissed, setDismissed] = useState<string>("");
   const stored = useSyncExternalStore(
@@ -62,7 +62,9 @@ export function SearchPanel({ ready }: { ready: boolean }) {
   if (active) return <Live run={run} />;
 
   const recent = run && run.finishedAt && mountedAt - new Date(run.finishedAt).getTime() < 30 * 60_000;
-  if (run && recent && run.id !== dismissed && run.id !== stored) return <Finished run={run} onDismiss={() => dismiss(run.id)} onRetry={start} retrying={starting} retryError={err} />;
+  // The open report shows the same search, so the finished panel steps aside for it.
+  const sameAsReport = reportOpen && run?.status !== "failed" && run?.trigger !== "url";
+  if (run && recent && !sameAsReport && run.id !== dismissed && run.id !== stored) return <Finished run={run} onDismiss={() => dismiss(run.id)} onRetry={start} retrying={starting} retryError={err} />;
 
   if (ready && !state.lastRunAt) {
     return (
