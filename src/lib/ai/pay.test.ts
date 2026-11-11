@@ -119,6 +119,16 @@ describe("findPay", () => {
     ["$150,000 - $200,000 per yr, paid monthly", 150000, 200000],
   ])("reads the short unit in %s (#752)", (text, min, max) => {
     expect(findPay("", text)).toMatchObject({ min, max });
+    ["USD 150,000 - 200,000", 150000, 200000, "USD"],
+    ["Salary range: CAD 120,000 to 140,000 per year", 120000, 140000, "CAD"],
+    ["Pay is between USD 150k and 180k", 150000, 180000, "USD"],
+    ["USD 60 - 70 per hour", 124800, 145600, "USD"],
+  ])("reads %s, led by a code with no $ (#753)", (text, min, max, currency) => {
+    expect(findPay("", text)).toMatchObject({ min, max, currency });
+  });
+
+  it("still skips a bare number range with no $ or code (#753)", () => {
+    expect(findPay("", "Team of 120,000 - 150,000 users")).toBeNull();
   });
 
   it("keeps an hourly range hourly when a yearly word follows it (#646)", () => {
