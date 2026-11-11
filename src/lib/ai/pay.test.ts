@@ -103,6 +103,14 @@ describe("findPay", () => {
     expect(findPay("", "$2,000 - $2,500 per week")).toMatchObject({ min: 104000, max: 130000 });
   });
 
+  it.each([
+    ["$150,000 - $200,000 ($72-$96/hr)", 150000, 200000],
+    ["$150,000 - $200,000 (about $72 - $96 an hour)", 150000, 200000],
+    ["$120,000 - $140,000, or $5,000 - $6,000 a month for contractors", 120000, 140000],
+  ])("reads %s by its own unit, not a later range's (#746)", (text, min, max) => {
+    expect(findPay("", text)).toMatchObject({ min, max });
+  });
+
   it("keeps an hourly range hourly when a yearly word follows it (#646)", () => {
     expect(findPay("", "$25.00 - $35.00 per hour, plus an annual bonus")).toMatchObject({ min: 52000, max: 72800 });
     expect(findPay("", "$40 - $55/hr. Eligible for yearly raises")).toMatchObject({ min: 83200, max: 114400 });

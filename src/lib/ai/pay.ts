@@ -104,7 +104,9 @@ function payUnit(tail: string) {
 function fromText(text: string): Pay | null {
   // In page order, so the first range on the page still wins.
   for (const m of RANGES.flatMap((re) => [...text.matchAll(re)]).sort((x, y) => x.index - y.index)) {
-    const [, pre1, first, firstUnit, code, pre2, second, tail = ""] = m;
+    const [, pre1, first, firstUnit, code, pre2, second, rest = ""] = m;
+    // The unit is read only up to the next dollar amount: "$150,000 - $200,000 ($72-$96/hr)" stays yearly (#746).
+    const tail = rest.split("$")[0];
     let a = money(first);
     const b = money(second);
     if (!a || !b) continue;
