@@ -171,6 +171,22 @@ describe("isSalaryQuestion", () => {
       expect(isSalaryQuestion(q)).toBe(true);
     expect(isSalaryQuestion("What is your current hourly wage?")).toBe(false);
   });
+
+  it("leaves out questions that only mention pay (#712)", () => {
+    for (const q of [
+      "Describe a time you negotiated compensation for your team.",
+      "Do you have experience designing compensation tools?",
+      "Have you ever filed a workers' compensation claim?",
+      "Are you willing to relocate? This role's salary is set for NYC.",
+      "How did you hear about this role? (Salary transparency note: range $X-$Y)",
+    ])
+      expect(isSalaryQuestion(q)).toBe(false);
+  });
+
+  it("still sees short labels and asks for their own number (#712)", () => {
+    for (const q of ["Salary", "Salary (USD)", "Compensation", "Please share your compensation range.", "What salary are you looking for?", "Annual salary you are seeking"])
+      expect(isSalaryQuestion(q)).toBe(true);
+  });
 });
 
 describe("salary note wording", () => {
