@@ -3,6 +3,7 @@
 import type { ApplicationReport, ApplicationStatus } from "@/lib/db/schema";
 import type { Template } from "@/lib/application/resumeLayout";
 import type { KeywordRow } from "@/lib/application/evidence";
+import type { LetterStrategy } from "@/lib/application/letterStrategy";
 import type { SubmitMode } from "@/lib/application/submitMode";
 import { toggleOption } from "@/lib/application/flowRules";
 import { color } from "@/lib/tokens";
@@ -48,6 +49,10 @@ export type Detail = {
   /** Keywords with the posting line and the person's own line behind each (#121). */
   keywordRows: KeywordRow[] | null;
   keywordsApproved: boolean;
+  /** Up to three unbacked keywords worth adding experience for (#738). */
+  keywordPicks: string[];
+  /** The cover letter's strategy (null on older letters) and Lookout's pick for this role (#738). */
+  letter: { strategy: LetterStrategy | null; suggested: LetterStrategy; why: string } | null;
 };
 
 export const card: React.CSSProperties = { padding: 18, borderRadius: 14, background: "#fff", border: `1.5px solid ${color.border}` };

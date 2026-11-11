@@ -109,6 +109,28 @@ export function keywordRows(r: ApplicationReport, posting: string, resume: strin
   });
 }
 
+const escape = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+const MUST = /\b(required|must|you have|you bring|requirements?|qualifications?|minimum)\b/i;
+
+/**
+ * The two or three keywords most worth backing with experience (#738): not yet backed, asked for
+ * more than once, in the job title, or in a must-have line. None when nothing stands out.
+ */
+export function keywordPicks(rows: KeywordRow[], posting: string, title: string, max = 3): string[] {
+  return rows
+    .filter((r) => !r.removed && !r.support)
+    .map((r) => {
+      const re = new RegExp(`(^|[^a-z0-9])${escape(r.term.toLowerCase())}(?=$|[^a-z0-9])`, "g");
+      const count = (posting.toLowerCase().match(re) ?? []).length;
+      const score = count + (title.toLowerCase().match(re) ? 2 : 0) + (r.snippet && MUST.test(r.snippet) ? 1 : 0);
+      return { term: r.term, score };
+    })
+    .filter((x) => x.score >= 2)
+    .sort((a, b) => b.score - a.score)
+    .slice(0, max)
+    .map((x) => x.term);
+}
+
 /** What the person says go to: the terms, in order. Any change to the list clears it. */
 export const finalTerms = (rows: KeywordRow[]) => rows.filter((r) => r.used).map((r) => r.term);
 

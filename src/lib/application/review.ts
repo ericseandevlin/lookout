@@ -20,7 +20,8 @@ import { masterForDrafts, roleSwaps } from "./masterCheck";
 import { answerKey } from "./saved";
 import { canAutoSubmit } from "./submit";
 import { submitMode } from "./submitMode";
-import { approvedFor, keywordRows } from "./evidence";
+import { approvedFor, keywordPicks, keywordRows } from "./evidence";
+import { suggestStrategy } from "./letterStrategy";
 import { finishAnalysis, honestyFindings, RECRUITER_SYSTEM, RecruiterDraft, recruiterChecks, recruiterPrompt } from "./recruiter";
 import { addUsd, patchReport } from "./reportStore";
 import { autoApproveField, optionAnswerAllowed, settledStatus } from "./flowRules";
@@ -69,10 +70,17 @@ export async function keywordState(userId: string, a: { report: ApplicationRepor
   return { resume, rows: keywordRows(a.report, posting, resume, notes) };
 }
 
-async function keywordDetail(userId: string, report: ApplicationReport, posting: string) {
-  if (!report.keywordPlan && !report.keywords) return { keywordRows: null, keywordsApproved: false };
+async function keywordDetail(userId: string, report: ApplicationReport, posting: string, title: string) {
+  if (!report.keywordPlan && !report.keywords) return { keywordRows: null, keywordsApproved: false, keywordPicks: [] };
   const { rows } = await keywordState(userId, { report }, posting);
-  return { keywordRows: rows, keywordsApproved: approvedFor(report, rows) };
+  return { keywordRows: rows, keywordsApproved: approvedFor(report, rows), keywordPicks: keywordPicks(rows, posting, title) };
+}
+
+/** The cover letter's strategy and Lookout's pick for this role (#738). */
+async function letterDetail(userId: string, report: ApplicationReport, posting: { title: string; text: string }) {
+  const [p] = await db.select({ stories: schema.profiles.personalStories }).from(schema.profiles).where(eq(schema.profiles.userId, userId));
+  const s = suggestStrategy(posting, p?.stories ?? []);
+  return { strategy: report.letterStrategy ?? null, suggested: s.strategy, why: s.why };
 }
 
 export async function getApplicationDetail(userId: string, id: string) {
@@ -109,7 +117,8 @@ export async function getApplicationDetail(userId: string, id: string) {
     ats: a.ats,
     route: a.route,
     report: { ...a.report, postingText: undefined },
-    ...(await keywordDetail(userId, a.report, postingText)),
+    ...(await keywordDetail(userId, a.report, postingText, o?.title ?? "")),
+    letter: items.some((i) => i.kind === "cover_letter") ? await letterDetail(userId, a.report, { title: o?.title ?? "", text: postingText }) : null,
     autoSubmit: a.route === "browser" && canAutoSubmit(),
     submit: submitMode({ ats: a.ats, url: o?.sourceUrl, autoSubmit: canAutoSubmit(), captcha: a.report.fill?.captcha }),
     submittedAt: a.submittedAt?.toISOString() ?? null,

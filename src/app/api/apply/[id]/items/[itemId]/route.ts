@@ -2,6 +2,7 @@ import { z } from "zod";
 import { authed, body, HttpError, json } from "@/lib/api";
 import { canUseAutoApply } from "@/lib/apply";
 import { analyzeItem, approveItem, assertEditable, editItem, ownApplication, reviseItem } from "@/lib/application/review";
+import { LETTER_STRATEGIES } from "@/lib/application/letterStrategy";
 import { redraftLetter, redraftResume } from "@/lib/application/run";
 import { db, schema } from "@/lib/db";
 import { and, eq } from "drizzle-orm";
@@ -12,7 +13,7 @@ const Action = z.discriminatedUnion("action", [
   z.object({ action: z.literal("edit"), content: z.string().max(40_000), note: z.string().max(500).default("") }),
   z.object({ action: z.literal("revise"), instruction: z.string().trim().min(2).max(2000) }),
   z.object({ action: z.literal("approve"), versionId: z.string().uuid().nullable() }),
-  z.object({ action: z.literal("redraft") }),
+  z.object({ action: z.literal("redraft"), strategy: z.enum(LETTER_STRATEGIES).optional() }),
   z.object({ action: z.literal("analyze"), versionId: z.string().uuid() }),
 ]);
 
@@ -28,7 +29,7 @@ export const POST = authed<Ctx>(async (req, { user, params }) => {
     const app = await ownApplication(user.id, id);
     assertEditable(app.status);
     const [it] = await db.select({ kind: schema.applicationItems.kind }).from(schema.applicationItems).where(and(eq(schema.applicationItems.id, itemId), eq(schema.applicationItems.applicationId, app.id)));
-    if (it?.kind === "cover_letter") await redraftLetter(app.id);
+    if (it?.kind === "cover_letter") await redraftLetter(app.id, a.strategy);
     else if (it?.kind === "resume") await redraftResume(app.id);
     else throw new HttpError(400, "Only the resume and cover letter can be redrafted.");
     return json({ status: (await ownApplication(user.id, id)).status });

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { ApplicationReport } from "@/lib/db/schema";
-import { approvedBlock, approvedFor, finalTerms, keywordRows, planFrom, postingSnippet, supportFor, unapprovedIn } from "./evidence";
+import { approvedBlock, approvedFor, finalTerms, keywordPicks, keywordRows, planFrom, postingSnippet, supportFor, unapprovedIn, type KeywordRow } from "./evidence";
 import { upsertNote } from "./skills";
 
 const posting = `Role: Design Engineer
@@ -81,5 +81,23 @@ describe("keyword evidence (#121)", () => {
   it("flags unapproved terms a draft carries that the resume doesn't", () => {
     const rows = keywordRows(report(), posting, resume, []);
     expect(unapprovedIn("Led Kubernetes rollouts and design systems", resume, rows)).toEqual(["Kubernetes"]);
+  });
+});
+
+describe("keywordPicks (#738)", () => {
+  const row = (term: string, o: Partial<KeywordRow> = {}): KeywordRow => ({ term, support: null, mine: false, removed: false, used: false, ...o });
+  const posting = "Design Systems Engineer. You will own our design systems. Required: React and TypeScript. Design systems experience is a must. Nice to have: Figma.";
+
+  it("picks unbacked keywords the posting leans on, most first, at most three", () => {
+    const rows = [row("Figma"), row("design systems"), row("React", { snippet: "Required: React and TypeScript." }), row("TypeScript", { support: { line: "Built it in TypeScript", from: "resume" }, used: true })];
+    expect(keywordPicks(rows, posting, "Design Systems Engineer")).toEqual(["design systems", "React"]);
+  });
+
+  it("recommends none when nothing stands out", () => {
+    expect(keywordPicks([row("Figma")], posting, "Engineer")).toEqual([]);
+  });
+
+  it("skips removed keywords", () => {
+    expect(keywordPicks([row("design systems", { removed: true })], posting, "Design Systems Engineer")).toEqual([]);
   });
 });

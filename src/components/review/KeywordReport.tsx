@@ -10,6 +10,7 @@ import { color } from "@/lib/tokens";
 
 export function KeywordReport({ d, rows, reload, locked }: { d: Detail; rows: KeywordRow[]; reload: () => Promise<unknown>; locked: boolean }) {
   const [open, setOpen] = useState<string | null>(null);
+  const [editing, setEditing] = useState(false);
   const [story, setStory] = useState("");
   const [term, setTerm] = useState("");
   const [busy, setBusy] = useState<string | null>(null);
@@ -38,82 +39,114 @@ export function KeywordReport({ d, rows, reload, locked }: { d: Detail; rows: Ke
   };
   const line: React.CSSProperties = { fontSize: 14, lineHeight: 1.45 };
 
+  const picks = d.keywordPicks ?? [];
+  const sel = rows.find((r) => r.term === open) ?? null;
+  const pick = (r: KeywordRow) => {
+    setOpen(sel?.term === r.term ? null : r.term);
+    setEditing(!locked && !r.removed && !r.support);
+    setStory(r.support?.from === "notes" ? r.support.line : "");
+  };
+  const pill = (r: KeywordRow): React.CSSProperties => {
+    const tone = r.removed ? { border: color.border, bg: color.surface, fg: color.t2 } : r.support ? { border: "#9CC68E", bg: "#F3F7F1", fg: color.greenText } : { border: "#E8B4AA", bg: "#FBEFEC", fg: color.brick };
+    const on = sel?.term === r.term;
+    return { height: 32, padding: "0 12px", borderRadius: 999, fontSize: 14, fontWeight: 600, cursor: "pointer", border: `1.5px solid ${on ? color.ink : tone.border}`, background: tone.bg, color: tone.fg, textDecoration: r.removed ? "line-through" : "none", boxShadow: on ? `0 0 0 1px ${color.ink}` : "none" };
+  };
+
   return (
     <div style={{ ...card, display: "flex", flexDirection: "column", gap: 12 }}>
       <div style={{ fontSize: 15, fontWeight: 700 }}>Keywords for this resume</div>
-      <div style={muted}>
+      <div style={{ ...muted, lineHeight: 1.5 }}>
         {d.keywordsApproved
           ? `You approved these ${used.length} keywords and the resume below uses them. Change the list and you'll be asked again.`
-          : "Each keyword shows where the posting asks for it and the line of your own experience that backs it. Lookout uses none of them until you press \u201cUse these keywords\u201d."}
+          : "Green keywords are backed by your resume or notes and go in. Red ones aren't backed yet, so they stay out unless you add the experience. Click a keyword to see where the posting asks for it and what backs it. Nothing goes in until you press \u201cUse these keywords\u201d."}
         {d.keywordsApproved && k.length > 0 && ` Keyword match ${k.filter((x) => x.before).length}/${k.length} → ${k.filter((x) => x.after).length}/${k.length}.`}
       </div>
-      <ul style={{ listStyle: "none", margin: 0, padding: 0, display: "flex", flexDirection: "column", gap: 8 }}>
-        {rows.map((r) => {
-          const editing = open === r.term;
-          return (
-            <li key={r.term} style={{ padding: 12, borderRadius: 12, border: `1.5px solid ${r.removed ? color.border : r.support ? "#CFE3C6" : "#E8B4AA"}`, background: r.removed ? color.surface : "#fff", display: "flex", flexDirection: "column", gap: 4 }}>
-              <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
-                <span style={{ fontWeight: 700, fontSize: 15, textDecoration: r.removed ? "line-through" : "none", color: r.removed ? color.t2 : "inherit" }}>{r.term}</span>
-                {r.removed ? (
-                  <span style={{ ...muted, fontSize: 13 }}>removed</span>
-                ) : !r.support ? (
-                  <span style={{ fontSize: 13, fontWeight: 600, color: color.brick }}>unsupported</span>
-                ) : null}
-                {r.mine && <span style={{ ...muted, fontSize: 13 }}>added by you</span>}
-                {!locked && (
-                  <button onClick={() => send(r.term, { action: r.removed ? "restore" : "remove", term: r.term })} disabled={!!busy} style={{ ...btn("text"), marginLeft: "auto" }}>
-                    {r.removed ? "Put back" : "Remove"}
+      {!locked && rows.some((r) => !r.removed && !r.support) && (
+        <div style={{ fontSize: 14 }}>
+          {picks.length ? (
+            <>
+              <span style={{ fontWeight: 600 }}>Worth adding: </span>
+              {picks.map((t, i) => (
+                <span key={t}>
+                  {i > 0 && ", "}
+                  <button onClick={() => pick(rows.find((r) => r.term === t)!)} style={{ ...btn("text"), height: "auto", padding: 0, fontSize: 14 }}>
+                    {t}
+                  </button>
+                </span>
+              ))}
+              <span style={muted}> · the posting leans on {picks.length === 1 ? "this one" : "these"} and nothing backs {picks.length === 1 ? "it" : "them"} yet. Add only what you&apos;ve really done.</span>
+            </>
+          ) : (
+            <span style={muted}>None of the red keywords stand out for this role. Add one only if you&apos;ve done the work.</span>
+          )}
+        </div>
+      )}
+      <ul aria-label="Keywords" style={{ listStyle: "none", margin: 0, padding: 0, display: "flex", flexWrap: "wrap", gap: 6 }}>
+        {rows.map((r) => (
+          <li key={r.term}>
+            <button onClick={() => pick(r)} aria-expanded={sel?.term === r.term} aria-label={`${r.term}: ${r.removed ? "removed" : r.support ? "in your resume" : "not backed yet"}`} style={pill(r)}>
+              {r.term}
+              {picks.includes(r.term) && <span aria-hidden> ★</span>}
+            </button>
+          </li>
+        ))}
+      </ul>
+      {sel && (
+        <div style={{ padding: 12, borderRadius: 12, border: `1.5px solid ${sel.removed ? color.border : sel.support ? "#CFE3C6" : "#E8B4AA"}`, background: "#fff", display: "flex", flexDirection: "column", gap: 6 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+            <span style={{ fontWeight: 700, fontSize: 15 }}>{sel.term}</span>
+            <span style={{ fontSize: 13, fontWeight: 600, color: sel.removed ? color.t2 : sel.support ? color.greenText : color.brick }}>{sel.removed ? "removed" : sel.support ? "in your resume" : "not backed yet"}</span>
+            {sel.mine && <span style={{ ...muted, fontSize: 13 }}>added by you</span>}
+            {!locked && (
+              <button onClick={() => send(sel.term, { action: sel.removed ? "restore" : "remove", term: sel.term })} disabled={!!busy} style={{ ...btn("text"), marginLeft: "auto" }}>
+                {sel.removed ? "Put back" : "Remove"}
+              </button>
+            )}
+            <button onClick={() => setOpen(null)} aria-label="Close keyword detail" style={{ ...btn("text"), textDecoration: "none", padding: "0 4px", marginLeft: locked ? "auto" : 0 }}>
+              ×
+            </button>
+          </div>
+          <div style={line}>
+            <span style={{ fontWeight: 600 }}>Posting: </span>
+            {sel.snippet ? `\u201c${sel.snippet}\u201d` : <span style={muted}>{sel.mine ? "You added this one." : "Not found in the posting text."}</span>}
+          </div>
+          <div style={line}>
+            <span style={{ fontWeight: 600 }}>Your experience: </span>
+            {sel.support ? (
+              <>
+                {`\u201c${sel.support.line}\u201d`} <span style={muted}>({sel.support.from === "notes" ? "your experience notes" : "your master resume"})</span>
+              </>
+            ) : (
+              <span style={{ color: color.brick }}>Nothing in your resume or experience notes shows this yet.</span>
+            )}
+          </div>
+          {!locked && !sel.removed && !editing && sel.support?.from === "notes" && (
+            <button onClick={() => setEditing(true)} disabled={!!busy} style={{ ...btn("text"), alignSelf: "flex-start" }}>
+              Edit this line
+            </button>
+          )}
+          {!locked && !sel.removed && sel.support?.from === "resume" && <div style={{ ...muted, fontSize: 13 }}>To change this line, edit your master resume on <Link href="/profile/materials">Materials</Link>.</div>}
+          {editing && !locked && !sel.removed && (
+            <div style={{ display: "flex", flexDirection: "column", gap: 6, marginTop: 4 }}>
+              <label htmlFor="kw-story" style={{ fontSize: 14, fontWeight: 600 }}>
+                Where have you done “{sel.term}”?
+              </label>
+              <div style={muted}>A role, a project, a result your resume leaves out. It goes into your experience notes for every later application.</div>
+              <textarea id="kw-story" value={story} onChange={(e) => setStory(e.target.value)} rows={3} maxLength={1500} placeholder="e.g. I use Claude and Claude Code daily; I built a multi-agent setup that writes and ships code for my side project." style={{ borderRadius: 10, border: `1.5px solid ${color.border}`, padding: 10, fontSize: 15, fontFamily: "inherit", resize: "vertical" }} />
+              <div style={{ display: "flex", gap: 8 }}>
+                <button onClick={() => send(sel.term, { action: "experience", term: sel.term, story: story.trim() })} disabled={!!busy || !story.trim()} style={btn("solid")}>
+                  Save
+                </button>
+                {sel.support && (
+                  <button onClick={() => setEditing(false)} disabled={!!busy} style={btn("text")}>
+                    Cancel
                   </button>
                 )}
               </div>
-              <div style={line}>
-                <span style={{ fontWeight: 600 }}>Posting: </span>
-                {r.snippet ? `\u201c${r.snippet}\u201d` : <span style={muted}>{r.mine ? "You added this one." : "Not found in the posting text."}</span>}
-              </div>
-              <div style={line}>
-                <span style={{ fontWeight: 600 }}>Your experience: </span>
-                {r.support ? (
-                  <>
-                    {`\u201c${r.support.line}\u201d`} <span style={muted}>({r.support.from === "notes" ? "your experience notes" : "your master resume"})</span>
-                  </>
-                ) : (
-                  <span style={{ color: color.brick }}>Nothing in your resume or experience notes shows this, so it stays out of the resume unless you add the experience.</span>
-                )}
-              </div>
-              {!locked && !r.removed && !editing && (!r.support || r.support.from === "notes") && (
-                <button
-                  onClick={() => {
-                    setOpen(r.term);
-                    setStory(r.support?.line ?? "");
-                  }}
-                  disabled={!!busy}
-                  style={{ ...btn("text"), alignSelf: "flex-start" }}
-                >
-                  {r.support ? "Edit this line" : "Add your experience"}
-                </button>
-              )}
-              {!locked && !r.removed && r.support?.from === "resume" && <div style={{ ...muted, fontSize: 13 }}>To change this line, edit your master resume on <Link href="/profile/materials">Materials</Link>.</div>}
-              {editing && !locked && (
-                <div style={{ display: "flex", flexDirection: "column", gap: 6, marginTop: 4 }}>
-                  <label htmlFor="kw-story" style={{ fontSize: 14, fontWeight: 600 }}>
-                    Where have you done “{r.term}”?
-                  </label>
-                  <div style={muted}>A role, a project, a result your resume leaves out. It goes into your experience notes and every later application can use it. You can edit it on your profile too.</div>
-                  <textarea id="kw-story" value={story} onChange={(e) => setStory(e.target.value)} rows={3} maxLength={1500} placeholder="e.g. I use Claude and Claude Code daily; I built a multi-agent setup that writes and ships code for my side project." style={{ borderRadius: 10, border: `1.5px solid ${color.border}`, padding: 10, fontSize: 15, fontFamily: "inherit", resize: "vertical" }} />
-                  <div style={{ display: "flex", gap: 8 }}>
-                    <button onClick={() => send(r.term, { action: "experience", term: r.term, story: story.trim() })} disabled={!!busy || !story.trim()} style={btn("solid")}>
-                      Save
-                    </button>
-                    <button onClick={() => setOpen(null)} disabled={!!busy} style={btn("text")}>
-                      Cancel
-                    </button>
-                  </div>
-                </div>
-              )}
-            </li>
-          );
-        })}
-      </ul>
+            </div>
+          )}
+        </div>
+      )}
       {!locked && (
         <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
           <label htmlFor="kw-add" style={{ fontSize: 14, fontWeight: 600 }}>
@@ -132,7 +165,7 @@ export function KeywordReport({ d, rows, reload, locked }: { d: Detail; rows: Ke
           <div style={{ fontSize: 14 }}>
             <span style={{ fontWeight: 600 }}>Final list ({used.length}): </span>
             {used.map((r) => r.term).join(", ") || "none yet"}
-            {rows.some((r) => !r.removed && !r.support) && <span style={muted}> · unsupported keywords stay out</span>}
+            {rows.some((r) => !r.removed && !r.support) && <span style={muted}> · red keywords stay out</span>}
           </div>
           {!d.keywordsApproved && (
             <button onClick={() => send("__approve", { action: "approve" })} disabled={!!busy || !used.length} style={{ ...btn("solid"), alignSelf: "flex-start" }}>

@@ -9,10 +9,14 @@ import { InfoTip } from "./InfoTip";
 import { RecruiterPanel } from "./RecruiterPanel";
 import { TemplatePicker } from "./TemplatePicker";
 import { VersionNotes } from "./VersionNotes";
-import { card, muted, OptionChecks, type Act, type Item } from "./shared";
+import { card, muted, OptionChecks, type Act, type Detail, type Item } from "./shared";
 import { color } from "@/lib/tokens";
+import { LETTER_STRATEGIES, STRATEGY } from "@/lib/application/letterStrategy";
+import { DownloadIcon, EyeIcon, PencilIcon, RedoIcon } from "../icons";
 
-export function ItemCard({ appId, item, locked, act, analysis, template, accent, header, onTemplate, onAccent }: { appId: string; item: Item; locked: boolean; act: Act; analysis?: RecruiterAnalysis; template: Template; accent: string | null; header: { name: string; contact: string; headline?: string } | null; onTemplate: (t: Template) => void; onAccent: (hex: string) => void }) {
+const iconBtn: React.CSSProperties = { ...btn("outline"), width: 38, padding: 0, display: "inline-flex", alignItems: "center", justifyContent: "center" };
+
+export function ItemCard({ appId, item, locked, act, analysis, template, accent, header, letter, onTemplate, onAccent }: { appId: string; item: Item; locked: boolean; act: Act; analysis?: RecruiterAnalysis; template: Template; accent: string | null; header: { name: string; contact: string; headline?: string } | null; letter?: Detail["letter"]; onTemplate: (t: Template) => void; onAccent: (hex: string) => void }) {
   const latest = item.versions[0];
   const [pick, setPick] = useState<string | null>(null);
   const shown = item.versions.find((v) => v.id === pick) ?? item.versions.find((v) => v.id === item.approvedVersionId) ?? latest;
@@ -74,6 +78,8 @@ export function ItemCard({ appId, item, locked, act, analysis, template, accent,
           )}
         </div>
       )}
+      {letter && !locked && !editing && <StrategyPicker letter={letter} busy={!!busy || dirty} onPick={(s) => run("revise", { action: "redraft", strategy: s }, `Lookout rewrote the letter: ${STRATEGY[s].label.toLowerCase()}.`)} />}
+
       {doc && !editing ? (
         <>
           {!locked && <TemplatePicker value={template} accent={accent} onPick={onTemplate} onAccent={onAccent} />}
@@ -99,7 +105,11 @@ export function ItemCard({ appId, item, locked, act, analysis, template, accent,
         />
       )}
 
-      {shown && <VersionNotes v={shown} />}
+      {shown && locked && (
+        <div style={{ display: "flex", alignItems: "center", gap: 4, flexWrap: "wrap" }}>
+          <VersionNotes v={shown} label />
+        </div>
+      )}
 
       {doc && shown && !editing && (
         <RecruiterPanel
@@ -122,18 +132,25 @@ export function ItemCard({ appId, item, locked, act, analysis, template, accent,
               </button>
             )}
             {doc && (
-              <button onClick={() => setEditing((e) => !e)} aria-pressed={editing} style={btn("outline")}>
-                {editing ? "Preview" : "Edit text"}
+              <button onClick={() => setEditing((e) => !e)} aria-pressed={editing} aria-label={editing ? "Preview" : "Edit text"} data-tip={editing ? "Preview" : "Edit text"} style={iconBtn}>
+                {editing ? <EyeIcon /> : <PencilIcon size={16} />}
               </button>
             )}
             {doc && !dirty && (
-              <button onClick={() => run("revise", { action: "redraft" }, item.kind === "resume" ? "Lookout wrote a fresh resume from the posting." : "Lookout wrote a fresh cover letter from the posting.")} disabled={!!busy} style={btn("text")}>
-                {busy === "revise" ? "Working…" : "Redraft from the posting"}
+              <button
+                onClick={() => run("revise", { action: "redraft" }, item.kind === "resume" ? "Lookout wrote a fresh resume from the posting." : "Lookout wrote a fresh cover letter from the posting.")}
+                disabled={!!busy}
+                aria-label="Redraft from the posting"
+                data-tip={busy === "revise" ? "Working…" : "Redraft from the posting"}
+                aria-busy={busy === "revise"}
+                style={{ ...iconBtn, opacity: busy ? 0.6 : 1 }}
+              >
+                <RedoIcon />
               </button>
             )}
             {doc && !dirty && (
-              <a href={`/api/apply/${appId}/items/${item.id}/docx`} style={{ ...btn("text"), display: "inline-flex", alignItems: "center" }}>
-                Download .docx
+              <a href={`/api/apply/${appId}/items/${item.id}/docx`} aria-label="Download .docx" data-tip="Download .docx" style={{ ...iconBtn, textDecoration: "none", boxSizing: "border-box" }}>
+                <DownloadIcon />
               </a>
             )}
             {item.versions.length > 1 && (
@@ -146,6 +163,8 @@ export function ItemCard({ appId, item, locked, act, analysis, template, accent,
                 ))}
               </select>
             )}
+            {shown && <VersionNotes v={shown} label={item.versions.length <= 1} />}
+            <span style={{ flex: 1 }} />
             {dirty ? (
               <button onClick={() => run("save", { action: "edit", content: text, note: "" }, "Saved as a new version.")} disabled={!!busy} style={btn("outline")}>
                 {busy === "save" ? "Saving…" : "Save as new version"}
@@ -185,6 +204,40 @@ export function ItemCard({ appId, item, locked, act, analysis, template, accent,
           )}
         </>
       )}
+    </div>
+  );
+}
+
+/** Three ways to write the letter (#738). Lookout marks its pick for the role; a different pick redrafts the letter. */
+function StrategyPicker({ letter, busy, onPick }: { letter: NonNullable<Detail["letter"]>; busy: boolean; onPick: (s: (typeof LETTER_STRATEGIES)[number]) => void }) {
+  const current = letter.strategy;
+  const shown = current ?? letter.suggested;
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+      <div role="group" aria-label="Cover letter strategy" style={{ display: "flex", gap: 6, flexWrap: "wrap", alignItems: "center" }}>
+        <span style={{ fontSize: 14, fontWeight: 600, marginRight: 4 }}>Strategy</span>
+        {LETTER_STRATEGIES.map((s) => {
+          const on = s === current;
+          return (
+            <button
+              key={s}
+              onClick={() => !on && onPick(s)}
+              disabled={busy}
+              aria-pressed={on}
+              data-tip={STRATEGY[s].blurb}
+              style={{ height: 32, padding: "0 12px", borderRadius: 999, fontSize: 14, fontWeight: 600, cursor: on ? "default" : "pointer", border: `1.5px solid ${on ? color.ink : color.border}`, background: on ? color.ink : "#fff", color: on ? "#fff" : color.ink }}
+            >
+              {STRATEGY[s].label}
+              {s === letter.suggested && <span style={{ fontWeight: 400, opacity: 0.8 }}> · suggested</span>}
+            </button>
+          );
+        })}
+      </div>
+      <div style={muted}>
+        {STRATEGY[shown].blurb}
+        {current !== letter.suggested && ` Lookout suggests ${STRATEGY[letter.suggested].label.toLowerCase()} here: ${letter.why.charAt(0).toLowerCase()}${letter.why.slice(1)}`}
+        {current === letter.suggested && ` ${letter.why}`}
+      </div>
     </div>
   );
 }

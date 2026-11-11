@@ -145,3 +145,17 @@ describe("finishAnalysis", () => {
     expect(a.findings.filter((f) => f.from === "model")).toEqual([]);
   });
 });
+
+describe("fix now or needs a fact (#738)", () => {
+  it("marks the number checks as needing a fact from the person", () => {
+    const md = "# Ana Ruiz\n## Experience\n### Lead Designer, Acme\n- Ran the design system\n- Shipped the new checkout";
+    const f = recruiterChecks("resume", md);
+    expect(f.filter((x) => x.dim === "impact").every((x) => x.needsFact)).toBe(true);
+    expect(f.find((x) => x.dim === "scan" && x.what.startsWith("No headline"))?.needsFact).toBeUndefined();
+  });
+
+  it("keeps the model's needsFact flag", () => {
+    const a = finishAnalysis("v1", "Some text here.", { scores: { scan: 5, impact: 5, relevance: 5, honesty: 5, length: 5 }, verdict: "", findings: [{ dim: "impact", line: "", what: "No team size.", why: "x", fix: "Ask me for the team size.", needsFact: true }] }, []);
+    expect(a.findings[0].needsFact).toBe(true);
+  });
+});
