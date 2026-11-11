@@ -53,8 +53,17 @@ describe("findPay", () => {
     expect(findPay("", text)).toMatchObject({ min, max });
   });
 
+  it.each([
+    ["$2,500 - $3,000 bi-weekly", 65000, 78000],
+    ["$2,500 - $3,000 biweekly", 65000, 78000],
+    ["$2,500 - $3,000 paid every two weeks", 65000, 78000],
+  ])("reads %s as 26 pay periods, not weekly (#708)", (text, min, max) => {
+    expect(findPay("", text)).toMatchObject({ min, max });
+  });
+
   it("keeps a stated year over a pay schedule, and doesn't read /hybrid as hourly", () => {
     expect(findPay("", "$120,000 - $140,000 per year, paid monthly")).toMatchObject({ min: 120000, max: 140000 });
+    expect(findPay("", "$120,000 - $140,000 a year, paid bi-weekly")).toMatchObject({ min: 120000, max: 140000 });
     expect(findPay("", "$120,000 - $140,000 annually")).toMatchObject({ min: 120000, max: 140000 });
     expect(findPay("", "$120,000 - $140,000 / hybrid in NYC")).toMatchObject({ min: 120000, max: 140000 });
   });
