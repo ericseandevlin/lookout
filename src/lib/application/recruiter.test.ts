@@ -90,6 +90,16 @@ describe("recruiterChecks: cover letter", () => {
     expect(f.some((x) => x.dim === "length")).toBe(true);
   });
 
+  it("checks a letter written with single line breaks, without its greeting and sign-off (#706)", () => {
+    const letter = `Dear Hiring Manager,\nI am writing to apply for the Product Designer role. ${"More detail here. ".repeat(110)}\nThanks,\nMaya Ortiz\nmaya@example.com`;
+    const f = recruiterChecks("cover_letter", letter);
+    expect(f.find((x) => x.dim === "scan")!.line).toBe("I am writing to apply for the Product Designer role.");
+    expect(f.find((x) => x.dim === "length")!.what).toBe("About 340 words.");
+    const sameLine = recruiterChecks("cover_letter", "Dear Team, I am excited to apply for this role.\nI grew Acme's design system to 40 teams.");
+    expect(sameLine.find((x) => x.dim === "scan")!.line).toBe("I am excited to apply for this role.");
+    expect(recruiterChecks("cover_letter", "Hi Sam,\nI grew Acme's design system to 40 teams in two years.\nThank you for your time.\nBest regards,\nMaya")).toEqual([]);
+  });
+
   it("passes a strong short letter", () => {
     expect(recruiterChecks("cover_letter", "Dear Team,\n\nI grew Acme's design system to 40 teams in two years.\n\nBest,\nMaya")).toEqual([]);
   });
