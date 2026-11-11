@@ -36,5 +36,5 @@ export function submitMode(p: { ats?: string | null; url?: string | null; autoSu
     return { mode: "press", why: "Lookout only sends on its own on Greenhouse, Lever and Ashby, where the terms allow it." };
   }
   if (!p.autoSubmit) return { mode: "press", why: `${name} allows automatic sending, but it's turned off for now.` };
-  return { mode: "auto", why: `${name} allows it. After you approve everything, Lookout fills the form and clicks Submit. If anything looks off, it stops and you press Submit.` };
+  return { mode: "auto", why: `${name} allows automatic applications. After you approve every item, Lookout sends the application for you. If Lookout can't complete the form (a CAPTCHA, a field it can't fill), it sends nothing and you finish it yourself.` };
 }

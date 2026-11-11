@@ -6,6 +6,7 @@ import { db, schema } from "@/lib/db";
 import type { MasterResume } from "@/lib/db/schema";
 import { completeJSON, type Usage } from "@/lib/ai/llm";
 import { humanize } from "./resumeLayout";
+import { linkedinUrl, withLinkedin } from "./draft";
 import { confirmedMaster, finishMaster, masterForDrafts } from "./masterCheck";
 
 export { looseDates } from "./masterDates";
@@ -61,7 +62,7 @@ export async function buildMaster(userId: string, usage: Usage): Promise<MasterR
   const liText = li?.extracted?.text?.trim();
   const user = `<resume_text>\n${text.slice(0, 24000)}\n</resume_text>${liText ? `\n\n<linkedin_profile use="only to decide which titles, companies and dates belong together; never copy other content from it">\n${liText.slice(0, 12000)}\n</linkedin_profile>` : ""}`;
   const r = await completeJSON({ name: "master-resume", schema: Out, system: MASTER_SYSTEM, user, maxTokens: 8000, usage });
-  const checked = finishMaster(r.resume, text);
+  const checked = finishMaster(withLinkedin(r.resume, li?.url ? linkedinUrl(li.url) : null), text);
   const master: MasterResume = { md: checked.md, fromHash: sourceHash(text), edited: false, at: new Date().toISOString(), uncertain: [...checked.uncertain, ...r.uncertain.map((u) => humanize(u.trim())).filter(Boolean)], confirmed: confirmedMaster(prev) };
   await store(userId, master);
   return master;

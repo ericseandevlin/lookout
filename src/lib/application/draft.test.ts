@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { answersPrompt, linkedinUrl, checkAnswer, fillField, hasKeyword, keywordReport, newNumbers, resumeNote, type DraftInputs } from "./draft";
+import { answersPrompt, linkedinUrl, withLinkedin, checkAnswer, fillField, hasKeyword, keywordReport, newNumbers, resumeNote, type DraftInputs } from "./draft";
 
 const inp: DraftInputs = {
   name: "Maya Ortiz Reyes",
@@ -31,6 +31,22 @@ describe("fillField", () => {
   it("leaves everything else to the model", () => {
     expect(fillField("Phone", inp)).toBeNull();
     expect(fillField("LinkedIn Profile", { ...inp, linkedinUrl: null })).toBeNull();
+  });
+});
+
+describe("withLinkedin (#736)", () => {
+  const md = "# Maya Lin\nNew York • maya@example.com • maya.co • linkedin.com/in/mayal\n\n## Experience\n- Wrote about linkedin.com/in/someone-else";
+  it("puts the profile's link in the contact block and leaves the rest alone", () => {
+    const out = withLinkedin(md, "https://www.linkedin.com/in/mayalin/");
+    expect(out).toContain("maya.co • linkedin.com/in/mayalin\n");
+    expect(out).toContain("linkedin.com/in/someone-else");
+  });
+  it("replaces a full URL too, and does not double a correct one", () => {
+    expect(withLinkedin("# M\nhttps://www.linkedin.com/in/mayal/ • x\n\n## E", "linkedin.com/in/mayalin")).toBe("# M\nlinkedin.com/in/mayalin • x\n\n## E");
+    expect(withLinkedin("# M\nlinkedin.com/in/mayalin\n\n## E", "https://www.linkedin.com/in/mayalin")).toBe("# M\nlinkedin.com/in/mayalin\n\n## E");
+  });
+  it("changes nothing without a profile link", () => {
+    expect(withLinkedin(md, null)).toBe(md);
   });
 });
 

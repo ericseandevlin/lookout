@@ -55,7 +55,7 @@ export function ApplicationReview({ id }: { id: string }) {
       const ok = await ask({
         eyebrow: "Submit for me",
         title: `Send your application to ${d?.company}?`,
-        body: "Lookout fills the form with the exact versions you approved and clicks Submit. If anything looks off (a captcha, a field it can't fill), it stops and you finish with the checklist.",
+        body: "Lookout fills the form with the versions you approved, then sends it. If Lookout can't complete the form (a CAPTCHA, a field it can't fill), it sends nothing and you finish with the checklist.",
         confirmLabel: "Send it",
       });
       if (!ok) return;
