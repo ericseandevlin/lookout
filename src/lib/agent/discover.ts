@@ -207,6 +207,8 @@ async function fetchAll(urls: string[], report?: Report): Promise<Page[]> {
         const { url, html } = await fetchPage(u);
         const text = pageToText(html, 7000);
         if (text.length > 300) out.push({ url, text, pay: findPay(html) });
+        // Usually a page that needs JavaScript. Logged so a host the reader can't read shows up (#724).
+        else console.warn(`[fetch] ${host(u)}: too little text (${text.length} chars), skipped`);
       } catch (e) {
         // Dead, blocked or non-HTML pages are skipped, but logged so a broken reader shows up.
         console.warn(`[fetch] ${host(u)}: ${e instanceof Error ? (e.cause instanceof Error ? e.cause.message : e.message) : e}`);

@@ -82,7 +82,65 @@ const MAX_BYTES = 2_000_000;
 
 export class FetchError extends Error {}
 
+/**
+ * Workday posting pages are JavaScript shells with no posting text (#724). The same posting is public JSON at
+ * /wday/cxs/{tenant}/{site}/job/{rest}. Returns that address, or null when the link isn't a Workday posting.
+ */
+export function workdayApi(rawUrl: string): string | null {
+  let u: URL;
+  try {
+    u = new URL(rawUrl);
+  } catch {
+    return null;
+  }
+  const tenant = u.hostname.match(/^([a-z0-9-]+)\.wd\d+\.myworkdayjobs\.com$/i)?.[1];
+  if (!tenant || u.protocol !== "https:") return null;
+  const parts = u.pathname.split("/").filter(Boolean);
+  if (/^[a-z]{2}-[a-z]{2}$/i.test(parts[0] ?? "")) parts.shift(); // optional locale, e.g. en-US
+  const [site, job, ...rest] = parts;
+  if (!site || job !== "job" || !rest.length) return null;
+  return `https://${u.hostname}/wday/cxs/${tenant}/${site}/job/${rest.join("/")}`;
+}
+
+const esc = (s: unknown) => String(s ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;");
+
+/** The Workday posting JSON as a small HTML page, so every reader of fetchPage gets the posting text. Null if it isn't one. */
+export function workdayToHtml(json: string): string | null {
+  try {
+    const d = JSON.parse(json) as { jobPostingInfo?: Record<string, unknown>; hiringOrganization?: { name?: string } };
+    const j = d.jobPostingInfo;
+    if (!j || typeof j.title !== "string" || typeof j.jobDescription !== "string") return null;
+    const facts = [
+      ["Company", d.hiringOrganization?.name],
+      ["Location", [j.location, ...(Array.isArray(j.additionalLocations) ? j.additionalLocations : [])].filter(Boolean).join("; ")],
+      ["Time type", j.timeType],
+      ["Posted", j.postedOn],
+      ["Start date", j.startDate],
+      ["Job ID", j.jobReqId],
+      // Workday keeps a filled posting's data; canApply false is the sign it closed.
+      j.canApply === false || j.posted === false ? ["Status", "This job is no longer accepting applications."] : null,
+    ].filter((f): f is [string, string] => !!f && !!f[1]);
+    return `<title>${esc(j.title)}</title>\n${facts.map(([k, v]) => `<p>${k}: ${esc(v)}</p>`).join("\n")}\n${j.jobDescription}`;
+  } catch {
+    return null;
+  }
+}
+
 export async function fetchPage(rawUrl: string): Promise<{ url: string; html: string }> {
+  const api = workdayApi(rawUrl);
+  if (api) {
+    try {
+      const html = workdayToHtml((await fetchRaw(api)).html);
+      if (html) return { url: rawUrl, html };
+    } catch (e) {
+      // A posting Workday has removed answers 404 here, while the page itself still answers 200 with an empty shell.
+      if (e instanceof FetchError && /answered (404|410)/.test(e.message)) throw e;
+    }
+  }
+  return fetchRaw(rawUrl);
+}
+
+async function fetchRaw(rawUrl: string): Promise<{ url: string; html: string }> {
   let url = new URL(rawUrl);
   for (let hop = 0; hop < 4; hop++) {
     if (!/^https?:$/.test(url.protocol)) throw new FetchError("Only http and https links are supported");

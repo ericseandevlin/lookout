@@ -157,3 +157,36 @@ describe("fetchPage", () => {
     expect(sent).toBeLessThan(10);
   });
 });
+
+describe("fetchPage on a Workday posting (#724)", () => {
+  const wd = "https://acme.wd1.myworkdayjobs.com/en-US/Careers/job/Remote/Director-of-Product_R1";
+  const api = "https://acme.wd1.myworkdayjobs.com/wday/cxs/acme/Careers/job/Remote/Director-of-Product_R1";
+  const json = JSON.stringify({ jobPostingInfo: { title: "Director of Product", jobDescription: "<p>Own the roadmap.</p>" } });
+  beforeEach(() => {
+    http.fetch.mockReset();
+  });
+
+  it("reads the posting JSON and keeps the posting's own link", async () => {
+    http.fetch.mockResolvedValueOnce(page(json, { type: "application/json" }));
+    const r = await fetchPage(wd);
+    expect(String(http.fetch.mock.calls[0][0])).toBe(api);
+    expect(r.url).toBe(wd);
+    expect(r.html).toContain("<title>Director of Product</title>");
+    expect(r.html).toContain("Own the roadmap.");
+  });
+
+  it("a removed posting is a 404, not an empty shell", async () => {
+    http.fetch.mockResolvedValueOnce(page("{}", { status: 404, type: "application/json" }));
+    await expect(fetchPage(wd)).rejects.toThrow("The page answered 404");
+    expect(http.fetch).toHaveBeenCalledTimes(1);
+  });
+
+  it.each([
+    ["an error from the JSON address", () => page("no", { status: 500 })],
+    ["JSON that isn't a posting", () => page("{}", { type: "application/json" })],
+  ])("falls back to the page on %s", async (_n, first) => {
+    http.fetch.mockResolvedValueOnce(first()).mockResolvedValueOnce(page("<p>shell</p>"));
+    expect(await fetchPage(wd)).toEqual({ url: wd, html: "<p>shell</p>" });
+    expect(String(http.fetch.mock.calls[1][0])).toBe(wd);
+  });
+});
