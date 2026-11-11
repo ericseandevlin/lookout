@@ -119,6 +119,9 @@ describe("findPay", () => {
     ["$150,000 - $200,000 per yr, paid monthly", 150000, 200000],
   ])("reads the short unit in %s (#752)", (text, min, max) => {
     expect(findPay("", text)).toMatchObject({ min, max });
+  });
+
+  it.each([
     ["USD 150,000 - 200,000", 150000, 200000, "USD"],
     ["Salary range: CAD 120,000 to 140,000 per year", 120000, 140000, "CAD"],
     ["Pay is between USD 150k and 180k", 150000, 180000, "USD"],
