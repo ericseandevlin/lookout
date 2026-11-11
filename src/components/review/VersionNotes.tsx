@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { parseNote } from "@/lib/application/notes";
 import { useFocusTrap } from "../useFocusTrap";
 import { muted, type Version } from "./shared";
@@ -68,7 +69,8 @@ function NotesDialog({ box, title, close, children }: { box: React.RefObject<HTM
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, [close]);
-  return (
+  // On the body, not in place: the page's entry animation leaves a transform on its sections, and a fixed box inside one is placed against that section, off screen.
+  return createPortal(
     <>
       <div onClick={close} style={{ position: "fixed", inset: 0, background: "rgba(29,26,15,.45)", zIndex: 40 }} />
       <div ref={box} role="dialog" aria-modal="true" aria-labelledby="notes-title" style={{ position: "fixed", top: "50%", left: "50%", transform: "translate(-50%,-50%)", width: 560, maxWidth: "calc(100vw - 32px)", maxHeight: "calc(100vh - 64px)", display: "flex", flexDirection: "column", background: "#fff", borderRadius: 16, overflow: "hidden", zIndex: 41, boxShadow: "0 24px 60px rgba(29,26,15,.3)" }}>
@@ -78,7 +80,8 @@ function NotesDialog({ box, title, close, children }: { box: React.RefObject<HTM
         </div>
         <div style={{ padding: "16px 20px 20px", overflowY: "auto", fontSize: 14, lineHeight: 1.5, color: color.t2, display: "flex", flexDirection: "column", gap: 10 }}>{children}</div>
       </div>
-    </>
+    </>,
+    document.body,
   );
 }
 
