@@ -85,6 +85,8 @@ const UNITS: [string, RegExp][] = [
   ["SEMIMONTH", /\bsemi-?monthly\b|\btwice (?:a|per|each) month\b/i],
   ["MONTH", /\/\s?mo(?:nth)?\b|\b(?:per|a|each) month\b|\bmonthly\b/i],
 ];
+// "Paid bi-weekly" or "benefits paid monthly" says how often a paycheck comes, not what the range is per (#716).
+const SCHEDULE = /\bpaid\s+(?:on\s+an?\s+)?(?:bi-?weekly|weekly|semi-?monthly|monthly|every (?:two|2) weeks|twice (?:a|per|each) month)\b/gi;
 function payUnit(tail: string) {
   let best: [string, number] = ["YEAR", Infinity];
   for (const [unit, re] of UNITS) {
@@ -103,10 +105,12 @@ function fromText(text: string): Pay | null {
     if (!a || !b) continue;
     // "$150-200K": the K on the second end covers a bare first end too (#682).
     if (a < 1000 && /k$/i.test(second) && !/k$/i.test(first)) a *= 1000;
-    const unit = payUnit(`${firstUnit ?? ""} ${tail}`);
+    const said = `${firstUnit ?? ""} ${tail}`;
     const named = PREFIX[(pre1 ?? pre2 ?? "").trim().toLowerCase()] ?? code?.toUpperCase();
     const currency = named ?? (/CAD/.test(tail) ? "CAD" : /AUD/.test(tail) ? "AUD" : /EUR|€/.test(tail) ? "EUR" : /GBP|£/.test(tail) ? "GBP" : "USD");
-    const p = annual(a, b, unit, currency, "text");
+    // A range that is already a year's pay stays yearly when only a pay schedule follows it; "$4,000 - $5,000 paid
+    // twice a month" still reads by the schedule (#716).
+    const p = annual(a, b, payUnit(said.replace(SCHEDULE, " ")), currency, "text") ?? annual(a, b, payUnit(said), currency, "text");
     if (p) return p;
   }
   return null;
