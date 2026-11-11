@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { checksBox, pickOptions, planFill } from "./fillPlan";
+import { checksBox, pickOne, pickOptions, planFill } from "./fillPlan";
 
 const item = (o: Partial<Parameters<typeof planFill>[0][number]>) => ({ id: "i", kind: "answer" as const, prompt: "Q", required: true, fieldType: "text", options: null, approvedVersionId: null, ...o });
 
@@ -72,5 +72,22 @@ describe("checksBox (#669)", () => {
   });
   it("leaves the box on no, empty or anything else", () => {
     for (const a of ["", "No", "false", "No, I do not agree", "I do not agree", "I don't consent", "Yesterday", "Agreement pending", "N/A", "Maybe", "I have read the terms", "I do not understand", "Disagreed", "Acceptance pending"]) expect(checksBox(a), a).toBe(false);
+  });
+});
+
+describe("pickOne (#695)", () => {
+  const long = "I acknowledge that I have read and understood the privacy notice for job applicants in the United States";
+  it("takes exact text, then a word-boundary prefix either way, then a long label by its first 80 characters", () => {
+    expect(pickOne("Yes", ["Select", "Yes", "No"])).toBe(1);
+    expect(pickOne("yes ", ["Select", "Yes", "No"])).toBe(1);
+    expect(pickOne("Yes, I am authorized to work in the US", ["Select", "Yes", "No"])).toBe(1);
+    expect(pickOne("No", ["Select", "None of the above", "No, I do not have a disability"])).toBe(2);
+    expect(pickOne("None", ["No", "None of the above"])).toBe(1);
+    expect(pickOne(`${long}.`, ["Select", `${long} (2026 edition)`])).toBe(1);
+  });
+  it("is -1 when no option fits", () => {
+    expect(pickOne("They/them", ["She/her", "He/him"])).toBe(-1);
+    expect(pickOne("Maybe", ["Yes", "No"])).toBe(-1);
+    expect(pickOne("Yes", [])).toBe(-1);
   });
 });

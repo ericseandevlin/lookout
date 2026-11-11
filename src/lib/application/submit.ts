@@ -5,7 +5,7 @@ import { and, asc, eq, inArray } from "drizzle-orm";
 import { db, schema } from "@/lib/db";
 import { env } from "@/lib/env";
 import { draftToDocx } from "./docx";
-import { checksBox, pickOptions, planFill, type FillStep } from "./fillPlan";
+import { checksBox, pickOne, pickOptions, planFill, type FillStep } from "./fillPlan";
 import { letterHeaderFrom, type Template } from "./resumeLayout";
 import { getAutoApplySettings } from "@/lib/apply";
 import { resolve } from "./eeo";
@@ -180,7 +180,11 @@ async function fillOne(page: Page, s: FillStep): Promise<{ ok: boolean; how: str
     }
     const tag = await field.evaluate((e) => `${e.tagName.toLowerCase()}:${e.getAttribute("type") ?? ""}:${e.getAttribute("role") ?? ""}`);
     if (tag.startsWith("select")) {
-      await field.selectOption({ label: s.content });
+      // The option the answer means, not only its exact text: "Yes, I am authorized" is the "Yes" option (#695).
+      const labels = (await field.locator("option").allTextContents()).map((t) => t.replace(/\s+/g, " ").trim());
+      const i = pickOne(s.content, labels);
+      if (i < 0) return { ok: false, how: "option not in the list" };
+      await field.selectOption({ label: labels[i] });
       return { ok: true, how: "selected" };
     }
     if (tag.includes(":checkbox:")) {

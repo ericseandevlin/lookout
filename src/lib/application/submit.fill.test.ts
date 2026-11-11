@@ -37,7 +37,10 @@ function fakePage(els: El[]) {
       last: () => loc(() => find().slice(-1)),
       or: (o) => loc(() => [...find(), ...o.all()]),
       filter: ({ hasText, has }) => loc(() => find().filter((e) => (!hasText || e.label.includes(hasText)) && (!has || has.all().includes(e)))),
-      locator: (sel) => loc(() => (sel === "input[type=file]" ? find().filter((e) => e.kind === "file") : [])),
+      locator: (sel) =>
+        loc(() =>
+          sel === "input[type=file]" ? find().filter((e) => e.kind === "file") : sel === "option" ? find().flatMap((e) => (e.options ?? []).map((o) => ({ kind: "option" as const, label: o }))) : [],
+        ),
       // Inside a checkbox group: one checkbox per option, found by its exact label.
       getByLabel: (l) => loc(() => find().flatMap((g) => (g.kind === "group" && g.options?.includes(l) ? [{ kind: "control" as const, label: l, type: "checkbox" }] : []))),
       all: find,
@@ -50,6 +53,7 @@ function fakePage(els: El[]) {
         return fn({ tagName: (e.tag ?? "input").toUpperCase(), getAttribute: (a) => (a === "type" ? (e.type ?? null) : a === "role" ? (e.role ?? null) : null) });
       },
       innerText: async () => one().label,
+      allTextContents: async () => find().map((e) => e.label),
       click: async () => {
         const e = one();
         did.push(`click ${e.label}`);
@@ -103,6 +107,7 @@ type Loc = {
   waitFor(o?: unknown): Promise<unknown>;
   evaluate(fn: (e: { tagName: string; getAttribute: (a: string) => string | null }) => string): Promise<string>;
   innerText(): Promise<string>;
+  allTextContents(): Promise<string[]>;
   click(): Promise<void>;
   fill(v: string): Promise<void>;
   press(k: string): Promise<void>;
@@ -229,8 +234,27 @@ describe("runFill (#385)", () => {
     const id = await seed("approved", [{ kind: "field", prompt: "Are you authorized to work in the US?", content: "Maybe", options: ["Maybe"] }]);
     page = fakePage(FORM);
     const r = await runFill(id, "test");
-    expect(r.log[0]).toMatchObject({ ok: false, how: "no option Maybe" });
+    expect(r.log[0]).toMatchObject({ ok: false, how: "option not in the list" });
     expect(r.stopped).toBe("Couldn't fill: Are you authorized to work in the US?");
+  });
+
+  it("a select takes the option the answer means, not only its exact text (#695)", async () => {
+    const q = "Do you now or will you require sponsorship?";
+    const id = await seed("approved", [
+      { kind: "field", prompt: "Are you authorized to work in the US?", content: "Yes, I am authorized to work in the US" },
+      { kind: "field", prompt: q, content: "No" },
+    ]);
+    page = fakePage([
+      { kind: "control", label: "Are you authorized to work in the US?", tag: "select", options: ["Select...", "Yes", "No"] },
+      { kind: "control", label: q, tag: "select", options: ["Select...", "None of the above", "No, I will not require sponsorship", "Yes"] },
+    ]);
+    const r = await runFill(id, "test");
+    expect(r.log.map((l) => [l.ok, l.how])).toEqual([
+      [true, "selected"],
+      [true, "selected"],
+    ]);
+    expect(page.did).toContain("select Are you authorized to work in the US?=Yes");
+    expect(page.did).toContain(`select ${q}=No, I will not require sponsorship`);
   });
 });
 
