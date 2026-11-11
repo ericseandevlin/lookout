@@ -7,7 +7,8 @@ const CLOSED = [
   /(job|position|posting|role|requisition|opening) (is )?(no longer|has been) (available|filled|closed|removed)/i,
   /(job|posting|position|page) (was )?not found/i,
   /this (job|position|posting|role) (has )?(expired|closed|been filled)/i,
-  /(the )?(job|position) you('re| are) looking for (is no longer|could not be|can('|no)t be) (available|found)/i,
+  // Careers sites usually render a curly apostrophe (#734).
+  /(the )?(job|position) you(['’]re| are) looking for (is no longer|could not be|can(['’]|no)t be) (available|found)/i,
   /applications (for this (job|role|position) )?(are|is) (now )?closed/i,
   /\bpage not found\b|\b404\b.{0,40}(not found|doesn.t exist)/i,
 ];
