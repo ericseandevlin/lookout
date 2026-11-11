@@ -3,6 +3,7 @@ import { lookup } from "node:dns";
 import { isIP, type LookupFunction } from "node:net";
 // undici's own fetch: Node 22's built-in fetch rejects an Agent from a newer undici.
 import { Agent, fetch } from "undici";
+import { decodeEntities } from "./entities";
 import { findPay, payLine } from "./pay";
 
 /**
@@ -183,21 +184,6 @@ async function fetchRaw(rawUrl: string): Promise<{ url: string; html: string }> 
     return { url: url.toString(), html: Buffer.concat(chunks).toString("utf8") };
   }
   throw new FetchError("Too many redirects");
-}
-
-const ENTITIES: Record<string, string> = {
-  amp: "&", lt: "<", gt: ">", quot: '"', apos: "'", nbsp: " ",
-  rsquo: "’", lsquo: "‘", rdquo: "”", ldquo: "“", ndash: "–", mdash: "—", hellip: "…",
-  bull: "•", middot: "·", copy: "©", reg: "®", trade: "™", euro: "€", pound: "£",
-};
-
-/** Named, decimal and hex (&#x27;, which React writes for every apostrophe) entities; unknown or invalid ones become a space (#491). */
-function decodeEntities(s: string) {
-  return s.replace(/&(#x[0-9a-f]+|#\d+|\w+);/gi, (_, e: string) => {
-    if (!e.startsWith("#")) return ENTITIES[e] ?? ENTITIES[e.toLowerCase()] ?? " ";
-    const n = e[1] === "x" || e[1] === "X" ? parseInt(e.slice(2), 16) : Number(e.slice(1));
-    return n > 0 && n <= 0x10ffff && !(n >= 0xd800 && n <= 0xdfff) ? String.fromCodePoint(n) : " ";
-  });
 }
 
 /** Readable text plus any schema.org JobPosting data, which most ATS pages embed. */

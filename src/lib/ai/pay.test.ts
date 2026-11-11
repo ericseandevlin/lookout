@@ -150,4 +150,11 @@ describe("findPay", () => {
     expect(findPay("", "We raised $50,000,000 in 2024 and serve 2,000 - 3,000 customers")).toBeNull();
     expect(findPay("", "401k match up to $5,000 - $6,000")).toBeNull();
   });
+
+  it("reads pay from raw HTML: entities decoded, scripts skipped (#742)", () => {
+    const pay = { min: 150000, max: 200000, currency: "USD", source: "text" };
+    expect(findPay("<p>Pay: $150,000&ndash;$200,000 per year</p>")).toEqual(pay);
+    expect(findPay("<p>Pay: &#36;150,000 - &#x24;200,000</p>")).toEqual(pay);
+    expect(findPay('<script>var x = {"a": "$1,000 - $2,000 a month"}</script><p>Pay: $150,000 - $200,000</p>')).toEqual(pay);
+  });
 });
