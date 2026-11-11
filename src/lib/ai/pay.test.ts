@@ -111,6 +111,16 @@ describe("findPay", () => {
     expect(findPay("", text)).toMatchObject({ min, max });
   });
 
+  it.each([
+    ["$60 - $70 per hr", 124800, 145600],
+    ["$60 - $70 an hr", 124800, 145600],
+    ["$8,000 - $10,000 per mo", 96000, 120000],
+    ["$2,000 - $2,500 per wk", 104000, 130000],
+    ["$150,000 - $200,000 per yr, paid monthly", 150000, 200000],
+  ])("reads the short unit in %s (#752)", (text, min, max) => {
+    expect(findPay("", text)).toMatchObject({ min, max });
+  });
+
   it("keeps an hourly range hourly when a yearly word follows it (#646)", () => {
     expect(findPay("", "$25.00 - $35.00 per hour, plus an annual bonus")).toMatchObject({ min: 52000, max: 72800 });
     expect(findPay("", "$40 - $55/hr. Eligible for yearly raises")).toMatchObject({ min: 83200, max: 114400 });
