@@ -61,7 +61,7 @@ export function pickOne(answer: string, labels: string[]): number {
  * with "Thank you for your interest", so a submit that failed validation read as sent. extension/firefox/fill.js and
  * background.js carry the same pattern.
  */
-export const CONFIRMATION = /thank(?:s| you) for (?:applying|your application|submitting)|application (?:has been |was )?(?:successfully )?(?:received|submitted|sent)\b|we(?:'ve|’ve| have) (?:successfully )?received your application|successfully (?:applied|submitted)\b/i;
+export const CONFIRMATION = /thank(?:s| you) for (?:applying|your application|submitting|your submission)|application (?:has been |was )?(?:successfully )?(?:received|submitted|sent)\b|we(?:'ve|’ve| have)? (?:successfully )?(?:received|got) your application|successfully (?:applied|submitted)\b/i;
 
 /**
  * Whether an answer to a lone checkbox ("I agree to the privacy policy") means tick it (#669).
