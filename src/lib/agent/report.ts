@@ -35,11 +35,11 @@ export function buildTips(
   if (job && t.dealbreaker > 0 && a("q5")) {
     tips.push({ text: `${plural(t.dealbreaker, "role")} hit your dealbreakers and ${t.dealbreaker === 1 ? "was" : "were"} left off. If “${clip(a("q5"), 60)}” is stricter than you mean, loosen it.`, href: "/profile#q-q5", label: "Edit dealbreakers" });
   }
-  if (t.belowFloor >= 2) {
+  if (t.belowFloor > 0) {
     tips.push(
       job
-        ? { text: `${plural(t.belowFloor, "role")} paid under your ${p.floor || "salary"} floor. They're on your board, marked down. Lower the floor if you'd take them.`, href: "/profile#q-comp", label: "Edit pay" }
-        : { text: `${plural(t.belowFloor, kind.noun.one, kind.noun.many)} came in under your ${p.floor || "contract value"} floor. They're on your board, marked down. Lower the floor if you'd bid on them.`, href: "/profile#q-comp", label: "Edit contract value" },
+        ? { text: `${plural(t.belowFloor, "role")} ${t.belowFloor === 1 ? "pays" : "pay"} under your ${p.floor || "salary"} floor and ${t.belowFloor === 1 ? "was" : "were"} left off. Lower the floor if you'd take them.`, href: "/profile#q-comp", label: "Edit pay" }
+        : { text: `${plural(t.belowFloor, kind.noun.one, kind.noun.many)} came in under your ${p.floor || "contract value"} floor and ${t.belowFloor === 1 ? "was" : "were"} left off. Lower the floor if you'd bid on them.`, href: "/profile#q-comp", label: "Edit contract value" },
     );
   }
   if (t.offLocation >= 2) {
