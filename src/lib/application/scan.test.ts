@@ -89,6 +89,11 @@ describe("kindFor", () => {
     expect(kindFor("Phone number for a reference", "text")).toBe("answer");
   });
 
+  it("treats a field word followed by more than the field's name as an answer (#725)", () => {
+    for (const l of ["Current company size", "Email me job updates", "Name pronunciation", "Location preference", "Phone screen availability"]) expect(kindFor(l, "text"), l).toBe("answer");
+    for (const l of ["Website URL", "Portfolio link", "GitHub URL", "Mobile number", "Address"]) expect(kindFor(l, "text"), l).toBe("field");
+  });
+
   it("reads accented and spelled-out resume labels as the resume (#680)", () => {
     for (const l of ["Résumé", "Résumé/CV", "Résumé *", "Resume", "resume/cv", "CV (PDF)", "Curriculum Vitae", "Upload your resume", "Attach a CV"]) expect(kindFor(l, "file"), l).toBe("resume");
     for (const l of ["Resume gaps: anything to explain?", "Résumé gaps?", "Resumes reviewed by", "CVS Health experience", "Cvent experience"]) expect(kindFor(l, "textarea"), l).toBe("answer");

@@ -112,10 +112,13 @@ const FIELD = /^(first name|last name|preferred (first )?name|full name|name|ema
  * without review, so a question that only starts with a field word ("Location: are you open to relocating?",
  * "Email of your referrer") is an answer (#579).
  */
+// What may follow the field name and still be just the name: "Email Address", "LinkedIn Profile URL", "Website or
+// portfolio link". "Current company size" or "Email me job updates" is a question (#725).
+const FIELD_TAIL = /^(?:(?:address|url|link|number|profile)\s*|(?:or|and|\/)\s*(?:website|portfolio|linkedin|github|phone|mobile|e-?mail)\s*)*$/i;
 function isBasicField(label: string) {
   if (!FIELD.test(label) || label.includes("?")) return false;
   const words = label.replace(/\([^)]*\)/g, " ").replace(/[*:]/g, " ").trim().split(/\s+/);
-  return words.length <= 4 && !words.some((w) => /^(of|for)$/i.test(w));
+  return words.length <= 4 && !words.some((w) => /^(of|for)$/i.test(w)) && FIELD_TAIL.test(words.join(" ").replace(FIELD, "").trim());
 }
 
 /** Sort a question into what Lookout drafts for it. */
