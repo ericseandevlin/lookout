@@ -39,9 +39,15 @@ function fakePage(els: El[]) {
       filter: ({ hasText, has }) => loc(() => find().filter((e) => (!hasText || e.label.includes(hasText)) && (!has || has.all().includes(e)))),
       locator: (sel) =>
         loc(() =>
-          sel === "input[type=file]" ? find().filter((e) => e.kind === "file") : sel === "option" ? find().flatMap((e) => (e.options ?? []).map((o) => ({ kind: "option" as const, label: o }))) : [],
+          sel === "input[type=file]"
+            ? find().filter((e) => e.kind === "file")
+            : sel === "option"
+              ? find().flatMap((e) => (e.options ?? []).map((o) => ({ kind: "option" as const, label: o })))
+              : sel === "input[type=radio]"
+                ? find().filter((e) => e.kind === "group" && e.type === "radio")
+                : [],
         ),
-      // Inside a checkbox group: one checkbox per option, found by its exact label.
+      // Inside a checkbox or radio group: one box per option, found by its exact label.
       getByLabel: (l) => loc(() => find().flatMap((g) => (g.kind === "group" && g.options?.includes(l) ? [{ kind: "control" as const, label: l, type: "checkbox" }] : []))),
       all: find,
       count: async () => find().length,
@@ -79,7 +85,8 @@ function fakePage(els: El[]) {
     url: () => "https://jobs.example.com/apply/thanks",
     screenshot: async ({ path: p }: { path: string }) => void did.push(`screenshot ${path.basename(p)}`),
     getByRole: byRole,
-    getByLabel: (label: string) => loc(() => shown().filter((e) => (e.kind === "control" || e.kind === "file") && e.label.toLowerCase().includes(label.toLowerCase()))),
+    // A [role=radiogroup] named by aria-labelledby is found by its label too.
+    getByLabel: (label: string) => loc(() => shown().filter((e) => (e.kind === "control" || e.kind === "file" || e.role === "radiogroup") && e.label.toLowerCase().includes(label.toLowerCase()))),
     getByText: (re: RegExp) => loc(() => shown().filter((e) => e.kind === "confirm" && re.test(e.label))),
     locator: (sel: string) =>
       loc(() => {
@@ -87,8 +94,8 @@ function fakePage(els: El[]) {
         // The file box (":is(div,...)" with an upload inside) and the upload itself are the same element here.
         if (sel === "input[type=file]" || sel.startsWith(":is(")) return shown().filter((e) => e.kind === "file");
         if (sel.startsWith("iframe")) return shown().filter((e) => e.kind === "captcha");
-        // A checkbox group and the checkboxes inside it are the same element here, like the file box.
-        if (sel === "fieldset, [role=group]" || sel === "input[type=checkbox]") return shown().filter((e) => e.kind === "group");
+        // A checkbox or radio group and the boxes inside it are the same element here, like the file box.
+        if (sel === "fieldset, [role=group], [role=radiogroup]" || sel === "input[type=checkbox], input[type=radio]") return shown().filter((e) => e.kind === "group" && e.role !== "radiogroup");
         return [];
       }),
   };
@@ -293,6 +300,27 @@ describe("runFill controls (#567)", () => {
     page = fakePage([GROUP]);
     const r = await runFill(id, "test");
     expect(r.log[0]).toMatchObject({ ok: false, how: "field not found" });
+  });
+
+  it("checks one radio in a fieldset question, the option the answer means (#694)", async () => {
+    const q = "Will you now or in the future require sponsorship?";
+    const id = await seed("approved", [{ kind: "field", prompt: q, content: "No, I will not\nYes", options: ["Yes", "No, I will not"] }]);
+    page = fakePage([{ kind: "group", type: "radio", label: q, options: ["Yes", "No, I will not"] }]);
+    const r = await runFill(id, "test");
+    expect(r.log[0]).toMatchObject({ ok: true, how: "checked 1" });
+    expect(page.did).toContain("check No, I will not");
+    expect(page.did).not.toContain("check Yes");
+    expect(r.missing).toEqual([]);
+  });
+
+  it("checks a radio in a [role=radiogroup] named by its label (#694)", async () => {
+    const q = "Are you 18 or older?";
+    const id = await seed("approved", [{ kind: "field", prompt: q, content: "Yes", options: ["Yes", "No"] }]);
+    page = fakePage([{ kind: "group", type: "radio", role: "radiogroup", label: q, options: ["Yes", "No"] }]);
+    const r = await runFill(id, "test");
+    expect(r.log[0]).toMatchObject({ ok: true, how: "checked 1" });
+    expect(page.did).toContain("check Yes");
+    expect(page.did.some((d) => d.startsWith("click") || d.startsWith("fill") || d.startsWith("press"))).toBe(false);
   });
 
   it("ticks a single checkbox on any yes, and reports a required one it can't tick (#669)", async () => {
