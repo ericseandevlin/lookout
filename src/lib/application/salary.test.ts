@@ -189,6 +189,23 @@ describe("isSalaryQuestion", () => {
   });
 });
 
+describe("isSalaryQuestion (#718)", () => {
+  it("leaves out yes/no range checks that mention expectations", () => {
+    for (const q of ["Does the salary range of $120k-$150k meet your expectations?", "Is your salary expectation within the posted range?", "Do your compensation expectations align with the range above?"])
+      expect(isSalaryQuestion(q), q).toBe(false);
+  });
+
+  it("leaves out What questions about pay work", () => {
+    for (const q of ["What compensation tools have you built?", "What is your experience with compensation benchmarking?", "What experience do you have running payroll and salary reviews?", "What is your compensation philosophy as a manager?"])
+      expect(isSalaryQuestion(q), q).toBe(false);
+  });
+
+  it("still sees asks that mention experience or a range", () => {
+    for (const q of ["Based on your experience, what are your salary expectations?", "What salary would you expect, given your experience?", "Can you provide your expected salary range?", "What salary are you seeking for this role?", "Minimum salary you would accept", "Lowest base salary you would consider"])
+      expect(isSalaryQuestion(q), q).toBe(true);
+  });
+});
+
 describe("salary note wording", () => {
   it("states the three rules with why, using the real numbers (Understood)", () => {
     const r = suggestSalary({ floor: "220000", target: "260000", min: 235000, max: 250000, asksMinimum: true })!;
