@@ -166,7 +166,8 @@ describe("sendDigest", () => {
   it("still sends new finds the same day as a due-soon email", async () => {
     await find("Due today", { ago: 5 * DAY, pinned: true, due: inDays(0) });
     await sendDigest(userId);
-    await find("Fresh");
+    // A clear second later: the email's time is the database clock, the find's is this process's clock.
+    await find("Fresh", { ago: -1000 });
     await sendDigest(userId);
     expect(sendMail).toHaveBeenCalledTimes(2);
   });

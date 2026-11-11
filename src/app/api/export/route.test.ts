@@ -40,11 +40,13 @@ const user = async (email: string) =>
       .values({ email, name: email.split("@")[0] })
       .returning()
   )[0];
+let made = 0;
 const search = async (u: User, name: string, kind = "job") =>
   (
     await db
       .insert(schema.searches)
-      .values({ userId: u.id, name, kind, answers: { role: `${name} role` } })
+      // Each search a clear step later, so the oldest-first order never falls to the random id.
+      .values({ userId: u.id, name, kind, answers: { role: `${name} role` }, createdAt: new Date(Date.now() + made++ * 1000) })
       .returning()
   )[0];
 async function find(u: User, searchId: string, company: string, notes = "") {
