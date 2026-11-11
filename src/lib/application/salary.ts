@@ -50,12 +50,20 @@ const PAST_PAY =
 const YES_NO = /^\W*(are|is|does|do|would|will|can)\b/i;
 const ABOUT_THEIR_RANGE = /\b(range|posted|listed|stated|above|acceptable|comfortable|work for you|align|meets?)\b/i;
 const NAMES_A_NUMBER = /\b(expectations?|requirements?|desired|expected|target|how much|what)\b/i;
-const rangeCheck = (s: string) => YES_NO.test(s) && ABOUT_THEIR_RANGE.test(s) && !NAMES_A_NUMBER.test(s);
+// A yes/no check stays one even when it says "expectations" ("Does the range meet your expectations?"), unless it asks
+// them to give the number: "Would you share your salary expectations?" (#718).
+const GIVE_A_NUMBER = /\b(share|provide|tell|give|list|state|enter|specify|what|how much)\b/i;
+const rangeCheck = (s: string) => YES_NO.test(s) && ABOUT_THEIR_RANGE.test(s) && !GIVE_A_NUMBER.test(s);
 // A sentence that only mentions pay isn't an ask: "Describe a time you negotiated compensation for your team",
 // "Do you have experience designing compensation tools?" (#712). An ask names the number, says "your salary",
 // says what they seek or expect, or is a short label like "Desired salary".
 const OWN_NUMBER = /\byour (\w+ ){0,3}(salary|compensation|pay|wages?)\b|\b(seek\w*|looking for|expect\w*|anticipat\w*)\b/i;
-const asksForNumber = (s: string) => NAMES_A_NUMBER.test(s) || OWN_NUMBER.test(s) || s.trim().split(/\s+/).length <= 4;
+// A sentence about pay work, not the person's own pay: "What compensation tools have you built?", "What is your
+// experience with compensation benchmarking?" (#718). Only a plain ask for their number overrides it.
+const ABOUT_WORK = /\b(experience|tools?|systems?|software|platforms?|programs?|benchmark\w*|strateg\w*|philosophy|built|build|designed|implement\w*|managed|administer\w*|processes|analys[ie]s|reviews|claims?)\b/i;
+const PLAIN_ASK = /\b(expectations?|requirements?|desired|expected|target|how much|expect\w*|seek\w*|looking for|anticipat\w*|minimum|lowest)\b/i;
+const asksForNumber = (s: string) =>
+  PLAIN_ASK.test(s) || (!ABOUT_WORK.test(s) && (NAMES_A_NUMBER.test(s) || OWN_NUMBER.test(s) || s.trim().split(/\s+/).length <= 4));
 
 /**
  * A salary ask, not a question about the person's own past or current pay. Judged sentence by sentence,
