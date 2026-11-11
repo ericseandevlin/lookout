@@ -3,6 +3,7 @@ import type { ApplicationItemKind } from "@/lib/db/schema";
 import { isJunkKeyword } from "./posting";
 import { bullets } from "./notes";
 import { storiesBlock } from "./stories";
+import { STRATEGY, suggestStrategy } from "./letterStrategy";
 
 /**
  * Auto-apply step 3: draft every item (#40). Two model calls per application: the ATS resume, then
@@ -26,6 +27,8 @@ export type DraftInputs = {
   saved?: import("@/lib/db/schema").SavedAnswer[];
   /** Personal connection stories (#155); a cover letter may open with one, never with an invented one. */
   stories?: import("@/lib/db/schema").PersonalStory[];
+  /** How the cover letter is written (#738); the suggested one when unset. */
+  letterStrategy?: import("./letterStrategy").LetterStrategy;
   resume: string;
   posting: { company: string; title: string; text: string };
 };
@@ -194,7 +197,7 @@ Rules:
 - Location, office and work mode questions: read the posting's facts and text first (location is often listed under the title). Ask only if neither says.
 - Salary: use the person's own figure from the profile. In the note, say what the posting's range covers (base only, or total cash including bonus) and how the person's figure compares, so they can adjust.
 - Choice questions: content must be exactly one of the given options, character for character. Select-any questions (marked "select any"): every option that applies, one per line, each exactly as written.
-- Cover letter: 3 short paragraphs, 200 words or fewer, specific to this role and company, first person, plain and direct, no clichés ("I am excited to apply", "passionate", "dynamic"). The first sentence names the role and the single strongest proof the person fits it. The middle paragraph gives one or two concrete examples that match what the posting asks for. Close with one line on what they'd do first or why this team, then a plain sign-off line. Present relevant work they have already done in the target role's terms; never frame them as hoping to move into the field or lacking the title. Use only real experience.
+- Cover letter (#738): short and plain. 170 words or fewer in two or three short paragraphs, specific to this role and company, first person. Short sentences and everyday words, the way the person would say it out loud; no clichés ("I am excited to apply", "passionate", "dynamic", "leverage"). Follow the cover letter strategy given with the items. End with a plain sign-off line. Present relevant work they have already done in the target role's terms; never frame them as hoping to move into the field or lacking the title. Use only real experience.
 - Cover letter opening (#155): if one of the person's personal stories truly fits what this company makes or stands for, open with one short, personal line from it, then the sentence that names the role and the proof. Put that story's id in storyId. Use only what the story says; never invent or embellish a memory, a use of the company's product, or a connection to it. Interviewers ask about that line. If no story fits, write no personal line at all, leave storyId empty, and put one targeted question about this company in storyAsk.
 - Keep the person's level of ownership exactly. "Helped build", "worked on", "contributed to" or "part of" never become "built", "led", "owned" or "designed"; team work stays team work. Recruiters check this in interviews.
 - Every accomplishment stays with the role and employer it belongs to in the resume. Never move work from one title to another (for example current-role work credited to an earlier title).
@@ -210,8 +213,10 @@ export function answersPrompt(inp: DraftInputs, items: DraftItem[]) {
     .join("\n");
   const links = inp.links.map((l) => `- ${l.url}: ${l.text.slice(0, 600)}`).join("\n") || "(none)";
   // Stories go only where a cover letter can use them.
-  const stories = items.some((i) => i.kind === "cover_letter") ? storiesBlock(inp.stories ?? []) : "";
-  return `Person: ${inp.name || "(no name on file)"}, ${inp.email}\nLinkedIn: ${inp.linkedinUrl ?? "(none)"}\n\n<profile>\n${inp.brief}\n</profile>\n\n<resume>\n${inp.resume}\n</resume>${stories}\n\n<links>\n${links}\n</links>\n\nPosting: ${inp.posting.title} at ${inp.posting.company}\n<posting>\n${inp.posting.text}\n</posting>\n\nDraft each of these, by index:\n${list}`;
+  const letter = items.some((i) => i.kind === "cover_letter");
+  const stories = letter ? storiesBlock(inp.stories ?? []) : "";
+  const strategy = letter ? `\n\n${STRATEGY[inp.letterStrategy ?? suggestStrategy(inp.posting, inp.stories ?? []).strategy].rule}` : "";
+  return `Person: ${inp.name || "(no name on file)"}, ${inp.email}\nLinkedIn: ${inp.linkedinUrl ?? "(none)"}\n\n<profile>\n${inp.brief}\n</profile>\n\n<resume>\n${inp.resume}\n</resume>${stories}\n\n<links>\n${links}\n</links>\n\nPosting: ${inp.posting.title} at ${inp.posting.company}\n<posting>\n${inp.posting.text}\n</posting>\n\nDraft each of these, by index:\n${list}${strategy}`;
 }
 
 /** Keep a model answer only if it's usable: choice answers must be real options; otherwise it becomes a question. */

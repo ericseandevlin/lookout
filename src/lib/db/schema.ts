@@ -410,6 +410,8 @@ export type ApplicationReport = {
   keywords?: { term: string; before: boolean; after: boolean; where?: string; choice?: "include" | "exclude" }[];
   /** The last Recruiter Analysis of each resume or cover letter item, by item id, for the version it read (#152). */
   recruiter?: Record<string, import("@/lib/application/recruiter").RecruiterAnalysis>;
+  /** The strategy the current cover letter was written with (#738). Older letters have none. */
+  letterStrategy?: import("@/lib/application/letterStrategy").LetterStrategy;
 };
 
 export const APPLICATION_ITEM_KINDS = ["resume", "cover_letter", "answer", "portfolio", "outreach", "field", "eeo"] as const;

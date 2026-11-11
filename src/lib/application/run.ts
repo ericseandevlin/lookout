@@ -11,6 +11,7 @@ import { humanize, shapeResume } from "./resumeLayout";
 import { match, savedBlock } from "./saved";
 import { notesBlock } from "./skills";
 import { checkStory } from "./stories";
+import { STRATEGY, suggestStrategy, type LetterStrategy } from "./letterStrategy";
 import { HttpError } from "@/lib/api";
 import { KEYWORD_PLAN_SYSTEM, KeywordPlanDraft, approvedBlock, approvedFor, finalTerms, keywordPlanPrompt, planFrom, unapprovedIn, type KeywordRow } from "./evidence";
 import { keywordState } from "./review";
@@ -276,7 +277,7 @@ async function draftResume(inp: DraftInputs, usage: Usage, rows: KeywordRow[]) {
  * user wants to start that one over. Every other item and approval stays as it is.
  */
 /** Write a fresh cover letter from the posting as a new version, with the current letter rules (#129). */
-export async function redraftLetter(appId: string) {
+export async function redraftLetter(appId: string, strategy?: LetterStrategy) {
   const [a] = await db.select().from(schema.applications).where(eq(schema.applications.id, appId));
   const [item] = await db.select().from(schema.applicationItems).where(and(eq(schema.applicationItems.applicationId, appId), eq(schema.applicationItems.kind, "cover_letter")));
   if (!a || !item) throw new Error("No cover letter on this application");
@@ -290,6 +291,9 @@ export async function redraftLetter(appId: string) {
     // The posting page still works without the ATS's full description.
   }
   const inp = await loadInputs(a.userId, opp, usage, postingHtml);
+  // The person's pick (#738), else the strategy the letter already uses, else Lookout's suggestion.
+  const using = strategy ?? a.report.letterStrategy ?? suggestStrategy(inp.posting, inp.stories ?? []).strategy;
+  inp.letterStrategy = using;
   const one: DraftItem = { index: 0, kind: "cover_letter", prompt: item.prompt, required: item.required, options: null };
   const r = await completeJSON({ name: "apply-letter", schema: AnswersDraft, system: ANSWERS_SYSTEM, user: answersPrompt(inp, [one]), maxTokens: 4000, usage });
   const raw = r.items.find((x) => x.index === 0) ?? r.items[0];
@@ -303,13 +307,13 @@ export async function redraftLetter(appId: string) {
       itemId: item.id,
       version: (n ?? 0) + 1,
       content,
-      note: ["- Redrafted from the posting", `- ${words} words`, d.note && `- ${d.note}`, hits.length && `- Contains ${hits.map((h) => `"${h}"`).join(", ")} from an instruction planted in the posting`].filter(Boolean).join("\n"),
+      note: ["- Redrafted from the posting", `- Strategy: ${STRATEGY[using].label}`, `- ${words} words`, d.note && `- ${d.note}`, hits.length && `- Contains ${hits.map((h) => `"${h}"`).join(", ")} from an instruction planted in the posting`].filter(Boolean).join("\n"),
       author: "ai",
       sources: d.sources.length ? d.sources : ["master resume", "posting"],
     });
     await tx.update(schema.applicationItems).set({ approvedVersionId: null, question: hits.length ? "This letter includes a word the posting planted to catch automated applications. Remove it unless you mean to include it." : d.question }).where(eq(schema.applicationItems.id, item.id));
     const status = a.status === "approved" || a.status === "manual" ? "needs_review" : a.status;
-    await patchReport(appId, addUsd(usage.usd), { status, updatedAt: new Date() }, tx);
+    await patchReport(appId, (r) => ({ ...addUsd(usage.usd)(r), letterStrategy: using }), { status, updatedAt: new Date() }, tx);
   });
 }
 
@@ -343,6 +347,7 @@ export async function redraftResume(appId: string) {
 /** Draft version 1 of every item. Returns the resume's keyword report and the posting text it drafted from. */
 async function draftAll(id: string, userId: string, opp: typeof schema.opportunities.$inferSelect, usage: Usage, postingHtml?: string) {
   const inp = await loadInputs(userId, opp, usage, postingHtml);
+  inp.letterStrategy = suggestStrategy(inp.posting, inp.stories ?? []).strategy;
   const items = await db.select().from(schema.applicationItems).where(eq(schema.applicationItems.applicationId, id)).orderBy(schema.applicationItems.position);
   const out = new Map<string, Drafted>();
   let keywordPlan: ReturnType<typeof planFrom> | undefined;
@@ -419,7 +424,7 @@ async function draftAll(id: string, userId: string, opp: typeof schema.opportuni
       await tx.insert(schema.itemVersions).values({ itemId: item.id, version: 1, content: person.draft.content, note: person.draft.note, author: "ai", sources: person.draft.sources });
     }
   });
-  return { keywordPlan, keywords: undefined, keywordsApproved: undefined, postingText: inp.posting.text, traps: inp.traps ?? [] };
+  return { keywordPlan, keywords: undefined, keywordsApproved: undefined, postingText: inp.posting.text, traps: inp.traps ?? [], letterStrategy: items.some((i) => i.kind === "cover_letter") ? inp.letterStrategy : undefined };
 }
 
 /** Re-queue work a restart interrupted, then return what's waiting. One user, or everyone. */
