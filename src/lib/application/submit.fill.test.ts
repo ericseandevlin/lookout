@@ -86,7 +86,12 @@ function fakePage(els: El[]) {
     screenshot: async ({ path: p }: { path: string }) => void did.push(`screenshot ${path.basename(p)}`),
     getByRole: byRole,
     // A [role=radiogroup] named by aria-labelledby is found by its label too.
-    getByLabel: (label: string) => loc(() => shown().filter((e) => (e.kind === "control" || e.kind === "file" || e.role === "radiogroup") && e.label.toLowerCase().includes(label.toLowerCase()))),
+    getByLabel: (label: string | RegExp) =>
+      loc(() =>
+        shown().filter(
+          (e) => (e.kind === "control" || e.kind === "file" || e.role === "radiogroup") && (label instanceof RegExp ? label.test(e.label) : e.label.toLowerCase().includes(label.toLowerCase())),
+        ),
+      ),
     getByText: (re: RegExp) => loc(() => shown().filter((e) => e.kind === "confirm" && re.test(e.label))),
     locator: (sel: string) =>
       loc(() => {
@@ -410,6 +415,28 @@ describe("runFill controls (#567)", () => {
     const r = await runFill(id, "test");
     expect(r.log[0]).toMatchObject({ ok: false, how: "no file" });
     expect(r.missing).toEqual(["Portfolio"]);
+  });
+
+  it("fills the field labeled with the question before one whose label only contains it (#698)", async () => {
+    const id = await seed("approved", [
+      { kind: "field", prompt: "Website", content: "https://pat.design" },
+      { kind: "field", prompt: "Email", content: "pat@example.com" },
+      { kind: "field", prompt: "Portfolio", content: "https://pat.design/work" },
+    ]);
+    page = fakePage([
+      { kind: "control", label: "Portfolio Website" },
+      { kind: "control", label: "Website" },
+      { kind: "control", label: "Email me about future openings", type: "checkbox" },
+      { kind: "control", label: "Email *", type: "email" },
+      { kind: "control", label: "Portfolio Website (optional)" },
+    ]);
+    const r = await runFill(id, "test");
+    expect(r.log.map((l) => [l.prompt, l.ok, l.how])).toEqual([
+      ["Website", true, "typed"],
+      ["Email", true, "typed"],
+      ["Portfolio", true, "typed"],
+    ]);
+    expect(page.did).toEqual(expect.arrayContaining(["fill Website=https://pat.design", "fill Email *=pat@example.com", "fill Portfolio Website=https://pat.design/work"]));
   });
 
   it("fills the form straight away when there's no Apply button", async () => {
