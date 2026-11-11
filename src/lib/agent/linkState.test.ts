@@ -14,6 +14,11 @@ describe("classifyPage", () => {
     expect(classifyPage(200, "Sorry, the position has been filled.").state).toBe("gone");
     expect(classifyPage(200, "Job not found").state).toBe("gone");
   });
+  it("reads closed wording with curly apostrophes (#734)", () => {
+    expect(classifyPage(200, "The position you’re looking for could not be found.").state).toBe("gone");
+    expect(classifyPage(200, "Sorry, the job you’re looking for can’t be found").state).toBe("gone");
+    expect(classifyPage(200, "The job you're looking for can't be found").state).toBe("gone");
+  });
   it("closed wording beats a stray maintenance mention", () => {
     expect(classifyPage(200, "We're sorry, but it looks like this job may be no longer available or does not exist. Site maintenance notice").state).toBe("gone");
   });
