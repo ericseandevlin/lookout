@@ -102,7 +102,7 @@ describe("pickOne (#695)", () => {
   });
 });
 
-describe("CONFIRMATION (#692)", () => {
+describe("CONFIRMATION (#692, #748)", () => {
   it("reads the usual thank-you pages as sent", () => {
     for (const t of [
       "Thank you for applying!",
@@ -116,6 +116,10 @@ describe("CONFIRMATION (#692)", () => {
       "We have successfully received your application",
       "We’ve received your application",
       "You have successfully applied for this position",
+      // #748
+      "Thanks for your interest! We received your application.",
+      "Thank you for your submission",
+      "Thanks, we got your application!",
       // innerText can run inline text together.
       "Submit applicationThank you for applying",
     ])
@@ -129,6 +133,7 @@ describe("CONFIRMATION (#692)", () => {
       "Apply for this job",
       "Before your application is submitted, review your answers.",
       "Application questions",
+      "Once we receive your application, we will review it.",
     ])
       expect(CONFIRMATION.test(t), t).toBe(false);
   });

@@ -1,5 +1,5 @@
 /* Lookout Autofill background: after you press Submit, spot the thank-you page and mark the application Submitted in Lookout. */
-const THANKS = /thank(?:s| you) for (?:applying|your application|submitting)|application (?:has been |was )?(?:successfully )?(?:received|submitted|sent)\b|we(?:'ve|’ve| have) (?:successfully )?received your application|successfully (?:applied|submitted)\b/i;
+const THANKS = /thank(?:s| you) for (?:applying|your application|submitting|your submission)|application (?:has been |was )?(?:successfully )?(?:received|submitted|sent)\b|we(?:'ve|’ve| have)? (?:successfully )?(?:received|got) your application|successfully (?:applied|submitted)\b/i;
 
 async function watches() {
   return (await browser.storage.session.get("watches")).watches || {};
