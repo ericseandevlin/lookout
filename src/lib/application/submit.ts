@@ -154,6 +154,9 @@ async function phoneCountry(page: Page): Promise<{ ok: boolean; how: string } | 
   }
 }
 
+/** A label that is this text, any case, with or without the required "*". */
+const labelIs = (text: string) => new RegExp(`^\\s*${text.trim().replace(/[.*+?^${}()|[\]\\]/g, "\\$&").replace(/\s+/g, "\\s+")}\\s*\\*?\\s*$`, "i");
+
 /** Find the control for one question by its label and put the approved answer in. */
 async function fillOne(page: Page, s: FillStep): Promise<{ ok: boolean; how: string }> {
   try {
@@ -164,7 +167,9 @@ async function fillOne(page: Page, s: FillStep): Promise<{ ok: boolean; how: str
       await input.setInputFiles(s.file);
       return { ok: true, how: "uploaded .docx" };
     }
-    const field = page.getByLabel(s.prompt, { exact: false }).first();
+    // The label that is the question first, then any label holding it: "Website" is not the earlier "Portfolio Website" (#698).
+    const exact = page.getByLabel(labelIs(s.prompt)).first();
+    const field = (await exact.count()) ? exact : page.getByLabel(s.prompt, { exact: false }).first();
     const tag = (await field.count()) ? await field.evaluate((e) => `${e.tagName.toLowerCase()}:${e.getAttribute("type") ?? ""}:${e.getAttribute("role") ?? ""}`) : "";
     // A [role=radiogroup] named by aria-labelledby is the labeled control itself.
     const labeledGroup = /:(radio)?group$/.test(tag);
