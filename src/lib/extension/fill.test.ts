@@ -2,7 +2,7 @@ import { readFileSync } from "node:fs";
 import path from "node:path";
 import { JSDOM } from "jsdom";
 import { describe, expect, it } from "vitest";
-import { checksBox, pickOptions } from "@/lib/application/fillPlan";
+import { checksBox, pickOne, pickOptions } from "@/lib/application/fillPlan";
 
 /**
  * The Firefox extension's form filler (#589): extension/firefox/fill.js, run in a real DOM and driven
@@ -136,6 +136,22 @@ describe("extension fill: choices", () => {
     const [r] = await p.fill({ steps: [{ prompt: "Privacy notice", kind: "choice", content: `${long}.` }] });
     expect(r).toMatchObject({ ok: true, how: "selected" });
     expect(p.value("#s")).toBe("ok");
+  });
+
+  it("picks the same <select> option as the server worker's rule (#695)", async () => {
+    const cases: [string, string[]][] = [
+      ["Yes, I am authorized to work in the US", ["Select", "Yes", "No"]],
+      ["No", ["Select", "None of the above", "No, I do not have a disability"]],
+      ["None", ["Select", "No", "None of the above"]],
+      ["They/them", ["She/her", "He/him"]],
+    ];
+    for (const [content, options] of cases) {
+      const p = page(`<label for="s">Q</label><select id="s">${options.map((o, i) => `<option value="${i}">${o}</option>`).join("")}</select>`);
+      const [r] = await p.fill({ steps: [{ prompt: "Q", kind: "choice", content }] });
+      const want = pickOne(content, options);
+      expect(r.ok, content).toBe(want >= 0);
+      if (want >= 0) expect(p.value("#s"), content).toBe(String(want));
+    }
   });
 
   it("checks a radio in a fieldset by its label", async () => {

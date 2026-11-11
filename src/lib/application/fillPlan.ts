@@ -41,6 +41,22 @@ export function pickOptions(content: string, options: string[] = []): string[] {
 }
 
 /**
+ * The index of the one option a dropdown answer means, or -1 (#695): exact text, then the pickOptions rule, then the
+ * long-label match (first 80 characters). A plain prefix put "No" on "None of the above" (#644).
+ * extension/firefox/fill.js carries the same rule.
+ */
+export function pickOne(answer: string, labels: string[]): number {
+  const norm = (t: string) => t.replace(/\*/g, "").replace(/\s+/g, " ").trim().toLowerCase();
+  const a = norm(answer);
+  const exact = labels.findIndex((l) => norm(l) === a);
+  if (exact >= 0) return exact;
+  const [hit] = pickOptions(answer, labels);
+  if (hit != null) return labels.indexOf(hit);
+  const same = (x: string, y: string) => !!x && !!y && (x === y || x.startsWith(y.slice(0, 80)) || y.startsWith(x.slice(0, 80)));
+  return labels.findIndex((l) => Math.min(a.length, norm(l).length) >= 80 && same(norm(l), a));
+}
+
+/**
  * Whether an answer to a lone checkbox ("I agree to the privacy policy") means tick it (#669).
  * Yes, true and the consent verbs, alone or leading the answer ("Yes, I agree", "I certify the above"),
  * past tense too ("Agreed"), and "I have read and agree", "I understand" (#681).

@@ -95,7 +95,7 @@
 
   /**
    * The index of the one option a dropdown answer means: exact text, then the pickOptions rule, then the long-label
-   * match (first 80 characters). A plain prefix put "No" on "None of the above" (#644).
+   * match (first 80 characters). A plain prefix put "No" on "None of the above" (#644). Same rule as pickOne in fillPlan.ts (#695).
    */
   function pickOne(answer, labels) {
     const a = norm(answer);
