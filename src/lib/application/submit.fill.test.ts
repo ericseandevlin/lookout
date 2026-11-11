@@ -379,6 +379,18 @@ describe("runFill controls (#567)", () => {
     expect(page.did).toContain("press How did you hear about us? Enter");
   });
 
+  it("a custom dropdown types and clicks the option the answer means, not the whole answer (#700)", async () => {
+    const id = await seed("approved", [{ kind: "field", prompt: "Are you authorized to work in the US?", content: "Yes, I am authorized to work in the US", options: ["Yes", "No"] }]);
+    page = fakePage([
+      { kind: "control", label: "Are you authorized to work in the US?", role: "combobox" },
+      { kind: "option", label: "Yes", role: "option" },
+      { kind: "option", label: "No", role: "option" },
+    ]);
+    const r = await runFill(id, "test");
+    expect(r.log[0]).toMatchObject({ ok: true, how: "picked option" });
+    expect(page.did).toEqual(["goto https://jobs.example.com/apply", "click Are you authorized to work in the US?", "fill Are you authorized to work in the US?=Yes", "click Yes", "screenshot filled.png"]);
+  });
+
   it("logs the phone country as not filled when United States isn't listed, without stopping", async () => {
     const id = await seed("approved", [{ kind: "field", prompt: "Phone", content: "555-0100" }]);
     page = fakePage([

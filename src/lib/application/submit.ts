@@ -206,9 +206,12 @@ async function fillOne(page: Page, s: FillStep): Promise<{ ok: boolean; how: str
     }
     if (tag.includes("combobox") || s.kind === "choice") {
       // Custom dropdowns (react-select on Greenhouse, Ashby's own): open, type, pick the exact option.
+      // With the options known, the one the answer means: "Yes, I am authorized" is "Yes" (#700).
+      const i = s.options?.length ? pickOne(s.content, s.options) : -1;
+      const want = i >= 0 ? s.options![i] : s.content;
       await field.click();
-      await field.fill(s.content).catch(() => {});
-      const opt = page.getByRole("option", { name: s.content, exact: true }).first();
+      await field.fill(want).catch(() => {});
+      const opt = page.getByRole("option", { name: want, exact: true }).first();
       if (await opt.isVisible().catch(() => false)) await opt.click();
       else await field.press("Enter");
       return { ok: true, how: "picked option" };
