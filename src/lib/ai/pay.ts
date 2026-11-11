@@ -78,14 +78,15 @@ const PREFIX: Record<string, string> = { us: "USD", ca: "CAD", c: "CAD", a: "AUD
 // What the range is per, from the words after it. The unit named first wins, so "per year, paid monthly" stays yearly (#484)
 // and "per hour, plus an annual bonus" stays hourly (#646).
 const UNITS: [string, RegExp][] = [
-  ["YEAR", /\/\s?y(?:ea)?r\b|\b(?:per|a|an|each) year\b|\bannual(?:ly)?\b|\byearly\b/i],
-  ["HOUR", /\/\s?h(?:ou)?r\b|\/\s?h\b|\b(?:per|a|an|each) hour\b|\bhourly\b/i],
+  // "per hr", "an hr", "per mo", "per wk" and "per yr" read like the full words (#752).
+  ["YEAR", /\/\s?y(?:ea)?r\b|\b(?:per|a|an|each) year\b|\bper (?:yr|annum)\b|\bannual(?:ly)?\b|\byearly\b/i],
+  ["HOUR", /\/\s?h(?:ou)?r\b|\/\s?h\b|\b(?:per|a|an|each) hour\b|\b(?:per|an) hr\b|\bhourly\b/i],
   // "bi-weekly" is named before "weekly" inside it, so it wins as the unit named first (#708).
   ["BIWEEK", /\bbi-?weekly\b|\bevery (?:two|2) weeks\b/i],
-  ["WEEK", /\/\s?w(?:ee)?k\b|\b(?:per|a|each) week\b|\bweekly\b/i],
+  ["WEEK", /\/\s?w(?:ee)?k\b|\b(?:per|a|each) week\b|\bper wk\b|\bweekly\b/i],
   // "semi-monthly" is named before "monthly" inside it, so it wins the same way: 24 pay periods (#714).
   ["SEMIMONTH", /\bsemi-?monthly\b|\btwice (?:a|per|each) month\b/i],
-  ["MONTH", /\/\s?mo(?:nth)?\b|\b(?:per|a|each) month\b|\bmonthly\b/i],
+  ["MONTH", /\/\s?mo(?:nth)?\b|\b(?:per|a|each) month\b|\bper mo\b|\bmonthly\b/i],
 ];
 // "Paid bi-weekly" or "benefits paid monthly" says how often a paycheck comes, not what the range is per (#716).
 const SCHEDULE = /\bpaid\s+(?:on\s+an?\s+)?(?:bi-?weekly|weekly|semi-?monthly|monthly|every (?:two|2) weeks|twice (?:a|per|each) month)\b/gi;
