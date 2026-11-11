@@ -117,16 +117,29 @@ describe("save", () => {
     expect((await board())[0].via).toBe("manual");
   });
 
-  it("marks down pay under the floor and off-location roles but still adds them", async () => {
+  it("on a search, leaves off pay under the floor and marks down off-location roles (#740)", async () => {
     const r = await save(
       ctx({ floor: 180000 }),
-      [find({ comp_min: 120000, comp_max: 150000 }), find({ url: "https://jobs.example.com/b", company: "Beta", location_fit: false })],
+      [
+        find({ comp_min: 120000, comp_max: 150000 }),
+        find({ url: "https://jobs.example.com/b", company: "Beta", location_fit: false }),
+        find({ url: "https://jobs.example.com/c", company: "Gamma", comp_min: 150000, comp_max: 180000 }),
+        find({ url: "https://jobs.example.com/d", company: "Delta", comp_min: null, comp_max: null }),
+      ],
       "agent",
     );
-    expect(r).toMatchObject({ added: 2, belowFloor: 1, offLocation: 1 });
+    expect(r).toMatchObject({ postings: 4, added: 3, belowFloor: 1, offLocation: 1 });
     const rows = await board();
-    expect(rows.map((x) => x.score)).toEqual([3, 3]);
-    expect(rows.find((x) => x.company === "Acme")?.gap[0]).toMatch(/below your floor/);
+    expect(rows.map((x) => x.company).sort()).toEqual(["Beta", "Delta", "Gamma"]);
+    expect(rows.find((x) => x.company === "Beta")?.score).toBe(3);
+  });
+
+  it("still adds a link the person adds under the floor, marked down (#740)", async () => {
+    const r = await save(ctx({ floor: 180000 }), [find({ comp_min: 120000, comp_max: 150000 })], "manual");
+    expect(r).toMatchObject({ added: 1, belowFloor: 1 });
+    const [row] = await board();
+    expect(row.score).toBe(3);
+    expect(row.gap[0]).toMatch(/below your floor/);
   });
 
   it("stores bad dates and Unknown work mode as empty, and rounds pay", async () => {

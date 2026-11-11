@@ -326,7 +326,11 @@ export async function save(ctx: Context, finds: ScoredT[], via: "agent" | "manua
       continue;
     }
     const top = f.comp_max ?? f.comp_min;
-    if (ctx.floor && top && top < ctx.floor) t.belowFloor++;
+    if (ctx.floor && top && top < ctx.floor) {
+      t.belowFloor++;
+      // A search leaves pay under the floor off the board; a link the person adds still goes on, marked down (#740).
+      if (via === "agent") continue;
+    }
     if (!f.location_fit) t.offLocation++;
     const [opp] = await db
       .insert(schema.opportunities)

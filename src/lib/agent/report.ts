@@ -38,8 +38,8 @@ export function buildTips(
   if (t.belowFloor >= 2) {
     tips.push(
       job
-        ? { text: `${plural(t.belowFloor, "role")} paid under your ${p.floor || "salary"} floor. They're on your board, marked down. Lower the floor if you'd take them.`, href: "/profile#q-comp", label: "Edit pay" }
-        : { text: `${plural(t.belowFloor, kind.noun.one, kind.noun.many)} came in under your ${p.floor || "contract value"} floor. They're on your board, marked down. Lower the floor if you'd bid on them.`, href: "/profile#q-comp", label: "Edit contract value" },
+        ? { text: `${plural(t.belowFloor, "role")} paid under your ${p.floor || "salary"} floor and were left off. Lower the floor if you'd take them.`, href: "/profile#q-comp", label: "Edit pay" }
+        : { text: `${plural(t.belowFloor, kind.noun.one, kind.noun.many)} came in under your ${p.floor || "contract value"} floor and were left off. Lower the floor if you'd bid on them.`, href: "/profile#q-comp", label: "Edit contract value" },
     );
   }
   if (t.offLocation >= 2) {

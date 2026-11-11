@@ -270,7 +270,7 @@ export const userOpportunities = pgTable(
 );
 
 export type RunProgress = { pct: number; step: string; log: { at: string; text: string }[] };
-/** What happened to the postings a search read. Floor and location only mark a find down; the rest keep it off the board. */
+/** What happened to the postings a search read. Location only marks a find down; the rest keep it off the board (a link added by hand under the floor is marked down, #740). */
 export type RunTally = { postings: number; notPostings: number; known: number; dealbreaker: number; belowFloor: number; offLocation: number; added: number; closed?: number };
 export type RunTip = { text: string; href?: string; label?: string };
 /** The after-search report: the funnel, the queries used, and what to change. */

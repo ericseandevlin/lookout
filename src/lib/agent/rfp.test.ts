@@ -136,6 +136,14 @@ describe("discoverRfp (#272)", () => {
     expect((await board()).map((r) => r.opportunities.fingerprint)).toEqual(["sam:n1"]);
   });
 
+  it("leaves out notices valued under the floor, keeps ones at the floor or with no value (#740)", async () => {
+    await db.update(schema.searches).set({ answers: { naics: "561920", floor: "$50,000" } }).where(eq(schema.searches.id, searchId));
+    sam = () => Response.json({ opportunitiesData: [notice("n1", { award: { amount: "20000" } }), notice("n2", { award: { amount: "50000" } }), notice("n3")] });
+    const out = await discoverRfp(searchId, userId, "manual");
+    expect(out.added).toBe(2);
+    expect((await board()).map((r) => r.opportunities.fingerprint).sort()).toEqual(["sam:n2", "sam:n3"]);
+  });
+
   it("keeps going when SAM.gov fails one query", async () => {
     await db.update(schema.searches).set({ answers: { naics: "561920, 711310" } }).where(eq(schema.searches.id, searchId));
     sam = (url) => (url.searchParams.get("ncode") === "711310" ? new Response("busy", { status: 503 }) : Response.json({ opportunitiesData: [notice("n1")] }));
