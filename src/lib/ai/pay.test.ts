@@ -76,6 +76,20 @@ describe("findPay", () => {
     expect(findPay("", "$120,000 - $140,000 / hybrid in NYC")).toMatchObject({ min: 120000, max: 140000 });
   });
 
+  it.each([
+    ["$60,000 - $70,000 (paid bi-weekly)", 60000, 70000],
+    ["$100,000 - $120,000, paid monthly", 100000, 120000],
+    ["$150,000 - $180,000 + equity, health benefits paid monthly", 150000, 180000],
+    ["$90,000 - $110,000, paid every two weeks", 90000, 110000],
+  ])("keeps %s yearly: a pay schedule is not the unit (#716)", (text, min, max) => {
+    expect(findPay("", text)).toMatchObject({ min, max });
+  });
+
+  it("still reads a per-paycheck range by its schedule (#716)", () => {
+    expect(findPay("", "$2,000 - $2,500 paid bi-weekly")).toMatchObject({ min: 52000, max: 65000 });
+    expect(findPay("", "$40 - $50/hr, paid weekly")).toMatchObject({ min: 83200, max: 104000 });
+  });
+
   it("keeps an hourly range hourly when a yearly word follows it (#646)", () => {
     expect(findPay("", "$25.00 - $35.00 per hour, plus an annual bonus")).toMatchObject({ min: 52000, max: 72800 });
     expect(findPay("", "$40 - $55/hr. Eligible for yearly raises")).toMatchObject({ min: 83200, max: 114400 });
