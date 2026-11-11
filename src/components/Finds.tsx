@@ -226,7 +226,7 @@ export function Finds() {
 
       <div className="board-body">
         {showReport && !state.running && state.lastReport && <LastReport {...state.lastReport} onClose={() => setShowReport(false)} />}
-        <SearchPanel ready={counts.answered === counts.total && state.materials.resume?.status === "done"} />
+        <SearchPanel reportOpen={showReport && !!state.lastReport} ready={counts.answered === counts.total && state.materials.resume?.status === "done"} />
         <SetupPanel answered={counts.answered} sources={counts.sources} />
 
         <section className="board-sec" style={{ background: "#fff", overflow: "hidden" }}>

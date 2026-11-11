@@ -107,11 +107,11 @@ const esc = (s: unknown) => String(s ?? "").replace(/&/g, "&amp;").replace(/</g,
 /** The Workday posting JSON as a small HTML page, so every reader of fetchPage gets the posting text. Null if it isn't one. */
 export function workdayToHtml(json: string): string | null {
   try {
-    const d = JSON.parse(json) as { jobPostingInfo?: Record<string, unknown>; hiringOrganization?: { name?: string } };
+    const d = JSON.parse(json) as { jobPostingInfo?: Record<string, unknown> };
     const j = d.jobPostingInfo;
     if (!j || typeof j.title !== "string" || typeof j.jobDescription !== "string") return null;
+    // hiringOrganization is the legal employer ("LE0001 Relativity ODA LLC"), not the name people know, so it stays out.
     const facts = [
-      ["Company", d.hiringOrganization?.name],
       ["Location", [j.location, ...(Array.isArray(j.additionalLocations) ? j.additionalLocations : [])].filter(Boolean).join("; ")],
       ["Time type", j.timeType],
       ["Posted", j.postedOn],
