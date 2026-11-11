@@ -16,7 +16,7 @@ export function money(s: string): number | null {
 }
 
 function annual(min: number, max: number, unit: string, currency: string, source: string): Pay | null {
-  const k = /hour/i.test(unit) ? HOURS_PER_YEAR : /month/i.test(unit) ? 12 : /week/i.test(unit) ? 52 : 1;
+  const k = /hour/i.test(unit) ? HOURS_PER_YEAR : /month/i.test(unit) ? 12 : /biweek/i.test(unit) ? 26 : /week/i.test(unit) ? 52 : 1;
   const lo = Math.round(Math.min(min, max) * k), hi = Math.round(Math.max(min, max) * k);
   return plausible(lo) && plausible(hi) && hi <= lo * 4 ? { min: lo, max: hi, currency, source } : null;
 }
@@ -77,6 +77,8 @@ const PREFIX: Record<string, string> = { us: "USD", ca: "CAD", c: "CAD", a: "AUD
 const UNITS: [string, RegExp][] = [
   ["YEAR", /\/\s?y(?:ea)?r\b|\b(?:per|a|an|each) year\b|\bannual(?:ly)?\b|\byearly\b/i],
   ["HOUR", /\/\s?h(?:ou)?r\b|\/\s?h\b|\b(?:per|a|an|each) hour\b|\bhourly\b/i],
+  // "bi-weekly" is named before "weekly" inside it, so it wins as the unit named first (#708).
+  ["BIWEEK", /\bbi-?weekly\b|\bevery (?:two|2) weeks\b/i],
   ["WEEK", /\/\s?w(?:ee)?k\b|\b(?:per|a|each) week\b|\bweekly\b/i],
   ["MONTH", /\/\s?mo(?:nth)?\b|\b(?:per|a|each) month\b|\bmonthly\b/i],
 ];
