@@ -91,6 +91,8 @@ describe("pickOne (#695)", () => {
     expect(pickOne("They/them", ["She/her", "He/him"])).toBe(-1);
     expect(pickOne("Maybe", ["Yes", "No"])).toBe(-1);
     expect(pickOne("Yes", [])).toBe(-1);
+  });
+});
 
 describe("CONFIRMATION (#692)", () => {
   it("reads the usual thank-you pages as sent", () => {
