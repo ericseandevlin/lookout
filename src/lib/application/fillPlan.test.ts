@@ -77,6 +77,14 @@ describe("checksBox (#669)", () => {
   });
 });
 
+describe("blank options (#722)", () => {
+  it("never prefix-match an answer that starts with a symbol", () => {
+    expect(pickOne("$185,000", ["  ", "$100,000 - $150,000", "$150,000+"])).toBe(-1);
+    expect(pickOptions("(none)", [" ", "Figma"])).toEqual([]);
+    expect(pickOne("$150,000+", ["", "$150,000+"])).toBe(1);
+  });
+});
+
 describe("pickOne (#695)", () => {
   const long = "I acknowledge that I have read and understood the privacy notice for job applicants in the United States";
   it("takes exact text, then a word-boundary prefix either way, then a long label by its first 80 characters", () => {

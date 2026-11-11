@@ -69,8 +69,8 @@
     return itemKind === "cover_letter" ? inputs[1] || null : inputs[0] || null;
   }
 
-  /** a starts b and ends on a word boundary there: "no" starts "no, thanks" but not "none" (#632). */
-  const startsWord = (a, b) => b.startsWith(a) && (b.length === a.length || /\W/.test(b[a.length]) || /\W/.test(a[a.length - 1]));
+  /** a starts b and ends on a word boundary there: "no" starts "no, thanks" but not "none" (#632). A blank option starts nothing (#722). */
+  const startsWord = (a, b) => !!a && b.startsWith(a) && (b.length === a.length || /\W/.test(b[a.length]) || /\W/.test(a[a.length - 1]));
 
   /**
    * Same rule as pickOptions in src/lib/application/fillPlan.ts: one answer per line, exact text first, then a prefix
