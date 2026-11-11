@@ -29,6 +29,7 @@ import {
   checkAnswer,
   fillField,
   linkedinUrl,
+  withLinkedin,
   keywordReport,
   newNumbers,
   resumeNote,
@@ -192,9 +193,9 @@ async function loadInputs(userId: string, opp: typeof schema.opportunities.$infe
   const mats = await db.select().from(schema.materials).where(eq(schema.materials.userId, userId));
   // The structured master resume (#131), built once from the upload; the raw PDF text is only a fallback.
   const master = await ensureMaster(userId, usage);
-  const resume = master?.md ?? mats.find((m) => m.kind === "resume")?.extracted?.text?.trim() ?? "";
-  if (!resume) throw new Error("Add your resume on your profile first. Lookout drafts from it.");
   const li = mats.find((m) => m.kind === "linkedin");
+  const resume = withLinkedin(master?.md ?? mats.find((m) => m.kind === "resume")?.extracted?.text?.trim() ?? "", li?.url ? linkedinUrl(li.url) : null);
+  if (!resume) throw new Error("Add your resume on your profile first. Lookout drafts from it.");
   let text = opp.description;
   let hidden: string[] = [];
   let html = postingHtml;
@@ -257,7 +258,7 @@ async function draftResume(inp: DraftInputs, usage: Usage, rows: KeywordRow[]) {
   const stray = unapprovedIn(d.resume, inp.resume, rows);
   const facts = `${inp.resume}\n${inp.notes ?? ""}`;
   // The 10-second rules, held in code: one-sentence summary, Experience right after it (#129).
-  const shaped = shapeResume(humanize(d.resume.trim()));
+  const shaped = shapeResume(humanize(withLinkedin(d.resume.trim(), inp.linkedinUrl)));
   // A bullet that left its job in the confirmed master is the Oct 18 bug coming back: say so (#131).
   const swaps = roleSwaps(inp.resume, shaped.md);
   const draft: Drafted = { content: shaped.md, note: resumeNote(keywords, { ...d, notes: [...d.notes, ...shaped.fixed, ...swaps] }, newNumbers(facts, d.resume)), sources: ["master resume", ...(inp.notes ? ["your experience notes"] : []), "posting"], question: null };

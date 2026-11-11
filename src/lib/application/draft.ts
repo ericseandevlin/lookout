@@ -44,6 +44,18 @@ export function linkedinUrl(v: string) {
   return `https://www.linkedin.com/in/${t.replace(/^@/, "")}`;
 }
 
+/**
+ * The resume's contact block carries the LinkedIn link from the profile (#736). The uploaded file's
+ * text can hold a cut-off link (a PDF line that ran out of room), and every draft copied it.
+ */
+export function withLinkedin(md: string, url: string | null | undefined) {
+  const handle = url?.match(/linkedin\.com\/in\/([^/?#\s]+)/i)?.[1];
+  if (!handle) return md;
+  const h = md.search(/^##\s/m);
+  const at = h < 0 ? Math.min(md.length, 600) : h;
+  return md.slice(0, at).replace(/(?:https?:\/\/)?(?:www\.)?linkedin\.com\/in\/[\w%-]+\/?/gi, `linkedin.com/in/${handle}`) + md.slice(at);
+}
+
 /** Name, email and profile links come straight from the account. Returns null when the model should handle it. */
 export function fillField(prompt: string, inp: DraftInputs): Drafted | null {
   const p = prompt.toLowerCase();
