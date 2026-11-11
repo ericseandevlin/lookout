@@ -51,13 +51,18 @@ const YES_NO = /^\W*(are|is|does|do|would|will|can)\b/i;
 const ABOUT_THEIR_RANGE = /\b(range|posted|listed|stated|above|acceptable|comfortable|work for you|align|meets?)\b/i;
 const NAMES_A_NUMBER = /\b(expectations?|requirements?|desired|expected|target|how much|what)\b/i;
 const rangeCheck = (s: string) => YES_NO.test(s) && ABOUT_THEIR_RANGE.test(s) && !NAMES_A_NUMBER.test(s);
+// A sentence that only mentions pay isn't an ask: "Describe a time you negotiated compensation for your team",
+// "Do you have experience designing compensation tools?" (#712). An ask names the number, says "your salary",
+// says what they seek or expect, or is a short label like "Desired salary".
+const OWN_NUMBER = /\byour (\w+ ){0,3}(salary|compensation|pay|wages?)\b|\b(seek\w*|looking for|expect\w*|anticipat\w*)\b/i;
+const asksForNumber = (s: string) => NAMES_A_NUMBER.test(s) || OWN_NUMBER.test(s) || s.trim().split(/\s+/).length <= 4;
 
 /**
  * A salary ask, not a question about the person's own past or current pay. Judged sentence by sentence,
  * so a legal note after the ask ("We do not ask about salary history.") doesn't hide it (#640). A yes/no check on
- * their posted range isn't an ask (#687).
+ * their posted range isn't an ask (#687), and neither is a sentence that only mentions pay (#712).
  */
-export const isSalaryQuestion = (prompt: string) => sentences(prompt).some((s) => SALARY_ASK.test(s) && !asksPastPay(s) && !rangeCheck(s));
+export const isSalaryQuestion = (prompt: string) => sentences(prompt).some((s) => SALARY_ASK.test(s) && asksForNumber(s) && !asksPastPay(s) && !rangeCheck(s));
 
 /** The sentence asks about past pay, not "we do not need your current salary" or "current salary not required" (#652). */
 function asksPastPay(s: string) {
