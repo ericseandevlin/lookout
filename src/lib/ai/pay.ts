@@ -3,6 +3,8 @@
  * range at the very bottom (Greenhouse does), which a length cap cuts off. Sources, best first:
  * schema.org baseSalary, Greenhouse's embedded pay_ranges, then "$X - $Y" ranges in the visible text.
  */
+import { decodeEntities } from "./entities";
+
 export type Pay = { min: number; max: number; currency: string; source: string };
 
 const HOURS_PER_YEAR = 2080;
@@ -119,9 +121,14 @@ function fromText(text: string): Pay | null {
   return null;
 }
 
+// Discovery passes only the HTML: drop scripts and styles, whose strings can swallow the real range, and decode
+// entities, so "$150,000&ndash;$200,000" and "&#36;150,000" still read (#742).
+const htmlText = (html: string) =>
+  decodeEntities(html.replace(/<(script|style|noscript)[\s\S]*?<\/\1>/gi, " ").replace(/<br\s*\/?>|<\/(p|div|li|h\d|tr)>/gi, "\n").replace(/<[^>]+>/g, " "));
+
 /** Pay from a fetched page's HTML; `text` is the page's readable text if you already have it. */
 export function findPay(html: string, text?: string): Pay | null {
-  return fromJsonLd(html) ?? fromGreenhouse(html) ?? fromText(text ?? html.replace(/<[^>]+>/g, " ").replace(/&nbsp;/g, " "));
+  return fromJsonLd(html) ?? fromGreenhouse(html) ?? fromText(text ?? htmlText(html));
 }
 
 export const payLine = (p: Pay) => `PAY ON PAGE (${p.source}): ${p.currency} ${p.min.toLocaleString("en-US")} to ${p.max.toLocaleString("en-US")} a year`;
