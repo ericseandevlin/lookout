@@ -43,6 +43,8 @@ const words = (s: string) => s.split(/\s+/).filter(Boolean).length;
 const short = (s: string) => (s.length > 90 ? `${s.slice(0, 87).trimEnd()}…` : s);
 const SUMMARY = /^(summary|profile|professional summary|about)$/i;
 const SKILLS = /skills|tools|expertise|competenc/i;
+// Sections whose bullets aren't work results, so the number checks skip them (#704).
+const NOT_WORK = /skills|tools|expertise|competenc|education|certif|award|honou?rs|languages|interests|references/i;
 const VAGUE = /\b(?:[A-Z][\w+#./-]*\s){1,2}(?:Concepts|Fundamentals|Basics|Principles)\b|\b(?:familiar(?:ity)? with|exposure to|basic knowledge of|working knowledge of)\b/;
 const FRAMING = /\b(hoping to (?:move|transition|break|grow) into|looking to (?:move|transition|break|pivot) into|eager to break into|transition(?:ing)? into|pivot(?:ing)? (?:in)?to|break into)\b/i;
 const WEAK_OPEN = /^(?:i am|i'm) (?:writing|excited|thrilled|pleased|interested|applying)|^i would like to|^please accept|^my name is|^i wish to|^i was (?:excited|thrilled) to/i;
@@ -63,11 +65,18 @@ function resumeChecks(md: string): Finding[] {
 
   let section = "";
   let roles = 0;
+  // Under a role in a work section. A new section ends the role, so Skills bullets after it aren't its results (#704).
+  let inRole = false;
   const latest: string[] = [];
   const all: string[] = [];
   for (const b of blocks) {
-    if (b.t === "section") section = b.text;
-    else if (b.t === "role" || b.t === "subrole") roles += b.t === "role" ? 1 : 0;
+    if (b.t === "section") {
+      section = b.text;
+      inRole = false;
+    } else if (b.t === "role" || b.t === "subrole") {
+      inRole = !NOT_WORK.test(section);
+      if (inRole && b.t === "role") roles++;
+    }
     else if (b.t === "text" && SUMMARY.test(section)) {
       const n = words(b.text);
       if (n > 35)
@@ -88,7 +97,7 @@ function resumeChecks(md: string): Finding[] {
           fix: "Rewrite my summary so it leads with the work I've already done that matches this role, with no 'moving into' framing.",
           from: "code",
         });
-    } else if (b.t === "bullet") {
+    } else if (b.t === "bullet" && inRole) {
       all.push(b.text);
       if (roles === 1) latest.push(b.text);
     }
