@@ -69,10 +69,17 @@ const FIRST_UNIT = String.raw`\s?(?:\/\s?|(?:per|an?)\s)(?:hours?|hr|h|years?|yr
 // "CAD $120,000 - $150,000" (#709). Only a three-letter code may have a space, so "a $120,000" stays a word.
 const PRE = String.raw`(?:\b(US|CA|C|A|(?:USD|CAD|AUD) ?)(?=\$))?`;
 const CODE = String.raw`(?:\s?(USD|CAD|AUD)\b)?`;
-const range = (start: string, sep: string) =>
-  new RegExp(String.raw`${start}${PRE}\$\s?(${AMT})(${FIRST_UNIT})?${CODE}\s*${sep}\s*${PRE}\$?\s?(${AMT})([^\n]{0,40})`, "gi");
+// A code may stand in for the "$": "USD 150,000 - 200,000" (#753). A bare "120,000 - 150,000" still doesn't count.
+const CODE_LEAD = String.raw`\b(USD|CAD|AUD)\s?(?=\d)`;
+const range = (start: string, sep: string, lead = String.raw`${PRE}\$`) =>
+  new RegExp(String.raw`${start}${lead}\s?(${AMT})(${FIRST_UNIT})?${CODE}\s*${sep}\s*${PRE}\$?\s?(${AMT})([^\n]{0,40})`, "gi");
 // "and" joins a range only after "between": "between $150,000 and $180,000" (#686).
-const RANGES = [range("", "(?:-|–|—|to)"), range(String.raw`\bbetween\s+`, "and")];
+const RANGES = [
+  range("", "(?:-|–|—|to)"),
+  range(String.raw`\bbetween\s+`, "and"),
+  range("", "(?:-|–|—|to)", CODE_LEAD),
+  range(String.raw`\bbetween\s+`, "and", CODE_LEAD),
+];
 const PREFIX: Record<string, string> = { us: "USD", ca: "CAD", c: "CAD", a: "AUD", usd: "USD", cad: "CAD", aud: "AUD" };
 
 // What the range is per, from the words after it. The unit named first wins, so "per year, paid monthly" stays yearly (#484)
