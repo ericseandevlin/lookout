@@ -57,6 +57,13 @@ export function pickOne(answer: string, labels: string[]): number {
 }
 
 /**
+ * The page text that means an application went through, after Submit (#692). Never a bare "thank you": forms often open
+ * with "Thank you for your interest", so a submit that failed validation read as sent. extension/firefox/fill.js and
+ * background.js carry the same pattern.
+ */
+export const CONFIRMATION = /\bthank(?:s| you) for (?:applying|your application|submitting)|\bapplication (?:has been |was )?(?:successfully )?(?:received|submitted|sent)\b|\bwe(?:'ve|’ve| have) (?:successfully )?received your application|\bsuccessfully (?:applied|submitted)\b/i;
+
+/**
  * Whether an answer to a lone checkbox ("I agree to the privacy policy") means tick it (#669).
  * Yes, true and the consent verbs, alone or leading the answer ("Yes, I agree", "I certify the above"),
  * past tense too ("Agreed"), and "I have read and agree", "I understand" (#681).
