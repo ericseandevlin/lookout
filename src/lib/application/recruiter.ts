@@ -138,15 +138,32 @@ function resumeChecks(md: string): Finding[] {
   return out;
 }
 
-/** Checks on a cover letter. */
-function letterChecks(text: string): Finding[] {
-  const out: Finding[] = [];
-  const paras = text
-    .replace(/\r/g, "")
+const GREETING = /^(dear|hi|hello|to whom)\b[^,:\n]{0,60}([,:]\s*|$)/i;
+// A sign-off on its own line ("Best regards,", "Thanks,"), with the name and contact lines under it.
+const SIGN_OFF = /^(sincerely|best|thanks|thank you|regards|kind regards|warm regards|warmly|cheers|all the best)\b[\w ]{0,15},?$/i;
+
+/**
+ * The letter's paragraphs without the greeting and sign-off. Only those lines go, not the paragraph they sit in:
+ * with single line breaks the whole letter is one paragraph starting "Dear", and dropping it skipped every check (#706).
+ */
+function letterBody(text: string) {
+  const lines = text.replace(/\r/g, "").split("\n").map((l) => l.trim());
+  const first = lines.findIndex(Boolean);
+  if (first >= 0) lines[first] = lines[first].replace(GREETING, "");
+  let end = lines.length;
+  for (let i = lines.length - 1; i >= Math.max(0, lines.length - 5); i--) if (SIGN_OFF.test(lines[i])) end = i;
+  return lines
+    .slice(0, end)
+    .join("\n")
     .split(/\n\s*\n/)
     .map((p) => p.replace(/\s+/g, " ").trim())
     .filter(Boolean);
-  const body = paras.filter((p) => !/^(dear|hi|hello|to whom)\b/i.test(p) && !/^(sincerely|best|thank you|regards|warmly)\b/i.test(p));
+}
+
+/** Checks on a cover letter. */
+function letterChecks(text: string): Finding[] {
+  const out: Finding[] = [];
+  const body = letterBody(text);
   const first = sentences(body[0] ?? "")[0];
   if (first && WEAK_OPEN.test(first))
     out.push({
