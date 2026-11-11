@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { fetchPage, isPublicIp, pageToText } from "./fetchPage";
+import { fetchPage, isPublicIp, pageToText, workdayApi, workdayToHtml } from "./fetchPage";
 
 describe("isPublicIp", () => {
   it.each(["10.0.0.5", "127.0.0.1", "172.17.0.1", "172.19.0.11", "192.168.1.1", "169.254.169.254", "100.64.0.1", "0.0.0.0", "::1", "fd00::1", "fe80::1", "::ffff:127.0.0.1"])(
@@ -50,4 +50,43 @@ describe("pageToText", () => {
     expect(t).toContain("Don't miss it — we’re hiring… \u{1F680} A");
     expect(t).toContain("bad end");
   });
+});
+
+describe("Workday postings (#724)", () => {
+  it.each([
+    ["https://swbc.wd1.myworkdayjobs.com/InformationTechnology/job/Remote/Director-of-Product_R0015578-2", "https://swbc.wd1.myworkdayjobs.com/wday/cxs/swbc/InformationTechnology/job/Remote/Director-of-Product_R0015578-2"],
+    ["https://arcticwolf.wd1.myworkdayjobs.com/en-US/External/job/Director--Product---XDR_R26_810?source=x", "https://arcticwolf.wd1.myworkdayjobs.com/wday/cxs/arcticwolf/External/job/Director--Product---XDR_R26_810"],
+    ["https://acme.wd503.myworkdayjobs.com/fr-CA/Careers/job/Toronto/PM_1/", "https://acme.wd503.myworkdayjobs.com/wday/cxs/acme/Careers/job/Toronto/PM_1"],
+  ])("maps %s to the JSON address", (page, api) => expect(workdayApi(page)).toBe(api));
+
+  it.each([
+    "https://swbc.wd1.myworkdayjobs.com/InformationTechnology", // a job list, not a posting
+    "https://swbc.wd1.myworkdayjobs.com/wday/cxs/swbc/InformationTechnology/job/X_1", // already the JSON address
+    "http://swbc.wd1.myworkdayjobs.com/Site/job/X_1",
+    "https://myworkdayjobs.com.evil.example/Site/job/X_1",
+    "https://boards.greenhouse.io/acme/jobs/1",
+    "not a url",
+  ])("leaves %s alone", (u) => expect(workdayApi(u)).toBeNull());
+
+  it("turns the posting JSON into a page the reader keeps", () => {
+    const html = workdayToHtml(
+      JSON.stringify({
+        jobPostingInfo: { title: "Director of Product <AI>", jobDescription: "<p>Own the roadmap.</p><p>Pay: $180,000 - $210,000</p>", location: "Remote", timeType: "Full time", postedOn: "Posted 3 Days Ago", jobReqId: "R1", canApply: true },
+        hiringOrganization: { name: "Acme & Co" },
+      }),
+    )!;
+    const t = pageToText(html);
+    expect(t).toContain("TITLE: Director of Product <AI>");
+    expect(t).toContain("Company: Acme & Co");
+    expect(t).toContain("Location: Remote");
+    expect(t).toContain("Own the roadmap.");
+    expect(t).not.toContain("no longer accepting");
+  });
+
+  it("says so when the posting has closed", () => {
+    const html = workdayToHtml(JSON.stringify({ jobPostingInfo: { title: "PM", jobDescription: "<p>x</p>", canApply: false } }))!;
+    expect(pageToText(html)).toContain("no longer accepting applications");
+  });
+
+  it.each(["{}", "<html>", JSON.stringify({ jobPostingInfo: { title: "PM" } })])("returns null for %s", (j) => expect(workdayToHtml(j)).toBeNull());
 });
