@@ -123,6 +123,12 @@ describe("extension fill: choices", () => {
     expect(r).toMatchObject({ ok: false, how: "option not in the list" });
   });
 
+  it("does not match a $ answer to a blank placeholder option (#722)", async () => {
+    const p = page(`<label for="s">Desired salary range</label><select id="s"><option value="">  </option><option value="a">$100,000 - $150,000</option><option value="b">$150,000+</option></select>`);
+    const [r] = await p.fill({ steps: [{ prompt: "Desired salary range", kind: "choice", content: "$185,000", options: ["", "$100,000 - $150,000", "$150,000+"] }] });
+    expect(r).toMatchObject({ ok: false, how: "option not in the list" });
+  });
+
   it("selects the <select> option the answer means, not one that only starts with its letters (#644)", async () => {
     const p = page(`<label for="s">Do you have a disability?</label><select id="s"><option value="">Select</option><option value="x">None of the above</option><option value="n">No, I do not have a disability</option></select>`);
     const [r] = await p.fill({ steps: [{ prompt: "Do you have a disability?", kind: "choice", content: "No" }] });

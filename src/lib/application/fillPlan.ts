@@ -19,8 +19,8 @@ export function planFill(items: ItemRow[], versions: { id: string; content: stri
   return out;
 }
 
-/** a starts b and ends on a word boundary there: "no" starts "no, thanks" but not "none" (#632). */
-const startsWord = (a: string, b: string) => b.startsWith(a) && (b.length === a.length || /\W/.test(b[a.length]) || /\W/.test(a[a.length - 1]));
+/** a starts b and ends on a word boundary there: "no" starts "no, thanks" but not "none" (#632). A blank option starts nothing (#722). */
+const startsWord = (a: string, b: string) => !!a && b.startsWith(a) && (b.length === a.length || /\W/.test(b[a.length]) || /\W/.test(a[a.length - 1]));
 
 /**
  * Which option labels to tick on a "select any that apply" question (#165). One answer per line.
