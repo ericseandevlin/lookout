@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { LETTER_STRATEGIES, STRATEGY_HINT, STRATEGY_LABEL, strategyOf } from "@/lib/application/letter";
 import type { Template } from "@/lib/application/resumeLayout";
 import type { RecruiterAnalysis } from "@/lib/application/recruiter";
 import { btn } from "../Settings";
@@ -11,6 +12,9 @@ import { TemplatePicker } from "./TemplatePicker";
 import { VersionNotes } from "./VersionNotes";
 import { card, muted, OptionChecks, type Act, type Item } from "./shared";
 import { color } from "@/lib/tokens";
+import { DownloadIcon, EyeIcon, PencilIcon, RefreshIcon } from "../icons";
+
+const iconBtn: React.CSSProperties = { width: 38, height: 38, borderRadius: 10, border: `1.5px solid ${color.border}`, background: "#fff", color: color.ink, display: "inline-flex", alignItems: "center", justifyContent: "center", cursor: "pointer", flex: "none" };
 
 export function ItemCard({ appId, item, locked, act, analysis, template, accent, header, onTemplate, onAccent }: { appId: string; item: Item; locked: boolean; act: Act; analysis?: RecruiterAnalysis; template: Template; accent: string | null; header: { name: string; contact: string; headline?: string } | null; onTemplate: (t: Template) => void; onAccent: (hex: string) => void }) {
   const latest = item.versions[0];
@@ -99,7 +103,7 @@ export function ItemCard({ appId, item, locked, act, analysis, template, accent,
         />
       )}
 
-      {shown && <VersionNotes v={shown} />}
+      {shown && locked && <VersionNotes v={shown} />}
 
       {doc && shown && !editing && (
         <RecruiterPanel
@@ -109,7 +113,7 @@ export function ItemCard({ appId, item, locked, act, analysis, template, accent,
           locked={locked}
           busy={busy}
           onAnalyze={() => run("analyze", { action: "analyze", versionId: shown.id }, "Recruiter Analysis is ready.")}
-          onFix={(f) => run("revise", { action: "revise", instruction: f.fix }, "Lookout made a new version with that fix.")}
+          onFix={(instruction) => run("revise", { action: "revise", instruction }, "Lookout made a new version with that fix.")}
         />
       )}
 
@@ -122,18 +126,18 @@ export function ItemCard({ appId, item, locked, act, analysis, template, accent,
               </button>
             )}
             {doc && (
-              <button onClick={() => setEditing((e) => !e)} aria-pressed={editing} style={btn("outline")}>
-                {editing ? "Preview" : "Edit text"}
+              <button onClick={() => setEditing((e) => !e)} aria-pressed={editing} aria-label={editing ? "Preview" : "Edit text"} data-tip={editing ? "Preview" : "Edit text"} style={iconBtn}>
+                {editing ? <EyeIcon size={16} /> : <PencilIcon size={16} />}
               </button>
             )}
             {doc && !dirty && (
-              <button onClick={() => run("revise", { action: "redraft" }, item.kind === "resume" ? "Lookout wrote a fresh resume from the posting." : "Lookout wrote a fresh cover letter from the posting.")} disabled={!!busy} style={btn("text")}>
-                {busy === "revise" ? "Working…" : "Redraft from the posting"}
+              <button onClick={() => run("revise", { action: "redraft" }, item.kind === "resume" ? "Lookout wrote a fresh resume from the posting." : "Lookout wrote a fresh cover letter from the posting.")} disabled={!!busy} aria-label="Redraft from the posting" data-tip={busy === "revise" ? "Working…" : "Redraft from the posting"} style={{ ...iconBtn, opacity: busy ? 0.5 : 1 }}>
+                <RefreshIcon size={16} />
               </button>
             )}
             {doc && !dirty && (
-              <a href={`/api/apply/${appId}/items/${item.id}/docx`} style={{ ...btn("text"), display: "inline-flex", alignItems: "center" }}>
-                Download .docx
+              <a href={`/api/apply/${appId}/items/${item.id}/docx`} aria-label="Download .docx" data-tip="Download .docx" style={iconBtn}>
+                <DownloadIcon size={16} />
               </a>
             )}
             {item.versions.length > 1 && (
@@ -146,6 +150,8 @@ export function ItemCard({ appId, item, locked, act, analysis, template, accent,
                 ))}
               </select>
             )}
+            {shown && <VersionNotes v={shown} />}
+            <span style={{ flex: 1 }} />
             {dirty ? (
               <button onClick={() => run("save", { action: "edit", content: text, note: "" }, "Saved as a new version.")} disabled={!!busy} style={btn("outline")}>
                 {busy === "save" ? "Saving…" : "Save as new version"}
@@ -160,6 +166,26 @@ export function ItemCard({ appId, item, locked, act, analysis, template, accent,
               </button>
             )}
           </div>
+          {item.kind === "cover_letter" && !dirty && (
+            <div role="group" aria-label="Cover letter approach" style={{ display: "flex", gap: 6, flexWrap: "wrap", alignItems: "center" }}>
+              <span style={muted}>Approach</span>
+              {LETTER_STRATEGIES.map((s) => {
+                const on = strategyOf(shown?.note) === s;
+                return (
+                  <button
+                    key={s}
+                    aria-pressed={on}
+                    disabled={!!busy || on}
+                    data-tip={on ? `This letter: ${STRATEGY_HINT[s]}` : `Redraft: ${STRATEGY_HINT[s]}`}
+                    onClick={() => run("revise", { action: "redraft", strategy: s }, `Lookout wrote a new letter: ${STRATEGY_LABEL[s]}.`)}
+                    style={{ height: 30, padding: "0 12px", borderRadius: 999, fontSize: 13, fontFamily: "inherit", cursor: on ? "default" : "pointer", border: `1.5px solid ${on ? color.ink : color.border}`, background: on ? color.ink : "#fff", color: on ? "#fff" : color.ink }}
+                  >
+                    {STRATEGY_LABEL[s]}
+                  </button>
+                );
+              })}
+            </div>
+          )}
           {item.kind !== "field" && (
             <form
               onSubmit={(e) => {
