@@ -165,11 +165,18 @@ async function fillOne(page: Page, s: FillStep): Promise<{ ok: boolean; how: str
       return { ok: true, how: "uploaded .docx" };
     }
     const field = page.getByLabel(s.prompt, { exact: false }).first();
-    if (!(await field.count())) {
-      // "Select any that apply" is a group of checkboxes under one legend, with no single labeled control (#165).
-      const group = page.locator("fieldset, [role=group]").filter({ hasText: s.prompt.slice(0, 60) }).filter({ has: page.locator("input[type=checkbox]") }).last();
+    const tag = (await field.count()) ? await field.evaluate((e) => `${e.tagName.toLowerCase()}:${e.getAttribute("type") ?? ""}:${e.getAttribute("role") ?? ""}`) : "";
+    // A [role=radiogroup] named by aria-labelledby is the labeled control itself.
+    const labeledGroup = /:(radio)?group$/.test(tag);
+    if (!tag || labeledGroup) {
+      // "Select any that apply" (#165) and one-of radio questions (#694) are a group of boxes under one legend, with no single labeled control.
+      const group = labeledGroup
+        ? field
+        : page.locator("fieldset, [role=group], [role=radiogroup]").filter({ hasText: s.prompt.slice(0, 60) }).filter({ has: page.locator("input[type=checkbox], input[type=radio]") }).last();
       if (s.kind !== "choice" || !(await group.count())) return { ok: false, how: "field not found" };
-      const picks = pickOptions(s.content, s.options);
+      // Radios take one answer: the first line that lands.
+      const radio = (await group.locator("input[type=radio]").count()) > 0;
+      const picks = pickOptions(s.content, s.options).slice(0, radio ? 1 : undefined);
       if (!picks.length) return { ok: false, how: "answer matches no option" };
       for (const label of picks) {
         const box = group.getByLabel(label, { exact: true }).first();
@@ -178,7 +185,6 @@ async function fillOne(page: Page, s: FillStep): Promise<{ ok: boolean; how: str
       }
       return { ok: true, how: `checked ${picks.length}` };
     }
-    const tag = await field.evaluate((e) => `${e.tagName.toLowerCase()}:${e.getAttribute("type") ?? ""}:${e.getAttribute("role") ?? ""}`);
     if (tag.startsWith("select")) {
       // The option the answer means, not only its exact text: "Yes, I am authorized" is the "Yes" option (#695).
       const labels = (await field.locator("option").allTextContents()).map((t) => t.replace(/\s+/g, " ").trim());
