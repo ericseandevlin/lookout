@@ -3,7 +3,7 @@
   if (window.__lookoutFill) return;
   window.__lookoutFill = true;
 
-  const THANKS = /\bthank(?:s| you) for (?:applying|your application|submitting)|\bapplication (?:has been |was )?(?:successfully )?(?:received|submitted|sent)\b|\bwe(?:'ve|’ve| have) (?:successfully )?received your application|\bsuccessfully (?:applied|submitted)\b/i;
+  const THANKS = /thank(?:s| you) for (?:applying|your application|submitting)|application (?:has been |was )?(?:successfully )?(?:received|submitted|sent)\b|we(?:'ve|’ve| have) (?:successfully )?received your application|successfully (?:applied|submitted)\b/i;
   const norm = (t) => (t || "").replace(/\*/g, "").replace(/\s+/g, " ").trim().toLowerCase();
   const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
   const visible = (el) => !!el && el.getClientRects().length > 0 && getComputedStyle(el).visibility !== "hidden";

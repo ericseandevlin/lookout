@@ -106,6 +106,8 @@ describe("CONFIRMATION (#692)", () => {
       "We have successfully received your application",
       "We’ve received your application",
       "You have successfully applied for this position",
+      // innerText can run inline text together.
+      "Submit applicationThank you for applying",
     ])
       expect(CONFIRMATION.test(t), t).toBe(true);
   });
