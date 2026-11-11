@@ -155,7 +155,8 @@ async function phoneCountry(page: Page): Promise<{ ok: boolean; how: string } | 
 }
 
 /** A label that is this text, any case, with or without the required "*". */
-const labelIs = (text: string) => new RegExp(`^\\s*${text.trim().replace(/[.*+?^${}()|[\]\\]/g, "\\$&").replace(/\s+/g, "\\s+")}\\s*\\*?\\s*$`, "i");
+const pattern = (text: string) => text.trim().replace(/[.*+?^${}()|[\]\\]/g, "\\$&").replace(/\s+/g, "\\s+");
+const labelIs = (text: string) => new RegExp(`^\\s*${pattern(text)}\\s*\\*?\\s*$`, "i");
 
 /** Find the control for one question by its label and put the approved answer in. */
 async function fillOne(page: Page, s: FillStep): Promise<{ ok: boolean; how: string }> {
@@ -175,9 +176,15 @@ async function fillOne(page: Page, s: FillStep): Promise<{ ok: boolean; how: str
     const labeledGroup = /:(radio)?group$/.test(tag);
     if (!tag || labeledGroup) {
       // "Select any that apply" (#165) and one-of radio questions (#694) are a group of boxes under one legend, with no single labeled control.
+      const boxes = page.locator("input[type=checkbox], input[type=radio]");
+      // The group named by the question itself first: "Do you require sponsorship?" is not the later group
+      // "Do you require sponsorship? (now or in the future)", which also contains its text (#720).
+      const named = page.getByRole("group", { name: labelIs(s.prompt) }).or(page.getByRole("radiogroup", { name: labelIs(s.prompt) })).filter({ has: boxes }).last();
       const group = labeledGroup
         ? field
-        : page.locator("fieldset, [role=group], [role=radiogroup]").filter({ hasText: s.prompt.slice(0, 60) }).filter({ has: page.locator("input[type=checkbox], input[type=radio]") }).last();
+        : (await named.count())
+          ? named
+          : page.locator("fieldset, [role=group], [role=radiogroup]").filter({ hasText: s.prompt.slice(0, 60) }).filter({ has: boxes }).last();
       if (s.kind !== "choice" || !(await group.count())) return { ok: false, how: "field not found" };
       // Radios take one answer: the first line that lands.
       const radio = (await group.locator("input[type=radio]").count()) > 0;
@@ -189,6 +196,16 @@ async function fillOne(page: Page, s: FillStep): Promise<{ ok: boolean; how: str
         await box.check();
       }
       return { ok: true, how: `checked ${picks.length}` };
+    }
+    if (tag.startsWith("input:radio:")) {
+      // A radio labeled with the question and its option ("Can you work onsite? No"): check the one the answer means.
+      // Clicking the radio the label search landed on put "Yes" on a "No" answer (#720).
+      const i = s.options?.length ? pickOne(s.content, s.options) : -1;
+      if (i < 0) return { ok: false, how: "answer matches no option" };
+      const radio = page.getByRole("radio", { name: new RegExp(`^\\s*${pattern(s.prompt)}\\s*\\*?\\s+${pattern(s.options![i])}\\s*$`, "i") }).first();
+      if (!(await radio.count())) return { ok: false, how: `option not found: ${s.options![i].slice(0, 60)}` };
+      await radio.check();
+      return { ok: true, how: "checked 1" };
     }
     if (tag.startsWith("select")) {
       // The option the answer means, not only its exact text: "Yes, I am authorized" is the "Yes" option (#695).

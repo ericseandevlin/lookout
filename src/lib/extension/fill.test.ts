@@ -169,6 +169,22 @@ describe("extension fill: choices", () => {
     expect((p.doc.querySelector("#y") as HTMLInputElement).checked).toBe(false);
   });
 
+  it("answers the group named by the question, not a later one whose question starts the same (#720)", async () => {
+    const p = page(`<fieldset><legend>Do you require sponsorship? *</legend>
+      <label><input type="radio" name="a" id="a-y"> Yes</label><label><input type="radio" name="a" id="a-n"> No</label></fieldset>
+      <fieldset><legend>Do you require sponsorship? (now or in the future)</legend>
+      <label><input type="radio" name="b" id="b-y"> Yes</label><label><input type="radio" name="b" id="b-n"> No</label></fieldset>`);
+    const log = await p.fill({
+      steps: [
+        { prompt: "Do you require sponsorship?", kind: "choice", content: "No", options: ["Yes", "No"] },
+        { prompt: "Do you require sponsorship? (now or in the future)", kind: "choice", content: "Yes", options: ["Yes", "No"] },
+      ],
+    });
+    expect(log.map((r) => r.ok)).toEqual([true, true]);
+    const on = (id: string) => (p.doc.querySelector(`#${id}`) as HTMLInputElement).checked;
+    expect([on("a-y"), on("a-n"), on("b-y"), on("b-n")]).toEqual([false, true, true, false]);
+  });
+
   it("checks every line of a select-all answer, matching a prefix either way, and leaves the rest", async () => {
     const options = ["Figma", "Sketch", "Adobe Creative Suite", "Framer"];
     const p = page(`<div role="group"><span>Which tools do you use?</span>

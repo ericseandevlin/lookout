@@ -49,11 +49,19 @@
     return all.find((el) => labelOf(el) === norm(prompt)) || all.find((el) => sameText(labelOf(el), prompt)) || null;
   }
 
+  /** A group's own question: its <legend>, else its aria-labelledby or aria-label. */
+  function groupName(g) {
+    const legend = [...g.children].find((c) => c.tagName === "LEGEND");
+    return legend ? norm(legend.textContent) : labelOf(g);
+  }
+
   /** A "select any that apply" or radio question: one heading over several boxes. */
   function groupFor(prompt) {
     const key = norm(prompt).slice(0, 60);
     const groups = [...document.querySelectorAll("fieldset, [role=group], [role=radiogroup]")].filter((g) => norm(g.textContent).includes(key) && g.querySelector("input[type=checkbox], input[type=radio]"));
-    return groups.pop() || null;
+    // The group named by the question itself first: "Do you require sponsorship?" is not the later
+    // "Do you require sponsorship? (now or in the future)", which also contains its text (#720).
+    return groups.filter((g) => groupName(g) === norm(prompt)).pop() || groups.pop() || null;
   }
 
   function fileInputFor(prompt, itemKind) {
