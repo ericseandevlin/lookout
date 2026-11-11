@@ -87,10 +87,13 @@ const UNITS: [string, RegExp][] = [
 ];
 // "Paid bi-weekly" or "benefits paid monthly" says how often a paycheck comes, not what the range is per (#716).
 const SCHEDULE = /\bpaid\s+(?:on\s+an?\s+)?(?:bi-?weekly|weekly|semi-?monthly|monthly|every (?:two|2) weeks|twice (?:a|per|each) month)\b/gi;
+// "3 days a week" or "40 hours per week" is how much you work, not what the range is per (#732).
+const WORKLOAD = /\b(?:\d+(?:\.\d+)?|one|two|three|four|five)(?:\s?(?:-|to)\s?\d+)?\s+(?:days?|hours?|hrs?)\s*(?:a|per|each|\/)\s*week\b/gi;
 function payUnit(tail: string) {
   let best: [string, number] = ["YEAR", Infinity];
+  const said = tail.replace(WORKLOAD, " ");
   for (const [unit, re] of UNITS) {
-    const at = tail.search(re);
+    const at = said.search(re);
     if (at >= 0 && at < best[1]) best = [unit, at];
   }
   return best[0];

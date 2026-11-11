@@ -90,6 +90,19 @@ describe("findPay", () => {
     expect(findPay("", "$40 - $50/hr, paid weekly")).toMatchObject({ min: 83200, max: 104000 });
   });
 
+  it.each([
+    ["Salary: $150,000 - $180,000. Hybrid, 3 days a week in the office.", 150000, 180000],
+    ["$120,000 - $150,000 for 40 hours per week", 120000, 150000],
+    ["$130,000 - $160,000, in office two days a week", 130000, 160000],
+    ["$40 - $50 per hour, 40 hours a week", 83200, 104000],
+  ])("reads %s by its pay unit: a work week is not the unit (#732)", (text, min, max) => {
+    expect(findPay("", text)).toMatchObject({ min, max });
+  });
+
+  it("still reads a weekly range as weekly (#732)", () => {
+    expect(findPay("", "$2,000 - $2,500 per week")).toMatchObject({ min: 104000, max: 130000 });
+  });
+
   it("keeps an hourly range hourly when a yearly word follows it (#646)", () => {
     expect(findPay("", "$25.00 - $35.00 per hour, plus an annual bonus")).toMatchObject({ min: 52000, max: 72800 });
     expect(findPay("", "$40 - $55/hr. Eligible for yearly raises")).toMatchObject({ min: 83200, max: 114400 });
