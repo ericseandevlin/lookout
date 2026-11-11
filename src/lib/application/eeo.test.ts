@@ -46,6 +46,14 @@ describe("matchOption", () => {
     expect(matchOption(DECLINE, eeocGender)).toBe("Decline To Self Identify");
   });
 
+  it.each(["Prefer to not answer", "I choose to not disclose", "Wish to not answer", "No answer", "Opt out", "Undisclosed", "Not specified"])(
+    "finds %s as the decline, and never as No (#754)",
+    (o) => {
+      expect(matchOption(DECLINE, ["Yes", "No", o])).toBe(o);
+      expect(matchOption("No", [o, "Yes", "No"])).toBe("No");
+    },
+  );
+
   it("never mixes up veteran and not a veteran", () => {
     expect(matchOption("Not a veteran", clearVeteran)).toBe("No, I am not a veteran or active member");
     expect(matchOption("Veteran", clearVeteran)).toBe("Yes, I am a veteran or active member");

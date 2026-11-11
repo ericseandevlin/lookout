@@ -47,7 +47,9 @@ export function classify(prompt: string): EeoCategory | null {
   return null;
 }
 
-const DECLINES = /decline|don.?t (wish|want)|do not (wish|want)|prefer not|not to (answer|disclose|say|self)|choose not|rather not|wish not/i;
+// "Prefer to not answer", "Opt out", "Undisclosed" and "Not specified" decline too (#754).
+const DECLINES =
+  /decline|don.?t (wish|want)|do not (wish|want)|prefer not|(not to|to not) (answer|disclose|say|self)|choose not|rather not|wish not|\bno answer\b|\bopt.?out\b|undisclosed|^not (specified|declared|disclosed)\b/i;
 
 /** How each profile choice shows up in form options. Order matters: the first option that matches wins. */
 const SYNONYMS: Record<string, RegExp> = {
