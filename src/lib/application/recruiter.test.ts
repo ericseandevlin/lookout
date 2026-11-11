@@ -38,6 +38,36 @@ describe("recruiterChecks: resume", () => {
     expect(f.find((x) => x.line === bare[0])!.fix).toMatch(/ask me/);
   });
 
+  it("counts only work bullets for numbers, not Skills or Education (#704)", () => {
+    const one = `# Maya Ortiz
+Design Systems Lead
+
+## Experience
+### UX Engineering Lead, Acme | 2016 – Present
+- Grew the team from 3 to 12 engineers.
+- Cut build time by 40%.
+- Ran design reviews for the platform group.
+- Wrote the contribution guide.
+- Shipped 30 components in the first year.
+- Led the accessibility audit.
+
+## Skills
+- React, TypeScript, Storybook
+- Figma, design tokens
+
+## Education
+### BFA, Rhode Island School of Design
+- Graphic design`;
+    const g = recruiterChecks("resume", one);
+    expect(g.filter((x) => x.dim === "impact" && x.line).map((x) => x.line)).toEqual(["Ran design reviews for the platform group.", "Wrote the contribution guide.", "Led the accessibility audit."]);
+    expect(recruiterChecks("resume", one.replace(/ from 3 to 12 engineers| by 40%|30 /g, " ")).some((x) => /bullets carry a number/.test(x.what))).toBe(true);
+    const numbered = one.replace("Wrote the contribution guide.", "Wrote the guide 200 people use.").replace("Led the accessibility audit.", "Led the audit of 40 apps.");
+    expect(recruiterChecks("resume", numbered).filter((x) => x.dim === "impact" && x.line).map((x) => x.line)).toEqual(["Ran design reviews for the platform group."]);
+    const skillsHeavy = one.replace("- Figma, design tokens", "- Figma, design tokens\n- Sketch\n- Accessibility\n- Prototyping\n- Research");
+    expect(skillsHeavy.match(/^- /gm)!.length).toBe(13);
+    expect(recruiterChecks("resume", skillsHeavy).some((x) => /bullets carry a number/.test(x.what))).toBe(false);
+  });
+
   it("flags vague skill phrases in the skills section", () => {
     expect(f.some((x) => x.what.includes('"Accessibility Concepts"'))).toBe(true);
   });
