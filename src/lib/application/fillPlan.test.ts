@@ -72,6 +72,10 @@ describe("checksBox (#669)", () => {
   it("ticks on past tense and read-and-agree answers (#681)", () => {
     for (const a of ["Agreed", "Acknowledged.", "Confirmed", "Accepted", "Consented", "Certified", "I have read and agree", "I've read and acknowledge", "I’ve read and acknowledge", "I read and agree", "I understand and agree", "I understand", "I agreed to the terms"]) expect(checksBox(a), a).toBe(true);
   });
+  it("ticks on read-and-understand answers (#796)", () => {
+    for (const a of ["I have read and understand the privacy policy", "I've read and understood", "I’ve read and understood the terms", "I read and understand", "I understood"]) expect(checksBox(a), a).toBe(true);
+    for (const a of ["I have read and do not understand", "I have read and do not agree"]) expect(checksBox(a), a).toBe(false);
+  });
   it("leaves the box on no, empty or anything else", () => {
     for (const a of ["", "No", "false", "No, I do not agree", "I do not agree", "I don't consent", "Yesterday", "Agreement pending", "N/A", "Maybe", "I have read the terms", "I do not understand", "Disagreed", "Acceptance pending"]) expect(checksBox(a), a).toBe(false);
   });

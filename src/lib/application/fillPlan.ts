@@ -66,10 +66,10 @@ export const CONFIRMATION = /thank(?:s| you) for (?:applying|your application|su
 /**
  * Whether an answer to a lone checkbox ("I agree to the privacy policy") means tick it (#669).
  * Yes, true and the consent verbs, alone or leading the answer ("Yes, I agree", "I certify the above"),
- * past tense too ("Agreed"), and "I have read and agree", "I understand" (#681).
+ * past tense too ("Agreed"), and "I have read and agree", "I understand" (#681), "I have read and understand", "I've read and understood" (#796).
  * Anything else, including empty, leaves the box as it is.
  */
 export function checksBox(answer: string): boolean {
   const a = answer.replace(/\*/g, "").replace(/\s+/g, " ").trim().toLowerCase();
-  return /^(yes|true|(i(( have|'ve|’ve)? read| understand) and |i )?(agreed?|acknowledged?|confirm(ed)?|consent(ed)?|certif(y|ied)|accept(ed)?)|i understand)\b/.test(a);
+  return /^(yes|true|(i(( have|'ve|’ve)? read| understand) and |i )?(agreed?|acknowledged?|confirm(ed)?|consent(ed)?|certif(y|ied)|accept(ed)?)|i(( have|'ve|’ve)? read and)? underst(and|ood))\b/.test(a);
 }

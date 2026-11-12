@@ -251,13 +251,13 @@ describe("extension fill: choices", () => {
   });
 
   it("ticks a lone labeled checkbox on any yes, by the same rule as the server (#669)", async () => {
-    const answers = ["Yes, I agree", "I acknowledge", "I certify", "No", "", "I do not agree", "Agreed", "I have read and agree", "I understand"];
+    const answers = ["Yes, I agree", "I acknowledge", "I certify", "No", "", "I do not agree", "Agreed", "I have read and agree", "I understand", "I have read and understand"];
     const p = page(answers.map((_, i) => `<label><input type="checkbox" id="b${i}"> Consent ${i}</label>`).join(""));
     const log = await p.fill({ steps: answers.map((content, i) => ({ prompt: `Consent ${i}`, kind: "text", content, required: false })) });
     const ticked = answers.map((_, i) => (p.doc.querySelector(`#b${i}`) as HTMLInputElement).checked);
-    expect(ticked).toEqual([true, true, true, false, false, false, true, true, true]);
+    expect(ticked).toEqual([true, true, true, false, false, false, true, true, true, true]);
     expect(ticked).toEqual(answers.map(checksBox));
-    expect(log.map((l) => l.how)).toEqual(["checked", "checked", "checked", "left unchecked", "left unchecked", "left unchecked", "checked", "checked", "checked"]);
+    expect(log.map((l) => l.how)).toEqual(["checked", "checked", "checked", "left unchecked", "left unchecked", "left unchecked", "checked", "checked", "checked", "checked"]);
   });
 
   it("unticks a box the site ticked ahead when the answer is no (#788)", async () => {
