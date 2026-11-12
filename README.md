@@ -123,6 +123,7 @@ AI and search settings can live in env or be set in Admin > AI settings (the dat
 | `FEATURE_AUTO_APPLY` | `on` shows auto-apply to admins (staging only until released) |
 | `FEATURE_AUTO_SUBMIT` | `on` lets auto-apply press Submit itself; otherwise it fills the form and stops for review |
 | `FEATURE_EVENTS` | `on` shows the Events page and adds event searches to scheduled runs (staging only until released) |
+| `FEATURE_PREVIEW` | `on` shows the `/next` page of features still being built, for demos. Turn it off after |
 | `FEATURE_SEARCHES` | `on` allows more than one search per account and shows the kind picker at sign-up (staging only until released) |
 | `CHROMIUM_PATH` | Chromium used by auto-apply (default `/usr/bin/chromium-browser`, set in the Docker image) |
 | `MIGRATIONS_DIR` | Database migrations folder (default `./drizzle`, set in the Docker image) |
