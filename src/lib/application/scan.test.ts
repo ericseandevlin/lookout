@@ -19,6 +19,11 @@ describe("detectAts", () => {
     expect(boardFromHtml(`fetch("https://boards-api.greenhouse.io/v1/boards/acme_co/jobs")`)).toBe("acme_co");
     expect(boardFromHtml("<p>no board</p>")).toBeNull();
     expect(boardGuesses("careers.red-ventures.com")).toEqual(["red-ventures", "redventures"]);
+    // A country's second-level name is not the company (#834).
+    expect(boardGuesses("careers.acme.co.uk")).toEqual(["acme"]);
+    expect(boardGuesses("jobs.big-co.com.au")).toEqual(["big-co", "bigco"]);
+    expect(boardGuesses("acme.co")).toEqual(["acme"]);
+    expect(boardGuesses("careers.acme.io")).toEqual(["acme"]);
   });
 
   it("reads an embed link with only ?token= as an embed, not board \"embed\" (#674)", () => {
