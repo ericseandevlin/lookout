@@ -134,6 +134,21 @@ describe("findPay", () => {
     expect(findPay("", "Team of 120,000 - 150,000 users")).toBeNull();
   });
 
+  it.each([
+    ["Hiring range 180,000 USD - 220,000 USD", 180000, 220000, "USD"],
+    ["Salary range: 180,000-220,000 USD", 180000, 220000, "USD"],
+    ["Base pay: 180K - 220K USD", 180000, 220000, "USD"],
+    ["180,000 - 220,000 CAD per year", 180000, 220000, "CAD"],
+    ["Pay is between 150,000 and 180,000 AUD", 150000, 180000, "AUD"],
+    ["60 - 70 USD per hour", 124800, 145600, "USD"],
+  ])("reads %s, with the code only after the numbers (#809)", (text, min, max, currency) => {
+    expect(findPay("", text)).toMatchObject({ min, max, currency });
+  });
+
+  it("keeps the $ range first when a code-trailed range follows it (#809)", () => {
+    expect(findPay("", "$150,000 - $200,000. Canada: 140,000 - 190,000 CAD")).toMatchObject({ min: 150000, max: 200000 });
+  });
+
   it("keeps an hourly range hourly when a yearly word follows it (#646)", () => {
     expect(findPay("", "$25.00 - $35.00 per hour, plus an annual bonus")).toMatchObject({ min: 52000, max: 72800 });
     expect(findPay("", "$40 - $55/hr. Eligible for yearly raises")).toMatchObject({ min: 83200, max: 114400 });
