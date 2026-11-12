@@ -260,6 +260,13 @@ describe("extension fill: choices", () => {
     expect(log.map((l) => l.how)).toEqual(["checked", "checked", "checked", "left unchecked", "left unchecked", "left unchecked", "checked", "checked", "checked"]);
   });
 
+  it("unticks a box the site ticked ahead when the answer is no (#788)", async () => {
+    const p = page(`<label><input type="checkbox" id="alerts" checked> Send me job alerts</label>`);
+    const [r] = await p.fill({ steps: [{ prompt: "Send me job alerts", kind: "text", content: "No", required: false }] });
+    expect(r).toMatchObject({ ok: true, how: "left unchecked" });
+    expect((p.doc.querySelector("#alerts") as HTMLInputElement).checked).toBe(false);
+  });
+
   it("reports a required checkbox it can't tick or can't find (#669)", async () => {
     const p = page(`<input type="checkbox" id="pp" aria-label="I agree to the privacy policy">`);
     const log = await p.fill({

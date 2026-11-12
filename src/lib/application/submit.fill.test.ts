@@ -69,6 +69,7 @@ function fakePage(els: El[]) {
       fill: async (v) => void did.push(`fill ${one().label}=${v}`),
       press: async (k) => void did.push(`press ${one().label} ${k}`),
       check: async () => void did.push(`check ${one().label}`),
+      uncheck: async () => void did.push(`uncheck ${one().label}`),
       selectOption: async ({ label }) => {
         const e = one();
         if (!e.options?.includes(label)) throw new Error(`no option ${label}`);
@@ -126,6 +127,7 @@ type Loc = {
   fill(v: string): Promise<void>;
   press(k: string): Promise<void>;
   check(): Promise<void>;
+  uncheck(): Promise<void>;
   selectOption(o: { label: string }): Promise<void>;
   setInputFiles(f: string): Promise<void>;
 };
@@ -393,6 +395,8 @@ describe("runFill controls (#567)", () => {
     expect(page.did).toContain(`check ${agree}`);
     expect(page.did).toContain(`check ${certify}`);
     expect(page.did).not.toContain(`check ${relocate}`);
+    // Unticked even if the site ticked it ahead (#788).
+    expect(page.did).toContain(`uncheck ${relocate}`);
     expect(page.did).not.toContain(`check ${terms}`);
     expect(r.missing).toEqual([terms]);
   });

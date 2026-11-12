@@ -221,7 +221,12 @@ async function fillOne(page: Page, s: FillStep): Promise<{ ok: boolean; how: str
     }
     if (tag.includes(":checkbox:")) {
       // A required box the answer doesn't tick is reported missing, not filled (#669).
-      if (!checksBox(s.content)) return s.required ? { ok: false, how: "answer is not a yes" } : { ok: true, how: "left unchecked" };
+      if (!checksBox(s.content)) {
+        if (s.required) return { ok: false, how: "answer is not a yes" };
+        // A box the site ticked ahead ("Send me job alerts") goes out the way they answered (#788).
+        await field.uncheck();
+        return { ok: true, how: "left unchecked" };
+      }
       await field.check();
       return { ok: true, how: "checked" };
     }

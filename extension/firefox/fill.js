@@ -184,7 +184,12 @@
       if (!el && step.kind !== "choice") {
         const box = checkboxFor(step.prompt);
         if (!box) return { ok: false, how: "field not found" };
-        if (!checksBox(step.content)) return step.required ? { ok: false, how: "answer is not a yes" } : { ok: true, how: "left unchecked" };
+        if (!checksBox(step.content)) {
+          if (step.required) return { ok: false, how: "answer is not a yes" };
+          // A box the site ticked ahead ("Send me job alerts") goes out the way they answered (#788).
+          if (box.checked) box.click();
+          return { ok: true, how: "left unchecked" };
+        }
         if (!box.checked) box.click();
         return { ok: true, how: "checked" };
       }
