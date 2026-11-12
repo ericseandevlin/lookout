@@ -76,6 +76,14 @@ describe("kindFor", () => {
     expect(kindFor("Website", "textarea")).toBe("answer");
   });
 
+  it("reads a question that mentions a cover letter as a question (#804)", () => {
+    expect(kindFor("Would you like to include a cover letter?", "select")).toBe("answer");
+    expect(kindFor("Why do you want to work here? (No cover letter needed)", "textarea")).toBe("answer");
+    expect(kindFor("I have attached a cover letter", "checkbox")).toBe("answer");
+    expect(kindFor("Cover letter", "textarea")).toBe("cover_letter");
+    expect(kindFor("Cover Letter (optional)", "file")).toBe("cover_letter");
+  });
+
   it("keeps field labels with their usual extras as fields", () => {
     for (const l of ["Email Address", "Phone Number *", "LinkedIn Profile URL", "Current Location (City, State)", "Preferred First Name", "Name (first and last)", "Website or portfolio link", "Location:"]) expect(kindFor(l, "text"), l).toBe("field");
   });

@@ -126,7 +126,8 @@ export function kindFor(label: string, fieldType: string): ApplicationItemKind {
   const l = label.trim();
   // "Resume gaps: anything to explain?" is a question, not the upload.
   if (RESUME.test(l) && !l.includes("?")) return "resume";
-  if (COVER.test(l)) return "cover_letter";
+  // "Would you like to include a cover letter?" is a Yes/No question, not the upload (#804).
+  if (COVER.test(l) && !l.includes("?") && !/select|checkbox/i.test(fieldType)) return "cover_letter";
   if (/portfolio|work samples?/i.test(l) && /file/i.test(fieldType)) return "portfolio";
   if (isBasicField(l) && !/textarea|long/i.test(fieldType)) return "field";
   return "answer";
