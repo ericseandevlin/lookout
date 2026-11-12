@@ -102,7 +102,7 @@ describe("pickOne (#695)", () => {
   });
 });
 
-describe("CONFIRMATION (#692, #748)", () => {
+describe("CONFIRMATION (#692, #748, #762)", () => {
   it("reads the usual thank-you pages as sent", () => {
     for (const t of [
       "Thank you for applying!",
@@ -120,6 +120,12 @@ describe("CONFIRMATION (#692, #748)", () => {
       "Thanks for your interest! We received your application.",
       "Thank you for your submission",
       "Thanks, we got your application!",
+      // #762
+      "Your submission has been received",
+      "We have received your submission.",
+      "Your application for Senior Product Designer has been received",
+      "Your application for the role was successfully submitted",
+      "Your candidacy has been submitted",
       // innerText can run inline text together.
       "Submit applicationThank you for applying",
     ])
@@ -134,6 +140,9 @@ describe("CONFIRMATION (#692, #748)", () => {
       "Before your application is submitted, review your answers.",
       "Application questions",
       "Once we receive your application, we will review it.",
+      // #762
+      "Your application for this role will be reviewed once it is submitted.",
+      "Before your submission is sent, check your answers.",
     ])
       expect(CONFIRMATION.test(t), t).toBe(false);
   });
