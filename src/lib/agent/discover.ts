@@ -13,7 +13,7 @@ import { completeJSON, emptyUsage, type Usage } from "@/lib/ai/llm";
 import { assertBudget, finishRun, progress, startRun } from "@/lib/ai/runs";
 import { webSearch, type SearchHit } from "@/lib/ai/search";
 import { getAiConfig } from "@/lib/config";
-import { applyRules, fingerprint, normUrl } from "./rules";
+import { applyRules, fingerprint, fullTitle, normUrl } from "./rules";
 import { closeGonePostings } from "./linkCheck";
 import { findEventsIfDue } from "./networking";
 import { featureOn } from "@/lib/features";
@@ -297,6 +297,24 @@ const annualPay = (n: number | null) => (n != null && Number.isFinite(n) && n >=
 /** In an insert's conflict update: the shared row's link check says gone and the new find is at another URL (#830). */
 const reposted = sql`(${schema.opportunities.attributes} -> 'linkCheck' ->> 'state' = 'gone' and excluded.source_url is distinct from ${schema.opportunities.sourceUrl})`;
 
+/**
+ * The posting's dedupe key. The fingerprint drops title parentheticals, so "Designer (Payments)" and "Designer (Identity)"
+ * at one company and city share it, and the second job was saved onto the first's row and never shown (#838). When the
+ * titles differ and both links name a different ATS job, the second gets a key of its own.
+ */
+async function postingKey(f: { company: string; title: string; location: string; url: string }) {
+  const fp = fingerprint(f.company, f.title, f.location);
+  const mine = atsKey(f.url);
+  if (!mine) return fp;
+  const [hit] = await db
+    .select({ title: schema.opportunities.title, sourceUrl: schema.opportunities.sourceUrl })
+    .from(schema.opportunities)
+    .where(eq(schema.opportunities.fingerprint, fp));
+  const theirs = hit?.sourceUrl ? atsKey(hit.sourceUrl) : null;
+  if (!hit || !theirs || theirs === mine || fullTitle(hit.title) === fullTitle(f.title)) return fp;
+  return `${fp}:${mine}`;
+}
+
 export async function save(ctx: Context, finds: ScoredT[], via: "agent" | "manual"): Promise<RunTally & { newFinds: { id: string; score: number }[] }> {
   const known = new Set(ctx.knownUrls.map(normUrl));
   const t = emptyTally();
@@ -348,7 +366,7 @@ export async function save(ctx: Context, finds: ScoredT[], via: "agent" | "manua
         postedAt: realDate(f.posted_at),
         sourceUrl: f.url.slice(0, 1000),
         description: f.description.slice(0, 2000),
-        fingerprint: fingerprint(f.company, f.title, f.location),
+        fingerprint: await postingKey(f),
       })
       // The row is shared by everyone who has this find: keep its link and summary, only fill what's missing (#585).
       // A posting the link check found gone and the company put up again at a new URL takes the new link, summary and

@@ -40,6 +40,9 @@ const normPart = (s: string) =>
     .replace(/[^a-z0-9]+/g, " ")
     .trim();
 
+/** A title with its parentheticals kept, to tell "Designer (Payments)" from "Designer (Identity)" (#838). */
+export const fullTitle = (t: string) => t.toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
+
 export function fingerprint(company: string, title: string, location: string) {
   // nosemgrep: javascript.lang.security.audit.node-sha1.node_sha1 -- SHA-1 here only fingerprints postings for dedupe, not security
   return createHash("sha1")
