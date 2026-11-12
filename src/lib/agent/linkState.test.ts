@@ -38,6 +38,26 @@ describe("classifyPage", () => {
   ])("keeps %s open (#747)", (text) => {
     expect(classifyPage(200, text).state).toBe("open");
   });
+  it.each([
+    "This job posting has closed.",
+    "Applications have closed for this role.",
+    "The posting has closed",
+    "This vacancy has now closed",
+    "Sorry, this opportunity is closed.",
+    "Job Closed",
+    "This requisition is no longer accepting candidates",
+    "We are not accepting applications for this position at this time",
+    "The job posting you're looking for might have closed or it has been removed",
+  ])("reads %s as closed (#760)", (text) => {
+    expect(classifyPage(200, text).state).toBe("gone");
+  });
+  it.each([
+    "TITLE: Engineer\nThis role is closed to agencies. Apply directly.",
+    "TITLE: Designer\nWe are not accepting applications from candidates who need sponsorship.",
+    "TITLE: PM\nYou will lead the closed beta. Applications close Friday.",
+  ])("keeps %s open (#760)", (text) => {
+    expect(classifyPage(200, text).state).toBe("open");
+  });
   it("closed wording beats a stray maintenance mention", () => {
     expect(classifyPage(200, "We're sorry, but it looks like this job may be no longer available or does not exist. Site maintenance notice").state).toBe("gone");
   });
