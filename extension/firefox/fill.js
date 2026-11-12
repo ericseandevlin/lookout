@@ -258,11 +258,14 @@
         const b = e.target.closest && e.target.closest("button, input[type=submit]");
         if (!b || !/submit|send application|apply/i.test(b.textContent || b.value || "")) return;
         browser.runtime.sendMessage({ type: "lookout-armed", appId });
+        // Posting text on the page can already match, so only a thank-you past the ones there at the click counts (#784).
+        const matches = () => document.body.innerText.match(new RegExp(THANKS.source, "gi")) || [];
+        const seen = matches().length;
         const obs = new MutationObserver(() => {
-          const m = document.body.innerText.match(THANKS);
+          const m = matches()[seen];
           if (m) {
             obs.disconnect();
-            browser.runtime.sendMessage({ type: "lookout-thanks", appId, url: location.href, text: m[0] });
+            browser.runtime.sendMessage({ type: "lookout-thanks", appId, url: location.href, text: m });
           }
         });
         obs.observe(document.body, { childList: true, subtree: true, characterData: true });

@@ -418,4 +418,20 @@ describe("extension probe and submit watch", () => {
     await new Promise((r) => setTimeout(r, 20));
     expect(p.sent[1]).toMatchObject({ type: "lookout-thanks", appId: "app-1", text: "Thank you for applying" });
   });
+
+  it("thank-you text already on the page doesn't count; a new one after Submit does (#784)", async () => {
+    const p = page(`<p>Once your application has been received, a recruiter will reach out.</p><form><label for="fn">First Name</label><input id="fn"><button type="button" id="go">Submit application</button></form>`);
+    await p.fill({ steps: [text("First Name", "Pat")] });
+    (p.doc.getElementById("go") as HTMLButtonElement).click();
+    const err = p.doc.createElement("p");
+    err.textContent = "Please fix the errors above.";
+    p.doc.body.append(err);
+    await new Promise((r) => setTimeout(r, 20));
+    expect(p.sent).toEqual([{ type: "lookout-armed", appId: "app-1" }]);
+    const done = p.doc.createElement("p");
+    done.textContent = "Your application has been submitted.";
+    p.doc.body.append(done);
+    await new Promise((r) => setTimeout(r, 20));
+    expect(p.sent[1]).toMatchObject({ type: "lookout-thanks", appId: "app-1", text: "application has been submitted" });
+  });
 });
