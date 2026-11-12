@@ -129,6 +129,26 @@ describe("sendDigest", () => {
     expect((await digests())[0].finds).toBe(2);
   });
 
+  it("leaves out a posting another search already had before the window (#823)", async () => {
+    const id = await find("Already on the board", { ago: 3 * DAY });
+    const [s2] = await db.insert(schema.searches).values({ userId, name: "Second search", answers: {} }).returning();
+    await db.insert(schema.userOpportunities).values({ userId, searchId: s2.id, opportunityId: id, score: 5 });
+    await find("Really new", { score: 4 });
+    await sendDigest(userId);
+    const [m] = sent();
+    expect(m.subject).toBe("Lookout: 1 new find");
+    expect(m.text).not.toContain("Already on the board");
+    expect((await digests())[0].finds).toBe(1);
+  });
+
+  it("sends nothing when the only new row is a posting already on the board (#823)", async () => {
+    const id = await find("Already on the board", { ago: 3 * DAY });
+    const [s2] = await db.insert(schema.searches).values({ userId, name: "Second search", answers: {} }).returning();
+    await db.insert(schema.userOpportunities).values({ userId, searchId: s2.id, opportunityId: id, score: 5 });
+    await sendDigest(userId);
+    expect(sent()).toEqual([]);
+  });
+
   it("says one find, not one finds", async () => {
     await find("Only one");
     await sendDigest(userId);
