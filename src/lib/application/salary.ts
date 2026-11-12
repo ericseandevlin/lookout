@@ -20,12 +20,18 @@ const NEGATED = /(\bnot|n't)\s+(includ|reflect)|\bexclud|in addition to|on top o
 const BASE_PLUS = /\bbase\b[^.?!]{0,30}?(\+|\bplus\b|\band\b)[^.?!]{0,20}?\b(bonus|commission|incentive)/i;
 const THE_RANGE = /\b(range|figure|amount)s?\b/i;
 const ON_TARGET = /\bon[- ]target earnings\b|\btotal (target )?(cash|compensation|comp|pay)\b[^.?!]{0,10}(range|:|\$)/i;
+// "Total cash" and "OTE" count only where they name the range: in a sentence with the range or an amount, or as a short
+// heading over it. "Beyond base pay, a bonus means total cash compensation may be higher" is about base (#795).
+const TOTAL_CASH = /\btotal cash\b|\bOTE\b/i;
+const NOT_TOTAL = /(\bnot|n't)\b[^.?!]{0,20}?(total cash|\bOTE\b)/i;
+const NAMES_TOTAL = (s: string) =>
+  TOTAL_CASH.test(s) && !NOT_TOTAL.test(s) && (THE_RANGE.test(s) || /[$\d]/.test(s) || s.trim().split(/\s+/).length <= 4);
 const SAYS_TOTAL = (s: string) =>
-  !NEGATED.test(s) && ((INCLUDES_BONUS.test(s) && ABOUT_PAY.test(s)) || (BASE_PLUS.test(s) && THE_RANGE.test(s)) || ON_TARGET.test(s));
+  !NEGATED.test(s) && ((INCLUDES_BONUS.test(s) && ABOUT_PAY.test(s)) || (BASE_PLUS.test(s) && THE_RANGE.test(s)) || ON_TARGET.test(s) || NAMES_TOTAL(s));
 
 /** What the posted range covers: total cash (bonus included), base, or the posting doesn't say. */
 export const rangeBasis = (posting: string): "total" | "base" | null =>
-  /total cash|\bOTE\b/i.test(posting) || sentences(posting).some(SAYS_TOTAL)
+  sentences(posting).some(SAYS_TOTAL)
     ? "total"
     : /\bbase (salary|pay|compensation)\b/i.test(posting)
       ? "base"
