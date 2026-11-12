@@ -6,8 +6,8 @@ import { WAITLIST_NOTICE } from "@/lib/legal";
 import { NEXT_MOVES } from "@/lib/onboarding";
 import { color } from "@/lib/tokens";
 
-export function Login({ emailEnabled, inviteOnly, turnstileSiteKey = "", kinds = false, signedOut = false, channel = null }: { emailEnabled: boolean; inviteOnly: boolean; turnstileSiteKey?: string; kinds?: boolean; signedOut?: boolean; channel?: string | null }) {
-  const [mode, setMode] = useState<"signin" | "request">(inviteOnly && !emailEnabled ? "request" : "signin");
+export function Login({ emailEnabled, inviteOnly, turnstileSiteKey = "", kinds = false, signedOut = false, channel = null, start }: { emailEnabled: boolean; inviteOnly: boolean; turnstileSiteKey?: string; kinds?: boolean; signedOut?: boolean; channel?: string | null; start?: "signin" | "request" }) {
+  const [mode, setMode] = useState<"signin" | "request">(start ?? (inviteOnly && !emailEnabled ? "request" : "signin"));
   return (
     <AuthCard>
       {mode === "signin" ? (
