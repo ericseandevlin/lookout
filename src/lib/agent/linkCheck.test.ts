@@ -83,6 +83,22 @@ describe("closeGonePostings", () => {
     expect(f.linkCheck?.goneSince).toBe(T0.toISOString());
   });
 
+  it("cancels a queued application for a posting it closes, and leaves one further along (#827)", async () => {
+    const queued = await addFind("https://jobs.test/1", { stage: "Auto-applying" });
+    const drafted = await addFind("https://jobs.test/2", { stage: "Auto-applying" });
+    await db.insert(schema.applications).values([
+      { userId, opportunityId: queued, queuedBy: "auto", status: "queued" },
+      { userId, opportunityId: drafted, queuedBy: "auto", status: "needs_review" },
+    ] as (typeof schema.applications.$inferInsert)[]);
+    pages.set("https://jobs.test/1", "This job is no longer available.");
+    pages.set("https://jobs.test/2", "This job is no longer available.");
+    await closeGonePostings(userId, T0);
+    expect((await db.select().from(schema.applications)).map((a) => a.status).sort()).toEqual(["needs_review", "queued"]);
+    expect(await closeGonePostings(userId, hoursLater(20))).toBe(2);
+    const status = Object.fromEntries((await db.select().from(schema.applications)).map((a) => [a.opportunityId, a.status]));
+    expect(status).toEqual({ [queued]: "canceled", [drafted]: "needs_review" });
+  });
+
   it("keeps a note they typed while the run was checking links (#656)", async () => {
     const id = await addFind("https://jobs.test/1", { notes: "Old note" });
     pages.set("https://jobs.test/1", "This job is no longer available.");

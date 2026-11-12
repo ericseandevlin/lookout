@@ -134,7 +134,14 @@ export async function closeGonePostings(userId: string, now = new Date()): Promi
           .set({ stage: "Closed", archived: true, notes: sql`case when ${notes} ~ '\\S' then regexp_replace(${notes}, '\\s+$', '') || ${`\n\n${line}`} else ${line} end` })
           .where(and(eq(schema.userOpportunities.userId, userId), eq(schema.userOpportunities.opportunityId, r.o.id), inArray(schema.userOpportunities.stage, CLOSABLE)))
           .returning({ stage: schema.userOpportunities.stage });
-        if (done.length) closed++;
+        if (done.length) {
+          closed++;
+          // An application still waiting to start would read and draft a posting that is gone (#827). Anything further along is theirs to decide.
+          await db
+            .update(schema.applications)
+            .set({ status: "canceled", updatedAt: new Date() })
+            .where(and(eq(schema.applications.userId, userId), eq(schema.applications.opportunityId, r.o.id), eq(schema.applications.status, "queued")));
+        }
       }
     }
   };
