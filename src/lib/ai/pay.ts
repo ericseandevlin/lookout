@@ -128,7 +128,9 @@ function fromText(text: string): Pay | null {
     if (a < 1000 && /k$/i.test(second) && !/k$/i.test(first)) a *= 1000;
     const said = `${firstUnit ?? ""} ${tail}`;
     const named = PREFIX[(pre1 ?? pre2 ?? "").trim().toLowerCase()] ?? code?.toUpperCase();
-    const currency = named ?? (/CAD/.test(tail) ? "CAD" : /AUD/.test(tail) ? "AUD" : /EUR|€/.test(tail) ? "EUR" : /GBP|£/.test(tail) ? "GBP" : "USD");
+    // The currency is read only up to the next number, so a Canada range after a US one doesn't make it CAD (#811).
+    const own = tail.split(/\d/)[0];
+    const currency = named ?? (/CAD/.test(own) ? "CAD" : /AUD/.test(own) ? "AUD" : /EUR|€/.test(own) ? "EUR" : /GBP|£/.test(own) ? "GBP" : "USD");
     // A range that is already a year's pay stays yearly when only a pay schedule follows it; "$4,000 - $5,000 paid
     // twice a month" still reads by the schedule (#716).
     const p = annual(a, b, payUnit(said.replace(SCHEDULE, " ")), currency, "text") ?? annual(a, b, payUnit(said), currency, "text");

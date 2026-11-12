@@ -149,6 +149,19 @@ describe("findPay", () => {
     expect(findPay("", "$150,000 - $200,000. Canada: 140,000 - 190,000 CAD")).toMatchObject({ min: 150000, max: 200000 });
   });
 
+  it.each([
+    ["$150,000 - $200,000. Canada: 140,000 - 190,000 CAD"],
+    ["$150,000 - $200,000 (US); 140,000 - 190,000 AUD (Sydney)"],
+    ["$150,000 - $200,000, or 120,000 - 160,000 GBP in London"],
+  ])("keeps %s in USD when another currency's range follows (#811)", (text) => {
+    expect(findPay("", text)).toMatchObject({ min: 150000, max: 200000, currency: "USD" });
+  });
+
+  it("still reads a code right after the range (#811)", () => {
+    expect(findPay("", "$150,000 - $200,000 CAD per year")).toMatchObject({ currency: "CAD" });
+    expect(findPay("", "$150,000 - $200,000 a year (AUD), plus super")).toMatchObject({ currency: "AUD" });
+  });
+
   it("keeps an hourly range hourly when a yearly word follows it (#646)", () => {
     expect(findPay("", "$25.00 - $35.00 per hour, plus an annual bonus")).toMatchObject({ min: 52000, max: 72800 });
     expect(findPay("", "$40 - $55/hr. Eligible for yearly raises")).toMatchObject({ min: 83200, max: 114400 });
