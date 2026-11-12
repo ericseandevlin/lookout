@@ -125,6 +125,12 @@ describe("recruiterChecks: cover letter", () => {
     expect(recruiterChecks("resume", resume.replace(/now hoping to move into product management/, "led the transition into cloud billing")).some((x) => x.dim === "relevance")).toBe(false);
   });
 
+  it("flags the stock opening with a curly apostrophe and other stock openers (#769)", () => {
+    const stock = (s: string) => recruiterChecks("cover_letter", `Dear Team,\n\n${s}\n\nBest,\nMaya`).some((x) => x.dim === "scan");
+    for (const s of ["I’m writing to apply for the role.", "I’d like to apply for the role.", "I am reaching out about the role.", "I would love to join your team."]) expect(stock(s)).toBe(true);
+    expect(stock("I’ve grown Acme's design system to 40 teams.")).toBe(false);
+  });
+
   it("passes a strong short letter", () => {
     expect(recruiterChecks("cover_letter", "Dear Team,\n\nI grew Acme's design system to 40 teams in two years.\n\nBest,\nMaya")).toEqual([]);
   });
