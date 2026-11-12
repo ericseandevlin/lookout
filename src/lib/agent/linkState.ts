@@ -3,18 +3,21 @@ export type LinkState = "open" | "gone" | "unknown";
 
 // Phrases job boards use for a posting that's no longer live. Checked against the start of the page text only.
 const CLOSED = [
-  /no longer (accepting applications|available|open|active|posted)/i,
+  /no longer (accepting (applications|candidates)|available|open|active|posted)/i,
   /(job|position|posting|role|requisition|opening) (is )?(no longer|has been) (available|filled|closed|removed)/i,
   /(job|posting|position|page) (was )?not found/i,
-  /this (job|position|posting|role)( ad)? (is |has )?(now )?(expired|closed|been filled)\b/i,
+  /this (job|position|posting|role)( ad)? (is |has )?(now )?(expired|closed|been filled)\b(?! to\b)/i,
   // More wordings careers sites use (#747).
   /\b(job|posting|position|listing)( ad)? (has )?expired\b/i,
-  /(job|position|posting|role|page) you(['’]re| are) (looking for|trying to (apply for|access|view|reach)) (has|is|was) (been )?(filled|removed|closed|deleted|expired)\b/i,
+  /(job|position|posting|role|page) you(['’]re| are) (looking for|trying to (apply for|access|view|reach)) (has|is|was|might have|may have) (been )?(filled|removed|closed|deleted|expired)\b/i,
   /(job|position|posting|role|opening) is not available anymore/i,
   /page you(['’]re| are) looking for (doesn['’]t|does not|no longer) exists?|(can(['’]|no)t|couldn['’]t|could not) find (that|this|the) page/i,
   // Careers sites usually render a curly apostrophe (#734).
   /(the )?(job|position) you(['’]re| are) looking for (is no longer|could not be|can(['’]|no)t be) (available|found)/i,
-  /applications (for this (job|role|position) )?(are|is) (now )?closed/i,
+  /applications (for this (job|role|position) )?(are|is|have) (now )?closed/i,
+  // "This job posting has closed", "This vacancy has now closed", "Job Closed", but not "closed to contractors" (#760).
+  /\b(job|posting|position|role|vacancy|opportunity|listing)( posting| ad)? (is |has )?(now )?closed\b(?! to\b)/i,
+  /not accepting applications (for this (job|role|position)|at this time)/i,
   /\bpage not found\b|\b404\b.{0,40}(not found|doesn.t exist)/i,
 ];
 // Pages that prove nothing either way.
