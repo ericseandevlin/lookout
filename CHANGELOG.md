@@ -6,17 +6,35 @@ Every production release of Lookout, newest first. The format follows [Keep a Ch
 
 Work merged to `main` (staging) and waiting for the weekly release.
 
+## [0.6.0] - 2026-11-11
+
+The public face of Lookout, ahead of the first group demo. The `/next` page ships behind `FEATURE_PREVIEW`. Events and several searches per account stay switched off on production.
+
 ### Added
+- Landing page at `/`: a one-page site with the headline "Stop refreshing job boards.", a product video, sign-in and Request access. Signed-in people still go straight to their board (#600).
+- Group invite links: `/join/<code>` lets a whole group make accounts from one link, with an expiry date and a seat cap. Each email takes one seat and gets the normal sign-in link. Made, listed and closed with `scripts/group-invite.mjs` inside the app container (#601).
+- Coming-next page at `/next`: shows features still being built, for demos, with links to send an idea or contribute. It returns 404 unless `FEATURE_PREVIEW=on` (#602).
+- A clear sign-in page at `/signin`, and the sign-in screen asks for the terms agreement. Sign-out lands there (#517, #525).
 - Admin > Metrics: a Growth section with waitlist signups per channel (from a `?ref=` or `?utm_source=` tag on the sign-in link), how many joined and were active last week, and invite acceptance. The waitlist keeps the channel each person first came from (#527).
 - License: Lookout is open source under MIT (`LICENSE`, `license` in package.json, a License section in the README, a note in CONTRIBUTING and a decisions entry) (#424, #598).
 - Auto-apply beta: personal stories on the Application answers page. Cover letters open with one true, personal line from a story that fits the company. If none fits, the letter has no personal line and the note asks one question about that company. A letter that points to a story you never gave is sent back to you (#155).
+- Admin > Metrics counts the interviews and offers people report in the beta survey (#526).
+- Auto-apply beta: the worker answers radio-button questions, reads Workday postings through their JSON address, and reads far more pay, closed-posting and submit-confirmation wordings (#694, #724, and many small fixes).
+- Review page: keyword pills, icon buttons, a notes modal, a split Recruiter Analysis and letter strategies (#738).
+- Tests for most API routes, and a test that every route sits behind the right sign-in check (#409).
 
 ### Changed
+- Survey: clearer wording, and the email question only goes to people who get the email (#514).
+- Finds that pay below your floor stay off the board (#740).
 - A bad link or a page error now shows a Lookout page with a way back, instead of the bare Next.js default. Error pages show a reference people can quote, never the error itself (#396).
+- Smaller table headers, one-line stage pills and a roomier Request access form (#523).
 
 ### Fixed
 - The daily cleanup job no longer fails on prod: dates in its raw SQL go in as ISO strings (#373).
 - Agent mode: finished searches save their finds again. Since several searches per account (#8), every job the external agent finished failed with "Search not found" and stayed running (#398).
+- Finds email: lists only finds since the last email and skips archived ones, lists a posting two searches found once, shows a posted floor or ceiling with its currency code, and says "today" (#586, #657, #492, #347).
+- Search: falls back to your target titles when the model writes no queries, gives the scorer today's date on each call, skips known postings found under a pre-redirect link, keeps a shared find's link and summary when it finds the job again, and no longer fails on an impossible posted date or out-of-range pay (#609, #608, #670, #585, #626).
+- Due dates count calendar days, not hours from now (#495).
 
 ## [0.5.0] - 2026-11-07
 
