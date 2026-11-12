@@ -186,7 +186,8 @@ export function letterHeaderFrom(resumeMd: string | undefined, fallbackName: str
 
 // --- Draft shape (#129): what a recruiter reads in 10 seconds, checked in code, not only asked of the model.
 
-const SUMMARY = /^(summary|profile|professional summary|about)$/i;
+// "Executive Summary", "Career Profile", "Summary of Qualifications" too: a missed heading put Experience above the summary (#767).
+export const SUMMARY_HEADING = /^(?:(?:professional|executive|career|personal|qualifications)\s+)?(?:summary|profile)(?:\s+summary)?(?:\s+of\s+qualifications)?$|^about(?:\s+me)?$/i;
 const EXPERIENCE = /^(experience|work experience|professional experience|employment|work history)$/i;
 
 /** Sentence ends: a period after a lowercase letter, digit, % or ), then a capital. "U.S. Bank" and "Inc." don't count. */
@@ -209,7 +210,7 @@ export function shapeResume(md: string): { md: string; fixed: string[] } {
   const secs = starts.map((s, j) => ({ title: lines[s].trim().replace(/^##\s+/, "").replace(/\*/g, "").trim(), lines: lines.slice(s, starts[j + 1] ?? lines.length) }));
   const fixed: string[] = [];
 
-  const sum = secs.find((x) => SUMMARY.test(x.title));
+  const sum = secs.find((x) => SUMMARY_HEADING.test(x.title));
   if (sum) {
     const body = sum.lines.slice(1).map((l) => l.trim()).filter(Boolean);
     const text = body.map((l) => l.replace(/^[-*•]\s+/, "")).join(" ");

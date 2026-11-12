@@ -32,6 +32,11 @@ describe("recruiterChecks: resume", () => {
     expect(f.some((x) => x.dim === "relevance" && x.line === long.line)).toBe(true);
   });
 
+  it("checks a summary under an \"Executive Summary\" heading too (#767)", () => {
+    const g = recruiterChecks("resume", resume.replace(/^## Summary$/m, "## Executive Summary"));
+    expect(g.some((x) => /summary runs/.test(x.what))).toBe(true);
+  });
+
   it("names latest-role bullets with no number, and only those", () => {
     const bare = f.filter((x) => x.dim === "impact" && x.line).map((x) => x.line);
     expect(bare).toEqual(["Built the design system site used across the firm.", "Ran design reviews for the platform group."]);

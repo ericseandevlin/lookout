@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { parseDraft, sentences } from "./resumeLayout";
+import { parseDraft, sentences, SUMMARY_HEADING } from "./resumeLayout";
 
 /**
  * Recruiter Analysis (#152): a resume or cover letter read the way a recruiter does in the first 10
@@ -43,7 +43,6 @@ export type RecruiterAnalysis = {
 
 const words = (s: string) => s.split(/\s+/).filter(Boolean).length;
 const short = (s: string) => (s.length > 90 ? `${s.slice(0, 87).trimEnd()}…` : s);
-const SUMMARY = /^(summary|profile|professional summary|about)$/i;
 const SKILLS = /skills|tools|expertise|competenc/i;
 // Sections whose bullets aren't work results, so the number checks skip them (#704).
 const NOT_WORK = /skills|tools|expertise|competenc|education|certif|award|honou?rs|languages|interests|references/i;
@@ -79,7 +78,7 @@ function resumeChecks(md: string): Finding[] {
       inRole = !NOT_WORK.test(section);
       if (inRole && b.t === "role") roles++;
     }
-    else if (b.t === "text" && SUMMARY.test(section)) {
+    else if (b.t === "text" && SUMMARY_HEADING.test(section)) {
       const n = words(b.text);
       if (n > 35)
         out.push({
