@@ -27,7 +27,15 @@ export function jobKey(raw: string | null | undefined): string | null {
   const wd = wdHost && u.pathname.match(/\/(?:job|details)\/(?:[^/]+\/)*?([^/]+)\/*(?:\/apply\b.*)?$/i)?.[1];
   if (wd) return `workday:${wdHost}:${decodeURIComponent(wd).toLowerCase()}`;
   const path = u.pathname.replace(/\/(apply|application)\/?$/i, "").replace(/\/+$/, "");
-  return `url:${host.replace(/^www\./, "")}${path.toLowerCase()}${idQuery(u.searchParams)}`;
+  return `url:${host.replace(/^www\./, "")}${path.toLowerCase()}${idQuery(u.searchParams)}${hashRoute(u)}`;
+}
+
+/**
+ * The fragment when the page routes by it (careers.acme.com/#/jobs/101, #!/job/202), so each job there keeps a key of its
+ * own (#841). The apply step at the end goes, like in the path. A plain anchor like #apply names no job and drops.
+ */
+export function hashRoute(u: URL) {
+  return /^#!?\//.test(u.hash) ? u.hash.replace(/\/(apply|application)\/?$/i, "").replace(/\/+$/, "").toLowerCase() : "";
 }
 
 // Query params that name the job itself (indeed.com/viewjob?jk=..., careers pages with ?jobId=, UltiPro ?opportunityId=,
