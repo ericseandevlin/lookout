@@ -22,7 +22,7 @@ type Data = {
 };
 
 const card: React.CSSProperties = { background: "#fff", borderRadius: 16, padding: 0, overflowX: "auto", marginTop: 8 };
-const th: React.CSSProperties = { fontSize: 14, fontWeight: 600, color: color.t2, textAlign: "right", padding: "10px 14px", borderBottom: `1px solid ${color.border}`, whiteSpace: "nowrap" };
+const th: React.CSSProperties = { fontSize: 12, fontWeight: 600, color: color.t2, textAlign: "right", padding: "10px 14px", borderBottom: `1px solid ${color.border}`, whiteSpace: "nowrap" };
 const td: React.CSSProperties = { fontSize: 14, padding: "10px 14px", borderBottom: `1px solid ${color.surface}`, textAlign: "right", fontVariantNumeric: "tabular-nums", whiteSpace: "nowrap" };
 const first: React.CSSProperties = { textAlign: "left" };
 const muted: React.CSSProperties = { fontSize: 14, color: color.t2 };

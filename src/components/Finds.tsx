@@ -297,7 +297,7 @@ export function Finds() {
 
           {/* Desktop table */}
           <div className="desk-only" style={{ overflowX: "auto" }}>
-            <div style={{ minWidth: 1100 }} role="table" aria-label="Finds">
+            <div style={{ minWidth: "min-content" }} role="table" aria-label="Finds">
               <div role="rowgroup">
               <div role="row" style={{ display: "grid", gridTemplateColumns: GRID, alignItems: "center", padding: "0 22px", height: 46, borderBottom: `1px solid ${color.border}` }}>
                 {([["", null], ["Match", "score" as SortKey], ...cfg.board.columns.map((c) => [c.label, c.key as SortKey] as [string, SortKey]), [cfg.board.preStage.label, cfg.board.preStage.key as SortKey], ["Stage", "stage" as SortKey], [cfg.board.tail.label, cfg.board.tail.key as SortKey]] as [string, SortKey | null][]).map(([label, key]) => {
@@ -307,7 +307,7 @@ export function Finds() {
                       <button
                         className="no-tint"
                         onClick={() => key && (setSortDir(sortKey === key && sortDir === "desc" ? "asc" : "desc"), setSortKey(key))}
-                        style={{ display: "flex", alignItems: "center", gap: 5, border: 0, background: "transparent", padding: 0, fontSize: 13, fontWeight: 600, letterSpacing: ".06em", textTransform: "uppercase", color: on ? color.ink : color.t2, cursor: key ? "pointer" : "default", textAlign: "left" }}
+                        style={{ display: "flex", alignItems: "center", gap: 5, border: 0, background: "transparent", padding: 0, fontSize: 12, fontWeight: 600, letterSpacing: ".06em", textTransform: "uppercase", color: on ? color.ink : color.t2, cursor: key ? "pointer" : "default", textAlign: "left" }}
                       >
                         {label}
                         <span style={{ color: on ? color.brick : "#CFC6B9", marginRight: 16 }}>{key ? (on ? arrow : "↕") : ""}</span>
@@ -346,7 +346,7 @@ export function Finds() {
                       ci === 0 ? (
                         <div role="rowheader" key={c.key} style={{ fontSize: 14.5, fontWeight: 600, paddingRight: 16 }}>
                           {/* The keyboard and screen reader way into a find (#211); the row's click stays for pointers. */}
-                          <button className="cell-link" onClick={(e) => { e.stopPropagation(); open(f.id); }} aria-label={`${f.role} at ${f.company}`}>
+                          <button className="cell-link no-tint" onClick={(e) => { e.stopPropagation(); open(f.id); }} aria-label={`${f.role} at ${f.company}`}>
                             {cellText(f, c.key)}
                           </button>
                         </div>
@@ -393,7 +393,7 @@ export function Finds() {
                     <div style={{ display: "flex", alignItems: "flex-start", gap: 8 }}>
                       <div style={{ flex: 1, minWidth: 0 }}>
                         <div style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 14.5, fontWeight: 600, lineHeight: 1.3 }}>
-                          <button className="cell-link" onClick={(e) => { e.stopPropagation(); open(f.id); }} aria-label={`${f.role} at ${f.company}`} style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{f.company}</button>
+                          <button className="cell-link no-tint" onClick={(e) => { e.stopPropagation(); open(f.id); }} aria-label={`${f.role} at ${f.company}`} style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{f.company}</button>
                           {f.pinned && <PinIcon size={13} stroke={color.brick} sw={2} style={{ flex: "none" }} />}
                         </div>
                         <div style={{ fontSize: 14, lineHeight: 1.35, color: "#3A3428", marginTop: 1, display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>{f.role}</div>
