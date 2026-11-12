@@ -1,5 +1,5 @@
 import "server-only";
-import { and, desc, eq, gte, sql } from "drizzle-orm";
+import { and, desc, eq, gte, inArray, sql } from "drizzle-orm";
 import { db, schema } from "@/lib/db";
 import type { ApplicationStatus, AutoApplySettings } from "@/lib/db/schema";
 import type { SessionUser } from "@/lib/auth/session";
@@ -134,7 +134,14 @@ export async function autoQueue(userId: string, newFinds: { id: string; score: n
     .from(schema.applications)
     .where(and(eq(schema.applications.userId, userId), eq(schema.applications.queuedBy, "auto"), gte(schema.applications.createdAt, since)));
   const room = Math.max(0, s.dailyCap - n);
-  const picks = newFinds.filter((f) => f.score >= s.threshold).sort((a, b) => b.score - a.score).slice(0, room);
+  // A posting a second search finds is a new find there, but auto-apply never restarts one the person already has an
+  // application for: queueApplication would bring a canceled or failed one back (#822). Only the person restarts those.
+  const had = await db
+    .select({ id: schema.applications.opportunityId })
+    .from(schema.applications)
+    .where(and(eq(schema.applications.userId, userId), inArray(schema.applications.opportunityId, newFinds.map((f) => f.id))));
+  const skip = new Set(had.map((a) => a.id));
+  const picks = newFinds.filter((f) => f.score >= s.threshold && !skip.has(f.id)).sort((a, b) => b.score - a.score).slice(0, room);
   for (const f of picks) {
     const row = await queueApplication(userId, f.id, "auto");
     if (row?.status === "queued") kick(row.id);
