@@ -107,6 +107,26 @@ describe("autoQueue", () => {
     expect(await autoQueue(u.id, [await find(u, 5)])).toBe(1);
   });
 
+  it("never re-queues a posting the person already has an application for, and it takes no room under the cap (#822)", async () => {
+    const u = await user();
+    await on(u, { threshold: 1, dailyCap: 1 });
+    const statuses = ["canceled", "failed", "ready", "submitted"] as const;
+    const had = [];
+    for (const status of statuses) {
+      const f = await find(u, 5);
+      await db.insert(schema.applications).values({ userId: u.id, opportunityId: f.id, queuedBy: "user", status } as typeof schema.applications.$inferInsert);
+      had.push(f);
+    }
+    // A second search finds the same postings: they come back as new finds for it.
+    const [s2] = await db.insert(schema.searches).values({ userId: u.id, name: "Second search" } as typeof schema.searches.$inferInsert).returning();
+    for (const f of had) await db.insert(schema.userOpportunities).values({ userId: u.id, searchId: s2.id, opportunityId: f.id, stage: "Not applied", score: 5 } as typeof schema.userOpportunities.$inferInsert);
+    const fresh = await find(u, 4);
+    expect(await autoQueue(u.id, [...had, fresh])).toBe(1);
+    const apps = await db.select().from(schema.applications).where(eq(schema.applications.userId, u.id));
+    expect(Object.fromEntries(apps.map((a) => [a.opportunityId, a.status]))).toEqual({ ...Object.fromEntries(had.map((f, i) => [f.id, statuses[i]])), [fresh.id]: "queued" });
+    expect(kick).toHaveBeenCalledTimes(1);
+  });
+
   it("does nothing when the setting is off", async () => {
     const u = await user();
     expect(await autoQueue(u.id, [await find(u, 5)])).toBe(0);
