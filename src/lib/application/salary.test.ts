@@ -103,6 +103,13 @@ describe("rangeBasis", () => {
     expect(rangeBasis("Perks include bonus eligibility and 401(k).")).toBeNull();
   });
 
+  it("ignores a package or benefits line that lists base salary and bonus (#815)", () => {
+    expect(rangeBasis("Our total rewards package includes base salary, bonus and equity. The base salary range is $150k-$180k.")).toBe("base");
+    expect(rangeBasis("Benefits include a competitive salary, annual bonus and 401(k). Base pay range: $150k-$180k.")).toBe("base");
+    expect(rangeBasis("Our compensation package includes a bonus and equity. Salary: $150k-$180k.")).toBeNull();
+    expect(rangeBasis("The package range shown includes base salary and bonus.")).toBe("total");
+  });
+
   it.each([
     "Our salary ranges include base salary and target bonus.",
     "This range includes base pay plus bonus.",

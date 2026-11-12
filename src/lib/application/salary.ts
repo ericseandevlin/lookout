@@ -26,8 +26,17 @@ const TOTAL_CASH = /\btotal cash\b|\bOTE\b/i;
 const NOT_TOTAL = /(\bnot|n't)\b[^.?!]{0,20}?(total cash|\bOTE\b)/i;
 const NAMES_TOTAL = (s: string) =>
   TOTAL_CASH.test(s) && !NOT_TOTAL.test(s) && (THE_RANGE.test(s) || /[$\d]/.test(s) || s.trim().split(/\s+/).length <= 4);
+// What includes the bonus must be the pay or the range. "Our total rewards package includes base salary, bonus and
+// equity" lists benefits; it says nothing about what the range covers (#815).
+const PACKAGE = /\b(rewards?|benefits?|package|perks|offerings?)\b/i;
+const PAY_INCLUDES_BONUS = (s: string) => {
+  const m = s.match(INCLUDES_BONUS);
+  if (!m || m.index === undefined) return false;
+  const subject = s.slice(0, m.index);
+  return ABOUT_PAY.test(s) && (!PACKAGE.test(subject) || THE_RANGE.test(subject));
+};
 const SAYS_TOTAL = (s: string) =>
-  !NEGATED.test(s) && ((INCLUDES_BONUS.test(s) && ABOUT_PAY.test(s)) || (BASE_PLUS.test(s) && THE_RANGE.test(s)) || ON_TARGET.test(s) || NAMES_TOTAL(s));
+  !NEGATED.test(s) && (PAY_INCLUDES_BONUS(s) || (BASE_PLUS.test(s) && THE_RANGE.test(s)) || ON_TARGET.test(s) || NAMES_TOTAL(s));
 
 /** What the posted range covers: total cash (bonus included), base, or the posting doesn't say. */
 export const rangeBasis = (posting: string): "total" | "base" | null =>
