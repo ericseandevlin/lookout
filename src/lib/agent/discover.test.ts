@@ -212,6 +212,32 @@ describe("save", () => {
     expect(o).toMatchObject({ sourceUrl: "https://jobs.example.com/acme/123", description: "Lead the design team.", attributes: goneCheck });
   });
 
+  it("keeps two jobs apart when only a title parenthetical and the ATS job differ (#838)", async () => {
+    const gh = (id: number) => `https://job-boards.greenhouse.io/acme/jobs/${id}`;
+    await save(ctx(), [find({ url: gh(111), title: "Senior Product Designer (Payments)" })], "agent");
+    const t = await save(ctx(), [find({ url: gh(222), title: "Senior Product Designer (Identity)" })], "agent");
+    expect(t.added).toBe(1);
+    expect((await board()).map((r) => r.title).sort()).toEqual(["Senior Product Designer (Identity)", "Senior Product Designer (Payments)"]);
+    const opps = await db.select().from(schema.opportunities);
+    expect(opps.map((o) => [o.title, o.sourceUrl]).sort()).toEqual([
+      ["Senior Product Designer (Identity)", gh(222)],
+      ["Senior Product Designer (Payments)", gh(111)],
+    ]);
+    // Found again by another search, the second job lands on its own row, not a third.
+    const [s2] = await db.insert(schema.searches).values({ userId, name: "Two", answers: {} }).returning();
+    await save(ctx({ searchId: s2.id }), [find({ url: gh(222), title: "Senior Product Designer (Identity)" })], "agent");
+    expect(await db.select().from(schema.opportunities)).toHaveLength(2);
+  });
+
+  it("still merges the same job under a parenthetical, at another URL or with no job ID (#838)", async () => {
+    await save(ctx(), [find({ url: "https://job-boards.greenhouse.io/acme/jobs/111", title: "Director of Design" })], "agent");
+    await save(ctx(), [find({ url: "https://boards.greenhouse.io/acme/jobs/111", title: "Director of Design (Rainbow Room)" })], "agent");
+    await save(ctx(), [find({ url: "https://careers.acme.com/director", title: "Director of Design (Brand)" })], "agent");
+    await save(ctx(), [find({ url: "https://job-boards.greenhouse.io/acme/jobs/222", title: "Director of Design" })], "agent");
+    const opps = await db.select().from(schema.opportunities);
+    expect(opps.map((o) => o.sourceUrl)).toEqual(["https://job-boards.greenhouse.io/acme/jobs/111"]);
+  });
+
   it("fills a shared posting's link and summary when it has none", async () => {
     await db.insert(schema.opportunities).values({ company: "Acme", title: "Director of Design", fingerprint: fingerprint("Acme", "Director of Design", "New York, NY (hybrid)") });
     await save(ctx(), [find()], "agent");
