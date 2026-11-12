@@ -103,4 +103,13 @@ describe("resolve", () => {
     expect(resolve({ answers: { gender: "Woman" }, exact: {} }, "Gender", eeocGender)).toBe("Female");
     expect(resolve({ answers: {}, exact: {} }, "Gender", eeocGender)).toBeNull();
   });
+
+  it("answers an ethnicity question with Hispanic options from the Hispanic answer (#805)", () => {
+    const p = { answers: { race: "White", hispanic: "No" }, exact: {} };
+    expect(resolve(p, "Ethnicity", ["Hispanic or Latino", "Not Hispanic or Latino", "Decline to self-identify"])).toBe("Not Hispanic or Latino");
+    expect(resolve(p, "Ethnicity: are you Hispanic or Latino?", ["Yes", "No", "I don't wish to answer"])).toBe("No");
+    // A race list that names Hispanic among the races stays the race question.
+    expect(resolve(p, "Race/Ethnicity", ["Hispanic or Latino", "White (Not Hispanic or Latino)", "Asian (Not Hispanic or Latino)"])).toBe("White (Not Hispanic or Latino)");
+    expect(resolve(p, "How would you describe your racial/ethnic background?", clearRace)).toBe("White");
+  });
 });

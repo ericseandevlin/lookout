@@ -89,12 +89,24 @@ export function matchOption(choice: string, options: string[]): string | null {
   return re ? (options.find((o) => !DECLINES.test(o) && re.test(o) && !negated(o)) ?? null) : null;
 }
 
+// Race names other than Hispanic or Latino. A race-worded question whose options name none of them asks only Hispanic ethnicity (#805).
+const RACE_NAME = /american indian|alaska|indigenous|\basian\b|black|african|middle eastern|hawaiian|pacific islander|\bwhite\b|caucasian|two or more|multiracial|multiple races/i;
+
+/** classify, plus the options: "Ethnicity" with "Hispanic or Latino" and "Not Hispanic or Latino" is the Hispanic question. */
+function categoryOf(prompt: string, options: string[]): EeoCategory | null {
+  const cat = classify(prompt);
+  if (cat !== "race") return cat;
+  const named = options.filter((o) => !DECLINES.test(o));
+  const hispanic = /hispanic|latin[oax]/i.test(prompt) || named.some((o) => /hispanic|latin/i.test(o));
+  return hispanic && named.length && !named.some((o) => RACE_NAME.test(o)) ? "hispanic" : cat;
+}
+
 /** The answer to fill for one EEO question: the exact wording first, then the category answer. */
 export function resolve(profile: EeoProfile, prompt: string, options: string[] | null): string | null {
   const opts = options ?? [];
   const saved = profile.exact[answerKey(prompt)];
   if (saved && (!opts.length || opts.includes(saved))) return saved;
-  const cat = classify(prompt);
+  const cat = categoryOf(prompt, opts);
   const choice = cat ? profile.answers[cat] : undefined;
   if (!choice) return null;
   return opts.length ? matchOption(choice, opts) : choice;
