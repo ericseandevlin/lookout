@@ -4,13 +4,8 @@
  * note can show it.
  */
 
-const parse = (v: unknown) => {
-  const s = String(v ?? "").toLowerCase().replace(/[,\s$]/g, "");
-  const m = s.match(/^(\d+(\.\d+)?)(k|m)?/);
-  if (!m) return null;
-  const n = parseFloat(m[1]) * (m[3] === "k" ? 1e3 : m[3] === "m" ? 1e6 : 1);
-  return n >= 1000 ? Math.round(n) : null;
-};
+import { parseMoney } from "@/lib/kinds";
+
 const round5k = (n: number) => Math.round(n / 5000) * 5000;
 const usd = (n: number) => `$${n.toLocaleString("en-US")}`;
 
@@ -85,8 +80,9 @@ function asksPastPay(s: string) {
  * is total cash and the question asks base. question is set when the person has to decide.
  */
 export function suggestSalary(i: { floor?: unknown; target?: unknown; min?: number | null; max?: number | null; basis?: "total" | "base" | null; asksBase?: boolean; asksMinimum?: boolean }): { amount: string | null; note: string; question?: string } | null {
-  const floor = parse(i.floor);
-  const target = parse(i.target);
+  // The same reading discovery uses for the floor, so "150" is $150,000 in both places (#761).
+  const floor = parseMoney(i.floor);
+  const target = parseMoney(i.target);
   const lo = i.min ?? i.max ?? null;
   const hi = i.max ?? i.min ?? null;
   if (!lo || !hi) {
