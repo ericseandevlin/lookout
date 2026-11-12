@@ -113,6 +113,14 @@ describe("recruiterChecks: cover letter", () => {
     expect(recruiterChecks("cover_letter", "Hi Sam,\nI grew Acme's design system to 40 teams in two years.\nThank you for your time.\nBest regards,\nMaya")).toEqual([]);
   });
 
+  it("leaves the sign-off and a full contact block out of the length (#777)", () => {
+    const body = `I grew Acme's design system to 40 teams. ${"More detail here. ".repeat(70)}`.trim();
+    const contact = "Best,\nMaya Ortiz\nmaya@example.com\n555 123 4567\nlinkedin.com/in/mayaortiz\nmayaortiz.design\n\n";
+    expect(recruiterChecks("cover_letter", `Dear Team,\n\n${body}\n\n${contact}`)).toEqual([]);
+    expect(recruiterChecks("cover_letter", `Dear Team,\n${body}\n${contact}`)).toEqual([]);
+    expect(recruiterChecks("cover_letter", `Dear Team,\n\n${body} One more line of detail here.\n\n${contact}`).find((x) => x.dim === "length")!.what).toBe("About 224 words.");
+  });
+
   it("flags the person moving into a field, not a team or product changing (#768)", () => {
     const framed = (s: string) => recruiterChecks("cover_letter", `Dear Team,\n\n${s}\n\nBest,\nMaya`).some((x) => x.dim === "relevance");
     for (const s of [
