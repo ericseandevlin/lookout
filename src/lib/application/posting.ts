@@ -57,7 +57,8 @@ const HIDDEN_STYLE = /display\s*:\s*none|visibility\s*:\s*hidden|font-size\s*:\s
 
 const isHiddenTag = (attrs: string) => {
   const style = attrs.match(/\bstyle\s*=\s*("[^"]*"|'[^']*')/i);
-  return (!!style && HIDDEN_STYLE.test(style[1])) || /\shidden(?=[\s>=/]|$)/i.test(attrs);
+  // The bare attribute only: "hidden" inside a quoted value is a class name, e.g. Tailwind's "hidden md:block" (#786).
+  return (!!style && HIDDEN_STYLE.test(style[1])) || /\shidden(?=[\s>=/]|$)/i.test(attrs.replace(/"[^"]*"|'[^']*'/g, '""'));
 };
 
 /** Where the element opened just before `from` ends, counting nested tags of the same name (#616). */
