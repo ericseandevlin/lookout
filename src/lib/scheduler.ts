@@ -1,5 +1,5 @@
 import "server-only";
-import { and, eq, gte, lt, sql } from "drizzle-orm";
+import { and, eq, gte, lt, ne, sql } from "drizzle-orm";
 import { db, schema, sqlClient } from "@/lib/db";
 import { env } from "@/lib/env";
 import { answeredCount, kinds } from "@/lib/kinds";
@@ -77,10 +77,11 @@ async function dueSearches() {
     }
     if (!isRunDay(settings, now.day) || now.hour < RUN_HOUR) continue;
     const since = new Date(Date.now() - 20 * 3600_000);
+    // A failed or interrupted run isn't today's run: after the backoff it tries again, or a weekly search waits a week (#790).
     const [{ n: recent }] = await db
       .select({ n: sql<number>`count(*)::int` })
       .from(schema.runs)
-      .where(and(eq(schema.runs.searchId, search.id), eq(schema.runs.trigger, "scheduled"), gte(schema.runs.startedAt, since)));
+      .where(and(eq(schema.runs.searchId, search.id), eq(schema.runs.trigger, "scheduled"), ne(schema.runs.status, "failed"), gte(schema.runs.startedAt, since)));
     if (recent === 0) due.push({ userId: user.id, searchId: search.id });
   }
   return due;

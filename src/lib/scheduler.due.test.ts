@@ -132,6 +132,18 @@ describe("which searches a pass runs (#377)", () => {
     expect(ran()).toEqual([s.searchId]);
   });
 
+  it("tries the run day again after a scheduled run that failed or was interrupted (#790)", async () => {
+    const s = await seed({ runDay: "Mon" });
+    await addRun(s, { status: "done", hoursAgo: 7 * 24 });
+    await addRun(s, { status: "failed", hoursAgo: 1 });
+    await tick();
+    expect(ran()).toEqual([]);
+
+    vi.setSystemTime(new Date(MON_NOON.getTime() + 2 * HOUR));
+    await tick();
+    expect(ran()).toEqual([s.searchId]);
+  });
+
   it("after the first run, runs again on the run day once per 20 hours", async () => {
     const s = await seed({ runDay: "Mon" });
     const last = await addRun(s, { status: "done", hoursAgo: 7 * 24 });
