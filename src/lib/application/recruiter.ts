@@ -53,7 +53,8 @@ const FRAMING = new RegExp(
   String.raw`\b(?:(?:hoping|looking|eager|ready|keen|aiming|want(?:ing)?|seeking|trying|planning)\s+to\s+${MOVE}|(?:i\s+am|i['’]m|i\s+have\s+been|i['’]ve\s+been|now)\s+(?:(?:transitioning|pivoting)\s+(?:in)?to|(?:moving|shifting)\s+into)|my\s+(?:career\s+)?(?:transition|pivot|move|shift)\s+(?:in)?to|career\s+(?:change|changer|pivot|transition|switch))\b`,
   "i",
 );
-const WEAK_OPEN = /^(?:i am|i'm) (?:writing|excited|thrilled|pleased|interested|applying)|^i would like to|^please accept|^my name is|^i wish to|^i was (?:excited|thrilled) to/i;
+// Curly apostrophes too: letters pasted from Word or a phone carry them (#769).
+const WEAK_OPEN = /^(?:i am|i['’]m) (?:writing|excited|thrilled|pleased|interested|applying|reaching out)|^i(?: would|['’]d) (?:like|love) to|^please accept|^my name is|^i wish to|^i was (?:excited|thrilled) to/i;
 const HAS_NUMBER = /\d|\b(one|two|three|four|five|six|seven|eight|nine|ten|dozen|hundreds?|thousands?|millions?|billions?)\b/i;
 
 /** Checks on a resume draft's markdown. */
