@@ -73,6 +73,14 @@ Design Systems Lead
     expect(recruiterChecks("resume", skillsHeavy).some((x) => /bullets carry a number/.test(x.what))).toBe(false);
   });
 
+  it("counts doubled, halved and other multipliers as a number (#776)", () => {
+    const lines = ["Doubled sign-ups by rebuilding onboarding.", "Halved support tickets with a new help center.", "Tripled the team's release rate.", "Cut page weight twofold."];
+    const g = recruiterChecks("resume", resume.replace("- Built the design system site used across the firm.", lines.map((l) => `- ${l}`).join("\n")));
+    expect(g.filter((x) => x.dim === "impact" && x.line).map((x) => x.line)).toEqual(["Ran design reviews for the platform group."]);
+    // A word that only starts like one is still bare.
+    expect(recruiterChecks("resume", resume.replace("Ran design reviews", "Ran double-blind design reviews")).some((x) => x.line?.startsWith("Ran double-blind"))).toBe(true);
+  });
+
   it("flags vague skill phrases in the skills section", () => {
     expect(f.some((x) => x.what.includes('"Accessibility Concepts"'))).toBe(true);
   });
