@@ -5,6 +5,7 @@ import type { SurveyKind, SurveyOutcome } from "@/lib/db/schema";
 import { Tabs } from "./Admin";
 import { PageHead } from "./Profile";
 import { btn, Row, Section, Seg } from "./Settings";
+import { SurveyDialog } from "./SurveyDialog";
 import { api } from "./store";
 import { color } from "@/lib/tokens";
 
@@ -26,6 +27,7 @@ export function AdminSurveys() {
   const [options, setOptions] = useState("");
   const [open, setOpen] = useState<string | null>(null);
   const [replies, setReplies] = useState<Reply[] | null>(null);
+  const [preview, setPreview] = useState<Question | null>(null);
 
   const call = useCallback(async (p: Promise<State>, ok?: string) => {
     setMsg(null);
@@ -143,6 +145,9 @@ export function AdminSurveys() {
                   <button onClick={() => toggle(q)} style={{ ...btn("outline"), height: 34 }}>
                     {q.active ? "Turn off" : "Turn on"}
                   </button>
+                  <button onClick={() => setPreview(q)} style={{ ...btn("outline"), height: 34 }}>
+                    Preview
+                  </button>
                   <button onClick={() => show(q.id)} aria-expanded={open === q.id} style={{ ...btn("text"), height: 34 }}>
                     {open === q.id ? "Hide answers" : "See answers"}
                   </button>
@@ -175,6 +180,7 @@ export function AdminSurveys() {
           </div>
         </>
       )}
+      {preview && <SurveyDialog key={preview.id} preview={{ id: preview.id, kind: preview.kind, prompt: preview.prompt, options: preview.options }} onClose={() => setPreview(null)} />}
     </div>
   );
 }

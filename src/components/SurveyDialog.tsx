@@ -11,9 +11,12 @@ const FOCUSABLE = 'button:not([disabled]), input:not([disabled]), textarea:not([
  * One-question beta survey (#5): a note from Eric, shown once when a question is due. Skipping
  * (the button, Escape or the backdrop) is recorded, so the same question never comes back.
  * Focus stays inside while it's open and returns where it was when it closes.
+ *
+ * With `preview` (#836) it shows that question as a person would see it and saves nothing:
+ * Send and Skip only close it.
  */
-export function SurveyDialog() {
-  const [q, setQ] = useState<SurveyQuestion | null>(null);
+export function SurveyDialog({ preview, onClose }: { preview?: SurveyQuestion; onClose?: () => void } = {}) {
+  const [q, setQ] = useState<SurveyQuestion | null>(preview ?? null);
   const [value, setValue] = useState("");
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
@@ -22,16 +25,24 @@ export function SurveyDialog() {
   const back = useRef<HTMLElement | null>(null);
 
   useEffect(() => {
+    if (preview) return;
     api<{ question: SurveyQuestion | null }>("/api/survey").then((r) => setQ(r.question)).catch(() => {});
-  }, []);
+  }, [preview]);
 
   const close = () => {
     setQ(null);
     back.current?.focus?.();
+    onClose?.();
   };
 
   const send = async (answer: string | null) => {
     if (!q || busy) return;
+    if (preview) {
+      if (answer === null) return close();
+      setThanks(true);
+      setTimeout(close, 1400);
+      return;
+    }
     setBusy(true);
     setErr(null);
     try {
@@ -81,7 +92,7 @@ export function SurveyDialog() {
         <div ref={box} role="dialog" aria-modal="true" aria-labelledby="survey-from" aria-describedby="survey-q" className="lk-in" style={{ pointerEvents: "auto", width: 460, maxWidth: "100%", background: "#EFEEEC", borderRadius: 16, overflow: "hidden", boxShadow: "0 24px 60px rgba(29,26,15,.3)" }}>
           <div style={{ background: color.ink, color: "#fff", padding: "20px 24px 18px" }}>
             <div id="survey-from" style={{ fontSize: 14, fontWeight: 700, letterSpacing: ".14em", textTransform: "uppercase", color: color.orange }}>
-              Quick question from Eric
+              Quick question from Eric{preview ? " · preview" : ""}
             </div>
             <div id="survey-q" style={{ fontSize: 19, fontWeight: 700, marginTop: 6, lineHeight: 1.3, textWrap: "pretty" }}>{q.prompt}</div>
           </div>
