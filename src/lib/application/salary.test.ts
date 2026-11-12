@@ -10,6 +10,11 @@ describe("suggestSalary", () => {
     expect(r.question).toBeUndefined();
   });
 
+  it("reads a floor typed as \"150\" as $150,000 (#761)", () => {
+    expect(suggestSalary({ floor: "150", min: 100000, max: 140000 })!.amount).toBeNull();
+    expect(suggestSalary({ floor: "135", min: 100000, max: 140000 })!.amount).toBe("$135,000");
+  });
+
   it("never undercuts a floor inside the top quarter", () => {
     expect(suggestSalary({ floor: "135000", min: 100000, max: 140000 })!.amount).toBe("$135,000");
   });
