@@ -30,8 +30,9 @@ export function jobKey(raw: string | null | undefined): string | null {
   return `url:${host.replace(/^www\./, "")}${path.toLowerCase()}${idQuery(u.searchParams)}`;
 }
 
-// Query params that name the job itself (indeed.com/viewjob?jk=..., careers pages with ?jobId=). Tracking params stay out (#508).
-const ID_PARAM = /^(v?jk|id|jid|job|jobs?id|jobreqid|req|reqid|requisitionid|postingid|openingid|positionid|currentjobid|pid)$/;
+// Query params that name the job itself (indeed.com/viewjob?jk=..., careers pages with ?jobId=, UltiPro ?opportunityId=,
+// SuccessFactors ?career_job_req_id= (#840)). Tracking params stay out (#508).
+const ID_PARAM = /^(v?jk|id|jid|job|jobs?id|jobreqid|careerjobreqid|req|reqid|requisitionid|postingid|openingid|opportunityid|positionid|currentjobid|pid)$/;
 
 function idQuery(params: URLSearchParams) {
   const ids = [...params]
