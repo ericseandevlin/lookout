@@ -1,5 +1,5 @@
 import "server-only";
-import { and, desc, eq, gt, gte, max } from "drizzle-orm";
+import { and, desc, eq, gt, gte, inArray, lte, max } from "drizzle-orm";
 import { db, schema } from "@/lib/db";
 import { emailShell, escapeHtml, sendMail } from "@/lib/email";
 import { unsubscribeParts } from "@/lib/bulkMail";
@@ -26,7 +26,14 @@ export async function sendDigest(userId: string, runId?: string) {
     .where(and(eq(schema.userOpportunities.userId, userId), gt(schema.userOpportunities.addedAt, since), eq(schema.userOpportunities.archived, false)))
     .orderBy(desc(schema.userOpportunities.score));
   // A posting two of their searches found is one find, shown with its best score (#657).
-  const seen = new Set<string>();
+  // A posting already on the board from another search before this window isn't new, even if a later search added it (#823).
+  const earlier = scored.length
+    ? await db
+        .select({ id: schema.userOpportunities.opportunityId })
+        .from(schema.userOpportunities)
+        .where(and(eq(schema.userOpportunities.userId, userId), lte(schema.userOpportunities.addedAt, since), inArray(schema.userOpportunities.opportunityId, scored.map((r) => r.opportunities.id))))
+    : [];
+  const seen = new Set<string>(earlier.map((r) => r.id));
   const rows = scored.filter((r) => !seen.has(r.opportunities.id) && !!seen.add(r.opportunities.id));
   const pinned = await db
     .select()
