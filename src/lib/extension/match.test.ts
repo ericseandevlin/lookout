@@ -63,4 +63,14 @@ describe("sameJob", () => {
     expect(sameJob(["https://www.indeed.com/viewjob?jk=abc123"], ["https://www.indeed.com/viewjob?jk=def456"])).toBe(false);
     expect(sameJob(["https://www.indeed.com/viewjob?jk=abc123&from=serp"], ["https://indeed.com/viewjob?jk=abc123"])).toBe(true);
   });
+  it("tells UltiPro jobs apart by ?opportunityId= (#840)", () => {
+    const up = (id: string) => `https://recruiting.ultipro.com/ACM1000ACME/JobBoard/abc-123/OpportunityDetail?opportunityId=${id}`;
+    expect(sameJob([up("11111111-2222-3333-4444-555555555555")], [up("99999999-2222-3333-4444-555555555555")])).toBe(false);
+    expect(sameJob([up("11111111-2222-3333-4444-555555555555").replace("opportunityId", "opportunityid")], [up("11111111-2222-3333-4444-555555555555")])).toBe(true);
+  });
+  it("tells SuccessFactors jobs apart by ?career_job_req_id= (#840)", () => {
+    const sf = (id: number, extra = "") => `https://career4.successfactors.com/career?company=acme&career_ns=job_listing${extra}&career_job_req_id=${id}`;
+    expect(sameJob([sf(101)], [sf(202)])).toBe(false);
+    expect(sameJob([sf(101, "&navBarLevel=JOB_SEARCH")], [sf(101)])).toBe(true);
+  });
 });
