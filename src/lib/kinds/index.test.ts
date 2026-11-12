@@ -119,11 +119,22 @@ describe("parseMoney", () => {
     ["150K+", 150000],
     ["999", 999000],
     ["1000", 1000],
+    // Words around the number (#797).
+    ["~$150k", 150000],
+    ["USD 150,000", 150000],
+    ["about 100k", 100000],
+    ["min 150k", 150000],
+    ["at least $140,000", 140000],
+    ["150 base", 150000],
+    ["150k base", 150000],
+    ["$1.5MM", 1500000],
+    ["2 mil", 2000000],
+    ["1 200 000", 1200000],
   ])("reads %s as %d", (v, n) => {
     expect(parseMoney(v)).toBe(n);
   });
 
-  it.each([[""], ["  "], ["0"], ["about 100k"], ["€90k"], [null], [120000], [["120k"]]])("returns null for %j", (v) => {
+  it.each([[""], ["  "], ["0"], ["€90k"], ["90k EUR"], ["£80,000"], ["negotiable"], [null], [120000], [["120k"]]])("returns null for %j", (v) => {
     expect(parseMoney(v)).toBeNull();
   });
 });
