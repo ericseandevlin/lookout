@@ -104,7 +104,7 @@
 
   /** Same rule as checksBox in src/lib/application/fillPlan.ts: yes, true or a consent verb (past tense too, #681), alone or leading the answer. */
   function checksBox(answer) {
-    return /^(yes|true|(i(( have|'ve|’ve)? read| understand) and |i )?(agreed?|acknowledged?|confirm(ed)?|consent(ed)?|certif(y|ied)|accept(ed)?)|i understand)\b/.test(norm(answer));
+    return /^(yes|true|(i(( have|'ve|’ve)? read| understand) and |i )?(agreed?|acknowledged?|confirm(ed)?|consent(ed)?|certif(y|ied)|accept(ed)?)|i(( have|'ve|’ve)? read and)? underst(and|ood))\b/.test(norm(answer));
   }
 
   /**
