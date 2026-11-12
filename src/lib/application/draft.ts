@@ -67,7 +67,9 @@ export function fillField(prompt: string, inp: DraftInputs): Drafted | null {
   if (/preferred (first )?name/.test(p)) return first ? fact(first, "account name") : null;
   if (/^first name/.test(p)) return first ? fact(first, "account name") : null;
   if (/^last name/.test(p)) return rest.length ? fact(rest.join(" "), "account name") : null;
-  if (/^(full )?name$/.test(p.trim())) return inp.name.trim() ? fact(inp.name.trim(), "account name") : null;
+  // Labels often carry a required marker: "Name *", "Full name (required)", "Name:" (#817).
+  const bare = p.replace(/\(\s*required\s*\)/g, "").replace(/[*:]/g, "").trim();
+  if (/^(full )?name$/.test(bare)) return inp.name.trim() ? fact(inp.name.trim(), "account name") : null;
   if (/^e-?mail/.test(p)) return fact(inp.email, "account email");
   if (/linkedin/.test(p) && inp.linkedinUrl) return fact(linkedinUrl(inp.linkedinUrl), "LinkedIn on your profile");
   return null;
