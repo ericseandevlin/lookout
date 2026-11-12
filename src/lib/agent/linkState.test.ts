@@ -1,5 +1,15 @@
 import { describe, expect, it } from "vitest";
-import { classifyPage } from "./linkState";
+import { classifyPage, closedNote, ownNotes } from "./linkState";
+
+describe("ownNotes (#792)", () => {
+  it("drops Lookout's closed line and keeps what the person wrote", () => {
+    const line = closedNote("page answered 404", "2026-11-01");
+    expect(ownNotes(line)).toBe("");
+    expect(ownNotes(`Ask Sam (recruiter) about this.\n\n${line}`)).toBe("Ask Sam (recruiter) about this.");
+    expect(ownNotes(`${line}\n\nReopened, applying anyway.`)).toBe("Reopened, applying anyway.");
+    expect(ownNotes("Closed: the role went to an internal hire.")).toBe("Closed: the role went to an internal hire.");
+  });
+});
 
 describe("classifyPage", () => {
   it("treats 404 and 410 as gone", () => {
