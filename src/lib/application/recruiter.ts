@@ -169,7 +169,10 @@ function letterBody(text: string) {
   const first = lines.findIndex(Boolean);
   if (first >= 0) lines[first] = lines[first].replace(GREETING, "");
   let end = lines.length;
-  for (let i = lines.length - 1; i >= Math.max(0, lines.length - 5); i--) if (SIGN_OFF.test(lines[i])) end = i;
+  // The sign-off sits above a name and contact lines (email, phone, links): look through the last 8 lines with text,
+  // not the last 5 raw ones, or the contact block counted toward the letter's length (#777).
+  const tail = lines.flatMap((l, i) => (l ? [i] : [])).slice(-8);
+  for (const i of tail.reverse()) if (SIGN_OFF.test(lines[i])) end = i;
   return lines
     .slice(0, end)
     .join("\n")
