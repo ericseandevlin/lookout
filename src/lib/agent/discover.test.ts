@@ -188,6 +188,30 @@ describe("save", () => {
     expect(o).toMatchObject({ sourceUrl: "https://jobs.example.com/acme/123", description: "Lead the design team." });
   });
 
+  it("takes a repost's link, summary and date when the shared posting was found gone, and drops the old check (#830)", async () => {
+    await save(ctx(), [find()], "agent");
+    const goneCheck = { linkCheck: { checkedAt: "2026-11-01T00:00:00.000Z", state: "gone", reason: "404", goneSince: "2026-10-30T00:00:00.000Z" } };
+    await db.update(schema.opportunities).set({ attributes: { ...goneCheck, other: 1 } });
+    const [u2] = await db.insert(schema.users).values({ email: "b@example.com" }).returning();
+    const [s2] = await db.insert(schema.searches).values({ userId: u2.id, name: "Job search", answers: {} }).returning();
+    const r = await save(ctx({ userId: u2.id, searchId: s2.id }), [find({ url: "https://jobs.example.com/acme/456", description: "Reposted.", posted_at: "2026-11-10" })], "agent");
+    expect(r.added).toBe(1);
+    const [o] = await db.select().from(schema.opportunities);
+    expect(o).toMatchObject({ sourceUrl: "https://jobs.example.com/acme/456", description: "Reposted.", postedAt: "2026-11-10", attributes: { other: 1 } });
+    expect(o.attributes).not.toHaveProperty("linkCheck");
+  });
+
+  it("keeps a gone posting's check when it is found again at the same URL (#830)", async () => {
+    await save(ctx(), [find()], "agent");
+    const goneCheck = { linkCheck: { checkedAt: "2026-11-01T00:00:00.000Z", state: "gone", reason: "404", goneSince: "2026-10-30T00:00:00.000Z" } };
+    await db.update(schema.opportunities).set({ attributes: goneCheck });
+    const [u2] = await db.insert(schema.users).values({ email: "b@example.com" }).returning();
+    const [s2] = await db.insert(schema.searches).values({ userId: u2.id, name: "Job search", answers: {} }).returning();
+    await save(ctx({ userId: u2.id, searchId: s2.id }), [find({ description: "Other." })], "agent");
+    const [o] = await db.select().from(schema.opportunities);
+    expect(o).toMatchObject({ sourceUrl: "https://jobs.example.com/acme/123", description: "Lead the design team.", attributes: goneCheck });
+  });
+
   it("fills a shared posting's link and summary when it has none", async () => {
     await db.insert(schema.opportunities).values({ company: "Acme", title: "Director of Design", fingerprint: fingerprint("Acme", "Director of Design", "New York, NY (hybrid)") });
     await save(ctx(), [find()], "agent");

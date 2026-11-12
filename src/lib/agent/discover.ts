@@ -294,6 +294,9 @@ const realDate = (d: string | null) => (d && /^\d{4}-\d{2}-\d{2}$/.test(d) && ne
  */
 const annualPay = (n: number | null) => (n != null && Number.isFinite(n) && n >= 10_000 && n < 2 ** 31 ? Math.round(n) : null);
 
+/** In an insert's conflict update: the shared row's link check says gone and the new find is at another URL (#830). */
+const reposted = sql`(${schema.opportunities.attributes} -> 'linkCheck' ->> 'state' = 'gone' and excluded.source_url is distinct from ${schema.opportunities.sourceUrl})`;
+
 export async function save(ctx: Context, finds: ScoredT[], via: "agent" | "manual"): Promise<RunTally & { newFinds: { id: string; score: number }[] }> {
   const known = new Set(ctx.knownUrls.map(normUrl));
   const t = emptyTally();
@@ -348,11 +351,15 @@ export async function save(ctx: Context, finds: ScoredT[], via: "agent" | "manua
         fingerprint: fingerprint(f.company, f.title, f.location),
       })
       // The row is shared by everyone who has this find: keep its link and summary, only fill what's missing (#585).
+      // A posting the link check found gone and the company put up again at a new URL takes the new link, summary and
+      // date, and drops the old check, so the repost isn't shown with the dead link and closed at once on its next check (#830).
       .onConflictDoUpdate({
         target: schema.opportunities.fingerprint,
         set: {
-          sourceUrl: sql`coalesce(${schema.opportunities.sourceUrl}, excluded.source_url)`,
-          description: sql`coalesce(nullif(${schema.opportunities.description}, ''), excluded.description)`,
+          sourceUrl: sql`case when ${reposted} then excluded.source_url else coalesce(${schema.opportunities.sourceUrl}, excluded.source_url) end`,
+          description: sql`case when ${reposted} then excluded.description else coalesce(nullif(${schema.opportunities.description}, ''), excluded.description) end`,
+          postedAt: sql`case when ${reposted} then coalesce(excluded.posted_at, ${schema.opportunities.postedAt}) else ${schema.opportunities.postedAt} end`,
+          attributes: sql`case when ${reposted} then ${schema.opportunities.attributes} - 'linkCheck' else ${schema.opportunities.attributes} end`,
         },
       })
       .returning();
