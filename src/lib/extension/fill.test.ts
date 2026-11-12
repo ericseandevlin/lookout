@@ -185,6 +185,40 @@ describe("extension fill: choices", () => {
     expect([on("a-y"), on("a-n"), on("b-y"), on("b-n")]).toEqual([false, true, true, false]);
   });
 
+  it("checks the radio labeled with the question and the option the answer means (#773)", async () => {
+    const p = page(`<span id="q9">Can you work onsite? *</span>
+      <input type="radio" name="w" id="w-y" aria-labelledby="q9 l1"><span id="l1">Yes</span>
+      <input type="radio" name="w" id="w-n" aria-labelledby="q9 l2"><span id="l2">No</span>`);
+    const steps = [{ prompt: "Can you work onsite?", kind: "choice", content: "No, I work remotely", options: ["Yes", "No"] }];
+    expect(await p.probe({ steps })).toEqual({ score: 1 });
+    const [r] = await p.fill({ steps });
+    expect(r).toMatchObject({ ok: true, how: "checked 1" });
+    expect((p.doc.querySelector("#w-n") as HTMLInputElement).checked).toBe(true);
+    expect((p.doc.querySelector("#w-y") as HTMLInputElement).checked).toBe(false);
+  });
+
+  it("never clicks a question-labeled radio the answer doesn't name (#773)", async () => {
+    const p = page(`<span id="q">Preferred office</span>
+      <input type="radio" name="o" id="o1" aria-labelledby="q l1"><span id="l1">Austin</span>`);
+    const log = await p.fill({
+      steps: [
+        { prompt: "Preferred office", kind: "choice", content: "Remote", options: ["Austin"] },
+        { prompt: "Preferred office", kind: "choice", content: "Denver", options: ["Austin", "Denver"] },
+      ],
+    });
+    expect(log).toMatchObject([{ ok: false, how: "answer matches no option" }, { ok: false, how: "option not found: Denver" }]);
+    expect((p.doc.querySelector("#o1") as HTMLInputElement).checked).toBe(false);
+  });
+
+  it("ticks one radio in a group, the first line that lands, like the worker (#773)", async () => {
+    const p = page(`<fieldset><legend>Work arrangement</legend>
+      <label><input type="radio" name="a" id="a-r"> Remote</label><label><input type="radio" name="a" id="a-h"> Hybrid</label></fieldset>`);
+    const [r] = await p.fill({ steps: [{ prompt: "Work arrangement", kind: "choice", content: "Remote\nHybrid", options: ["Remote", "Hybrid"] }] });
+    expect(r).toMatchObject({ ok: true, how: "checked 1" });
+    expect((p.doc.querySelector("#a-r") as HTMLInputElement).checked).toBe(true);
+    expect((p.doc.querySelector("#a-h") as HTMLInputElement).checked).toBe(false);
+  });
+
   it("checks every line of a select-all answer, matching a prefix either way, and leaves the rest", async () => {
     const options = ["Figma", "Sketch", "Adobe Creative Suite", "Framer"];
     const p = page(`<div role="group"><span>Which tools do you use?</span>

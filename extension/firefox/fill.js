@@ -64,6 +64,12 @@
     return groups.filter((g) => groupName(g) === norm(prompt)).pop() || groups.pop() || null;
   }
 
+  /** Radios labeled with the question and their option ("Can you work onsite? No"), no group around them (#773). */
+  function radiosFor(prompt) {
+    const q = norm(prompt) + " ";
+    return [...document.querySelectorAll("input[type=radio]")].filter((el) => labelOf(el).startsWith(q));
+  }
+
   function fileInputFor(prompt, itemKind) {
     const inputs = [...document.querySelectorAll("input[type=file]")];
     const key = norm(prompt).slice(0, 40);
@@ -184,8 +190,19 @@
       }
       if (!el) {
         const group = groupFor(step.prompt);
-        if (!group) return { ok: false, how: "field not found" };
-        const picks = pickOptions(step.content, step.options);
+        if (!group) {
+          // Check the radio the answer means, never the first one found, same as the worker (#720, #773).
+          const radios = radiosFor(step.prompt);
+          if (!radios.length) return { ok: false, how: "field not found" };
+          const i = step.options && step.options.length ? pickOne(step.content, step.options) : -1;
+          if (i < 0) return { ok: false, how: "answer matches no option" };
+          const radio = radios.find((r) => labelOf(r) === norm(step.prompt) + " " + norm(step.options[i]));
+          if (!radio) return { ok: false, how: `option not found: ${step.options[i].slice(0, 60)}` };
+          if (!radio.checked) radio.click();
+          return { ok: true, how: "checked 1" };
+        }
+        // Radios take one answer: the first line that lands, same as the worker.
+        const picks = pickOptions(step.content, step.options).slice(0, group.querySelector("input[type=radio]") ? 1 : undefined);
         if (!picks.length) return { ok: false, how: "answer matches no option" };
         for (const label of picks) {
           // Exact label first: the loose match alone puts "None of the above" on the "No" box (#632).
@@ -229,7 +246,7 @@
 
   function probe(packet) {
     let score = 0;
-    for (const s of packet.steps) if (s.kind === "file" ? document.querySelector("input[type=file]") : controlFor(s.prompt) || groupFor(s.prompt) || checkboxFor(s.prompt)) score++;
+    for (const s of packet.steps) if (s.kind === "file" ? document.querySelector("input[type=file]") : controlFor(s.prompt) || groupFor(s.prompt) || checkboxFor(s.prompt) || radiosFor(s.prompt).length) score++;
     return { score };
   }
 
