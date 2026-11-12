@@ -47,7 +47,12 @@ const SKILLS = /skills|tools|expertise|competenc/i;
 // Sections whose bullets aren't work results, so the number checks skip them (#704).
 const NOT_WORK = /skills|tools|expertise|competenc|education|certif|award|honou?rs|languages|interests|references/i;
 const VAGUE = /\b(?:[A-Z][\w+#./-]*\s){1,2}(?:Concepts|Fundamentals|Basics|Principles)\b|\b(?:familiar(?:ity)? with|exposure to|basic knowledge of|working knowledge of)\b/;
-const FRAMING = /\b(hoping to (?:move|transition|break|grow) into|looking to (?:move|transition|break|pivot) into|eager to break into|transition(?:ing)? into|pivot(?:ing)? (?:in)?to|break into)\b/i;
+// The person moving into the field, not a team or product: "led the pivot to subscriptions" is a result (#768).
+const MOVE = String.raw`(?:(?:move|break|grow|step|shift)\s+into|(?:transition|pivot)\s+(?:in)?to)`;
+const FRAMING = new RegExp(
+  String.raw`\b(?:(?:hoping|looking|eager|ready|keen|aiming|want(?:ing)?|seeking|trying|planning)\s+to\s+${MOVE}|(?:i\s+am|i['’]m|i\s+have\s+been|i['’]ve\s+been|now)\s+(?:(?:transitioning|pivoting)\s+(?:in)?to|(?:moving|shifting)\s+into)|my\s+(?:career\s+)?(?:transition|pivot|move|shift)\s+(?:in)?to|career\s+(?:change|changer|pivot|transition|switch))\b`,
+  "i",
+);
 const WEAK_OPEN = /^(?:i am|i'm) (?:writing|excited|thrilled|pleased|interested|applying)|^i would like to|^please accept|^my name is|^i wish to|^i was (?:excited|thrilled) to/i;
 const HAS_NUMBER = /\d|\b(one|two|three|four|five|six|seven|eight|nine|ten|dozen|hundreds?|thousands?|millions?|billions?)\b/i;
 
