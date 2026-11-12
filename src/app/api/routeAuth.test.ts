@@ -10,7 +10,7 @@ const BARE: Record<string, string> = {
   "inbound/resend/route.ts": "Resend webhook; verifies its own signature",
 };
 // Sign-in has to work before there is a session.
-const PUBLIC = new Set(["auth/request/route.ts", "auth/request-access/route.ts", "auth/verify/route.ts", "auth/confirm-email/route.ts", "auth/logout/route.ts"]);
+const PUBLIC = new Set(["auth/request/route.ts", "auth/request-access/route.ts", "auth/join/route.ts", "auth/verify/route.ts", "auth/confirm-email/route.ts", "auth/logout/route.ts"]);
 
 const api = __dirname;
 const METHOD = "GET|POST|PUT|PATCH|DELETE";
