@@ -30,6 +30,12 @@ describe("classify", () => {
     expect(classify("Do you have a disability or chronic condition?")).toBe("disability");
     expect(classify("Why do you want this job?")).toBeNull();
   });
+
+  it("reads a bare Sex question as gender, and Sexual orientation as orientation (#816)", () => {
+    expect(classify("Sex")).toBe("gender");
+    expect(classify("Sex *")).toBe("gender");
+    expect(classify("Sexual Orientation")).toBe("orientation");
+  });
 });
 
 describe("matchOption", () => {
@@ -38,6 +44,15 @@ describe("matchOption", () => {
     expect(matchOption("Man", clearGender)).toBe("Man");
     expect(matchOption("Woman", eeocGender)).toBe("Female");
     expect(matchOption("Non-binary", attentiveGender)).toBe("Nonbinary");
+  });
+
+  it("matches cisgender wordings, never a transgender option (#816)", () => {
+    const cis = ["Transgender woman", "Transgender man", "Cisgender woman", "Cisgender man", "Non-binary", "Prefer not to say"];
+    expect(matchOption("Woman", cis)).toBe("Cisgender woman");
+    expect(matchOption("Man", cis)).toBe("Cisgender man");
+    expect(matchOption("Man", ["Cis Woman", "Cis Man", "Decline"])).toBe("Cis Man");
+    expect(matchOption("Woman", ["Cis-female", "Cis-male"])).toBe("Cis-female");
+    expect(matchOption("Man", ["Transgender man", "Decline"])).toBeNull();
   });
 
   it("finds the decline option however it's worded", () => {
