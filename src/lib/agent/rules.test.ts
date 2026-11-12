@@ -56,4 +56,9 @@ describe("dedupe keys", () => {
     expect(normUrl("https://careers.x.com/job?sourceJobId=9")).toBe("careers.x.com/job?sourcejobid=9");
     expect(normUrl("https://boards.greenhouse.io/x?gh_jid=42&gh_src=a")).toBe("boards.greenhouse.io/x?gh_jid=42");
   });
+  it("keeps a hash route, so jobs on a #/ routed careers page stay apart (#841)", () => {
+    expect(normUrl("https://careers.acme.com/#/jobs/101")).not.toBe(normUrl("https://careers.acme.com/#/jobs/202"));
+    expect(normUrl("https://careers.acme.com/?utm_source=li#!/Job/101/")).toBe("careers.acme.com#!/job/101");
+    expect(normUrl("https://jobs.example.com/acme/123#content")).toBe("jobs.example.com/acme/123");
+  });
 });

@@ -1,4 +1,5 @@
 import { createHash } from "node:crypto";
+import { hashRoute } from "@/lib/extension/match";
 
 export type Scored = {
   score: number;
@@ -57,7 +58,7 @@ export function normUrl(u: string) {
   try {
     const url = new URL(u);
     for (const k of [...url.searchParams.keys()]) if (TRACKING.test(k)) url.searchParams.delete(k);
-    return (url.host.replace(/^www\./, "") + url.pathname.replace(/\/$/, "") + url.search).toLowerCase();
+    return (url.host.replace(/^www\./, "") + url.pathname.replace(/\/$/, "") + url.search + hashRoute(url)).toLowerCase();
   } catch {
     return u.toLowerCase();
   }

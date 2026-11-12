@@ -73,4 +73,9 @@ describe("sameJob", () => {
     expect(sameJob([sf(101)], [sf(202)])).toBe(false);
     expect(sameJob([sf(101, "&navBarLevel=JOB_SEARCH")], [sf(101)])).toBe(true);
   });
+  it("keeps a hash route as part of the job, but not a plain anchor (#841)", () => {
+    expect(sameJob(["https://careers.acme.com/#/jobs/101"], ["https://careers.acme.com/#/jobs/202"])).toBe(false);
+    expect(sameJob(["https://careers.acme.com/#!/job/101/apply"], ["https://careers.acme.com/#!/job/101"])).toBe(true);
+    expect(sameJob(["https://jobs.example.com/acme/123#apply"], ["https://jobs.example.com/acme/123"])).toBe(true);
+  });
 });
