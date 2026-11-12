@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { cleanUrl, hrefOf, LINK_KINDS, LINK_TILE, linkKind } from "@/lib/links";
-import { ChevronDown, PencilIcon, TrashIcon } from "./icons";
+import { ChevronDown, DownloadIcon, PencilIcon, RedoIcon, TrashIcon } from "./icons";
 import { NextStep, PageHead, ProfileTabs } from "./Profile";
 import { useStore } from "./store";
 import { useConfirm } from "./Confirm";
@@ -11,6 +11,9 @@ import { btn } from "./Settings";
 import { api } from "./store";
 import type { Template } from "@/lib/application/resumeLayout";
 import { color } from "@/lib/tokens";
+
+// The same square icon button as the auto-apply review card.
+const squareBtn: React.CSSProperties = { ...btn("outline"), width: 38, padding: 0, display: "inline-flex", alignItems: "center", justifyContent: "center" };
 
 const SectionLabel = ({ children }: { children: React.ReactNode }) => (
   <div style={{ fontSize: 14, fontWeight: 600, letterSpacing: ".08em", textTransform: "uppercase", color: color.t2 }}>{children}</div>
@@ -402,12 +405,13 @@ function MasterResumeSection() {
           ) : (
             <>
               {!m.confirmed && <button onClick={() => confirm(m.md!)} disabled={busy} style={btn("solid")}>Confirm</button>}
-              <button onClick={() => setEditing(true)} disabled={busy} style={btn("outline")}>Edit text</button>
-              <a href="/api/profile/master-resume/docx" download title="This resume as a Word file" style={{ ...btn("outline"), display: "inline-flex", alignItems: "center", textDecoration: "none" }}>Download .docx</a>
-              {!m.confirmed && m.hasConfirmed ? (
+              <button onClick={() => setEditing(true)} disabled={busy} aria-label="Edit text" data-tip="Edit text" style={squareBtn}><PencilIcon size={16} /></button>
+              {!(!m.confirmed && m.hasConfirmed) && (
+                <button onClick={build} disabled={busy} aria-label={m.stale ? "Build master resume" : "Rebuild from file"} data-tip={m.stale ? "Build master resume" : "Rebuild from file"} style={{ ...squareBtn, opacity: busy ? 0.6 : 1 }}><RedoIcon /></button>
+              )}
+              <a href="/api/profile/master-resume/docx" download aria-label="Download .docx" data-tip="Download .docx" style={{ ...squareBtn, textDecoration: "none", boxSizing: "border-box" }}><DownloadIcon /></a>
+              {!m.confirmed && m.hasConfirmed && (
                 <button onClick={() => call("DELETE", "Kept the version you confirmed.")} disabled={busy} style={btn("text")}>Keep my confirmed version</button>
-              ) : (
-                <button onClick={build} disabled={busy} style={btn("text")}>{m.stale ? "Build master resume" : "Rebuild from file"}</button>
               )}
             </>
           )}
