@@ -100,6 +100,26 @@ describe("recruiterChecks: cover letter", () => {
     expect(recruiterChecks("cover_letter", "Hi Sam,\nI grew Acme's design system to 40 teams in two years.\nThank you for your time.\nBest regards,\nMaya")).toEqual([]);
   });
 
+  it("flags the person moving into a field, not a team or product changing (#768)", () => {
+    const framed = (s: string) => recruiterChecks("cover_letter", `Dear Team,\n\n${s}\n\nBest,\nMaya`).some((x) => x.dim === "relevance");
+    for (const s of [
+      "I am looking to transition into product management.",
+      "I’m transitioning to product design after ten years in engineering.",
+      "My career pivot to research started last year.",
+      "I am eager to break into fintech.",
+      "As a career changer, I bring a fresh view.",
+    ])
+      expect(framed(s)).toBe(true);
+    for (const s of [
+      "At Acme I led the pivot to subscriptions, which grew revenue 20%.",
+      "I ran the company's transition into cloud billing for 40 teams.",
+      "I helped the brand break into three new markets.",
+      "I am moving to Boston in June and grew Acme's design system to 40 teams.",
+    ])
+      expect(framed(s)).toBe(false);
+    expect(recruiterChecks("resume", resume.replace(/now hoping to move into product management/, "led the transition into cloud billing")).some((x) => x.dim === "relevance")).toBe(false);
+  });
+
   it("passes a strong short letter", () => {
     expect(recruiterChecks("cover_letter", "Dear Team,\n\nI grew Acme's design system to 40 teams in two years.\n\nBest,\nMaya")).toEqual([]);
   });
