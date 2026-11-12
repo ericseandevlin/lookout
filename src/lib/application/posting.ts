@@ -34,9 +34,12 @@ export function stripBoilerplate(text: string) {
     .join("\n");
 }
 
-const JUNK = /recruit|candidate|applicant|hiring|interview|verify|equal opportunit|\beeo\b|accommodation|open (roles|positions)|apply|application|job (posting|description)|opportunit(y|ies)$/i;
+// The hiring process itself, and a hiring word on its own ("Interviews", "Applications").
+const JUNK =
+  /candidate|applicant|verify|equal opportunit|\beeo\b|accommodation|open (roles|positions)|\bapply\b|\b(hiring|interview|application|recruiting) process|job (posting|description)|opportunit(y|ies)$|^(the )?(recruit\w*|hiring|interviews?|applications?)$/i;
 // Words that are boilerplate in most postings but the job itself in some (fraud analyst, insurance PM, social media manager) (#509).
-const TOPIC = /scam|fraud|benefit|insurance|401\s?\(?k|\bpto\b|parental|privacy|e-?mail|social media/i;
+// Hiring words too: "user interviews", "web applications" and "hiring designers" are the job (#803).
+const TOPIC = /scam|fraud|benefit|insurance|401\s?\(?k|\bpto\b|parental|privacy|e-?mail|social media|recruit|hiring|interview|application/i;
 
 /**
  * Keywords that describe the hiring process or the posting itself, not the job. With the posting, a topic word

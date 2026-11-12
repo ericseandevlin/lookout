@@ -40,6 +40,14 @@ describe("isJunkKeyword", () => {
     const rv = [...job, ...boilerplate].join("\n");
     for (const k of ["social media", "privacy policy", "recruiter scams", "candidates"]) expect(isJunkKeyword(k, rv)).toBe(true);
   });
+
+  it("keeps skills that contain a hiring word when the job is about them (#803)", () => {
+    const ux = "Run user interviews and usability tests.\nBuild web applications in React.\nOwn hiring and developing designers on the team.\nPartner on application security reviews.";
+    for (const k of ["user interviews", "web applications", "hiring and developing designers", "application security"]) expect(isJunkKeyword(k, ux)).toBe(false);
+    // The hiring process, a bare hiring word, or a hiring word only in a notice still drop.
+    for (const k of ["interview process", "hiring process", "apply now", "Interviews", "applications", "recruiting"]) expect(isJunkKeyword(k, ux)).toBe(true);
+    expect(isJunkKeyword("user interviews", "Design the checkout flow.\nWe never ask for payment during interviews.")).toBe(true);
+  });
 });
 
 const fraudRole = [
