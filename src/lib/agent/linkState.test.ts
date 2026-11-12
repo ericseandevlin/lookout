@@ -68,6 +68,17 @@ describe("classifyPage", () => {
   ])("keeps %s open (#760)", (text) => {
     expect(classifyPage(200, text).state).toBe("open");
   });
+  it.each([
+    "TITLE: Senior Designer\nPosition Closed Date 11/30/2026. Apply now.",
+    "TITLE: Director of UX\nOpportunity Closed Date: 12/31/2026",
+    "TITLE: Design Lead\nJob Posting Closed-Date: December 15, 2026",
+    "TITLE: Product Designer\nThis role is closed-loop: you own research through launch.",
+  ])("keeps %s open (#832)", (text) => {
+    expect(classifyPage(200, text).state).toBe("open");
+  });
+  it.each(["This job has closed. Closed date: 2026-11-01", "Job Closed - see our other openings", "This position is closed."])("still reads %s as closed (#832)", (text) => {
+    expect(classifyPage(200, text).state).toBe("gone");
+  });
   it("closed wording beats a stray maintenance mention", () => {
     expect(classifyPage(200, "We're sorry, but it looks like this job may be no longer available or does not exist. Site maintenance notice").state).toBe("gone");
   });
