@@ -29,7 +29,7 @@ type Data = {
 };
 
 const card: React.CSSProperties = { background: "#fff", borderRadius: 16, overflowX: "auto", marginTop: 8 };
-const th: React.CSSProperties = { fontSize: 14, fontWeight: 600, color: color.t2, textAlign: "left", padding: "10px 14px", borderBottom: `1px solid ${color.border}`, whiteSpace: "nowrap" };
+const th: React.CSSProperties = { fontSize: 12, fontWeight: 600, color: color.t2, textAlign: "left", padding: "10px 14px", borderBottom: `1px solid ${color.border}`, whiteSpace: "nowrap" };
 const td: React.CSSProperties = { fontSize: 14, padding: "10px 14px", borderBottom: `1px solid ${color.surface}`, fontVariantNumeric: "tabular-nums" };
 const muted: React.CSSProperties = { fontSize: 14, color: color.t2 };
 const day = (week: string) => new Date(`${week}T12:00:00Z`).toLocaleDateString("en-US", { month: "short", day: "numeric" });
