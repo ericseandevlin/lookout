@@ -71,14 +71,20 @@ const PRE = String.raw`(?:\b(US|CA|C|A|(?:USD|CAD|AUD) ?)(?=\$))?`;
 const CODE = String.raw`(?:\s?(USD|CAD|AUD)\b)?`;
 // A code may stand in for the "$": "USD 150,000 - 200,000" (#753). A bare "120,000 - 150,000" still doesn't count.
 const CODE_LEAD = String.raw`\b(USD|CAD|AUD)\s?(?=\d)`;
-const range = (start: string, sep: string, lead = String.raw`${PRE}\$`) =>
-  new RegExp(String.raw`${start}${lead}\s?(${AMT})(${FIRST_UNIT})?${CODE}\s*${sep}\s*${PRE}\$?\s?(${AMT})([^\n]{0,40})`, "gi");
+const range = (start: string, sep: string, lead = String.raw`${PRE}\$`, end = "") =>
+  new RegExp(String.raw`${start}${lead}\s?(${AMT})(${FIRST_UNIT})?${CODE}\s*${sep}\s*${PRE}\$?\s?(${AMT})${end}([^\n]{0,40})`, "gi");
+// Or the code comes only after the numbers: "180,000 - 220,000 USD", "180K - 220K CAD" (#809). The empty group keeps
+// the match groups in line; the code stays in the tail, where the currency is read from.
+const NO_LEAD = String.raw`()(?<![\d.,$])`;
+const CODE_TRAIL = String.raw`(?=\s?(?:USD|CAD|AUD)\b)`;
 // "and" joins a range only after "between": "between $150,000 and $180,000" (#686).
 const RANGES = [
   range("", "(?:-|–|—|to)"),
   range(String.raw`\bbetween\s+`, "and"),
   range("", "(?:-|–|—|to)", CODE_LEAD),
   range(String.raw`\bbetween\s+`, "and", CODE_LEAD),
+  range("", "(?:-|–|—|to)", NO_LEAD, CODE_TRAIL),
+  range(String.raw`\bbetween\s+`, "and", NO_LEAD, CODE_TRAIL),
 ];
 const PREFIX: Record<string, string> = { us: "USD", ca: "CAD", c: "CAD", a: "AUD", usd: "USD", cad: "CAD", aud: "AUD" };
 
