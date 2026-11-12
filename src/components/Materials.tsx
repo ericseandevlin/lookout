@@ -403,6 +403,7 @@ function MasterResumeSection() {
             <>
               {!m.confirmed && <button onClick={() => confirm(m.md!)} disabled={busy} style={btn("solid")}>Confirm</button>}
               <button onClick={() => setEditing(true)} disabled={busy} style={btn("outline")}>Edit text</button>
+              <a href="/api/profile/master-resume/docx" download title="This resume as a Word file" style={{ ...btn("outline"), display: "inline-flex", alignItems: "center", textDecoration: "none" }}>Download .docx</a>
               {!m.confirmed && m.hasConfirmed ? (
                 <button onClick={() => call("DELETE", "Kept the version you confirmed.")} disabled={busy} style={btn("text")}>Keep my confirmed version</button>
               ) : (
