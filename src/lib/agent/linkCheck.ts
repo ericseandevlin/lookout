@@ -3,7 +3,7 @@ import { and, eq, inArray, sql } from "drizzle-orm";
 import { db, schema } from "@/lib/db";
 import { fetchPage, FetchError, pageToText } from "@/lib/ai/fetchPage";
 import { ashbyOrgFromHtml, boardFromHtml, boardGuesses, detectAts } from "@/lib/application/scan";
-import { classifyPage, type LinkState } from "./linkState";
+import { classifyPage, closedNote, type LinkState } from "./linkState";
 
 /** Stored on opportunities.attributes so every person's board shares one check per posting. */
 type LinkCheck = { checkedAt: string; state: LinkState; reason: string; goneSince?: string };
@@ -125,7 +125,7 @@ export async function closeGonePostings(userId: string, now = new Date()): Promi
         .where(eq(schema.opportunities.id, r.o.id));
       if (lc.state === "gone" && lc.goneSince && now.getTime() - Date.parse(lc.goneSince) >= CONFIRM_MS) {
         const day = lc.goneSince.slice(0, 10);
-        const line = `Closed: the posting was gone (${lc.reason}) as of ${day}. Lookout archived it.`;
+        const line = closedNote(lc.reason, day);
         // The stage may have moved since the read (they applied mid-run); count only a find this actually closed (#614).
         // The line goes onto each row's notes as they are now, so a note typed during the run survives (#656).
         const notes = schema.userOpportunities.notes;

@@ -1,6 +1,13 @@
 /** Pure classification of a posting check, kept apart from the DB code so it's testable. */
 export type LinkState = "open" | "gone" | "unknown";
 
+/** The line Lookout adds to a find's notes when it closes the posting. */
+export const closedNote = (reason: string, day: string) => `Closed: the posting was gone (${reason}) as of ${day}. Lookout archived it.`;
+const CLOSED_NOTE = /^Closed: the posting was gone \(.*\) as of \d{4}-\d{2}-\d{2}\. Lookout archived it\.$/gm;
+
+/** A find's notes without Lookout's own closed line: what the person wrote (#792). */
+export const ownNotes = (notes: string) => notes.replace(CLOSED_NOTE, "").trim();
+
 // Phrases job boards use for a posting that's no longer live. Checked against the start of the page text only.
 const CLOSED = [
   /no longer (accepting (applications|candidates)|available|open|active|posted)/i,

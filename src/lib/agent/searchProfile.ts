@@ -7,6 +7,7 @@ import type { SearchProfile } from "@/lib/db/schema";
 import { kinds } from "@/lib/kinds";
 import { AiConfigError, completeJSON, type Usage } from "@/lib/ai/llm";
 import { getAiConfig } from "@/lib/config";
+import { ownNotes } from "./linkState";
 
 /**
  * The search profile is what every search actually uses: one compact picture of
@@ -64,12 +65,17 @@ export async function loadRawInputs(searchId: string): Promise<RawInputs & { sto
     .innerJoin(schema.opportunities, eq(schema.opportunities.id, schema.userOpportunities.opportunityId))
     .where(and(eq(schema.userOpportunities.searchId, searchId), ne(schema.userOpportunities.notes, "")))
     .orderBy(desc(schema.userOpportunities.addedAt))
-    .limit(15);
+    .limit(60);
   // Each note travels with the bullets Lookout showed on that find, so the model can tell when a note is correcting one.
-  const notes = noted.map(
-    (n) =>
-      `Find: "${n.title}" at ${n.company}\nLookout said: ${[...n.ok.map((r) => "+ " + r), ...n.gap.map((r) => "- " + r)].join(" | ") || "(no bullets)"}\nTheir note: ${n.notes.trim().slice(0, 400)}`,
-  );
+  // Only what they wrote: Lookout's own closed line would rebuild the profile and crowd out real corrections (#792).
+  const notes = noted
+    .map((n) => ({ ...n, own: ownNotes(n.notes) }))
+    .filter((n) => n.own)
+    .slice(0, 15)
+    .map(
+      (n) =>
+        `Find: "${n.title}" at ${n.company}\nLookout said: ${[...n.ok.map((r) => "+ " + r), ...n.gap.map((r) => "- " + r)].join(" | ") || "(no bullets)"}\nTheir note: ${n.own.slice(0, 400)}`,
+    );
   const brief = kind.brief(answers);
   // nosemgrep: javascript.lang.security.audit.node-sha1.node_sha1 -- SHA-1 here only detects changed inputs, not security
   const hash = createHash("sha1").update(JSON.stringify([VERSION, brief, resumeText, linkedin, links, notes])).digest("hex");

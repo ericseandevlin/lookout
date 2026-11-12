@@ -170,6 +170,22 @@ describe("what the model is given (#581)", () => {
     expect(raw.sources).toEqual({ answers: 1, resume: true, linkedin: true, links: 4, notes: 1 });
   });
 
+  it("leaves out Lookout's own closed line, and notes that are only that or blank (#792)", async () => {
+    const closed = "Closed: the posting was gone (page says it's closed) as of 2026-11-01. Lookout archived it.";
+    await find("Designer", `Ask Sam about this.\n\n${closed}`);
+    await find("Engineer", closed);
+    await find("Writer", "   ");
+    const { raw } = await ensure();
+    expect(prompt()).toContain('Find: "Designer" at Acme\nLookout said: + Leads design teams | - New to banking\nTheir note: Ask Sam about this.\n');
+    expect(prompt()).not.toMatch(/Engineer|Writer|Lookout archived it/);
+    expect(raw.sources.notes).toBe(1);
+
+    // A posting closing later doesn't change what the profile is built from, so it doesn't rebuild.
+    const before = raw.hash;
+    await find("Analyst", closed);
+    expect((await ensure()).raw.hash).toBe(before);
+  });
+
   it("uses the resume text when the summary step never ran, and counts only answers with something in them", async () => {
     await db.insert(schema.materials).values({ userId, kind: "resume", extracted: { text: "Ten years leading design." } });
     await db.update(schema.searches).set({ answers: { q1: "A step up", q2: ["Remote", "Hybrid"], q3: [], q4: "  " } }).where(eq(schema.searches.id, searchId));
