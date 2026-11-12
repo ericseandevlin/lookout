@@ -55,7 +55,8 @@ const FRAMING = new RegExp(
 );
 // Curly apostrophes too: letters pasted from Word or a phone carry them (#769).
 const WEAK_OPEN = /^(?:i am|i['’]m) (?:writing|excited|thrilled|pleased|interested|applying|reaching out)|^i(?: would|['’]d) (?:like|love) to|^please accept|^my name is|^i wish to|^i was (?:excited|thrilled) to/i;
-const HAS_NUMBER = /\d|\b(one|two|three|four|five|six|seven|eight|nine|ten|dozen|hundreds?|thousands?|millions?|billions?)\b/i;
+// "Doubled sign-ups" states the scale too (#776).
+const HAS_NUMBER = /\d|\b(one|two|three|four|five|six|seven|eight|nine|ten|dozen|hundreds?|thousands?|millions?|billions?|doubled|doubling|tripled|tripling|quadrupled|halved|halving|twice|(?:two|three|four|five|ten)fold)\b/i;
 
 /** Checks on a resume draft's markdown. */
 function resumeChecks(md: string): Finding[] {
