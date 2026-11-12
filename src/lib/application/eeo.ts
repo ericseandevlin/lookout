@@ -43,7 +43,8 @@ export function classify(prompt: string): EeoCategory | null {
   if (/disabilit/.test(p)) return "disability";
   if (/\brace\b|racial|ethnic/.test(p)) return "race";
   if (/hispanic|latin[oax]/.test(p)) return "hispanic";
-  if (/gender/.test(p)) return "gender";
+  // "Sex" alone asks gender; "sexual orientation" was caught above (#816).
+  if (/gender|^\W*sex\b/.test(p)) return "gender";
   return null;
 }
 
@@ -53,8 +54,9 @@ const DECLINES =
 
 /** How each profile choice shows up in form options. Order matters: the first option that matches wins. */
 const SYNONYMS: Record<string, RegExp> = {
-  Woman: /^(woman|female)\b/i,
-  Man: /^(man|male)\b/i,
+  // "Cisgender woman" and "Cis Man" are the same answer; "Transgender man" never is (#816).
+  Woman: /^(cis(gender)?[\s-]*)?(woman|female)\b/i,
+  Man: /^(cis(gender)?[\s-]*)?(man|male)\b/i,
   "Non-binary": /non.?binary|genderqueer/i,
   "Heterosexual or straight": /heterosexual|straight/i,
   Gay: /^gay\b/i,
