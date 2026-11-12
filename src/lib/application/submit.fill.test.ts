@@ -35,6 +35,7 @@ function fakePage(els: El[]) {
     return {
       first: () => loc(() => find().slice(0, 1)),
       last: () => loc(() => find().slice(-1)),
+      nth: (i) => loc(() => find().slice(i, i + 1)),
       or: (o) => loc(() => [...find(), ...o.all()]),
       filter: ({ hasText, has }) => loc(() => find().filter((e) => (!hasText || e.label.includes(hasText)) && (!has || has.all().includes(e)))),
       locator: (sel) =>
@@ -109,6 +110,7 @@ function fakePage(els: El[]) {
 type Loc = {
   first(): Loc;
   last(): Loc;
+  nth(i: number): Loc;
   or(o: Loc): Loc;
   filter(f: { hasText?: string; has?: Loc }): Loc;
   locator(sel: string): Loc;
@@ -520,6 +522,25 @@ describe("startFill submit (#385)", () => {
     expect(a.submittedAt).toBeNull();
     expect(a.report.fill).toMatchObject({ stopped: CAPTCHA_STOP, captcha: true });
     expect(await stage()).toBe("Not applied");
+  });
+
+  it("posting text that reads like a confirmation doesn't count when Submit shows nothing new (#784)", async () => {
+    const id = await seed("approved", ITEMS);
+    page = fakePage([...FORM, { kind: "confirm", label: "Once your application has been received, a recruiter will reach out." }]);
+    await startFill(id, "submit");
+    const a = await settled(id);
+    expect(a.status).toBe("manual");
+    expect(a.report.fill?.stopped).toMatch(/didn't see a confirmation/);
+    expect(await stage()).toBe("Not applied");
+  });
+
+  it("with that posting text on the page, the confirmation after Submit is the one recorded (#784)", async () => {
+    const id = await seed("approved", ITEMS);
+    page = fakePage([...FORM, { kind: "confirm", label: "Once your application has been received, a recruiter will reach out." }, THANKS]);
+    await startFill(id, "submit");
+    const a = await settled(id);
+    expect(a.status).toBe("submitted");
+    expect(a.confirmation).toMatchObject({ text: "Thank you for applying to Acme!" });
   });
 
   it("no confirmation after Submit ends in manual with a warning not to send twice", async () => {

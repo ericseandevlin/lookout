@@ -114,9 +114,13 @@ export async function runFill(appId: string, mode: "test" | "submit"): Promise<F
     if (mode === "test") return report;
 
     const submit = page.getByRole("button", { name: /submit( application)?|send application|apply/i }).last();
+    // Posting text beside the form can already match ("once your application has been received..."), so only a
+    // match past the ones on the page before the click counts (#784).
+    const seen = await page.getByText(CONFIRMATION).count().catch(() => 0);
+    const confirmation = page.getByText(CONFIRMATION).nth(seen);
     await submit.click();
     const outcome = await Promise.race([
-      page.getByText(CONFIRMATION).first().waitFor({ timeout: 25000 }).then(() => "done" as const),
+      confirmation.waitFor({ timeout: 25000 }).then(() => "done" as const),
       page.locator("iframe[src*='recaptcha'][title*='challenge'], iframe[src*='hcaptcha'], iframe[title*='captcha' i]").first().waitFor({ state: "visible", timeout: 25000 }).then(() => "captcha" as const),
     ]).catch(() => "unknown" as const);
     await page.screenshot({ path: path.join(dir, "after-submit.png"), fullPage: true });
@@ -126,7 +130,7 @@ export async function runFill(appId: string, mode: "test" | "submit"): Promise<F
       report.captcha = true;
     }
     else if (outcome === "unknown") report.stopped = "Lookout clicked Submit but didn't see a confirmation. Check the screenshot and your email before sending again.";
-    else report.confirmation = (await page.getByText(CONFIRMATION).first().innerText().catch(() => "")).slice(0, 300);
+    else report.confirmation = (await confirmation.innerText().catch(() => "")).slice(0, 300);
     return report;
   } finally {
     await browser.close();
