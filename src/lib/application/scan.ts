@@ -95,10 +95,15 @@ export function boardFromHtml(html: string): string | null {
   return html.match(/greenhouse\.io\/(?:embed\/job_board(?:\/js)?\?for=|embed\/job_app\?for=|v1\/boards\/)([A-Za-z0-9_-]+)/)?.[1] ?? null;
 }
 
-/** Board names worth trying when the page doesn't say: careers.acme.com -> acme. */
+// A second-level name under a country code: acme.co.uk, acme.com.au (#834).
+const COUNTRY_SLD = /^(co|com|org|net|ac|gov|edu)$/;
+
+/** Board names worth trying when the page doesn't say: careers.acme.com -> acme, careers.acme.co.uk -> acme (#834). */
 export function boardGuesses(host: string): string[] {
   const labels = host.toLowerCase().replace(/^www\./, "").split(".");
-  const name = labels.length >= 2 ? labels[labels.length - 2] : labels[0];
+  const n = labels.length;
+  const sld = n >= 3 && labels[n - 1].length === 2 && COUNTRY_SLD.test(labels[n - 2]);
+  const name = sld ? labels[n - 3] : n >= 2 ? labels[n - 2] : labels[0];
   return [...new Set([name, name.replace(/-/g, "")])].filter(Boolean);
 }
 
