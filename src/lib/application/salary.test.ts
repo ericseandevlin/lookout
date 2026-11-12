@@ -204,6 +204,28 @@ describe("isSalaryQuestion", () => {
   });
 });
 
+describe("isSalaryQuestion (#813)", () => {
+  it.each([
+    "What are you hoping to make in this role?",
+    "How much would you like to earn?",
+    "What are you looking to earn annually?",
+    "How much do you want to make in your next role?",
+    "What do you need to make to accept an offer?",
+  ])("reads %s as a salary ask", (q) => {
+    expect(isSalaryQuestion(q)).toBe(true);
+  });
+
+  it.each([
+    "What impact do you hope to make in your first 90 days?",
+    "What difference do you want to make here?",
+    "We are looking to make a hire quickly. When can you start?",
+    "What change would you like to make to our design system?",
+    "Are you hoping to make a move into management?",
+  ])("leaves %s alone", (q) => {
+    expect(isSalaryQuestion(q)).toBe(false);
+  });
+});
+
 describe("isSalaryQuestion (#718)", () => {
   it("leaves out yes/no range checks that mention expectations", () => {
     for (const q of ["Does the salary range of $120k-$150k meet your expectations?", "Is your salary expectation within the posted range?", "Do your compensation expectations align with the range above?"])
