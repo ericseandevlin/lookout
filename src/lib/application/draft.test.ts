@@ -21,6 +21,11 @@ describe("fillField", () => {
     expect(fillField("LinkedIn Profile", inp)?.content).toBe("https://www.linkedin.com/in/maya");
   });
 
+  it("fills a full-name label that carries a required marker (#817)", () => {
+    for (const label of ["Name *", "Full Name *", "Full name (required)", "Name:", "Full Name*"]) expect(fillField(label, inp)?.content).toBe("Maya Ortiz Reyes");
+    expect(fillField("Name pronunciation", inp)).toBeNull();
+  });
+
   it("turns a LinkedIn handle into a URL", () => {
     expect(linkedinUrl("ericseandevlin")).toBe("https://www.linkedin.com/in/ericseandevlin");
     expect(linkedinUrl("linkedin.com/in/maya/")).toBe("https://linkedin.com/in/maya");
