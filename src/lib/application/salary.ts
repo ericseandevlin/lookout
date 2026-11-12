@@ -43,7 +43,15 @@ export const asksBase = (prompt: string) => /\bbase\b/i.test(prompt) && !/\bbase
 /** The question asks for the lowest number the person would take. */
 export const asksMinimum = (prompt: string) => /\bminimum\b|\bat least\b|\blowest\b/i.test(prompt);
 
-const SALARY_ASK = /salary|compensation|wages?\b|pay (expectation|requirement)|expected (base|annual|pay)|desired (base|pay)|expect to (earn|make)\b/i;
+// "What are you hoping to make in this role?", "How much would you like to earn?" (#813). "Make" isn't pay when it makes
+// something: "What impact do you hope to make?", "looking to make a hire".
+const HOPE_TO_EARN = /\b(hop\w*|want\w*|like|looking|aim\w*|need) to (earn\b|make\b(?!\s+(an?|the|this|that|it|sure|time|decisions?)\b))/i;
+const MAKES_SOMETHING = /\b(impact|difference|change|contribution|progress|mark|decisions?|friends|connections?)\b/i;
+const SALARY_ASK = {
+  test: (s: string) =>
+    /salary|compensation|wages?\b|pay (expectation|requirement)|expected (base|annual|pay)|desired (base|pay)|expect to (earn|make)\b/i.test(s) ||
+    (HOPE_TO_EARN.test(s) && !MAKES_SOMETHING.test(s)),
+};
 const PAST_PAY =
   /\b(current|previous|prior|last|most recent|present)\b[^.?!]{0,20}\b(salary|compensation|pay|base|wages?)\b|\b(salary|compensation|pay|wage) history\b|\b(salary|compensation|pay|wages?)\b[^.?!]{0,25}\b(current|previous|prior|last) (job|role|position|employer)\b/i;
 // "Are you comfortable with the posted salary range?" wants yes or no, not a number (#687).
