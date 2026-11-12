@@ -106,7 +106,7 @@ describe("roleParts", () => {
   });
 });
 
-import { liftHeadline, sentences, shapeResume } from "./resumeLayout";
+import { liftHeadline, sentences, shapeResume, SUMMARY_HEADING } from "./resumeLayout";
 
 describe("headline in the contact line (#129)", () => {
   it("lifts a title off the front of the contact line and puts it above", () => {
@@ -161,5 +161,15 @@ BFA, Parsons`;
   it("leaves a draft that already follows the rules untouched", () => {
     const ok = shapeResume(draft).md;
     expect(shapeResume(ok)).toEqual({ md: ok, fixed: [] });
+  });
+
+  it("knows the other summary headings, and keeps Experience under them (#767)", () => {
+    for (const h of ["Executive Summary", "Career Summary", "Professional Profile", "Profile Summary", "Summary of Qualifications", "About Me"]) {
+      const b = parseDraft(shapeResume(draft.replace("## Summary", `## ${h}`)).md);
+      expect(b.filter((x) => x.t === "section").map((x) => x.text)).toEqual([h, "Experience", "Skills", "Education"]);
+      expect(b[4]).toEqual({ t: "text", text: "Builds design systems that ship." });
+    }
+    expect(SUMMARY_HEADING.test("Selected Projects")).toBe(false);
+    expect(SUMMARY_HEADING.test("Company Profile Work")).toBe(false);
   });
 });
