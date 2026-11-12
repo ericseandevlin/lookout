@@ -13,7 +13,7 @@ const CLOSED = [
   /no longer (accepting (applications|candidates)|available|open|active|posted)/i,
   /(job|position|posting|role|requisition|opening) (is )?(no longer|has been) (available|filled|closed|removed)/i,
   /(job|posting|position|page) (was )?not found/i,
-  /this (job|position|posting|role)( ad)? (is |has )?(now )?(expired|closed|been filled)\b(?! to\b)/i,
+  /this (job|position|posting|role)( ad)? (is |has )?(now )?(expired|closed|been filled)\b(?! to\b|[- ]?date\b|-)/i,
   // More wordings careers sites use (#747).
   /\b(job|posting|position|listing)( ad)? (has )?expired\b/i,
   /(job|position|posting|role|page) you(['’]re| are) (looking for|trying to (apply for|access|view|reach)) (has|is|was|might have|may have) (been )?(filled|removed|closed|deleted|expired)\b/i,
@@ -22,8 +22,9 @@ const CLOSED = [
   // Careers sites usually render a curly apostrophe (#734).
   /(the )?(job|position) you(['’]re| are) looking for (is no longer|could not be|can(['’]|no)t be) (available|found)/i,
   /applications (for this (job|role|position) )?(are|is|have) (now )?closed/i,
-  // "This job posting has closed", "This vacancy has now closed", "Job Closed", but not "closed to contractors" (#760).
-  /\b(job|posting|position|role|vacancy|opportunity|listing)( posting| ad)? (is |has )?(now )?closed\b(?! to\b)/i,
+  // "This job posting has closed", "This vacancy has now closed", "Job Closed", but not "closed to contractors" (#760),
+  // a live page's "Position Closed Date: 11/30" label or "closed-loop" (#832).
+  /\b(job|posting|position|role|vacancy|opportunity|listing)( posting| ad)? (is |has )?(now )?closed\b(?! to\b|[- ]?date\b|-)/i,
   /not accepting applications (for this (job|role|position)|at this time)/i,
   /\bpage not found\b|\b404\b.{0,40}(not found|doesn.t exist)/i,
 ];
