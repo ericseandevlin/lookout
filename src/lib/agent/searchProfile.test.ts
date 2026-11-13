@@ -152,8 +152,8 @@ describe("what the model is given (#581)", () => {
     await db.insert(schema.materials).values([
       { userId, kind: "resume", extracted: { summary: "Design leader.", text: "Ten years leading design." } },
       { userId, kind: "linkedin", extracted: { text: "Head of Design at Acme" } },
-      ...[1, 2, 3, 4, 5].map((n) => ({ userId, kind: "link" as const, url: `https://site${n}.example`, extracted: { text: `Site ${n}` } })),
-      { userId, kind: "link", url: "https://unread.example" },
+      ...[1, 2, 3, 4, 5].map((n) => ({ userId, kind: "link" as const, url: `https://site${n}.example`, extracted: { text: `Site ${n}` }, position: n })),
+      { userId, kind: "link", url: "https://unread.example", position: 0 },
     ]);
     await find("Designer", "I have banking experience.");
     await find("Engineer", "");
@@ -168,6 +168,20 @@ describe("what the model is given (#581)", () => {
     expect(prompt()).toContain('Find: "Designer" at Acme\nLookout said: + Leads design teams | - New to banking\nTheir note: I have banking experience.');
     expect(prompt()).not.toMatch(/Engineer|another search/);
     expect(raw.sources).toEqual({ answers: 1, resume: true, linkedin: true, links: 4, notes: 1 });
+  });
+
+  it("uses the links in the order the person sees them, so re-reading one doesn't change the set or rebuild (#966)", async () => {
+    await db.insert(schema.materials).values([5, 4, 3, 2, 1].map((n) => ({ userId, kind: "link" as const, url: `https://site${n}.example`, extracted: { text: `Site ${n}` }, position: n })));
+    const first = await ensure();
+    expect(first.raw.links.map((l) => l.url)).toEqual([1, 2, 3, 4].map((n) => `https://site${n}.example`));
+    // A re-read rewrites the row, and Postgres moves it to the end of the table.
+    for (const n of [1, 2]) {
+      await db.update(schema.materials).set({ scannedAt: new Date() }).where(eq(schema.materials.url, `https://site${n}.example`));
+    }
+    const second = await ensure();
+    expect(second.raw.links.map((l) => l.url)).toEqual(first.raw.links.map((l) => l.url));
+    expect(second.rebuilt).toBe(false);
+    expect(completeJSON).toHaveBeenCalledOnce();
   });
 
   it("leaves out Lookout's own closed line, and notes that are only that or blank (#792)", async () => {
