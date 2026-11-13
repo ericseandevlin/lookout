@@ -12,6 +12,8 @@ const CONFIRM_MS = 20 * 3600_000; // gone on two checks at least this far apart 
 // Only these close. Finds they're pursuing (Applied, Interview, Offer) or already passed on (Nope) are never checked.
 const CLOSABLE = ["Not applied", "Auto-applying", "Ghosted", "Not selected"];
 
+const LD_JSON = /<script[^>]+application\/ld\+json[^>]*>[\s\S]*?<\/script>/gi;
+
 // Some careers sites answer inconsistently (one server in maintenance, the next with the real page), so an
 // inconclusive answer is retried a few times before it counts as unknown.
 async function check(url: string): Promise<{ state: LinkState; reason: string }> {
@@ -26,7 +28,9 @@ async function check(url: string): Promise<{ state: LinkState; reason: string }>
 async function checkOnce(url: string): Promise<{ state: LinkState; reason: string }> {
   try {
     const { url: finalUrl, html } = await fetchPage(url);
-    const page = classifyPage(200, pageToText(html, 4000), finalUrl);
+    // The visible page only: pageToText puts JobPosting data first, and a long description there pushed a closed
+    // posting's "no longer available" past the part classifyPage reads (#1026).
+    const page = classifyPage(200, pageToText(html.replace(LD_JSON, " "), 4000), finalUrl);
     return page.state === "open" ? ((await embedVerdict(url, html)) ?? page) : page;
   } catch (e) {
     const status = statusOf(e);
