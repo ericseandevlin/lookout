@@ -106,7 +106,8 @@ describe("preparePacket", () => {
       .where(eq(schema.profiles.userId, userId));
     const id = await seed("approved", [{ kind: "field", prompt: "Phone", content: "555-0100" }, EEO]);
     const { steps } = await preparePacket(id);
-    expect(steps[1]).toEqual({ prompt: "Veteran status", required: false, itemKind: "eeo", kind: "choice", content: "Decline to self-identify" });
+    // The options travel with the step, so a radio labeled "question + option" can be found (#1093).
+    expect(steps[1]).toEqual({ prompt: "Veteran status", required: false, itemKind: "eeo", kind: "choice", content: "Decline to self-identify", options: EEO.options });
   });
 });
 

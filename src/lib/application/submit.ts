@@ -66,7 +66,8 @@ export async function preparePacket(appId: string) {
     if (consent)
       for (const i of items.filter((x) => x.kind === "eeo")) {
         const answer = resolve(profile, i.prompt, i.options);
-        if (answer) steps.push({ prompt: i.prompt, required: false, itemKind: "eeo", kind: "choice", content: answer });
+        // The options go along (#1093): radios labeled "question + option" need them to find the answer's radio.
+        if (answer) steps.push({ prompt: i.prompt, required: false, itemKind: "eeo", kind: "choice", content: answer, ...(i.options?.length ? { options: i.options } : {}) });
       }
   }
   const look = await getAutoApplySettings(a.userId);
