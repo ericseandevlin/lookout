@@ -204,8 +204,10 @@
     try {
       if (step.kind === "file") return await fillFile(step);
       const el = controlFor(step.prompt);
-      if (!el && step.kind !== "choice") {
-        const box = checkboxFor(step.prompt);
+      // A lone box labeled with the question is the answer's field for any kind, before the group and radio lookup,
+      // same as the worker: a Yes/No question can be one "I consent" box (#940).
+      const box = el ? null : checkboxFor(step.prompt);
+      if (!el && (box || step.kind !== "choice")) {
         if (!box) return { ok: false, how: "field not found" };
         if (!checksBox(step.content)) {
           if (step.required) return { ok: false, how: "answer is not a yes" };

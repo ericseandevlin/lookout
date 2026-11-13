@@ -315,6 +315,22 @@ describe("extension fill: choices", () => {
     expect((p.doc.querySelector("#pp") as HTMLInputElement).checked).toBe(false);
   });
 
+  it("ticks a lone checkbox for a Yes/No choice step, like the worker (#940)", async () => {
+    const p = page(`<label><input type="checkbox" id="pp"> I consent to the privacy policy</label><label><input type="checkbox" id="ml"> Add me to the mailing list</label>`);
+    const log = await p.fill({
+      steps: [
+        { prompt: "I consent to the privacy policy", kind: "choice", content: "Yes", options: ["Yes", "No"], required: true },
+        { prompt: "Add me to the mailing list", kind: "choice", content: "No", options: ["Yes", "No"], required: false },
+      ],
+    });
+    expect(log.map((l) => [l.ok, l.how])).toEqual([
+      [true, "checked"],
+      [true, "left unchecked"],
+    ]);
+    expect((p.doc.querySelector("#pp") as HTMLInputElement).checked).toBe(true);
+    expect((p.doc.querySelector("#ml") as HTMLInputElement).checked).toBe(false);
+  });
+
   it("does not untick a lone checkbox that is already ticked", async () => {
     const p = page(`<label><input type="checkbox" id="t" checked> I agree to the terms</label>`);
     const [r] = await p.fill({ steps: [{ prompt: "I agree to the terms", kind: "text", content: "Yes" }] });
