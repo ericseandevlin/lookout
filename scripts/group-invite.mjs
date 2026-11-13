@@ -1,4 +1,5 @@
-// Group invite links (#601). Runs inside the app container:
+// Group invite links (#601). The Admin People page does the same (#993); this stays for SSH use.
+// Runs inside the app container:
 //   docker compose exec app node scripts/group-invite.mjs create <code> "<label>" <max people> <days>
 //   docker compose exec app node scripts/group-invite.mjs list
 //   docker compose exec app node scripts/group-invite.mjs close <code>
