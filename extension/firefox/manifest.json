@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Lookout Autofill",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Fills your approved Lookout application on the job's own page. You check it and press Submit.",
   "browser_specific_settings": {
     "gecko": { "id": "lookout-autofill@ericdevlin.co", "strict_min_version": "128.0", "data_collection_permissions": { "required": ["none"] } }
