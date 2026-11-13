@@ -145,6 +145,39 @@ describe("startFill", () => {
     expect((await settled(id)).status).toBe("manual");
   });
 
+  /** Start a submit and hold the browser open; `release` stops the fill. */
+  async function heldSubmit(id: string) {
+    let release = () => {};
+    launch.mockImplementationOnce(() => new Promise((_, reject) => (release = () => reject(new Error("stopped")))));
+    expect(await startFill(id, "submit")).toBe(true);
+    await vi.waitFor(() => expect(launch).toHaveBeenCalledOnce());
+    return () => release();
+  }
+
+  it("submit: a fill that stops after the person marked it sent by hand keeps Submitted (#874)", async () => {
+    const id = await seed("approved", [{ kind: "field", prompt: "Phone", content: "555-0100" }]);
+    const release = await heldSubmit(id);
+    // The sweep handed it to the person (#864), who sent it and marked it.
+    const at = new Date();
+    await db.update(schema.applications).set({ status: "submitted", submittedAt: at, confirmation: { how: "manual", at: at.toISOString(), applyUrl: null, sent: [] } }).where(eq(schema.applications.id, id));
+    release();
+    const a = await settled(id);
+    expect(a.status).toBe("submitted");
+    expect(a.confirmation).toMatchObject({ how: "manual" });
+    expect(a.report.fill?.stopped).toBe("stopped");
+    expect(a.report.applyUrl).toBe("https://jobs.example.com/apply");
+  });
+
+  it("submit: a fill that stops after the person went back to editing keeps their status (#874)", async () => {
+    const id = await seed("approved", [{ kind: "field", prompt: "Phone", content: "555-0100" }]);
+    const release = await heldSubmit(id);
+    await db.update(schema.applications).set({ status: "needs_review" }).where(eq(schema.applications.id, id));
+    release();
+    const a = await settled(id);
+    expect(a.status).toBe("needs_review");
+    expect(a.report.fill?.stopped).toBe("stopped");
+  });
+
   it.each(["needs_review", "manual", "submitting", "submitted"] as const)("submit: a %s application isn't sent and keeps its status", async (from) => {
     const id = await seed(from, [{ kind: "field", prompt: "Phone", content: "555-0100" }]);
     expect(await startFill(id, "submit")).toBe(false);
