@@ -11,8 +11,14 @@
   function siblingHas(container, descendant, key) {
     let cur = descendant.parentElement;
     while (cur && cur !== container) {
-      for (const sibling of [...cur.parentElement.children].filter((c) => c !== cur))
-        if (norm(sibling.textContent).includes(key)) return true;
+      for (const sibling of [...cur.parentElement.children].filter((c) => c !== cur)) {
+        const t = norm(sibling.textContent);
+        if (!t.includes(key)) continue;
+        // The field's own label beside the input's wrapper ("Cover Letter" over <div><input type=file></div>)
+        // names this input, not another branch (#1067). A sentence that only mentions it still blocks (#913).
+        if (t.startsWith(key) && !sibling.querySelector("input, textarea, select, button")) continue;
+        return true;
+      }
       cur = cur.parentElement;
     }
     return false;
