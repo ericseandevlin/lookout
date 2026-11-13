@@ -2,7 +2,7 @@ import "server-only";
 import { and, asc, desc, eq, isNull, lt, or } from "drizzle-orm";
 import { db, schema } from "@/lib/db";
 import { completeJSON, emptyUsage, type Usage } from "@/lib/ai/llm";
-import { assertBudget, finishRun, progress, startRun } from "@/lib/ai/runs";
+import { startBudgetedRun, finishRun, progress } from "@/lib/ai/runs";
 import { fetchPage, pageToText } from "@/lib/ai/fetchPage";
 import { webSearch } from "@/lib/ai/search";
 import { cleanEvents, eventQueries, EventsDraft, eventsDue, suggestInterests, type EventFreq, type EventReach } from "@/lib/networking";
@@ -91,8 +91,7 @@ export async function searchEventsNow(userId: string) {
   // Events ride the active search's context (#8).
   const search = await getActiveSearch(userId);
   if (!search) throw new Error("Search not found");
-  await assertBudget(userId);
-  const run = await startRun(userId, "events", { searchId: search.id });
+  const run = await startBudgetedRun(userId, "events", { searchId: search.id });
   const usage = emptyUsage();
   try {
     const ctx = await loadContext(search.id);

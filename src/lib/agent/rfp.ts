@@ -4,7 +4,7 @@ import { z } from "zod";
 import { db, schema } from "@/lib/db";
 import { completeJSON, emptyUsage, type Usage } from "@/lib/ai/llm";
 import { traceAs } from "@/lib/ai/trace";
-import { assertBudget, finishRun, progress, startRun } from "@/lib/ai/runs";
+import { startBudgetedRun, finishRun, progress } from "@/lib/ai/runs";
 import { emptyTally } from "./report";
 import { applyRules } from "./rules";
 import { kindOf } from "@/lib/kinds";
@@ -123,8 +123,7 @@ async function knownNotices(searchId: string) {
 /** One rfp search: SAM.gov, filtered to what the business can bid on, scored and saved. */
 export async function discoverRfp(searchId: string, userId: string, trigger: "scheduled" | "manual") {
   if (!samConfigured()) throw new Error("RFP search needs a SAM.gov API key (SAM_API_KEY).");
-  await assertBudget(userId);
-  const run = await startRun(userId, trigger, { searchId });
+  const run = await startBudgetedRun(userId, trigger, { searchId });
   traceAs("rfp-search", userId, run.id);
   const usage = emptyUsage();
   try {

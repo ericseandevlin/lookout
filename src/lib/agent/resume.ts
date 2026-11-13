@@ -6,7 +6,7 @@ import { db, schema } from "@/lib/db";
 import { readUserFile } from "@/lib/files";
 import { AiConfigError, completeJSON, emptyUsage } from "@/lib/ai/llm";
 import { traceAs } from "@/lib/ai/trace";
-import { assertBudget, BudgetError, finishRun, progress, startRun } from "@/lib/ai/runs";
+import { startBudgetedRun, BudgetError, finishRun, progress, startRun } from "@/lib/ai/runs";
 import { getAiConfig } from "@/lib/config";
 import { getActiveSearch } from "@/lib/searches";
 
@@ -67,8 +67,7 @@ export async function scanResume(userId: string, materialId: string) {
         .where(eq(schema.materials.id, materialId));
       return;
     }
-    await assertBudget(userId);
-    runId = (await startRun(userId, "resume")).id;
+    runId = (await startBudgetedRun(userId, "resume")).id;
 
     const f = await completeJSON({
       name: "resume",

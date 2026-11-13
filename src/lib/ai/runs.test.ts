@@ -14,7 +14,7 @@ const alertDailyCap = vi.fn(async () => {});
 vi.mock("@/lib/spendAlerts", () => ({ alertDailyCap }));
 vi.mock("@/lib/config", () => ({ getAccessConfig: async () => ({ signupMode: "invite", dailyBudgetUsd: 10, userDailyBudgetUsd: 2 }) }));
 
-const { assertBudget, BudgetError } = await import("./runs");
+const { assertBudget, BudgetError, spentSince, startBudgetedRun } = await import("./runs");
 
 let me = "";
 let other = "";
@@ -58,5 +58,51 @@ describe("assertBudget", () => {
     await spend(me, 5, 25);
     await spend(other, 20, 25);
     await expect(assertBudget(me)).resolves.toBeUndefined();
+  });
+});
+
+// A finished run of this trigger and cost, so running ones have an average to count at (#1038).
+const finished = (userId: string, costUsd: number, trigger: "scheduled" | "manual" = "scheduled") =>
+  db.insert(schema.runs).values({ userId, trigger, status: "done", costUsd: String(costUsd), startedAt: new Date(Date.now() - 2 * 3600_000), finishedAt: new Date(Date.now() - 2 * 3600_000) });
+const running = (userId: string, minutesAgo = 5, trigger: "scheduled" | "manual" = "scheduled") =>
+  db.insert(schema.runs).values({ userId, trigger, status: "running", startedAt: new Date(Date.now() - minutesAgo * 60_000) });
+const dayAgo = () => new Date(Date.now() - 24 * 3600_000);
+
+describe("runs in flight (#1038)", () => {
+  it("count each running run at the average of recent finished runs of its trigger", async () => {
+    await finished(other, 0.4);
+    await finished(other, 0.6);
+    await finished(other, 9, "manual"); // another trigger's cost doesn't set this estimate
+    await running(me);
+    expect(await spentSince(dayAgo(), me)).toEqual({ all: 0.4 + 0.6 + 9 + 0.5, mine: 0.5 });
+  });
+
+  it("stop a person whose running searches would put them over their cap", async () => {
+    await finished(other, 0.9);
+    await running(me);
+    await expect(assertBudget(me)).resolves.toBeUndefined();
+    await running(me);
+    await running(me);
+    await expect(assertBudget(me)).rejects.toThrow("daily AI spend limit");
+  });
+
+  it("don't count a run older than the stuck-run window", async () => {
+    await finished(other, 1);
+    await running(me, 50);
+    expect((await spentSince(dayAgo(), me)).mine).toBe(0);
+  });
+
+  it("count as $0 when the trigger has no finished runs yet", async () => {
+    await running(me);
+    expect(await spentSince(dayAgo(), me)).toEqual({ all: 0, mine: 0 });
+  });
+
+  it("let only as many concurrent starts through as the cap allows", async () => {
+    // $10 app-wide cap, $3 runs, five people starting at once: 3.00 already spent, so two more fit.
+    await finished(other, 3);
+    const people = await db.insert(schema.users).values([1, 2, 3, 4, 5].map((n) => ({ email: `p${n}@example.com` }))).returning();
+    const results = await Promise.allSettled(people.map((p) => startBudgetedRun(p.id, "scheduled")));
+    expect(results.filter((r) => r.status === "fulfilled")).toHaveLength(3);
+    expect(results.filter((r) => r.status === "rejected").every((r) => (r as PromiseRejectedResult).reason instanceof BudgetError)).toBe(true);
   });
 });

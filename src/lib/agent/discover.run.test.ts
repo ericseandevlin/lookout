@@ -16,8 +16,13 @@ vi.mock("@/lib/db", () => ({ db, schema }));
 
 let provider = "openrouter";
 vi.mock("@/lib/config", () => ({ getAiConfig: async () => ({ provider, model: "test-model" }) }));
-const assertBudget = vi.fn(async () => {});
-vi.mock("@/lib/ai/runs", async (orig) => ({ ...(await orig<typeof import("@/lib/ai/runs")>()), assertBudget }));
+const assertBudget = vi.fn(async (userId: string) => void userId);
+// The cap check is stubbed; the run itself is still written (#1038 moved the check into startBudgetedRun).
+vi.mock("@/lib/ai/runs", async (orig) => {
+  const m = await orig<typeof import("@/lib/ai/runs")>();
+  const startBudgetedRun: typeof m.startBudgetedRun = async (userId, trigger, opts) => (await assertBudget(userId), m.startRun(userId, trigger, opts));
+  return { ...m, assertBudget, startBudgetedRun };
+});
 let searchProfile: schema.SearchProfile | null = null;
 vi.mock("./searchProfile", async (orig) => ({ ...(await orig<typeof import("./searchProfile")>()), ensureSearchProfile: async () => ({ profile: searchProfile, rebuilt: false }) }));
 const autoQueue = vi.fn(async () => {});
