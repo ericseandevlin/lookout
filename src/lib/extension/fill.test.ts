@@ -542,6 +542,25 @@ describe("extension fill: uploads", () => {
     expect(log.find((r) => r.prompt === "Cover Letter")).toMatchObject({ ok: false, how: "upload field not found" });
     expect(log[0]).toMatchObject({ ok: true, how: "uploaded .docx" });
   });
+
+  // The label sits beside the input's wrapper, not next to the input itself (#1067).
+  const field = (label: string, id: string) => `<div class="field"><label>${label}</label><div class="up"><input type="file" id="${id}"></div></div>`;
+
+  it("puts the cover letter in its own box when the label is beside the box's wrapper (#1067)", async () => {
+    const p = page(field("Resume/CV", "cv") + field("Portfolio", "pf") + field("Cover Letter", "cl"));
+    const log = await p.fill({
+      steps: [both[0], { prompt: "Portfolio", kind: "file", itemKind: "answer", file: docx("Pat Lee - Portfolio.docx") }, both[1]],
+    });
+    expect(log.map((r) => r.how)).toEqual(["uploaded .docx", "uploaded .docx", "uploaded .docx"]);
+    expect([fileName(p, "cv"), fileName(p, "pf"), fileName(p, "cl")]).toEqual(["Pat Lee - Acme Resume.docx", "Pat Lee - Portfolio.docx", "Pat Lee - Acme Cover Letter.docx"]);
+  });
+
+  it("finds a lone cover letter box labeled beside its wrapper (#1067)", async () => {
+    const p = page(field("Cover Letter", "cl"));
+    const [r] = await p.fill({ steps: [both[1]] });
+    expect(r).toMatchObject({ ok: true, how: "uploaded .docx" });
+    expect(fileName(p, "cl")).toBe("Pat Lee - Acme Cover Letter.docx");
+  });
 });
 
 describe("extension probe and submit watch", () => {
