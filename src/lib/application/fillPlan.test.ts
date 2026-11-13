@@ -132,6 +132,9 @@ describe("CONFIRMATION (#692, #748, #762)", () => {
       "Your candidacy has been submitted",
       // innerText can run inline text together.
       "Submit applicationThank you for applying",
+      // #844: a later sentence still counts.
+      "Once you applied, we said we'd write. Your application has been received.",
+      "Thank you! Your application has been submitted.",
     ])
       expect(CONFIRMATION.test(t), t).toBe(true);
   });
@@ -147,6 +150,13 @@ describe("CONFIRMATION (#692, #748, #762)", () => {
       // #762
       "Your application for this role will be reviewed once it is submitted.",
       "Before your submission is sent, check your answers.",
+      // #844
+      "Once your application has been received, we will review it.",
+      "After you have successfully submitted your application, you will get an email.",
+      "When your application has been submitted, a recruiter will reach out.",
+      "If your application was received, you will get an email within a day.",
+      "Upon successfully submitting, you'll see a summary.",
+      "We will contact you after your application has been received.",
     ])
       expect(CONFIRMATION.test(t), t).toBe(false);
   });
