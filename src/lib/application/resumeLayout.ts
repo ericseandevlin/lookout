@@ -19,7 +19,8 @@ const DATE = /((jan|feb|mar|apr|may|jun|jul|aug|sep|sept|oct|nov|dec)[a-z]*\.?\s
 /** Em dashes read as machine-written; people use commas, pipes and en dashes in date ranges. */
 export function humanize(s: string) {
   return s
-    .replace(/(\d)\s*—\s*(\d|present|current)/gi, "$1 – $2")
+    // A month name after the dash is a date too: "March 2019 — June 2021" is a range, not a list (#925).
+    .replace(/(\d)\s*—\s*(\d|present|current|now\b|(?:jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*\.?\s+\d)/gi, "$1 – $2")
     .replace(/\s+—\s+/g, ", ")
     .replace(/—/g, ", ");
 }
