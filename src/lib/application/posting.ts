@@ -59,9 +59,11 @@ export type Trap = { text: string; words: string[]; hidden: boolean };
 const HIDDEN_STYLE = /display\s*:\s*none|visibility\s*:\s*hidden|font-size\s*:\s*(0+(\.0*)?|\.0+)(px|pt|em|rem|%)?\s*(;|"|'|!)|font-size\s*:\s*1px|opacity\s*:\s*0(\.0*)?\s*(;|"|')|(?<![\w-])color\s*:\s*(#fff(fff)?\b|white\b|rgba?\(\s*255\s*,\s*255\s*,\s*255)|(?<![\w-])(left|top|text-indent)\s*:\s*-\d{3,}|height\s*:\s*0(px)?\s*;[^"']*overflow\s*:\s*hidden|clip\s*:\s*rect\(0/i;
 
 const isHiddenTag = (attrs: string) => {
-  const style = attrs.match(/\bstyle\s*=\s*("[^"]*"|'[^']*')/i);
+  // Quoted, or unquoted as HTML allows ("style=display:none"), read with quotes so the patterns' value ends still match (#967).
+  const style = attrs.match(/\bstyle\s*=\s*("[^"]*"|'[^']*'|[^\s"'=<>`]+)/i);
+  const value = style && (/^["']/.test(style[1]) ? style[1] : `"${style[1]}"`);
   // The bare attribute only: "hidden" inside a quoted value is a class name, e.g. Tailwind's "hidden md:block" (#786).
-  return (!!style && HIDDEN_STYLE.test(style[1])) || /\shidden(?=[\s>=/]|$)/i.test(attrs.replace(/"[^"]*"|'[^']*'/g, '""'));
+  return (!!value && HIDDEN_STYLE.test(value)) || /\shidden(?=[\s>=/]|$)/i.test(attrs.replace(/"[^"]*"|'[^']*'/g, '""'));
 };
 
 /** Where the element opened just before `from` ends, counting nested tags of the same name (#616). */
