@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
-import { checksBox, CONFIRMATION, pickOne, pickOptions, planFill } from "./fillPlan";
+import { checksBox, CONFIRMATION, pickOne, pickOptions, planFill, uploadLabels } from "./fillPlan";
 
 const item = (o: Partial<Parameters<typeof planFill>[0][number]>) => ({ id: "i", kind: "answer" as const, prompt: "Q", required: true, fieldType: "text", options: null, approvedVersionId: null, ...o });
 
@@ -183,5 +183,18 @@ describe("CONFIRMATION (#692, #748, #762)", () => {
       const src = readFileSync(path.resolve(__dirname, "../../../extension/firefox", f), "utf8");
       expect(src, f).toContain(`const THANKS = /${CONFIRMATION.source}/i;`);
     }
+  });
+});
+
+describe("uploadLabels (#918)", () => {
+  const f = (itemKind: string, prompt: string, kind = "file") => ({ itemKind, prompt, kind }) as Parameters<typeof uploadLabels>[0][number];
+  it("gives a portfolio upload its own name so it can't overwrite the resume", () => {
+    expect(uploadLabels([f("resume", "Resume/CV"), f("answer", "Portfolio"), f("field", "Phone", "text"), f("answer", "Writing sample")])).toEqual(["Resume", "Portfolio", null, "Writing sample"]);
+  });
+  it("numbers a repeat, like two cover letter items", () => {
+    expect(uploadLabels([f("resume", "Resume"), f("cover_letter", "Cover letter"), f("cover_letter", "Additional letter"), f("answer", "Cover Letter")])).toEqual(["Resume", "Cover Letter", "Cover Letter 2", "Cover Letter 3"]);
+  });
+  it("strips characters a file name can't carry and falls back when nothing is left", () => {
+    expect(uploadLabels([f("answer", "Portfolio / work samples?"), f("answer", "***")])).toEqual(["Portfolio work samples", "Document"]);
   });
 });

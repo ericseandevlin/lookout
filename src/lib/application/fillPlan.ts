@@ -19,6 +19,23 @@ export function planFill(items: ItemRow[], versions: { id: string; content: stri
   return out;
 }
 
+/**
+ * A file label for each upload step, unique per form (#918). Resume and cover letter keep their names; any other upload
+ * ("Portfolio", "Writing sample") is named from its prompt, and a repeat gets " 2", " 3", so no upload writes over another.
+ * Non-file steps get null.
+ */
+export function uploadLabels(steps: Pick<FillStep, "kind" | "itemKind" | "prompt">[]): (string | null)[] {
+  const seen = new Map<string, number>();
+  return steps.map((s) => {
+    if (s.kind !== "file") return null;
+    const base =
+      s.itemKind === "cover_letter" ? "Cover Letter" : s.itemKind === "resume" ? "Resume" : s.prompt.replace(/[^\w .-]/g, " ").replace(/\s+/g, " ").trim().slice(0, 40).trim() || "Document";
+    const n = (seen.get(base.toLowerCase()) ?? 0) + 1;
+    seen.set(base.toLowerCase(), n);
+    return n > 1 ? `${base} ${n}` : base;
+  });
+}
+
 /** a starts b and ends on a word boundary there: "no" starts "no, thanks" but not "none" (#632). A blank option starts nothing (#722). */
 const startsWord = (a: string, b: string) => !!a && b.startsWith(a) && (b.length === a.length || /\W/.test(b[a.length]) || /\W/.test(a[a.length - 1]));
 

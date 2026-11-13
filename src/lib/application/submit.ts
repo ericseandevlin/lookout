@@ -5,7 +5,7 @@ import { and, asc, eq, inArray } from "drizzle-orm";
 import { db, schema } from "@/lib/db";
 import { env } from "@/lib/env";
 import { draftToDocx } from "./docx";
-import { checksBox, CONFIRMATION, pickOne, pickOptions, planFill, type FillStep } from "./fillPlan";
+import { checksBox, CONFIRMATION, pickOne, pickOptions, planFill, uploadLabels, type FillStep } from "./fillPlan";
 import { letterHeaderFrom, type Template } from "./resumeLayout";
 import { getAutoApplySettings } from "@/lib/apply";
 import { resolve } from "./eeo";
@@ -45,9 +45,10 @@ async function loadPacket(appId: string) {
 async function files(appId: string, steps: FillStep[], name: string, company: string, template?: Template, accent?: string) {
   const dir = shotDir(appId);
   await mkdir(dir, { recursive: true });
-  for (const s of steps) {
+  const labels = uploadLabels(steps);
+  for (const [i, s] of steps.entries()) {
     if (s.kind !== "file" || !s.content) continue;
-    const label = s.itemKind === "cover_letter" ? "Cover Letter" : "Resume";
+    const label = labels[i]!;
     const file = path.join(dir, `${`${name} - ${company} ${label}`.replace(/[^\w .-]/g, "").trim() || label}.docx`);
     const letterHeader = s.itemKind === "cover_letter" ? letterHeaderFrom(steps.find((x) => x.itemKind === "resume")?.content, name) : undefined;
     await writeFile(file, await draftToDocx(s.content, label, { letterHeader, template, accent }));
