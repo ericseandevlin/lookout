@@ -300,7 +300,9 @@ export async function startFill(appId: string, mode: "test" | "submit"): Promise
     const [a] = await db.select().from(schema.applications).where(eq(schema.applications.id, appId));
     if (!a) return;
     if (mode === "test") {
-      await patchReport(appId, (r) => ({ ...r, fill }), { updatedAt: new Date() });
+      // A submit that started and finished while this test ran keeps its record: dropping "clicked" would offer
+      // Submit for me again on an application that may have gone out (#923, #865).
+      await patchReport(appId, (r) => (r.fill?.mode === "submit" ? r : { ...r, fill }), { updatedAt: new Date() });
       return;
     }
     // Read before the transaction: a query on `db` inside it needs a second connection while the first is held.
