@@ -34,15 +34,30 @@ export function applyRules(s: Scored, floor: number | null) {
   return { score, reasonsMatch: s.reasonsMatch.slice(0, 5), reasonsGap: gap.slice(0, 5) };
 }
 
-const normPart = (s: string) =>
+/**
+ * Letters and digits from scripts other than Latin (Japanese, Cyrillic, Greek, Arabic and so on), which the a-z/0-9 key
+ * drops. Latin letters (accented ones too) and ASCII digits are removed here, so text in Latin script alone adds nothing
+ * and every key stored before #1075 stays the same.
+ */
+const otherScript = (s: string) =>
   s
+    .normalize("NFKC")
     .toLowerCase()
-    .replace(/\(.*?\)/g, " ")
-    .replace(/[^a-z0-9]+/g, " ")
+    .replace(/[\p{Script=Latin}0-9]\p{M}*/gu, " ")
+    .replace(/[^\p{L}\p{N}\p{M}]+/gu, " ")
     .trim();
 
+/** The a-z/0-9 words, then any non-Latin words, so "メルカリ" and "ソニー" no longer both normalize to "" (#1075). */
+const withOtherScript = (s: string) => {
+  const latin = s.toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
+  const other = otherScript(s);
+  return other ? `${latin} ${other}`.trim() : latin;
+};
+
+const normPart = (s: string) => withOtherScript(s.replace(/\(.*?\)/g, " "));
+
 /** A title with its parentheticals kept, to tell "Designer (Payments)" from "Designer (Identity)" (#838). */
-export const fullTitle = (t: string) => t.toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
+export const fullTitle = (t: string) => withOtherScript(t);
 
 export function fingerprint(company: string, title: string, location: string) {
   // nosemgrep: javascript.lang.security.audit.node-sha1.node_sha1 -- SHA-1 here only fingerprints postings for dedupe, not security
