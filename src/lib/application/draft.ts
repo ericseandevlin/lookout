@@ -155,9 +155,12 @@ export function keywordReport(master: string, tailored: string, d: z.infer<typeo
     });
 }
 
-/** Numbers in the draft that never appear in the master resume: the most common way a draft invents facts. */
+/**
+ * Numbers in the draft that never appear in the master resume: the most common way a draft invents facts. A unit counts
+ * only when it ends the token, so "6 mid-level" is 6, not 6m (#891).
+ */
 export function newNumbers(master: string, draft: string): string[] {
-  const nums = (s: string) => new Set((s.match(/\$?\d[\d,.]*\s?(%|k|m|mm|b|x|\+)?/gi) ?? []).map((n) => n.toLowerCase().replace(/[,\s]/g, "").replace(/\.$/, "")));
+  const nums = (s: string) => new Set((s.match(/\$?\d[\d,.]*(?:\s?(?:%|mm|k|m|b|x|\+)(?![a-z]))?/gi) ?? []).map((n) => n.toLowerCase().replace(/[,\s]/g, "").replace(/\.$/, "")));
   const have = nums(master);
   return [...nums(draft)].filter((n) => n && !have.has(n) && !/^(19|20)\d\d$/.test(n));
 }

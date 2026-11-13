@@ -105,6 +105,13 @@ describe("newNumbers", () => {
     expect(newNumbers(master, "Grew revenue 40% to $2.5M across 12 teams.")).toEqual([]);
     expect(newNumbers(master, "Grew revenue 45% across 30 teams in 2021.")).toEqual(["45%", "30"]);
   });
+
+  it("doesn't take the next word's first letter as a unit (#891)", () => {
+    expect(newNumbers("Mentored 6 designers across 3 teams.", "Mentored 6 mid-level designers across 3 business teams.")).toEqual([]);
+    expect(newNumbers("Cut load time to 100ms for 5 brands.", "Cut load time to 100ms for 5 key brands.")).toEqual([]);
+    expect(newNumbers("Raised $2M with 10x growth.", "Raised $3M with 10x growth and 10+ hires.")).toEqual(["$3m", "10+"]);
+    expect(newNumbers("Led 4 teams.", "Led 4 teams and $5 million in spend.")).toEqual(["$5"]);
+  });
 });
 
 describe("checkAnswer", () => {
