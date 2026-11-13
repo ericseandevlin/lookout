@@ -64,9 +64,10 @@ export const asksMinimum = (prompt: string) => /\bminimum\b|\bat least\b|\blowes
 // something: "What impact do you hope to make?", "looking to make a hire".
 const HOPE_TO_EARN = /\b(hop\w*|want\w*|like|looking|aim\w*|need) to (earn\b|make\b(?!\s+(an?|the|this|that|it|sure|time|decisions?)\b))/i;
 const MAKES_SOMETHING = /\b(impact|difference|change|contribution|progress|mark|decisions?|friends|connections?)\b/i;
+// Rate wording ("Desired hourly rate", "Expected rate per hour") is an ask too (#953). Not "day rate": askPer has no day period.
 const SALARY_ASK = {
   test: (s: string) =>
-    /salary|compensation|wages?\b|pay (expectation|requirement)|expected (base|annual|pay)|desired (base|pay)|expect to (earn|make)\b/i.test(s) ||
+    /salary|compensation|wages?\b|pay (expectation|requirement)|expected (base|annual|pay)|desired (base|pay)|expect to (earn|make)\b|\b(hourly|pay|bill) rate\b|\brate (expectation|requirement)|\b(desired|expected) rate\b/i.test(s) ||
     (HOPE_TO_EARN.test(s) && !MAKES_SOMETHING.test(s)),
 };
 const PAST_PAY =
