@@ -256,6 +256,28 @@ describe("isSalaryQuestion (#813)", () => {
   });
 });
 
+describe("isSalaryQuestion (#1069)", () => {
+  it.each([
+    "What matters most to you in a compensation package besides salary?",
+    "What questions do you have about compensation?",
+    "What motivates you more: compensation or mission?",
+    "What are you looking for in your next role? (team, compensation, growth)",
+  ])("leaves %s to the written answer", (q) => {
+    expect(isSalaryQuestion(q)).toBe(false);
+  });
+
+  it.each([
+    "What salary are you looking for?",
+    "What compensation are you seeking?",
+    "What salary would you need to make a move?",
+    "What salary range would you accept?",
+    "Target base salary",
+    "What are you looking for in terms of base salary?",
+  ])("still reads %s as a salary ask", (q) => {
+    expect(isSalaryQuestion(q)).toBe(true);
+  });
+});
+
 describe("isSalaryQuestion (#718)", () => {
   it("leaves out yes/no range checks that mention expectations", () => {
     for (const q of ["Does the salary range of $120k-$150k meet your expectations?", "Is your salary expectation within the posted range?", "Do your compensation expectations align with the range above?"])
