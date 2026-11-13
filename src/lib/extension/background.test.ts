@@ -16,7 +16,7 @@ type Nav = { tabId: number; frameId: number; url: string };
 function background(opts: { token?: string | null; reply?: { status: number; body?: unknown } | Error; pageText?: string | null } = {}) {
   const session: Record<string, unknown> = {};
   const local: Record<string, unknown> = opts.token === null ? {} : { cfg: { server: "https://x", token: opts.token ?? "lkx_test" } };
-  let onMessage: ((msg: Msg, sender: { tab?: { id: number } }) => Promise<unknown>) | undefined;
+  let onMessage: ((msg: Msg, sender: { tab?: { id: number; url?: string }; url?: string }) => Promise<unknown>) | undefined;
   let onNav: ((d: Nav) => Promise<unknown>) | undefined;
   let onRemoved: ((tabId: number) => Promise<unknown>) | undefined;
   const badge: { tabId: number; text?: string; color?: string }[] = [];
@@ -31,7 +31,7 @@ function background(opts: { token?: string | null; reply?: { status: number; bod
     sandbox.document = { body: opts.pageText === null ? null : { innerText: opts.pageText } };
     return [{ result: func(...args) }];
   });
-  const sandbox: Record<string, unknown> = { fetch, Date, JSON, RegExp, String };
+  const sandbox: Record<string, unknown> = { fetch, Date, JSON, RegExp, String, URL, Set };
   const browser = {
     storage: {
       session: { get: async (k: string) => ({ [k]: session[k] }), set: async (o: Record<string, unknown>) => Object.assign(session, o) },
@@ -54,7 +54,8 @@ function background(opts: { token?: string | null; reply?: { status: number; bod
     executeScript,
     badge,
     watches,
-    send: (msg: Msg, tabId?: number) => onMessage!(msg, tabId === undefined ? {} : { tab: { id: tabId } }),
+    send: (msg: Msg, tabId?: number, at?: { tab: string; frame?: string }) =>
+      onMessage!(msg, tabId === undefined ? {} : { tab: { id: tabId, url: at?.tab }, url: at?.frame ?? at?.tab }),
     nav: (d: Nav) => onNav!(d),
     close: (tabId: number) => onRemoved!(tabId),
   };
@@ -154,6 +155,28 @@ describe("extension background (#593)", () => {
       url: "https://jobs/x/done",
       text: "We have received your application",
     });
+  });
+
+  it("reads a thank-you only on the sites the application was filled on (#1052)", async () => {
+    const bg = background({ pageText: "Thank you for applying to Globex!" });
+    await bg.send(watch);
+    // Submit pressed in a Greenhouse form embedded on the company's own page.
+    await bg.send({ type: "lookout-armed" }, 7, { tab: "https://careers.acme.com/jobs?gh_jid=1", frame: "https://boards.greenhouse.io/embed/job_app?for=acme" });
+    await bg.nav({ tabId: 7, frameId: 0, url: "https://jobs.lever.co/globex/123/thanks" });
+    await bg.nav({ tabId: 7, frameId: 0, url: "https://mail.example.com/inbox" });
+    expect(await bg.send({ type: "lookout-thanks", url: "https://globex.com/careers/thanks", text: "Thank you for applying" }, 7)).toBeUndefined();
+    expect(bg.fetch).not.toHaveBeenCalled();
+    expect(bg.watches()[7].armed).toBe(true);
+    // The same ATS on another subdomain counts.
+    await bg.nav({ tabId: 7, frameId: 4, url: "https://job-boards.greenhouse.io/acme/jobs/1/confirmation" });
+    expect(bg.fetch).toHaveBeenCalledTimes(1);
+  });
+
+  it("reads a thank-you on the company's own page after an embedded form (#1052)", async () => {
+    const bg = background();
+    await bg.send(watch);
+    await bg.send({ type: "lookout-armed" }, 7, { tab: "https://careers.acme.co.uk/jobs/1", frame: "https://jobs.ashbyhq.com/acme/embed" });
+    expect(await bg.send({ type: "lookout-thanks", url: "https://www.acme.co.uk/thanks", text: "Thank you for applying" }, 7)).toEqual({ ok: true });
   });
 
   it("leaves an armed tab alone when the page has no thank-you, no body, or can't be read", async () => {
