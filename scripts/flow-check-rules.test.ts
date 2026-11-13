@@ -50,8 +50,8 @@ describe("flow check rules (#996)", () => {
       { url: "https://example.com/x", error: "timeout", from: ["Privacy"] },
     ]) as Finding[];
     expect(found.map((f) => [f.url, f.detail, f.step])).toEqual([
-      ["/gone", "HTTP 404", "Landing page, Sign in"],
-      ["https://example.com/x", "timeout", "Privacy"],
+      ["/gone", "/gone answers HTTP 404.", "Landing page, Sign in"],
+      ["https://example.com/x", "https://example.com/x answers timeout.", "Privacy"],
     ]);
   });
 
@@ -72,7 +72,7 @@ describe("flow check rules (#996)", () => {
     const clean = formatReport({ base: "http://x", startedAt: "t", pages, findings: [], signedIn: false });
     expect(clean).toContain("Found 0 issues");
     expect(clean).toContain("signed out only");
-    const bad = formatReport({ base: "http://x", startedAt: "t", pages, findings: [{ kind: "broken-link", step: "Sign in", url: "/gone", detail: "HTTP 404" }], signedIn: true });
+    const bad = formatReport({ base: "http://x", startedAt: "t", pages, findings: [{ kind: "broken-link", step: "Sign in", url: "/gone", detail: "/gone answers HTTP 404." }], signedIn: true });
     expect(bad).toContain("## Issues to open");
     expect(bad).toContain("[high] Link goes nowhere.");
   });

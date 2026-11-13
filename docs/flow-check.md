@@ -14,7 +14,7 @@ The `Flow check` workflow (`.github/workflows/flow-check.yml`) runs every Monday
 | 5. Auto-apply | Auto-apply, Materials |
 | Other | Settings, Activity, What's next |
 
-Flow 3 (a search run) is not pressed: it needs an AI key and the search relay, and the throwaway copy has neither.
+Pages that can be off for an account (Application answers, Auto-apply, Materials, Activity, What's next) are walked only when an earlier page links to them, so a switched-off page is not reported as broken. Flow 3 (a search run) is not pressed: it needs an AI key and the search relay, and the throwaway copy has neither.
 
 ## What it reports
 

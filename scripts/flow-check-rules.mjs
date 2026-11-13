@@ -53,7 +53,7 @@ export function checkPage(snap) {
 export function checkLinks(links) {
   return links
     .filter((l) => l.error || (l.status ?? 0) >= 400)
-    .map((l) => ({ kind: "broken-link", step: l.from.join(", "), url: l.url, detail: l.error ? l.error : `HTTP ${l.status}` }));
+    .map((l) => ({ kind: "broken-link", step: l.from.join(", "), url: l.url, detail: `${l.url} answers ${l.error ? l.error : `HTTP ${l.status}`}.` }));
 }
 
 /** One issue to open per kind of problem, listing every page it showed on. Highest severity first. */

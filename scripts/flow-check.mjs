@@ -40,11 +40,14 @@ try {
   const page = await context.newPage();
   let consoleErrors = [];
   let failedRequests = [];
-  page.on("console", (m) => m.type() === "error" && consoleErrors.push(m.text()));
+  // "Failed to load resource" repeats a failed request, which is reported on its own.
+  page.on("console", (m) => m.type() === "error" && !m.text().startsWith("Failed to load resource") && consoleErrors.push(m.text()));
   page.on("pageerror", (e) => consoleErrors.push(String(e?.message ?? e)));
   page.on("response", (r) => {
     // Our own requests only: a third-party widget failing is not a Lookout bug.
-    if (r.status() >= 400 && r.url().startsWith(base)) failedRequests.push({ url: r.url().slice(base.length), status: r.status() });
+    // The page's own document is not counted here; its status is checked as the page's.
+    const doc = r.request().isNavigationRequest() && r.frame() === page.mainFrame();
+    if (r.status() >= 400 && r.url().startsWith(base) && !doc) failedRequests.push({ url: r.url().slice(base.length), status: r.status() });
   });
   page.on("requestfailed", (r) => {
     const why = r.failure()?.errorText ?? "failed";
@@ -84,7 +87,8 @@ try {
       return { title: document.title, headings, actions, allLinks, text: root.innerText };
     }, scope ?? null);
     const url = page.url();
-    const path = url.startsWith(base) ? url.slice(base.length) || "/" : url;
+    // The sign-in token is spent by now, but it still stays out of the report.
+    const path = (url.startsWith(base) ? url.slice(base.length) || "/" : url).replace(/token=[^&]+/, "token=...");
     const record = { step, url, path, status, expectStatus, expectText, ...seen, consoleErrors, failedRequests };
     findings.push(...checkPage(record));
     for (const href of seen.allLinks) {
@@ -119,14 +123,20 @@ try {
     failedRequests = [];
   }
 
-  async function visit(step, path, extra = {}) {
+  /** Open a page and record it. ifLinked: only when an earlier page links to it (it may be off for this account). */
+  async function visit(step, path, { ifLinked, ...extra } = {}) {
+    if (ifLinked && !linkFrom.has(base + path)) return console.log(`${step}: ${path} not linked for this account, skipped`);
     consoleErrors = [];
     failedRequests = [];
     const res = await page.goto(base + path, { waitUntil: "domcontentloaded" }).catch((e) => {
       findings.push({ kind: "page-error", step, url: base + path, detail: String(e.message).split("\n")[0] });
       return null;
     });
-    if (res) await snap(step, { status: res.status(), ...extra });
+    if (!res) return;
+    // A page that redirects to one already walked (e.g. /materials) adds nothing new.
+    const landed = page.url().slice(base.length) || "/";
+    if (landed !== path && pages.some((p) => p.path === landed)) return console.log(`${step}: ${path} -> ${landed}, already walked`);
+    await snap(step, { status: res.status(), ...extra });
   }
 
   // Flow 1, getting in, signed out.
@@ -176,13 +186,13 @@ try {
     await visit("Profile", "/profile");
     await visit("What Lookout sees", "/profile/sees");
     await visit("Profile materials", "/profile/materials");
-    await visit("Application answers", "/profile/application");
+    await visit("Application answers", "/profile/application", { ifLinked: true });
     // Flow 5, auto-apply. A beta, so a person without it may see a "not on" page; that page should still say so.
-    await visit("Auto-apply", "/apply");
-    await visit("Materials", "/materials");
+    await visit("Auto-apply", "/apply", { ifLinked: true });
+    await visit("Materials", "/materials", { ifLinked: true });
     await visit("Settings", "/settings");
-    await visit("Activity", "/events");
-    await visit("What's next", "/next");
+    await visit("Activity", "/events", { ifLinked: true });
+    await visit("What's next", "/next", { ifLinked: true });
   }
 
   // Every link seen on the way, each asked once. A redirect is fine; an error or no answer is a broken link.
