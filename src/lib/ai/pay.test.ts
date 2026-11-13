@@ -278,4 +278,16 @@ describe("findPay", () => {
     expect(findPay("<p>Pay: &#36;150,000 - &#x24;200,000</p>")).toEqual(pay);
     expect(findPay('<script>var x = {"a": "$1,000 - $2,000 a month"}</script><p>Pay: $150,000 - $200,000</p>')).toEqual(pay);
   });
+
+  it("reads the unit from the label before a range (#945)", () => {
+    const t = (text: string) => findPay("", text);
+    expect(t("Hourly rate: $45.00 - $55.00")).toMatchObject({ min: 93600, max: 114400 });
+    expect(t("Hourly pay range: $30 - $40")).toMatchObject({ min: 62400, max: 83200 });
+    expect(t("Monthly salary: $8,000 - $10,000")).toMatchObject({ min: 96000, max: 120000 });
+    expect(t("Hourly Pay Range\n$60 - $75 USD")).toMatchObject({ min: 124800, max: 156000 });
+    // A yearly-looking range keeps its own reading; the label is only a fallback.
+    expect(t("Hourly employees welcome. Salary: $120,000 - $150,000")).toMatchObject({ min: 120000, max: 150000 });
+    // A label far up the page or a pay schedule is not the unit.
+    expect(t("Paid monthly.\n\nRange: $45 - $55")).toBeNull();
+  });
 });
