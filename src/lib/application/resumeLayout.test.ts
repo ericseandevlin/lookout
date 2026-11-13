@@ -32,6 +32,12 @@ describe("parseDraft", () => {
 
   it("never leaves an em dash", () => {
     expect(humanize("Lead — Citi — 2021—Present")).toBe("Lead, Citi, 2021 – Present");
+    // A month name after the dash is the end of a range (#925).
+    expect(humanize("March 2019 — June 2021")).toBe("March 2019 – June 2021");
+    expect(humanize("Mar. 2019—Sept. 2021")).toBe("Mar. 2019 – Sept. 2021");
+    expect(humanize("2019 — now")).toBe("2019 – now");
+    expect(humanize("Shipped 2 apps — May was the launch")).toBe("Shipped 2 apps, May was the launch");
+    expect(parseDraft("### Product Designer, Acme | New York | March 2019 — June 2021").find((b) => b.t === "role")).toMatchObject({ right: "March 2019 – June 2021" });
     expect(JSON.stringify(parseDraft(md))).not.toContain("—");
   });
 
