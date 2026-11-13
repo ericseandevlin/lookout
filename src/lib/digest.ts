@@ -43,7 +43,7 @@ export async function sendDigest(userId: string, runId?: string) {
   const newIds = new Set(rows.map((r) => r.opportunities.id));
   // A find pinned on two searches is one deadline.
   const pinnedFinds = [...new Map(pinned.map((r) => [r.opportunities.id, r.opportunities])).values()];
-  const due = pickDueSoon(pinnedFinds.filter((o) => !newIds.has(o.id)));
+  const due = pickDueSoon(pinnedFinds.filter((o) => !newIds.has(o.id)), Date.now(), env.timezone);
   if (!rows.length && !due.length) return;
   if (!rows.length) {
     const [recent] = await db
