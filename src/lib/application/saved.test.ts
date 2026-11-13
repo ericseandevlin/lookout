@@ -41,6 +41,13 @@ describe("saved answers", () => {
     for (const a of ["12/1", "2026-12-01", "Dec 1, 2026", "May 4"]) expect(isCommon("Earliest start date", a)).toBe(false);
   });
 
+  it("spots every common way of writing a calendar start date (#1079)", () => {
+    for (const a of ["June 1st", "Dec 1st", "1st December", "15 January 2027", "January 2027", "December 2026", "the week of Jan 5th", "May 2027", "4th of May", "Sept. 8"])
+      expect(isCommon("Earliest start date", a)).toBe(false);
+    for (const a of ["Immediately", "2 weeks after an offer", "After a final decision, with 30 days notice", "1 month", "I may need 3 weeks"])
+      expect(isCommon("When can you start?", a)).toBe(true);
+  });
+
   it("never reuses an older saved Yes about one employer (#1032)", () => {
     const old = [{ key: answerKey("Have you previously worked for this company?"), question: "Have you previously worked for this company?", answer: "Yes", updatedAt: "2026-11-01T00:00:00Z" }];
     expect(match(old, "Have you previously worked for this company?")).toBeNull();
