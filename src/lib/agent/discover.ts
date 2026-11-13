@@ -12,7 +12,7 @@ import { doneStep } from "./runOutcome";
 import { autoQueue } from "@/lib/apply";
 import { completeJSON, emptyUsage, type Usage } from "@/lib/ai/llm";
 import { traceAs } from "@/lib/ai/trace";
-import { assertBudget, finishRun, progress, startRun } from "@/lib/ai/runs";
+import { startBudgetedRun, finishRun, progress, startRun } from "@/lib/ai/runs";
 import { webSearch, type SearchHit } from "@/lib/ai/search";
 import { getAiConfig } from "@/lib/config";
 import { applyRules, fingerprint, fullTitle, normUrl } from "./rules";
@@ -451,8 +451,7 @@ export async function discover(searchId: string, trigger: "scheduled" | "manual"
     await progress(run.id, 0, "Queued. Waiting for the search agent to pick this up");
     return { found: 0, added: 0, queued: true };
   }
-  await assertBudget(search.userId);
-  const run = await startRun(search.userId, trigger, { searchId });
+  const run = await startBudgetedRun(search.userId, trigger, { searchId });
   traceAs("search", search.userId, run.id);
   const usage = emptyUsage();
   try {
@@ -511,8 +510,7 @@ export async function addByUrl(searchId: string, url: string) {
     await progress(run.id, 0, "Queued. Waiting for the search agent to read the posting");
     return { added: 0, queued: true };
   }
-  await assertBudget(userId);
-  const run = await startRun(userId, "url", { searchId });
+  const run = await startBudgetedRun(userId, "url", { searchId });
   traceAs("add-link", userId, run.id);
   const usage = emptyUsage();
   try {
