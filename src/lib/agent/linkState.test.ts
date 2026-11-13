@@ -136,3 +136,19 @@ describe("classifyPage", () => {
     expect(classifyPage(200, "TITLE: Director, Product Design\nAbout the role: lead a team of 8...").state).toBe("open");
   });
 });
+
+describe("\"filled\" wording (#957)", () => {
+  it.each([
+    "Applications will be accepted until such time as the position has been filled.",
+    "This posting will remain open until such time as the role has been filled.",
+  ])("keeps a live posting open: %s", (text) => {
+    expect(classifyPage(200, `TITLE: Program Manager\nTEXT:\n${text}`).state).toBe("open");
+  });
+  it.each(["Sorry, this position has already been filled.", "This role has already been filled.", "Unfortunately, the position has now been filled."])(
+    "reads a filled posting as gone: %s",
+    (text) => {
+      expect(classifyPage(200, `TITLE: Program Manager\nTEXT:\n${text}`).state).toBe("gone");
+    },
+  );
+});
+
