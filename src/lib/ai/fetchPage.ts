@@ -99,7 +99,8 @@ export function workdayApi(rawUrl: string): string | null {
   const parts = u.pathname.split("/").filter(Boolean);
   if (/^[a-z]{2}-[a-z]{2}$/i.test(parts[0] ?? "")) parts.shift(); // optional locale, e.g. en-US
   const [site, job, ...rest] = parts;
-  if (!site || job !== "job" || !rest.length) return null;
+  // A share link reads /<site>/details/<Title>_<ID>; the JSON takes the same rest under /job/ (#1071).
+  if (!site || (job !== "job" && job !== "details") || !rest.length) return null;
   return `https://${u.hostname}/wday/cxs/${tenant}/${site}/job/${rest.join("/")}`;
 }
 
