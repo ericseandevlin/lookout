@@ -43,6 +43,10 @@ export function classify(prompt: string): EeoCategory | null {
   const asked = p.replace(/\([^)]*\)/g, " ").replace(/\b(e\.g\.|such as|for example)[^?]*/g, " ");
   if (/transgender/.test(asked)) return "transgender";
   if (/sexual orientation/.test(p)) return "orientation";
+  // "Do you have a disability? Veterans with service-connected disabilities should also answer here." asks about
+  // disability; the question is the first sentence, the rest is guidance (#973).
+  const first = p.split(/(?<=[.?!])\s+/)[0];
+  if (/disabilit/.test(first) && !/veteran|armed forces|military/.test(first)) return "disability";
   // "Are you a military spouse?" is about family, not the person's own service (#909).
   if (/veteran|armed forces|military/.test(p)) return /spouse|dependent|family member/.test(p) ? null : "veteran";
   if (/disabilit/.test(p)) return "disability";
