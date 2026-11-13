@@ -44,13 +44,16 @@ export function hashRoute(u: URL) {
 // Query params that name the job itself (indeed.com/viewjob?jk=..., careers pages with ?jobId=, UltiPro ?opportunityId=,
 // SuccessFactors ?career_job_req_id= (#840)). Tracking params stay out (#508).
 const ID_PARAM = /^(v?jk|id|jid|job|jobs?id|jobreqid|careerjobreqid|req|reqid|requisitionid|postingid|openingid|opportunityid|positionid|currentjobid|pid)$/;
+// Params that name the employer on a host many employers share: SuccessFactors ?company=, Brassring ?partnerid= (#895).
+// Req IDs there are small per-employer numbers, so they join the key whenever a job ID does.
+const TENANT_PARAM = /^(company|partnerid)$/;
 
 function idQuery(params: URLSearchParams) {
-  const ids = [...params]
-    .filter(([k, v]) => v && ID_PARAM.test(k.toLowerCase().replace(/[_-]/g, "")))
-    .map(([k, v]) => `${k.toLowerCase().replace(/[_-]/g, "")}=${v.toLowerCase()}`)
-    .sort();
-  return ids.length ? `?${ids.join("&")}` : "";
+  const pick = (re: RegExp) =>
+    [...params].filter(([k, v]) => v && re.test(k.toLowerCase().replace(/[_-]/g, ""))).map(([k, v]) => `${k.toLowerCase().replace(/[_-]/g, "")}=${v.toLowerCase()}`);
+  const ids = pick(ID_PARAM);
+  if (!ids.length) return "";
+  return `?${[...ids, ...pick(TENANT_PARAM)].sort().join("&")}`;
 }
 
 /** True when any of the page's URLs (top page and frames) is the same job as any of the application's URLs. */

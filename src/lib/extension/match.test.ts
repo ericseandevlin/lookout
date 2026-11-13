@@ -73,6 +73,16 @@ describe("sameJob", () => {
     expect(sameJob([sf(101)], [sf(202)])).toBe(false);
     expect(sameJob([sf(101, "&navBarLevel=JOB_SEARCH")], [sf(101)])).toBe(true);
   });
+  it("tells two employers' jobs apart on a shared SuccessFactors or Brassring host (#895)", () => {
+    const sf = (co: string) => `https://career4.successfactors.com/career?company=${co}&career_job_req_id=1234`;
+    expect(sameJob([sf("globexP")], [sf("acmeP")])).toBe(false);
+    expect(sameJob([sf("ACMEP") + "&career_ns=job_application"], [sf("acmeP")])).toBe(true);
+    const br = (partner: string) => `https://sjobs.brassring.com/TGnewUI/Search/home/HomeWithPreLoad?partnerid=${partner}&siteid=5016&jobid=1234`;
+    expect(sameJob([br("25678")], [br("12345")])).toBe(false);
+    expect(sameJob([br("12345")], [br("12345")])).toBe(true);
+    // An employer param alone names no job, so it does not change the key.
+    expect(jobKey("https://career4.successfactors.com/career?company=acmeP")).toBe("url:career4.successfactors.com/career");
+  });
   it("keeps a hash route as part of the job, but not a plain anchor (#841)", () => {
     expect(sameJob(["https://careers.acme.com/#/jobs/101"], ["https://careers.acme.com/#/jobs/202"])).toBe(false);
     expect(sameJob(["https://careers.acme.com/#!/job/101/apply"], ["https://careers.acme.com/#!/job/101"])).toBe(true);
