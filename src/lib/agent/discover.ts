@@ -271,9 +271,10 @@ async function scorePages(ctx: Context, pages: Page[], usage: Usage, report?: Re
         seen.add(f.index);
         const page = batch[f.index];
         // The model sometimes misses pay even when it's on the page, or gives the hourly rate of a part-time role (#702);
-        // the deterministic read fills the gap.
+        // the deterministic read fills the gap. It also replaces a range missing one end: a lone low end read as the top
+        // and cut the find as below the floor (#851).
         const comp = { comp_min: annualPay(f.comp_min), comp_max: annualPay(f.comp_max) };
-        if (page) out.push({ ...f, ...comp, url: page.url, ...(comp.comp_min == null && comp.comp_max == null && page.pay && page.pay.currency === "USD" && { comp_min: page.pay.min, comp_max: page.pay.max }) });
+        if (page) out.push({ ...f, ...comp, url: page.url, ...((comp.comp_min == null || comp.comp_max == null) && page.pay && page.pay.currency === "USD" && { comp_min: page.pay.min, comp_max: page.pay.max }) });
       }
     } catch (e) {
       console.error("[discover] scoring batch failed", e);
