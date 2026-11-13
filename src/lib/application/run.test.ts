@@ -314,6 +314,25 @@ describe("redrafts (#378)", () => {
     expect(a.report.usd).toBeCloseTo(before + 0.01);
   });
 
+  it("redrafts the cover letter that was pressed when the form has two (#870)", async () => {
+    const { app } = await seedApp();
+    await processApplication(app.id);
+    const first = (await itemsOf(app.id)).find((i) => i.kind === "cover_letter")!;
+    await db.update(schema.applicationItems).set({ approvedVersionId: first.versions[0].id }).where(eq(schema.applicationItems.id, first.id));
+    const [second] = await db.insert(schema.applicationItems).values({ applicationId: app.id, kind: "cover_letter", prompt: "Cover letter text", required: false, position: 99 }).returning();
+    await db.insert(schema.itemVersions).values({ itemId: second.id, version: 1, content: "Old text", author: "ai" });
+
+    replies["apply-letter"] = () => ({ items: [{ index: 0, content: "Dear team, I build design systems.", sources: ["resume"], question: "", note: "Short and direct." }] });
+    await redraftLetter(app.id, undefined, second.id);
+
+    const items = await itemsOf(app.id);
+    const pressed = items.find((i) => i.id === second.id)!;
+    const other = items.find((i) => i.id === first.id)!;
+    expect(pressed.versions.map((v) => v.content)).toEqual(["Old text", "Dear team, I build design systems."]);
+    expect(other.versions).toHaveLength(1);
+    expect(other.approvedVersionId).toBe(first.versions[0].id);
+  });
+
   it("refuses a resume redraft until the keywords are approved", async () => {
     const { app } = await seedApp();
     await processApplication(app.id);

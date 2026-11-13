@@ -219,14 +219,14 @@ describe("POST /api/apply/[id]/items/[itemId] actions (#553)", () => {
     expect(
       await (await send(a.id, resume.id, { action: "redraft" })).json(),
     ).toEqual({ status: "needs_review" });
-    expect(steps.redraftResume).toHaveBeenCalledWith(a.id);
+    expect(steps.redraftResume).toHaveBeenCalledWith(a.id, resume.id);
     expect(
       await (await send(a.id, letter.id, { action: "redraft" })).json(),
     ).toEqual({ status: "needs_review" });
-    expect(steps.redraftLetter).toHaveBeenCalledWith(a.id, undefined);
+    expect(steps.redraftLetter).toHaveBeenCalledWith(a.id, undefined, letter.id);
     // A strategy pick goes to the letter redraft (#738); an unknown one is refused.
     await send(a.id, letter.id, { action: "redraft", strategy: "why" });
-    expect(steps.redraftLetter).toHaveBeenLastCalledWith(a.id, "why");
+    expect(steps.redraftLetter).toHaveBeenLastCalledWith(a.id, "why", letter.id);
     expect((await send(a.id, letter.id, { action: "redraft", strategy: "bold" })).status).toBe(400);
   });
 

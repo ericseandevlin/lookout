@@ -276,10 +276,25 @@ async function draftResume(inp: DraftInputs, usage: Usage, rows: KeywordRow[]) {
  * Write a fresh resume from the posting, as a new version: for drafts made before a fix, or when the
  * user wants to start that one over. Every other item and approval stays as it is.
  */
+/**
+ * The item a redraft writes to: the one the person pressed Redraft on, else the first of its kind in form order.
+ * A form can carry two cover letters ("Cover letter" upload and "Cover letter text"); by kind alone the other one got
+ * the new version and lost its approval (#870).
+ */
+async function itemToRedraft(appId: string, kind: "cover_letter" | "resume", itemId?: string) {
+  const [item] = await db
+    .select()
+    .from(schema.applicationItems)
+    .where(and(eq(schema.applicationItems.applicationId, appId), eq(schema.applicationItems.kind, kind), ...(itemId ? [eq(schema.applicationItems.id, itemId)] : [])))
+    .orderBy(schema.applicationItems.position)
+    .limit(1);
+  return item;
+}
+
 /** Write a fresh cover letter from the posting as a new version, with the current letter rules (#129). */
-export async function redraftLetter(appId: string, strategy?: LetterStrategy) {
+export async function redraftLetter(appId: string, strategy?: LetterStrategy, itemId?: string) {
   const [a] = await db.select().from(schema.applications).where(eq(schema.applications.id, appId));
-  const [item] = await db.select().from(schema.applicationItems).where(and(eq(schema.applicationItems.applicationId, appId), eq(schema.applicationItems.kind, "cover_letter")));
+  const item = await itemToRedraft(appId, "cover_letter", itemId);
   if (!a || !item) throw new Error("No cover letter on this application");
   await assertBudget(a.userId);
   const [opp] = await db.select().from(schema.opportunities).where(eq(schema.opportunities.id, a.opportunityId));
@@ -317,9 +332,9 @@ export async function redraftLetter(appId: string, strategy?: LetterStrategy) {
   });
 }
 
-export async function redraftResume(appId: string) {
+export async function redraftResume(appId: string, itemId?: string) {
   const [a] = await db.select().from(schema.applications).where(eq(schema.applications.id, appId));
-  const [item] = await db.select().from(schema.applicationItems).where(and(eq(schema.applicationItems.applicationId, appId), eq(schema.applicationItems.kind, "resume")));
+  const item = await itemToRedraft(appId, "resume", itemId);
   if (!a || !item) throw new Error("No resume on this application");
   await assertBudget(a.userId);
   const [opp] = await db.select().from(schema.opportunities).where(eq(schema.opportunities.id, a.opportunityId));
