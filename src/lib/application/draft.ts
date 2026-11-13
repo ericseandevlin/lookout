@@ -135,7 +135,24 @@ const norm = (s: string) => ` ${s.toLowerCase().replace(/\.(?![a-z0-9])/g, " ").
 /** Does the text contain the keyword, as whole words? */
 export function hasKeyword(text: string, keyword: string) {
   const k = norm(keyword).trim();
-  return !!k && norm(text).includes(` ${k} `);
+  if (!k || !norm(text).includes(` ${k} `)) return false;
+  return k.length > 2 || shortWordIn(text.toLowerCase(), k);
+}
+
+/**
+ * A one- or two-character skill ("R", "Go", "C#") as its own word, not a piece of "R&D", "P&L", "go-to-market" or
+ * "C-suite", which would back a skill the person never named (#1087). "AI-driven" and "R/Python" still count.
+ */
+function shortWordIn(text: string, k: string) {
+  for (let i = text.indexOf(k); i >= 0; i = text.indexOf(k, i + 1)) {
+    const before = text[i - 1] ?? " ";
+    const after = text[i + k.length] ?? " ";
+    if (/[a-z0-9&+#]/.test(before) || /[a-z0-9&+#]/.test(after)) continue;
+    if (k.length === 1 && (before === "-" || after === "-")) continue;
+    if (k === "go" && text.startsWith("-to", i + k.length)) continue;
+    return true;
+  }
+  return false;
 }
 
 export type KeywordReport = { term: string; before: boolean; after: boolean; where?: string; choice?: "include" | "exclude" }[];

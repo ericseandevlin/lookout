@@ -61,6 +61,16 @@ describe("keywords", () => {
     expect(hasKeyword("Built in React/TypeScript", "TypeScript")).toBe(true);
     expect(hasKeyword("Reactive programming", "React")).toBe(false);
     expect(hasKeyword("C# and .NET", "C#")).toBe(true);
+    // A short skill is its own word, not a piece of R&D, go-to-market or C-suite (#1087).
+    expect(hasKeyword("Ran the R&D design team of 12", "R")).toBe(false);
+    expect(hasKeyword("Led go-to-market launches", "Go")).toBe(false);
+    expect(hasKeyword("Presented to the C-suite", "C")).toBe(false);
+    expect(hasKeyword("Owned the P&L", "P")).toBe(false);
+    expect(hasKeyword("Built models in Python or R.", "R")).toBe(true);
+    expect(hasKeyword("R/Python, R&D lead", "R")).toBe(true);
+    expect(hasKeyword("Services in Go, C++ and C#", "Go")).toBe(true);
+    expect(hasKeyword("Shipped AI-driven search", "AI")).toBe(true);
+    expect(hasKeyword("Wrote C and C++", "C")).toBe(true);
   });
 
   it("reports coverage before and after, with where each was added", () => {
