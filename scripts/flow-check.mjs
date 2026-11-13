@@ -163,7 +163,8 @@ try {
 
     // Flow 4, the board, and one find opened.
     await snap("Board", { status: 200 });
-    const firstFind = page.locator('[role="row"]').nth(1).getByRole("button").first();
+    // The row's title button reads "<role> at <company>"; Pin, Archive and the stage come before and after it.
+    const firstFind = page.locator('[role="row"]').nth(1).getByRole("button", { name: / at / }).first();
     if (await firstFind.count()) {
       await firstFind.click();
       await page.getByRole("dialog").first().waitFor();
