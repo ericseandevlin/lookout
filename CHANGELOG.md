@@ -6,6 +6,33 @@ Every production release of Lookout, newest first. The format follows [Keep a Ch
 
 Work merged to `main` (staging) and waiting for the weekly release.
 
+## [0.6.1] - 2026-11-13
+
+Fixes and polish only. About 100 small fixes, most of them to auto-apply (still a beta for admins) and to how Lookout reads pay. No new switches and no database changes.
+
+### Added
+- Search profile: download the master resume as a Word file (#780).
+- Admin > Surveys: a Preview button opens each question in the real dialog. A preview saves nothing (#836).
+
+### Changed
+- Board: no hover box on the company name, a full-width row highlight and 12px column titles (#782).
+- Master resume: icon buttons for edit, rebuild and download, the same as auto-apply (#801).
+- Finds email: says how many more finds are on the board past the 15 it lists, and leaves out a posting another search already had (#931, #823).
+- Search result names the floor or dealbreaker that kept postings off the board, not "already on your board" (#862).
+
+### Fixed
+- Search: a run fails when every scoring call fails, instead of reporting no matches. A scheduled search tries its run day again after a failed run. An hourly, weekly or monthly pay floor becomes a yearly salary. Two postings that differ only in a title parenthetical stay two finds (#920, #790, #941, #838).
+- Pay reading: currency codes and symbols (SGD, NZD, HKD, AU$, euro, pound), a unit named before the range, total cash against base, "low 200s", and a list in structured data (#883, #905, #962, #945, #927, #937, #882, #850, and more).
+- Link check: a live posting stays open when it says "until the position has been filled", has a "Closed Date" label or mentions maintenance. A repost of a gone posting takes the new link (#903, #957, #832, #933, #830).
+- Finds email counts due dates from today in the app's time zone, not UTC (#867).
+- Auto-apply: the cover letter never takes the resume's upload, and each upload gets its own file (#860, #913, #918).
+- Auto-apply: Submit for me cannot send an application twice, a queued application is cancelled when its posting closes, and a posting you already applied to is never queued again (#865, #923, #827, #822).
+- Auto-apply: more consent boxes, salary questions and EEO questions are answered correctly. An EEO question with no clear answer is asked, not guessed (#796, #899, #911, #949, #953, #909, #954, #961).
+- Auto-apply: text hidden in a posting to catch automated applications is removed in more forms (#848, #965, #967).
+- Extension: tells jobs apart on SuccessFactors, Brassring, UltiPro and iCIMS, and fills radio groups and a lone checkbox correctly (#895, #840, #852, #773, #951, #940).
+- Resume drafts: date ranges, two stints at one employer, and a current job all stay correct (#925, #896, #916, #939, #907).
+- Recruiter Analysis: fewer false flags on summary headings, stock openers, multipliers and letter length (#767, #769, #776, #777).
+
 ## [0.6.0] - 2026-11-11
 
 The public face of Lookout, ahead of the first group demo. The `/next` page ships behind `FEATURE_PREVIEW`. Events and several searches per account stay switched off on production.
