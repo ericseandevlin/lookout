@@ -174,5 +174,10 @@ describe("a non-veteran never gets a veteran's answer (#961)", () => {
     const opts = ["I am a veteran, but not a protected veteran", "I am not a veteran", "I identify as one or more of the classifications of protected veteran", "I do not wish to self-identify"];
     expect(matchOption("Not a veteran", opts)).toBe("I am not a veteran");
   });
+
+  it("skips \"I identify as a veteran, just not a protected veteran\" listed first (#1003)", () => {
+    const opts = ["I identify as a veteran, just not a protected veteran", "I am not a veteran", "I identify as one or more of the classifications of protected veteran", "I don't wish to answer"];
+    expect(matchOption("Not a veteran", opts)).toBe("I am not a veteran");
+  });
 });
 
