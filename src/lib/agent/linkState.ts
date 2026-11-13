@@ -17,7 +17,7 @@ const CLOSED = [
   /\b(job|position|posting|role|opening|requisition|listing|vacancy|opportunity|page)\b[^.!?\n]{0,30}?\bno longer (available|active|posted)\b/i,
   /(?:^|[.!?:\n]\s*)(?:sorry[,!]?\s*)?no longer (available|active|posted)\b/im,
   // Not "open until the position has been filled" or "once the position has been filled, this posting will be removed" (#903).
-  /(?<!\b(?:until|once|when|after|if|before|unless) (?:the |this |a )?)(job|position|posting|role|requisition|opening) (is )?(no longer|has been) (available|filled|closed|removed)/i,
+  /(?<!\b(?:until(?: such time as)?|once|when|after|if|before|unless) (?:the |this |a )?)(job|position|posting|role|requisition|opening) (is )?(no longer|has (?:already |now )?been) (available|filled|closed|removed)/i,
   /(job|posting|position|page) (was )?not found/i,
   /(?<!\b(?:until|once|when|after|if|before|unless) )this (job|position|posting|role)( ad)? (is |has )?(now )?(expired|closed|been filled)\b(?! to\b|[- ]?date\b|-)/i,
   // More wordings careers sites use (#747).
