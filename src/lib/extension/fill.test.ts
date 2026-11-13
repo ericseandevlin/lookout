@@ -218,6 +218,35 @@ describe("extension fill: choices", () => {
     expect([on("a-y"), on("a-n"), on("b-y"), on("b-n")]).toEqual([false, true, true, false]);
   });
 
+  it("answers the radios after the question in a section that holds several questions (#1044)", async () => {
+    const p = page(`<fieldset><legend>Additional questions</legend>
+      <div><p>Are you legally authorized to work in the US?</p>
+        <label><input type="radio" name="auth" id="auth-y"> Yes</label><label><input type="radio" name="auth" id="auth-n"> No</label></div>
+      <p>Will you require visa sponsorship?</p>
+        <label><input type="radio" name="spon" id="spon-y"> Yes</label><label><input type="radio" name="spon" id="spon-n"> No</label>
+      </fieldset>`);
+    const log = await p.fill({
+      steps: [
+        { prompt: "Will you require visa sponsorship?", kind: "choice", content: "No", options: ["Yes", "No"] },
+        { prompt: "Are you legally authorized to work in the US?", kind: "choice", content: "Yes", options: ["Yes", "No"] },
+      ],
+    });
+    expect(log.map((r) => r.ok)).toEqual([true, true]);
+    const on = (id: string) => (p.doc.querySelector(`#${id}`) as HTMLInputElement).checked;
+    expect([on("auth-y"), on("auth-n"), on("spon-y"), on("spon-n")]).toEqual([true, false, false, true]);
+  });
+
+  it("prefers the group whose legend starts with the question over a later one that quotes it (#1044)", async () => {
+    const p = page(`<fieldset><legend>Do you require sponsorship? (required)</legend>
+      <label><input type="radio" name="a" id="a-y"> Yes</label><label><input type="radio" name="a" id="a-n"> No</label></fieldset>
+      <fieldset><legend>If you answered Yes to "Do you require sponsorship?", which visa?</legend>
+      <label><input type="checkbox" id="h1b"> H-1B</label><label><input type="checkbox" id="none"> No</label></fieldset>`);
+    const [r] = await p.fill({ steps: [{ prompt: "Do you require sponsorship?", kind: "choice", content: "No", options: ["Yes", "No"] }] });
+    expect(r).toMatchObject({ ok: true, how: "checked 1" });
+    const on = (id: string) => (p.doc.querySelector(`#${id}`) as HTMLInputElement).checked;
+    expect([on("a-n"), on("none")]).toEqual([true, false]);
+  });
+
   it("checks the radio group named by the question, not a later \"If other\" box whose label holds it (#952)", async () => {
     const p = page(`<fieldset><legend>How did you hear about us?</legend>
         <label><input type="radio" name="src" id="li"> LinkedIn</label><label><input type="radio" name="src" id="ot"> Other</label></fieldset>
