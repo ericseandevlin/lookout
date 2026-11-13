@@ -4,6 +4,7 @@ import { fetch } from "undici";
 import { db, schema } from "@/lib/db";
 import type { ApplicationReport, ApplicationStatus } from "@/lib/db/schema";
 import { completeJSON, emptyUsage, type Usage } from "@/lib/ai/llm";
+import { traceAs } from "@/lib/ai/trace";
 import { assertBudget } from "@/lib/ai/runs";
 import { fetchPage, pageToText } from "@/lib/ai/fetchPage";
 import { kinds } from "@/lib/kinds";
@@ -153,6 +154,7 @@ async function claim(id: string) {
 export async function processApplication(id: string) {
   const app = await claim(id);
   if (!app) return;
+  traceAs("apply", app.userId, app.id);
   const usage = emptyUsage();
   const report: ApplicationReport = { ...app.report, error: undefined };
   try {
@@ -316,6 +318,7 @@ export async function redraftLetter(appId: string, strategy?: LetterStrategy, it
   if (!a || !item) throw new Error("No cover letter on this application");
   await assertBudget(a.userId);
   const [opp] = await db.select().from(schema.opportunities).where(eq(schema.opportunities.id, a.opportunityId));
+  traceAs("redraft", a.userId, a.id);
   const usage = emptyUsage();
   let postingHtml: string | undefined;
   try {
@@ -355,6 +358,7 @@ export async function redraftResume(appId: string, itemId?: string) {
   if (!a || !item) throw new Error("No resume on this application");
   await assertBudget(a.userId);
   const [opp] = await db.select().from(schema.opportunities).where(eq(schema.opportunities.id, a.opportunityId));
+  traceAs("redraft", a.userId, a.id);
   const usage = emptyUsage();
   let postingHtml: string | undefined;
   try {

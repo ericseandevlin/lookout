@@ -3,6 +3,7 @@ import Anthropic from "@anthropic-ai/sdk";
 import { betaZodOutputFormat } from "@anthropic-ai/sdk/helpers/beta/zod";
 import { z } from "zod";
 import { getAiConfig, type AiConfig } from "@/lib/config";
+import { traceFields } from "./trace";
 
 export type Usage = { input: number; output: number; searches: number; usd: number };
 export const emptyUsage = (): Usage => ({ input: 0, output: 0, searches: 0, usd: 0 });
@@ -103,6 +104,8 @@ async function openaiJSON<T extends z.ZodType>(req: JsonReq<T>, cfg: AiConfig) {
             ? { type: "json_schema", json_schema: { name: req.name, schema: jsonSchema, strict: false } }
             : { type: "json_object" },
         ...(strictRouting(cfg) && { provider: PRIVATE_ROUTING }),
+        // Step, run and an anonymous person id, so OpenRouter Broadcast can group the calls of one run (#985).
+        ...(/openrouter\.ai/.test(cfg.baseUrl) && traceFields(req.name)),
       }),
       signal: AbortSignal.timeout(180_000),
     });

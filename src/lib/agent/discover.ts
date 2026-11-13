@@ -11,6 +11,7 @@ import { buildTips, emptyTally } from "./report";
 import { doneStep } from "./runOutcome";
 import { autoQueue } from "@/lib/apply";
 import { completeJSON, emptyUsage, type Usage } from "@/lib/ai/llm";
+import { traceAs } from "@/lib/ai/trace";
 import { assertBudget, finishRun, progress, startRun } from "@/lib/ai/runs";
 import { webSearch, type SearchHit } from "@/lib/ai/search";
 import { getAiConfig } from "@/lib/config";
@@ -452,6 +453,7 @@ export async function discover(searchId: string, trigger: "scheduled" | "manual"
   }
   await assertBudget(search.userId);
   const run = await startRun(search.userId, trigger, { searchId });
+  traceAs("search", search.userId, run.id);
   const usage = emptyUsage();
   try {
     const report: Report = (pct, step) => progress(run.id, pct, step);
@@ -511,6 +513,7 @@ export async function addByUrl(searchId: string, url: string) {
   }
   await assertBudget(userId);
   const run = await startRun(userId, "url", { searchId });
+  traceAs("add-link", userId, run.id);
   const usage = emptyUsage();
   try {
     await progress(run.id, 10, `Opening ${host(url)}`);

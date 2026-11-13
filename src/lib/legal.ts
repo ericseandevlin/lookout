@@ -2,7 +2,7 @@
 // changes in a way people should agree to again; everyone is asked again on their next visit.
 
 /** The privacy page's "Last updated" date (YYYY-MM-DD). The page shows this date. */
-export const PRIVACY_VERSION = "2026-11-07";
+export const PRIVACY_VERSION = "2026-11-13";
 
 /** The Terms page's "Last updated" date (YYYY-MM-DD, #20). The page shows this date. */
 export const TERMS_VERSION = "2026-11-07";

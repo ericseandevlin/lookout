@@ -3,6 +3,7 @@ import { eq } from "drizzle-orm";
 import { z } from "zod";
 import { db, schema } from "@/lib/db";
 import { completeJSON, emptyUsage, type Usage } from "@/lib/ai/llm";
+import { traceAs } from "@/lib/ai/trace";
 import { assertBudget, finishRun, progress, startRun } from "@/lib/ai/runs";
 import { emptyTally } from "./report";
 import { applyRules } from "./rules";
@@ -124,6 +125,7 @@ export async function discoverRfp(searchId: string, userId: string, trigger: "sc
   if (!samConfigured()) throw new Error("RFP search needs a SAM.gov API key (SAM_API_KEY).");
   await assertBudget(userId);
   const run = await startRun(userId, trigger, { searchId });
+  traceAs("rfp-search", userId, run.id);
   const usage = emptyUsage();
   try {
     await progress(run.id, 5, "Reading your profile");

@@ -6,6 +6,7 @@ Every outside service that touches Lookout user data (#25). The public version i
 | --- | --- | --- | --- | --- |
 | Hostinger | Everything: app, database, uploaded files, 14 days of nightly dumps | Rents the VPS that runs Lookout | `deploy/` | Not yet accepted |
 | OpenRouter, plus the model host it routes to | Profile answers, resume, LinkedIn and link text, search profile, postings, application drafts | Build the search profile, score finds, draft applications | `src/lib/ai/` | Not yet accepted |
+| PostHog, through OpenRouter Broadcast | One record per AI request: step name, kind of work, run id, a hashed person id, model, tokens, cost, timing. No prompt or reply text (Privacy Mode is on for the production key) | Trace AI requests to find failing or costly steps (#985) | `src/lib/ai/trace.ts`; switched on in OpenRouter Settings > Observability | Not yet accepted |
 | Resend | Email addresses; sign-in links, invites, finds email; inbound mail to lookout.ericdevlin.co; delivery events | Outbound and inbound email | `src/lib/email.ts`, `src/lib/inbound/` | Not yet accepted |
 | Amazon S3 | Nightly database dump and files archive, AES-256 encrypted on Eric's Mac before upload, kept 60 days | Off-site backups | `deploy/backup.sh`, Life-OS `scripts/lookout/pull-backup.sh` | Not yet accepted |
 | Cloudflare Turnstile | IP address and browser signals, on the request-access form only | Bot check | `src/lib/turnstile.ts` | Not yet accepted |

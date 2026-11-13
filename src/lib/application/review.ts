@@ -4,6 +4,7 @@ import { z } from "zod";
 import { db, schema } from "@/lib/db";
 import type { ApplicationReport, ApplicationStatus } from "@/lib/db/schema";
 import { completeJSON, emptyUsage } from "@/lib/ai/llm";
+import { traceAs } from "@/lib/ai/trace";
 import { assertBudget } from "@/lib/ai/runs";
 import { HttpError } from "@/lib/api";
 import { newNumbers } from "./draft";
@@ -253,6 +254,7 @@ export async function reviseItem(userId: string, appId: string, itemId: string, 
   const [o] = await db.select().from(schema.opportunities).where(eq(schema.opportunities.id, a.opportunityId));
   // Experience notes count as facts, same as the resume (#121).
   const { facts: master } = await draftFacts(userId);
+  traceAs("revise", userId, appId);
   const usage = emptyUsage();
   const r = await completeJSON({
     name: "apply-revise",
@@ -290,6 +292,7 @@ export async function analyzeItem(userId: string, appId: string, itemId: string,
   const [o] = await db.select().from(schema.opportunities).where(eq(schema.opportunities.id, a.opportunityId));
   const { resume, facts } = await draftFacts(userId);
   const found = [...recruiterChecks(it.kind, v.content), ...honestyFindings(resume ? newNumbers(facts, v.content) : [], it.kind === "resume" && resume ? roleSwaps(resume, v.content) : [])];
+  traceAs("recruiter-analysis", userId, appId);
   const usage = emptyUsage();
   const d = await completeJSON({
     name: "apply-recruiter",

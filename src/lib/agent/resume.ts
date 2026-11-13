@@ -5,6 +5,7 @@ import { z } from "zod";
 import { db, schema } from "@/lib/db";
 import { readUserFile } from "@/lib/files";
 import { AiConfigError, completeJSON, emptyUsage } from "@/lib/ai/llm";
+import { traceAs } from "@/lib/ai/trace";
 import { assertBudget, BudgetError, finishRun, progress, startRun } from "@/lib/ai/runs";
 import { getAiConfig } from "@/lib/config";
 import { getActiveSearch } from "@/lib/searches";
@@ -46,6 +47,7 @@ export const Fills = z.object({
 export async function scanResume(userId: string, materialId: string) {
   const [m] = await db.select().from(schema.materials).where(eq(schema.materials.id, materialId));
   if (!m?.fileKey) return;
+  traceAs("resume", userId, materialId);
   const usage = emptyUsage();
   let runId: string | null = null;
   let hasText = false;
