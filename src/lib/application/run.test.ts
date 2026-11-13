@@ -351,6 +351,28 @@ describe("redrafts (#378)", () => {
     expect(completeJSON.mock.calls.some((c) => c[0].name === "apply-resume")).toBe(false);
   });
 
+  it("drops a redraft when Submit for me claimed the application during the model call (#871)", async () => {
+    const { app } = await seedApp();
+    await processApplication(app.id);
+    const letter = (await itemsOf(app.id)).find((i) => i.kind === "cover_letter")!;
+    await db.update(schema.applicationItems).set({ approvedVersionId: letter.versions[0].id }).where(eq(schema.applicationItems.id, letter.id));
+    await db.update(schema.applications).set({ status: "approved" }).where(eq(schema.applications.id, app.id));
+    const before = (await getApp(app.id)).report.usd!;
+
+    replies["apply-letter"] = async () => {
+      await db.update(schema.applications).set({ status: "submitting" }).where(eq(schema.applications.id, app.id));
+      return { items: [{ index: 0, content: "Dear team, I build design systems.", sources: ["resume"], question: "", note: "Short and direct." }] };
+    };
+    await expect(redraftLetter(app.id)).rejects.toMatchObject({ status: 409 });
+
+    const after = (await itemsOf(app.id)).find((i) => i.kind === "cover_letter")!;
+    expect(after.versions).toHaveLength(1);
+    expect(after.approvedVersionId).toBe(letter.versions[0].id);
+    const a = await getApp(app.id);
+    expect(a.status).toBe("submitting");
+    expect(a.report.usd).toBeCloseTo(before + 0.01);
+  });
+
   it("refuses a redraft on an application with no such item", async () => {
     const { app } = await seedApp({ status: "failed" });
     await expect(redraftLetter(app.id)).rejects.toThrow("No cover letter on this application");

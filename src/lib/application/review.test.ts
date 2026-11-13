@@ -215,6 +215,18 @@ describe("reviseItem", () => {
     expect(await reviseItem(userId, appId, ids[0].item, "add my start year")).toEqual({ status: "needs_review", question: "Which year did you start?" });
     expect(await versions(ids[0].item)).toHaveLength(1);
   });
+
+  it("drops the revision when Submit for me claimed the application during the model call (#871)", async () => {
+    const { appId, ids } = await seed("approved", [{ kind: "answer", prompt: "Why us?", approved: true }], "browser");
+    completeJSON.mockImplementation(async () => {
+      await db.update(schema.applications).set({ status: "submitting" }).where(eq(schema.applications.id, appId));
+      return { content: "Shorter.", note: "Cut it.", question: "" };
+    });
+    await expect(reviseItem(userId, appId, ids[0].item, "make it shorter")).rejects.toMatchObject({ status: 409 });
+    expect(await versions(ids[0].item)).toHaveLength(1);
+    expect((await item(ids[0].item)).approvedVersionId).toBe(ids[0].version);
+    expect((await app(appId)).status).toBe("submitting");
+  });
 });
 
 describe("sentRecord and markSubmitted", () => {

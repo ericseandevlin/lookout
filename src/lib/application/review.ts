@@ -155,8 +155,24 @@ async function settleStatus(appId: string) {
   return status;
 }
 
-async function insertVersion(itemId: string, v: { content: string; note: string; author: "user" | "ai"; sources: string[] }) {
+type Tx = Parameters<Parameters<typeof db.transaction>[0]>[0];
+
+/**
+ * The application's current status, row-locked for the rest of the transaction. Refuses once it's sending or
+ * sent. Redrafts and revisions check at the start, then wait seconds on a model; Submit for me can claim the
+ * application meanwhile, so the write checks again here (#871).
+ */
+export async function lockEditable(tx: Tx, appId: string) {
+  const [cur] = await tx.select({ status: schema.applications.status }).from(schema.applications).where(eq(schema.applications.id, appId)).for("update");
+  if (!cur) throw new HttpError(404, "Not found");
+  assertEditable(cur.status);
+  return cur.status;
+}
+
+/** Pass `appId` when a model call ran since the editable check, so the write refuses if a submit started meanwhile. */
+async function insertVersion(itemId: string, v: { content: string; note: string; author: "user" | "ai"; sources: string[] }, appId?: string) {
   return db.transaction(async (tx) => {
+    if (appId) await lockEditable(tx, appId);
     const [{ n }] = await tx.select({ n: max(schema.itemVersions.version) }).from(schema.itemVersions).where(eq(schema.itemVersions.itemId, itemId));
     const [row] = await tx
       .insert(schema.itemVersions)
@@ -255,7 +271,7 @@ export async function reviseItem(userId: string, appId: string, itemId: string, 
   const invented = newNumbers(master, r.content).filter((n) => !newNumbers(master, cur?.content ?? "").includes(n) && !(cur?.content ?? "").includes(n));
   const shaped = it.kind === "resume" ? shapeResume(humanize(r.content.trim())) : { md: it.options?.length ? r.content.trim() : humanize(r.content.trim()), fixed: [] };
   const note = bullets([`You asked: "${instruction.slice(0, 160)}"`, r.note.trim(), ...shaped.fixed, invented.length > 0 && `Check these numbers, they aren't in your master resume: ${invented.join(", ")}`]);
-  await insertVersion(itemId, { content: shaped.md, note, author: "ai", sources: ["your instruction", ...(cur ? [`version ${cur.version}`] : [])] });
+  await insertVersion(itemId, { content: shaped.md, note, author: "ai", sources: ["your instruction", ...(cur ? [`version ${cur.version}`] : [])] }, appId);
   return { status: await settleStatus(appId), question: r.question.trim() || null };
 }
 
