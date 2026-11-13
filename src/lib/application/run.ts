@@ -14,7 +14,7 @@ import { checkStory } from "./stories";
 import { STRATEGY, suggestStrategy, type LetterStrategy } from "./letterStrategy";
 import { HttpError } from "@/lib/api";
 import { KEYWORD_PLAN_SYSTEM, KeywordPlanDraft, approvedBlock, approvedFor, finalTerms, keywordPlanPrompt, planFrom, unapprovedIn, type KeywordRow } from "./evidence";
-import { keywordState } from "./review";
+import { keywordState, lockEditable } from "./review";
 import { findTraps, removeTraps, stripBoilerplate, stripHidden, trapWordsIn } from "./posting";
 import { ensureMaster } from "./master";
 import { findOutreach, type OutreachItem } from "./outreach";
@@ -291,6 +291,24 @@ async function itemToRedraft(appId: string, kind: "cover_letter" | "resume", ite
   return item;
 }
 
+type Tx = Parameters<Parameters<typeof db.transaction>[0]>[0];
+
+/** A new version of a ready application sends it back to review; any other status stays. */
+const reviewAgain = (s: ApplicationStatus): ApplicationStatus => (s === "approved" || s === "manual" ? "needs_review" : s);
+
+/**
+ * Save a redraft against the application's status at write time, not the one read before the model call (#871).
+ * If Submit for me claimed it meanwhile, nothing changes but the spend, and the redraft is refused.
+ */
+async function writeRedraft(appId: string, usd: number, write: (tx: Tx, status: ApplicationStatus) => Promise<void>) {
+  try {
+    await db.transaction(async (tx) => write(tx, await lockEditable(tx, appId)));
+  } catch (e) {
+    if (e instanceof HttpError && e.status === 409) await patchReport(appId, addUsd(usd));
+    throw e;
+  }
+}
+
 /** Write a fresh cover letter from the posting as a new version, with the current letter rules (#129). */
 export async function redraftLetter(appId: string, strategy?: LetterStrategy, itemId?: string) {
   const [a] = await db.select().from(schema.applications).where(eq(schema.applications.id, appId));
@@ -316,7 +334,7 @@ export async function redraftLetter(appId: string, strategy?: LetterStrategy, it
   const content = humanize(d.content);
   const hits = trapWordsIn(content, inp.traps ?? [], `${inp.resume}\n${inp.brief}`);
   const words = content.split(/\s+/).filter(Boolean).length;
-  await db.transaction(async (tx) => {
+  await writeRedraft(appId, usage.usd, async (tx, now) => {
     const [{ n }] = await tx.select({ n: max(schema.itemVersions.version) }).from(schema.itemVersions).where(eq(schema.itemVersions.itemId, item.id));
     await tx.insert(schema.itemVersions).values({
       itemId: item.id,
@@ -327,8 +345,7 @@ export async function redraftLetter(appId: string, strategy?: LetterStrategy, it
       sources: d.sources.length ? d.sources : ["master resume", "posting"],
     });
     await tx.update(schema.applicationItems).set({ approvedVersionId: null, question: hits.length ? "This letter includes a word the posting planted to catch automated applications. Remove it unless you mean to include it." : d.question }).where(eq(schema.applicationItems.id, item.id));
-    const status = a.status === "approved" || a.status === "manual" ? "needs_review" : a.status;
-    await patchReport(appId, (r) => ({ ...addUsd(usage.usd)(r), letterStrategy: using }), { status, updatedAt: new Date() }, tx);
+    await patchReport(appId, (r) => ({ ...addUsd(usage.usd)(r), letterStrategy: using }), { status: reviewAgain(now), updatedAt: new Date() }, tx);
   });
 }
 
@@ -350,12 +367,11 @@ export async function redraftResume(appId: string, itemId?: string) {
   const { rows } = await keywordState(a.userId, a, inp.posting.text);
   if (!approvedFor(a.report, rows)) throw new HttpError(409, "Check the keywords first, then press \"Use these keywords\".");
   const { draft, keywords } = await draftResume(inp, usage, rows);
-  await db.transaction(async (tx) => {
+  await writeRedraft(appId, usage.usd, async (tx, now) => {
     const [{ n }] = await tx.select({ n: max(schema.itemVersions.version) }).from(schema.itemVersions).where(eq(schema.itemVersions.itemId, item.id));
     await tx.insert(schema.itemVersions).values({ itemId: item.id, version: (n ?? 0) + 1, content: draft.content, note: `- Redrafted from the posting\n${draft.note}`, author: "ai", sources: draft.sources });
     await tx.update(schema.applicationItems).set({ approvedVersionId: null, question: draft.question }).where(eq(schema.applicationItems.id, item.id));
-    const status = a.status === "approved" || a.status === "manual" ? "needs_review" : a.status;
-    await patchReport(appId, (r) => ({ ...addUsd(usage.usd)(r), keywords, postingText: inp.posting.text, traps: inp.traps ?? [] }), { status, updatedAt: new Date() }, tx);
+    await patchReport(appId, (r) => ({ ...addUsd(usage.usd)(r), keywords, postingText: inp.posting.text, traps: inp.traps ?? [] }), { status: reviewAgain(now), updatedAt: new Date() }, tx);
   });
 }
 
