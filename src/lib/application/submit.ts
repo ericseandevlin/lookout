@@ -296,25 +296,32 @@ export async function startFill(appId: string, mode: "test" | "submit"): Promise
       await patchReport(appId, (r) => ({ ...r, fill }), { updatedAt: new Date() });
       return;
     }
-    const report = { ...a.report, fill };
-    if (statusAfterFill(fill) === "submitted") {
-      const { sentRecord } = await import("./review");
-      // Read before the transaction: a query on `db` inside it needs a second connection while the first is held.
-      const sent = await sentRecord(appId);
-      const now = new Date();
-      await db.transaction(async (tx) => {
+    // Read before the transaction: a query on `db` inside it needs a second connection while the first is held.
+    const sent = statusAfterFill(fill) === "submitted" ? await (await import("./review")).sentRecord(appId) : null;
+    const now = new Date();
+    await db.transaction(async (tx) => {
+      // The status now, not before the fill: a slow fill can outlast the sweep (#864), which hands it to the person,
+      // who may mark it sent, edit it or start another submit meanwhile (#874).
+      const [cur] = await tx.select({ status: schema.applications.status, report: schema.applications.report }).from(schema.applications).where(eq(schema.applications.id, appId)).for("update");
+      if (!cur) return;
+      const report = { ...cur.report, fill };
+      const at = eq(schema.applications.id, appId);
+      if (sent && cur.status !== "submitted") {
         await tx
           .update(schema.applications)
-          .set({ status: "submitted", submittedAt: now, updatedAt: now, report, confirmation: { how: "browser", at: now.toISOString(), applyUrl: a.report.applyUrl ?? null, url: fill.finalUrl, text: fill.confirmation, sent } })
-          .where(eq(schema.applications.id, appId));
+          .set({ status: "submitted", submittedAt: now, updatedAt: now, report, confirmation: { how: "browser", at: now.toISOString(), applyUrl: cur.report.applyUrl ?? null, url: fill.finalUrl, text: fill.confirmation, sent } })
+          .where(at);
         await tx
           .update(schema.userOpportunities)
           .set({ stage: "Applied" })
           .where(and(eq(schema.userOpportunities.userId, a.userId), eq(schema.userOpportunities.opportunityId, a.opportunityId)));
-      });
-    } else {
-      await db.update(schema.applications).set({ status: "manual", report, updatedAt: new Date() }).where(eq(schema.applications.id, appId));
-    }
+      } else if (!sent && cur.status === "submitting") {
+        await tx.update(schema.applications).set({ status: "manual", report, updatedAt: now }).where(at);
+      } else {
+        // Already marked sent by hand, or the person has moved on: keep their status and record, add the fill.
+        await tx.update(schema.applications).set({ report, updatedAt: now }).where(at);
+      }
+    });
   })().catch((e) => console.error("[apply] fill", e));
   return true;
 }
