@@ -438,6 +438,21 @@ describe("extension fill: uploads", () => {
     const [b] = await some.fill({ steps: [{ prompt: "Resume", kind: "file", itemKind: "resume" }] });
     expect(b.how).toBe("no file");
   });
+
+  it("does not take the resume input when cover letter text is in the same wrapper (#913)", async () => {
+    // A shared wrapper: the resume file input and "A cover letter is optional." text in the same section.
+    const p = page(`<section><div><label>Resume/CV</label><input type="file" id="cv"></div><p>A cover letter is optional.</p></section>`);
+    const log = await p.fill({
+      steps: [
+        { prompt: "Resume/CV", kind: "file", itemKind: "resume", file: docx("Pat Lee - Acme Resume.docx") },
+        { prompt: "Cover Letter", kind: "file", itemKind: "cover_letter", file: docx("Pat Lee - Acme Cover Letter.docx") },
+      ],
+    });
+    // The cover letter should not take the resume input. It has no upload box of its own and no text box
+    // labeled "Cover Letter", so it reports not found.
+    expect(log.find((r) => r.prompt === "Cover Letter")).toMatchObject({ ok: false, how: "upload field not found" });
+    expect(log[0]).toMatchObject({ ok: true, how: "uploaded .docx" });
+  });
 });
 
 describe("extension probe and submit watch", () => {

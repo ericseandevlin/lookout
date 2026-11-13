@@ -181,7 +181,13 @@ async function fillOne(page: Page, s: FillStep): Promise<{ ok: boolean; how: str
       const letter = s.itemKind === "cover_letter";
       // With no box of its own, a cover letter takes the second upload, never the first: that one is the resume's,
       // and the letter replaced it (#860). The extension's fileInputFor does the same.
-      const input = (await box.count()) ? box.locator("input[type=file]").first() : page.locator("input[type=file]").nth(letter ? 1 : 0);
+      // A cover letter text inside a shared ancestor must not steal the resume's input (#913).
+      const hasBox = await box.count();
+      // A cover letter prompt matched inside a shared ancestor must not steal the resume input (#913).
+      // When the matched box also holds other controls (input, textarea, select) or another file input,
+      // it is not the cover letter's own box. Fall through to the index-based fallback.
+      const alone = !letter || !hasBox || (await box.locator("input[type=file]").count()) <= 1 && (await box.locator("input:not([type=file]):not([type=hidden]),textarea,select").count()) === 0;
+      const input = hasBox && alone ? box.locator("input[type=file]").first() : page.locator("input[type=file]").nth(letter ? 1 : 0);
       if (!(await input.count())) {
         // A cover letter asked for as text, not a file: type it into the box labeled with the prompt (#860).
         const text = letter && s.content.trim() ? await letterBox(page, s.prompt) : null;
