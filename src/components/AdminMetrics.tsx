@@ -22,6 +22,7 @@ type Data = {
   outcomes: { board: { interviews: number; offers: number }; survey: { interviews: number; offers: number }; questions: number };
   quality: { days: number; added: number; acted: number; notFit: number; topReason: { reason: string; count: number } | null; score: { acted: number | null; ignored: number | null } };
   search: { searches: number; succeeded: number; rate: number | null };
+  fallbacks: { day: string; count: number }[];
   costMonth: number;
   monthActives: number;
   costPerActiveMonth: number | null;
@@ -127,6 +128,11 @@ export function AdminMetrics() {
             : "No application drafted yet",
         },
         { measure: "Searches that read a page", now: percent(d.search.rate), note: `${d.search.succeeded} of ${d.search.searches} finished searches, last 30 days` },
+        {
+          measure: "Brave fallbacks today",
+          now: String(d.fallbacks[0]?.count ?? 0),
+          note: `Queries sent to Brave because SearXNG failed or came back empty. Last 7 days (UTC), newest first: ${d.fallbacks.map((f) => f.count).join(", ")}`,
+        },
       ]
     : [];
 

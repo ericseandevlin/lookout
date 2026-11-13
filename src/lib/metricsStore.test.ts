@@ -50,7 +50,7 @@ describe("metrics (#369)", () => {
     await find(off.id, so.id, "offer", { stage: "Offer" });
 
     await db.insert(schema.runs).values([
-      { userId: a.id, searchId: sa.id, trigger: "manual", status: "done", costUsd: "0.5", report: { read: 3 } as never, startedAt: ago(8), finishedAt: ago(8) },
+      { userId: a.id, searchId: sa.id, trigger: "manual", status: "done", costUsd: "0.5", report: { read: 3, fallbacks: 2 } as never, startedAt: ago(8), finishedAt: ago(8) },
       { userId: b.id, searchId: sb.id, trigger: "scheduled", status: "failed", costUsd: "0.25", startedAt: ago(8), finishedAt: ago(8) },
       { userId: off.id, searchId: so.id, trigger: "manual", status: "done", costUsd: "1", report: { read: 0 } as never, startedAt: ago(9), finishedAt: ago(9) },
     ]);
@@ -109,6 +109,9 @@ describe("metrics (#369)", () => {
     expect(m.activation).toEqual({ eligible: 2, activated: 1, rate: 0.5 });
     expect(m.quality).toEqual({ days: 90, added: 3, acted: 2, notFit: 1, topReason: { reason: "Too junior", count: 1 }, score: { acted: 7, ignored: 4 } });
     expect(m.search).toEqual({ searches: 2, succeeded: 1, rate: 0.5 });
+    // 8 days ago is outside the 7-day window, so the fallbacks it reported don't show (#987).
+    expect(m.fallbacks).toHaveLength(7);
+    expect(m.fallbacks.every((f) => f.count === 0)).toBe(true);
     // Cost is real spend, so it includes every account; actives don't.
     expect(m.costMonth).toBe(1.75);
     expect(m.monthActives).toBe(2);

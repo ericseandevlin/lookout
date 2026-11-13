@@ -142,6 +142,20 @@ export function applyCost(usds: number[]) {
   };
 }
 
+/**
+ * Searches that went to Brave because SearXNG failed or came back empty (#987), per UTC day for the last
+ * `days` days, newest first. A rising count means SearXNG is being blocked and Brave is carrying the load.
+ */
+export function fallbacksByDay(runs: { startedAt: Date; fallbacks: number | null }[], now: Date, days = 7) {
+  const out = Array.from({ length: days }, (_, i) => ({ day: new Date(now.getTime() - i * 864e5).toISOString().slice(0, 10), count: 0 }));
+  const byDay = new Map(out.map((d) => [d.day, d]));
+  for (const r of runs) {
+    const d = byDay.get(r.startedAt.toISOString().slice(0, 10));
+    if (d) d.count += r.fallbacks ?? 0;
+  }
+  return out;
+}
+
 /** Distinct people with any event (not heartbeats) since a date. */
 export function activeSince(events: MetricEvent[], since: Date) {
   return new Set(events.filter((e) => e.type !== "heartbeat" && e.at >= since).map((e) => e.userId)).size;
