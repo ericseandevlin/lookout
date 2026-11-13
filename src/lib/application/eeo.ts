@@ -39,7 +39,9 @@ export function classify(prompt: string): EeoCategory | null {
   const p = prompt.toLowerCase();
   // "Do you identify as LGBTQ+ (lesbian, gay, bisexual, transgender...)?" asks neither one alone; ask the person (#909).
   if (/\blgbt|\blesbian|\bgay\b|\bbisexual|\bqueer\b/.test(p) && !/sexual orientation/.test(p)) return null;
-  if (/transgender/.test(p)) return "transgender";
+  // "Transgender" among a gender question's examples, "Gender identity (e.g. woman, man, transgender)", is not the question (#929).
+  const asked = p.replace(/\([^)]*\)/g, " ").replace(/\b(e\.g\.|such as|for example)[^?]*/g, " ");
+  if (/transgender/.test(asked)) return "transgender";
   if (/sexual orientation/.test(p)) return "orientation";
   // "Are you a military spouse?" is about family, not the person's own service (#909).
   if (/veteran|armed forces|military/.test(p)) return /spouse|dependent|family member/.test(p) ? null : "veteran";

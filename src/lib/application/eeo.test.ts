@@ -24,6 +24,10 @@ describe("classify", () => {
   it("reads the category from the form's wording", () => {
     expect(classify("How would you describe your gender identity? (mark all that apply)")).toBe("gender");
     expect(classify("Do you identify as transgender?")).toBe("transgender");
+    // Transgender as an example in a gender question is the gender question (#929).
+    expect(classify("Gender identity (e.g. woman, man, non-binary, transgender)")).toBe("gender");
+    expect(classify("What is your gender, such as woman, man, transgender or non-binary?")).toBe("gender");
+    expect(classify("Do you identify as transgender? (optional)")).toBe("transgender");
     expect(classify("VeteranStatus")).toBe("veteran");
     expect(classify("Are you a veteran or active member of the United States Armed Forces?")).toBe("veteran");
     expect(classify("How would you describe your racial/ethnic background?")).toBe("race");
