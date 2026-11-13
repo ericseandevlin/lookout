@@ -471,6 +471,46 @@ describe("runFill controls (#567)", () => {
     expect(r.missing).toEqual(["Portfolio"]);
   });
 
+  describe("cover letter upload (#860)", () => {
+    const LETTER: ItemSeed = { kind: "cover_letter", prompt: "Cover Letter", content: "Dear Acme team,\n\nI lead design systems.\n\nPat Lee" };
+    const RESUME = ITEMS[0];
+    const uploads = () => page.did.filter((d) => d.startsWith("upload "));
+
+    it("goes in its own upload box", async () => {
+      const id = await seed("approved", [RESUME, LETTER]);
+      page = fakePage([{ kind: "file", label: "Resume", type: "file" }, { kind: "file", label: "Cover Letter", type: "file" }]);
+      const r = await runFill(id, "test");
+      expect(r.missing).toEqual([]);
+      expect(uploads()).toEqual(["upload Resume=Pat Lee - Acme Inc. Resume.docx", "upload Cover Letter=Pat Lee - Acme Inc. Cover Letter.docx"]);
+    });
+
+    it("is typed into a cover letter text box, and never replaces the resume upload", async () => {
+      const id = await seed("approved", [RESUME, LETTER]);
+      page = fakePage([{ kind: "file", label: "Resume", type: "file" }, { kind: "control", label: "Cover Letter", tag: "textarea" }]);
+      const r = await runFill(id, "test");
+      expect(r.missing).toEqual([]);
+      expect(r.log.find((l) => l.prompt === "Cover Letter")).toMatchObject({ ok: true, how: "typed the letter" });
+      expect(uploads()).toEqual(["upload Resume=Pat Lee - Acme Inc. Resume.docx"]);
+      expect(page.did).toContain(`fill Cover Letter=${LETTER.content}`);
+    });
+
+    it("takes the second upload when no box names it", async () => {
+      const id = await seed("approved", [RESUME, LETTER]);
+      page = fakePage([{ kind: "file", label: "Resume", type: "file" }, { kind: "file", label: "Other documents", type: "file" }]);
+      await runFill(id, "test");
+      expect(uploads()).toEqual(["upload Resume=Pat Lee - Acme Inc. Resume.docx", "upload Other documents=Pat Lee - Acme Inc. Cover Letter.docx"]);
+    });
+
+    it("with nowhere to go, counts as not filled instead of taking the resume's upload", async () => {
+      const id = await seed("approved", [RESUME, LETTER]);
+      page = fakePage([{ kind: "file", label: "Resume", type: "file" }]);
+      const r = await runFill(id, "test");
+      expect(r.log.find((l) => l.prompt === "Cover Letter")).toMatchObject({ ok: false, how: "upload field not found" });
+      expect(r.missing).toEqual(["Cover Letter"]);
+      expect(uploads()).toEqual(["upload Resume=Pat Lee - Acme Inc. Resume.docx"]);
+    });
+  });
+
   it("fills the field labeled with the question before one whose label only contains it (#698)", async () => {
     const id = await seed("approved", [
       { kind: "field", prompt: "Website", content: "https://pat.design" },
