@@ -159,3 +159,10 @@ describe("a race answer that fits several options is asked (#954)", () => {
   });
 });
 
+describe("a non-veteran never gets a veteran's answer (#961)", () => {
+  it("skips \"I am a veteran, but not a protected veteran\" listed first", () => {
+    const opts = ["I am a veteran, but not a protected veteran", "I am not a veteran", "I identify as one or more of the classifications of protected veteran", "I do not wish to self-identify"];
+    expect(matchOption("Not a veteran", opts)).toBe("I am not a veteran");
+  });
+});
+
