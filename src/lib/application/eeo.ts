@@ -92,7 +92,10 @@ export function matchOption(choice: string, options: string[]): string | null {
   // "Not a veteran" must not match "I am a veteran", and the reverse: test the negative form first.
   if (choice === "Veteran") return options.find((o) => !SYNONYMS["Not a veteran"].test(o) && re.test(o)) ?? null;
   // Workday race lists say "White (Not Hispanic or Latino)": a Hispanic person must not get one of those (#662).
-  const negated = (o: string) => choice === "Hispanic or Latino" && /\bnot\s+(hispanic|latin)/i.test(o);
+  const negated = (o: string) =>
+    (choice === "Hispanic or Latino" && /\bnot\s+(hispanic|latin)/i.test(o)) ||
+    // "I am a veteran, but not a protected veteran" holds "not ... veteran" but is a veteran's answer (#961).
+    (choice === "Not a veteran" && /\bam a veteran\b|^yes\b/i.test(o));
   const hits = re ? options.filter((o) => !DECLINES.test(o) && re.test(o) && !negated(o)) : [];
   // A race answer that fits several options ("Asian" on a list with East, South and Southeast Asian) is not a guess
   // to make: ask once and remember the exact wording (#954).
