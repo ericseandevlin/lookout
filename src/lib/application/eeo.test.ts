@@ -159,6 +159,16 @@ describe("a race answer that fits several options is asked (#954)", () => {
   });
 });
 
+describe("a disability question that mentions veterans (#973)", () => {
+  it("is classed and answered as disability", () => {
+    const q = "Do you have a disability or a history of one? Veterans with service-connected disabilities should also answer here.";
+    expect(classify(q)).toBe("disability");
+    expect(classify("Are you a protected veteran? This includes disabled veterans.")).toBe("veteran");
+    expect(classify("Disabled veteran status")).toBe("veteran");
+    expect(resolve({ answers: { disability: "Yes", veteran: "Not a veteran" }, exact: {} }, q, cc305)).toBe(cc305[0]);
+  });
+});
+
 describe("a non-veteran never gets a veteran's answer (#961)", () => {
   it("skips \"I am a veteran, but not a protected veteran\" listed first", () => {
     const opts = ["I am a veteran, but not a protected veteran", "I am not a veteran", "I identify as one or more of the classifications of protected veteran", "I do not wish to self-identify"];
