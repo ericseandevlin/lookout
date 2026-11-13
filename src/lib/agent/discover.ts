@@ -247,10 +247,15 @@ const scorerSystem = () => `You score job postings for one candidate. Today is $
 Only use facts on the page. Never invent pay or dates; use null when the page doesn't state them. Annualize hourly pay only if it is clearly full time.
 Reasons are read on a phone: short, concrete, no filler.`;
 
-/** strict: a failed scoring call throws instead of skipping the batch, for a single page someone added (#628). */
-async function scorePages(ctx: Context, pages: Page[], usage: Usage, report?: Report, strict = false): Promise<ScoredT[]> {
+/**
+ * strict: a failed scoring call throws instead of skipping the batch, for a single page someone added (#628).
+ * One failed batch is skipped, but when every batch fails the run fails, so an outage isn't reported as "no matching
+ * roles" and counted as today's search (#920).
+ */
+export async function scorePages(ctx: Context, pages: Page[], usage: Usage, report?: Report, strict = false): Promise<ScoredT[]> {
   const out: ScoredT[] = [];
   const batches = Math.ceil(pages.length / BATCH);
+  let failed = 0;
   for (let i = 0; i < pages.length; i += BATCH) {
     const batch = pages.slice(i, i + BATCH);
     const n = i / BATCH + 1;
@@ -280,8 +285,10 @@ async function scorePages(ctx: Context, pages: Page[], usage: Usage, report?: Re
     } catch (e) {
       console.error("[discover] scoring batch failed", e);
       if (strict) throw new Error("Lookout couldn't score that posting just now. Try adding it again.");
+      failed++;
     }
   }
+  if (batches && failed === batches) throw new Error(`Lookout read ${pages.length} postings but couldn't score any of them. It will try again later.`);
   return out;
 }
 
