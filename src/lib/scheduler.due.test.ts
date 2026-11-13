@@ -212,12 +212,25 @@ describe("the rest of a pass (#377)", () => {
   });
 
   it("stops the pass on a budget cap instead of failing every search", async () => {
-    await seed();
-    await seed();
+    for (let i = 0; i < 5; i++) await seed();
     discover.mockRejectedValue(new BudgetError("Daily cap reached"));
     await tick();
-    expect(discover).toHaveBeenCalledOnce();
+    // The three already started end on the cap themselves; nothing new starts (#988).
+    expect(discover).toHaveBeenCalledTimes(3);
     expect(recordError).not.toHaveBeenCalled();
+  });
+
+  it("with one slot, stops at the first budget cap", async () => {
+    process.env.SCHEDULER_CONCURRENCY = "1";
+    try {
+      await seed();
+      await seed();
+      discover.mockRejectedValue(new BudgetError("Daily cap reached"));
+      await tick();
+      expect(discover).toHaveBeenCalledOnce();
+    } finally {
+      delete process.env.SCHEDULER_CONCURRENCY;
+    }
   });
 
   it("skips a person at their own cap, tells them once on their board, and runs the next person (#990)", async () => {
@@ -248,5 +261,46 @@ describe("the rest of a pass (#377)", () => {
     expect(recordError).toHaveBeenCalledOnce();
     expect(recordError.mock.calls[0]).toEqual(["scheduler", expect.any(Error), { path: expect.stringContaining("run failed for search") }]);
     expect(sendDigest).toHaveBeenCalledOnce();
+  });
+});
+
+describe("running due searches side by side (#988)", () => {
+  it("runs at most 3 at once and still runs every due search", async () => {
+    const all = [];
+    for (let i = 0; i < 7; i++) all.push(await seed());
+    let inFlight = 0;
+    let most = 0;
+    discover.mockImplementation(async (searchId: string) => {
+      most = Math.max(most, ++inFlight);
+      await new Promise((r) => setTimeout(r, 5));
+      inFlight--;
+      return { runId: `run-${searchId}` };
+    });
+    await tick();
+    expect(most).toBe(3);
+    expect(ran().sort()).toEqual(all.map((s) => s.searchId).sort());
+    expect(sendDigest).toHaveBeenCalledTimes(7);
+  });
+
+  it("does not let one slow search hold up the others", async () => {
+    const all = [];
+    for (let i = 0; i < 5; i++) all.push(await seed());
+    let release = () => {};
+    const slow = new Promise<void>((r) => (release = r));
+    let slowId = "";
+    discover.mockImplementation(async (searchId: string) => {
+      if (!slowId) {
+        slowId = searchId;
+        await slow;
+      }
+      return { runId: `run-${searchId}` };
+    });
+    const pass = tick();
+    // The other four finish and get their email while the first is still going.
+    await vi.waitFor(() => expect(sendDigest).toHaveBeenCalledTimes(4));
+    expect(sendDigest.mock.calls.map((c) => (c as unknown[])[0])).not.toContain(all.find((s) => s.searchId === slowId)?.userId);
+    release();
+    await pass;
+    expect(sendDigest).toHaveBeenCalledTimes(5);
   });
 });

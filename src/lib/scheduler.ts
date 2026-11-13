@@ -150,7 +150,18 @@ async function work() {
   await sweepApplications().catch((e) => fail("apply sweep", e));
   // Warn the admins before the AI key's monthly limit stops everything (#990). Checks at most once an hour.
   await checkKeyLimit().catch((e) => fail("key limit check", e));
-  for (const { userId, searchId } of await dueSearches()) {
+  await runDue(await dueSearches());
+}
+
+/**
+ * Run due searches a few at a time (#988), so one person's slow search doesn't hold up everyone else's
+ * morning email. Each slot takes the next search as soon as it is free. The app-wide cap or missing config
+ * stops new starts; searches already running finish on their own.
+ */
+async function runDue(due: { userId: string; searchId: string }[]) {
+  let next = 0;
+  let stopped = false;
+  const runOne = async ({ userId, searchId }: { userId: string; searchId: string }) => {
     try {
       const r = await discover(searchId, "scheduled");
       // Even with nothing new: pinned finds due soon still go out, once a day (#304).
@@ -159,13 +170,20 @@ async function work() {
       // One person's own cap: tell them on their board and go on to the next person (#990).
       if (e instanceof BudgetError && e.scope === "user") {
         await noteUserCap(userId, searchId).catch((err) => fail("user cap note", err));
-        continue;
+        return;
       }
       // The app-wide cap and missing config affect everyone; stop this tick instead of failing search by search.
-      if (e instanceof BudgetError || e instanceof AiConfigError || e instanceof SearchConfigError) break;
+      if (e instanceof BudgetError || e instanceof AiConfigError || e instanceof SearchConfigError) {
+        stopped = true;
+        return;
+      }
       fail(`run failed for search ${searchId}`, e);
     }
-  }
+  };
+  const slot = async () => {
+    while (!stopped && next < due.length) await runOne(due[next++]);
+  };
+  await Promise.all(Array.from({ length: Math.min(env.schedulerConcurrency, due.length) }, slot));
 }
 
 let started = false;

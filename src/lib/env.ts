@@ -61,6 +61,10 @@ export const env = {
   get schedulerEnabled() {
     return process.env.SCHEDULER !== "off";
   },
+  /** How many due searches a scheduler pass runs at once (#988). Kept small: the database pool has 5 connections. */
+  get schedulerConcurrency() {
+    return Math.max(1, Math.floor(envNumber("SCHEDULER_CONCURRENCY", 3)));
+  },
   get timezone() {
     return process.env.APP_TZ || "America/New_York";
   },

@@ -120,6 +120,7 @@ AI and search settings can live in env or be set in Admin > AI settings (the dat
 | `DAILY_BUDGET_USD`, `USER_DAILY_BUDGET_USD` | Rolling 24h spend caps (also editable in Admin). Admins get an email when the app-wide cap stops work (once a day) and when the OpenRouter key reaches 70% of its monthly limit (once a month). A person at their own cap sees a plain note on their board and their scheduled search waits; others keep running (#990). |
 | `APP_TZ` | Timezone for run days (default `America/New_York`) |
 | `SCHEDULER` | `off` disables scheduled runs |
+| `SCHEDULER_CONCURRENCY` | How many due searches run at once in a scheduler pass (default 3, #988) |
 | `FEATURE_AUTO_APPLY` | `on` shows auto-apply to admins (staging only until released) |
 | `FEATURE_AUTO_SUBMIT` | `on` lets auto-apply press Submit itself; otherwise it fills the form and stops for review |
 | `FEATURE_EVENTS` | `on` shows the Events page and adds event searches to scheduled runs (staging only until released) |
