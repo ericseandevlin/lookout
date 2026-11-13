@@ -1,6 +1,6 @@
 import "server-only";
 import { createHash } from "node:crypto";
-import { and, desc, eq, ne } from "drizzle-orm";
+import { and, asc, desc, eq, ne } from "drizzle-orm";
 import { z } from "zod";
 import { db, schema } from "@/lib/db";
 import type { SearchProfile } from "@/lib/db/schema";
@@ -41,7 +41,13 @@ export async function loadRawInputs(searchId: string): Promise<RawInputs & { sto
   const [s] = await db.select().from(schema.searches).where(eq(schema.searches.id, searchId));
   if (!s) throw new Error("Search not found");
   const userId = s.userId;
-  const mats = await db.select().from(schema.materials).where(eq(schema.materials.userId, userId));
+  // In the order Profile shows them. Without an order, Postgres returns rows as stored, and a re-read link moves, so a
+  // different 4 links fed the profile and changed its hash, paying for a rebuild nothing asked for (#966).
+  const mats = await db
+    .select()
+    .from(schema.materials)
+    .where(eq(schema.materials.userId, userId))
+    .orderBy(asc(schema.materials.position), asc(schema.materials.createdAt), asc(schema.materials.id));
   const resume = mats.find((m) => m.kind === "resume");
   const li = mats.find((m) => m.kind === "linkedin");
   const answers = s.answers ?? {};
