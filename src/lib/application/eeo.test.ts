@@ -103,6 +103,17 @@ describe("matchOption on Workday and federal forms (#662)", () => {
     expect(matchOption(DECLINE, workdayRace)).toBe("I do not wish to answer. (United States of America)");
   });
 
+  it("never says Not Hispanic for someone whose profile says Hispanic, whatever their race (#1024)", () => {
+    const p = (race: string, hispanic: string) => ({ answers: { race, hispanic }, exact: {} });
+    expect(resolve(p("White", "Yes"), "Race/Ethnicity", workdayRace)).toBeNull();
+    expect(resolve(p("Asian", "Yes"), "Race/Ethnicity", workdayRace)).toBeNull();
+    expect(resolve(p("Hispanic or Latino", "Yes"), "Race/Ethnicity", workdayRace)).toBe("Hispanic or Latino (United States of America)");
+    expect(resolve(p(DECLINE, "Yes"), "Race/Ethnicity", workdayRace)).toBe("I do not wish to answer. (United States of America)");
+    // A plain race list is unaffected, and Hispanic No still gets the combined option.
+    expect(resolve(p("White", "Yes"), "Race", clearRace)).toBe("White");
+    expect(resolve(p("White", "No"), "Race/Ethnicity", workdayRace)).toBe("White (Not Hispanic or Latino) (United States of America)");
+  });
+
   it("reads Asian as a word, not inside Caucasian", () => {
     expect(matchOption("Asian", ["White/Caucasian", "Asian", "Decline to self-identify"])).toBe("Asian");
     expect(matchOption("Asian", ["Caucasian", "Black"])).toBeNull();

@@ -130,5 +130,9 @@ export function resolve(profile: EeoProfile, prompt: string, options: string[] |
   const cat = categoryOf(prompt, opts);
   const choice = cat ? profile.answers[cat] : undefined;
   if (!choice) return null;
-  return opts.length ? matchOption(choice, opts) : choice;
+  if (!opts.length) return choice;
+  // A combined race list says "White (Not Hispanic or Latino)": someone whose profile says Hispanic must never get one
+  // of those. With nothing else that fits, ask them once instead of picking for them (#1024).
+  const hispanic = cat === "race" && choice !== DECLINE && profile.answers.hispanic === "Yes";
+  return matchOption(choice, hispanic ? opts.filter((o) => !/\bnot\s+(hispanic|latin)/i.test(o)) : opts);
 }
