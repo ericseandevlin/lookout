@@ -223,6 +223,21 @@ describe("sendDigest", () => {
     expect(m.text).not.toContain("Already emailed");
   });
 
+  it("says when Lookout searches and links Settings in the first finds email only (#992)", async () => {
+    await db.update(schema.settings).set({ freq: "Twice a week", runDays: ["Tue", "Fri"] }).where(eq(schema.settings.userId, userId));
+    await find("First");
+    await sendDigest(userId);
+    const [m] = sent();
+    expect(m.text).toContain("Lookout searches Tuesday and Friday. You can change how often, or turn off this email, in Settings: https://lookout.example.com/settings#discovery");
+    expect(m.html).toContain('href="https://lookout.example.com/settings#discovery"');
+
+    await db.update(schema.digests).set({ sentAt: new Date(Date.now() - 2 * DAY) }).where(eq(schema.digests.userId, userId));
+    await find("Second");
+    await sendDigest(userId);
+    expect(sent()[1].text).toContain("Second");
+    expect(sent()[1].text).not.toContain("Lookout searches");
+  });
+
   it("sends nothing when every find since the last email is already covered (#586)", async () => {
     await find("Already emailed", { ago: 2 * 3600_000 });
     await db.insert(schema.digests).values({ userId, finds: 1, sentAt: new Date(Date.now() - 3600_000) });

@@ -153,6 +153,7 @@ export async function getState(user: SessionUser): Promise<AppState> {
     user: {
       name: user.name,
       email: user.email,
+      joinedAt: user.createdAt.toISOString(),
       isAdmin: isAdmin(user),
       autoApply: canUseAutoApply(user),
       events: featureOn("EVENTS"),

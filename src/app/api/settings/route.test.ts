@@ -70,6 +70,16 @@ describe("PATCH /api/settings", () => {
     ]);
   });
 
+  it("records which settings changed, but not the sidebar (#992)", async () => {
+    await patch({ freq: "Daily", digest: false });
+    await patch({ railClosed: true });
+    const ev = await db.select().from(schema.events).where(eq(schema.events.userId, current!.id));
+    expect(ev.map((e) => [e.type, e.target]).sort()).toEqual([
+      ["settings_change", "digest"],
+      ["settings_change", "freq"],
+    ]);
+  });
+
   it("refuses values outside the allowed sets", async () => {
     for (const bad of [{ freq: "Hourly" }, { day: "Funday" }, { days: [] }, { days: ["Mon", "Tue", "Wed"] }, { newDays: 5 }, { digest: "yes" }]) {
       expect((await patch(bad)).status).toBe(400);

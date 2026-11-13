@@ -8,6 +8,7 @@ import { goLink } from "./digestLinks";
 import { dueLabel, pickDueSoon } from "./digestDue";
 import { compLabel } from "./digestComp";
 import { color } from "@/lib/tokens";
+import { scheduleLabel } from "./firstWeek";
 
 /** Email the finds added in the last day, plus pinned finds due in the next week (#304), if the user has the summary turned on. Links go through /go so clicks count (#34).
  * Due-soon finds alone send it too, but at most once a day, since this runs after every scheduled search. */
@@ -78,6 +79,12 @@ export async function sendDigest(userId: string, runId?: string) {
         .join("")}</table>`
     : "";
   const dueText = due.map(({ row: o, days }) => `${dueLabel(days)}: ${o.title}, ${o.company}\n${link(o.id)}`).join("\n\n");
+  // The first finds email says when Lookout searches and where to change it: new people miss Settings (#992).
+  const settingsUrl = `${env.appUrl}/settings#discovery`;
+  const when = scheduleLabel({ freq: s.freq, day: s.runDay, days: s.runDays });
+  const first = !last?.at;
+  const lead = `Lookout searches ${when}. You can change how often, or turn off this email, in`;
+  const firstHtml = first ? `<div style="font-size:14px;color:#6B6358;margin-top:20px">${escapeHtml(lead)} <a href="${settingsUrl}" style="color:#99220F;font-weight:600">Settings</a>.</div>` : "";
   const headline = n ? `${n} new ${n === 1 ? "find" : "finds"} today` : `${due.length} pinned ${due.length === 1 ? "find" : "finds"} due soon`;
   const html = emailShell(
     headline,
@@ -90,15 +97,16 @@ export async function sendDigest(userId: string, runId?: string) {
 <div style="font-size:14px;color:${posted ? "#99220F" : "#6B6358"};margin-top:2px">${comp}</div></td></tr>`,
       )
       .join("")}</table>${moreHtml}` : ""}${dueHtml}
-<a href="${link("board")}" style="display:inline-block;margin-top:20px;background:#99220F;color:#fff;text-decoration:none;font-weight:600;font-size:14.5px;padding:13px 24px;border-radius:12px">Open your board</a>${footer.html}`,
+<a href="${link("board")}" style="display:inline-block;margin-top:20px;background:#99220F;color:#fff;text-decoration:none;font-weight:600;font-size:14.5px;padding:13px 24px;border-radius:12px">Open your board</a>${firstHtml}${footer.html}`,
   );
   const newText = items.map(({ o, uo, comp }) => `${uo.score}/5  ${o.title}, ${o.company} (${o.location}) ${comp}\n${link(o.id)}`).join("\n\n");
   const text = [newText, more > 0 && `${moreLabel}: ${link("board")}`, dueText && `Due soon\n\n${dueText}`].filter(Boolean).join("\n\n");
+  const firstText = first ? `\n\n${lead} Settings: ${settingsUrl}` : "";
   try {
     await sendMail({
       to: u.email,
       subject: n ? `Lookout: ${n} new ${n === 1 ? "find" : "finds"}${due.length ? `, ${due.length} due soon` : ""}` : `Lookout: ${headline}`,
-      text: `${text}\n\nOpen your board: ${link("board")}\n\n--\n${footer.text}`,
+      text: `${text}\n\nOpen your board: ${link("board")}${firstText}\n\n--\n${footer.text}`,
       html,
       headers,
     });
