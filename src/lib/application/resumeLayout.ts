@@ -245,7 +245,8 @@ export function shapeResume(md: string): { md: string; fixed: string[] } {
 
 type Kid = { head: string; body: string[] };
 type Entry = { head: string; body: string[]; kids: Kid[] };
-type Span = { s: number; e: number; from: string; to: string };
+/** Month counts for each end; sy/ey mark an end given as a bare year, so its month is a guess (#939). */
+type Span = { s: number; e: number; from: string; to: string; sy?: boolean; ey?: boolean };
 
 const MONTHS = ["jan", "feb", "mar", "apr", "may", "jun", "jul", "aug", "sep", "oct", "nov", "dec"];
 const FREELANCE = /\b(freelance|self-employed|independent contractor)\b/i;
@@ -262,12 +263,15 @@ function when(s: string, end: boolean): number | null {
   return +y[0] * 12 + m;
 }
 
+const yearOnly = (s: string) => !/\b\d{1,2}\//.test(s) && !/\b(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)/i.test(s);
+
 function span(right?: string): Span | null {
   if (!right) return null;
   const [from, to = from] = right.split(/\s*[–-]\s*|\s+to\s+/i);
   const s = when(from, false);
   const e = when(to, true);
-  return s === null || e === null ? null : { s, e, from: from.trim(), to: to.trim() };
+  if (s === null || e === null) return null;
+  return { s, e, from: from.trim(), to: to.trim(), sy: yearOnly(from), ey: e !== Infinity && yearOnly(to) };
 }
 
 /** "Title, Agency (client: Brand)" and "Title, Brand (via Agency)" read as "Title (contract via Agency), Brand". */
@@ -299,7 +303,21 @@ const entrySpan = (e: Entry): Span | null => {
   if (!all.length || all.some((x) => !x)) return span(roleOf(e.head).right);
   const s = all.reduce((a, b) => (b!.s < a!.s ? b : a))!;
   const t = all.reduce((a, b) => (b!.e > a!.e ? b : a))!;
-  return { s: s.s, e: t.e, from: s.from, to: t.to };
+  return { s: s.s, e: t.e, from: s.from, to: t.to, sy: s.sy, ey: t.ey };
+};
+
+const year = (m: number) => Math.floor((m - 1) / 12);
+
+/**
+ * Whether span a sits inside span b. An end given as a bare year could be any month of it, so two ends in the same
+ * year with either one bare is a tie, not containment: "2018" next to "2018 – 2021" may be the summer before (#939).
+ */
+const within = (a: Span, b: Span) => {
+  if (a.e === Infinity && b.e === Infinity) return false;
+  if (!(b.s <= a.s && a.e <= b.e && (b.s < a.s || a.e < b.e))) return false;
+  if ((a.sy || b.sy) && year(a.s) === year(b.s)) return false;
+  if ((a.ey || b.ey) && a.e !== Infinity && year(a.e) === year(b.e)) return false;
+  return true;
 };
 
 const byLatest = <T>(xs: T[], at: (x: T) => Span | null) => {
@@ -371,7 +389,7 @@ function shapeExperience(secs: { title: string; lines: string[] }[]): string[] {
     const a = spanOf(e);
     return a && out.some((o) => {
       const b = spanOf(o);
-      return o !== e && b && !(a.e === Infinity && b.e === Infinity) && b.s <= a.s && a.e <= b.e && (b.s < a.s || a.e < b.e);
+      return o !== e && b && within(a, b);
     });
   });
   if (side.length) {
