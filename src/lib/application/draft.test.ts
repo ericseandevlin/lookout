@@ -110,7 +110,21 @@ describe("newNumbers", () => {
     expect(newNumbers("Mentored 6 designers across 3 teams.", "Mentored 6 mid-level designers across 3 business teams.")).toEqual([]);
     expect(newNumbers("Cut load time to 100ms for 5 brands.", "Cut load time to 100ms for 5 key brands.")).toEqual([]);
     expect(newNumbers("Raised $2M with 10x growth.", "Raised $3M with 10x growth and 10+ hires.")).toEqual(["$3m", "10+"]);
-    expect(newNumbers("Led 4 teams.", "Led 4 teams and $5 million in spend.")).toEqual(["$5"]);
+    expect(newNumbers("Led 4 teams.", "Led 4 teams and $5 million in spend.")).toEqual(["$5m"]);
+  });
+
+  it("reads one fact in two spellings as the same number (#901)", () => {
+    expect(newNumbers("Grew revenue to $1.2 million in 2021.", "Grew revenue to $1.2M in 2021.")).toEqual([]);
+    expect(newNumbers("Managed a $300 thousand budget, up 20 percent.", "Managed a $300K budget, up 20%.")).toEqual([]);
+    expect(newNumbers("Over 15 years leading teams.", "15+ years leading teams.")).toEqual([]);
+    expect(newNumbers("More than 40 engineers.", "40+ engineers.")).toEqual([]);
+    expect(newNumbers("Staff Engineer, Jan 2020 to 03/2023.", "Staff Engineer, 01/2020 to 03/2023.")).toEqual([]);
+  });
+
+  it("still flags a number the master never had, in any spelling (#901)", () => {
+    expect(newNumbers("Grew revenue to $1.2 million.", "Grew revenue to $1.5M.")).toEqual(["$1.5m"]);
+    expect(newNumbers("15 years leading teams.", "15+ years leading teams.")).toEqual(["15+"]);
+    expect(newNumbers("Over 15 years.", "20+ years.")).toEqual(["20+"]);
   });
 });
 
