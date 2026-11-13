@@ -319,3 +319,17 @@ describe("hourly and monthly salary questions (#949)", () => {
     expect(r?.question).toContain("$91 per hour as base");
   });
 });
+
+describe("rate wording is a salary ask (#953)", () => {
+  it.each(["Desired hourly rate", "What is your expected hourly rate?", "Hourly rate expectation", "Expected rate per hour", "Rate expectations (USD/hour)"])(
+    "%s is answered per hour",
+    (q) => {
+      expect(askPer(q)).toBe("hour");
+      expect(isSalaryQuestion(q)).toBe(true);
+      expect(suggestSalary({ floor: "150k", min: 160000, max: 200000, per: askPer(q) })?.amount).toBe("$91");
+    },
+  );
+  it("a yes/no check on the posted rate is still not an ask", () => {
+    expect(isSalaryQuestion("Are you comfortable with the posted hourly rate?")).toBe(false);
+  });
+});
