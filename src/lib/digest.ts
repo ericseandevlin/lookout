@@ -90,16 +90,17 @@ export async function sendDigest(userId: string, runId?: string) {
     headline,
     `${n ? `<table width="100%" cellpadding="0" cellspacing="0">${items
       .map(
+        // No location, no dangling " · " (#1062).
         ({ o, uo, comp, posted }) => `<tr><td style="padding:12px 0;border-top:1px solid ${color.border}">
 <div style="font-size:14px;font-weight:700;color:#99220F">MATCH ${uo.score}/5</div>
 <div style="font-size:15px;font-weight:600;margin-top:2px"><a href="${link(o.id)}" style="color:#1D1A0F">${escapeHtml(o.title)}</a></div>
-<div style="font-size:14px;color:#6B6358">${escapeHtml(o.company)} · ${escapeHtml(o.location)}</div>
+<div style="font-size:14px;color:#6B6358">${escapeHtml(o.company)}${o.location.trim() ? ` · ${escapeHtml(o.location)}` : ""}</div>
 <div style="font-size:14px;color:${posted ? "#99220F" : "#6B6358"};margin-top:2px">${comp}</div></td></tr>`,
       )
       .join("")}</table>${moreHtml}` : ""}${dueHtml}
 <a href="${link("board")}" style="display:inline-block;margin-top:20px;background:#99220F;color:#fff;text-decoration:none;font-weight:600;font-size:14.5px;padding:13px 24px;border-radius:12px">Open your board</a>${firstHtml}${footer.html}`,
   );
-  const newText = items.map(({ o, uo, comp }) => `${uo.score}/5  ${o.title}, ${o.company} (${o.location}) ${comp}\n${link(o.id)}`).join("\n\n");
+  const newText = items.map(({ o, uo, comp }) => `${uo.score}/5  ${o.title}, ${o.company}${o.location.trim() ? ` (${o.location})` : ""} ${comp}\n${link(o.id)}`).join("\n\n");
   const text = [newText, more > 0 && `${moreLabel}: ${link("board")}`, dueText && `Due soon\n\n${dueText}`].filter(Boolean).join("\n\n");
   const firstText = first ? `\n\n${lead} Settings: ${settingsUrl}` : "";
   try {

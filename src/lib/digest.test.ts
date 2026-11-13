@@ -40,10 +40,10 @@ beforeEach(async () => {
 });
 
 /** A find on the board, added `ago` ms back. */
-async function find(title: string, o: { ago?: number; score?: number; due?: string; pinned?: boolean; archived?: boolean; compMin?: number; compMax?: number; currency?: string } = {}) {
+async function find(title: string, o: { ago?: number; score?: number; due?: string; pinned?: boolean; archived?: boolean; compMin?: number; compMax?: number; currency?: string; location?: string } = {}) {
   const [opp] = await db
     .insert(schema.opportunities)
-    .values({ company: "Acme <Labs>", title, location: "Remote", fingerprint: title, compMin: o.compMin, compMax: o.compMax, currency: o.currency, attributes: o.due ? { due: o.due } : {} })
+    .values({ company: "Acme <Labs>", title, location: o.location ?? "Remote", fingerprint: title, compMin: o.compMin, compMax: o.compMax, currency: o.currency, attributes: o.due ? { due: o.due } : {} })
     .returning();
   await db.insert(schema.userOpportunities).values({
     userId,
@@ -103,6 +103,15 @@ describe("sendDigest", () => {
     const [dg] = await digests();
     expect(dg.finds).toBe(2);
     expect(m.text).toContain(`https://lookout.example.com/go/${dg.id}/board`);
+  });
+
+  it("leaves out the separator when a find has no location (#1062)", async () => {
+    await find("Nowhere role", { location: "" });
+    await sendDigest(userId);
+    const [m] = sent();
+    expect(m.html).toContain("Acme &lt;Labs&gt;</div>");
+    expect(m.html).not.toContain("Acme &lt;Labs&gt; · ");
+    expect(m.text).toContain("Nowhere role, Acme <Labs> No comp posted");
   });
 
   it("shows a posted floor and a non-USD range instead of No comp posted (#492)", async () => {
