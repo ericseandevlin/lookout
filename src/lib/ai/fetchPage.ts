@@ -181,9 +181,26 @@ async function fetchRaw(rawUrl: string): Promise<{ url: string; html: string }> 
       }
       chunks.push(value);
     }
-    return { url: url.toString(), html: Buffer.concat(chunks).toString("utf8") };
+    return { url: url.toString(), html: decodeBody(Buffer.concat(chunks), type) };
   }
   throw new FetchError("Too many redirects");
+}
+
+/**
+ * Page bytes as text, in the charset the server or the page declares (#1036). A windows-1252 page read as UTF-8 lost
+ * its en dashes and non-breaking spaces, and with them the pay range. Anything unknown reads as UTF-8.
+ */
+export function decodeBody(bytes: Uint8Array, contentType = "") {
+  const head = Buffer.from(bytes.subarray(0, 2048)).toString("latin1");
+  const label =
+    contentType.match(/charset=["']?([\w.:-]+)/i)?.[1] ??
+    head.match(/<meta[^>]+charset=["']?([\w.:-]+)/i)?.[1] ??
+    "utf-8";
+  try {
+    return new TextDecoder(label.toLowerCase()).decode(bytes);
+  } catch {
+    return new TextDecoder("utf-8").decode(bytes);
+  }
 }
 
 /** Readable text plus any schema.org JobPosting data, which most ATS pages embed. */

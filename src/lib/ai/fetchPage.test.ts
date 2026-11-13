@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { fetchPage, isPublicIp, pageToText, workdayApi, workdayToHtml } from "./fetchPage";
+import { decodeBody, fetchPage, isPublicIp, pageToText, workdayApi, workdayToHtml } from "./fetchPage";
+import { findPay } from "./pay";
 
 describe("isPublicIp", () => {
   it.each(["10.0.0.5", "127.0.0.1", "172.17.0.1", "172.19.0.11", "192.168.1.1", "169.254.169.254", "100.64.0.1", "0.0.0.0", "::1", "fd00::1", "fe80::1", "::ffff:127.0.0.1"])(
@@ -90,4 +91,28 @@ describe("Workday postings (#724)", () => {
   });
 
   it.each(["{}", "<html>", JSON.stringify({ jobPostingInfo: { title: "PM" } })])("returns null for %s", (j) => expect(workdayToHtml(j)).toBeNull());
+});
+
+describe("decodeBody (#1036)", () => {
+  // "$150,000 – $200,000" with a windows-1252 en dash (0x96) and a non-breaking space (0xA0).
+  const cp1252 = Uint8Array.from([...Buffer.from("<p>$150,000"), 0xa0, 0x96, 0xa0, ...Buffer.from("$200,000 per year</p>")]);
+
+  it("reads the charset from the Content-Type header", () => {
+    const html = decodeBody(cp1252, "text/html; charset=windows-1252");
+    expect(html).toContain("$150,000\u00a0\u2013\u00a0$200,000");
+    expect(findPay(html)).toMatchObject({ min: 150000, max: 200000 });
+  });
+
+  it("reads it from a meta tag when the header has none", () => {
+    const meta = Uint8Array.from([...Buffer.from('<html><head><meta charset="ISO-8859-1"></head>'), ...cp1252]);
+    expect(decodeBody(meta, "text/html")).toContain("\u00a0$200,000");
+    const equiv = Uint8Array.from([...Buffer.from('<meta http-equiv="Content-Type" content="text/html; charset=windows-1252">'), ...cp1252]);
+    expect(decodeBody(equiv, "text/html")).toContain("\u2013");
+  });
+
+  it("reads UTF-8 by default and for an unknown label", () => {
+    const utf8 = new TextEncoder().encode("<p>Café – $90k</p>");
+    expect(decodeBody(utf8, "text/html")).toBe("<p>Café – $90k</p>");
+    expect(decodeBody(utf8, "text/html; charset=nonsense-9")).toBe("<p>Café – $90k</p>");
+  });
 });
