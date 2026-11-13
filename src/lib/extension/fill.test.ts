@@ -94,6 +94,39 @@ describe("extension fill: text fields", () => {
     expect([p.value("#a"), p.value("#b")]).toEqual(["", "New York, NY"]);
   });
 
+  it("never puts a question's answer in a shorter field the question only starts with (#888)", async () => {
+    const p = page(`<label for="loc">Location</label><input id="loc">
+      <fieldset><legend>Location: can you work from our New York office 3 days a week?</legend>
+        <label><input type="radio" name="q" id="y">Yes</label><label><input type="radio" name="q" id="n">No</label></fieldset>`);
+    const log = await p.fill({
+      steps: [text("Location", "Brooklyn, NY"), { prompt: "Location: can you work from our New York office 3 days a week?", kind: "choice", content: "Yes", options: ["Yes", "No"] }],
+    });
+    expect(log.map((r) => r.ok)).toEqual([true, true]);
+    expect(p.value("#loc")).toBe("Brooklyn, NY");
+    expect((p.doc.querySelector("#y") as HTMLInputElement).checked).toBe(true);
+  });
+
+  it("keeps a select and a radio group whose question starts the same apart (#888)", async () => {
+    const p = page(`<label for="s">Do you require sponsorship?</label><select id="s"><option></option><option>Yes</option><option>No</option></select>
+      <fieldset><legend>Do you require sponsorship? (now or in the future)</legend>
+        <label><input type="radio" name="f" id="fy">Yes</label><label><input type="radio" name="f" id="fn">No</label></fieldset>`);
+    await p.fill({
+      steps: [
+        { prompt: "Do you require sponsorship?", kind: "choice", content: "No", options: ["Yes", "No"] },
+        { prompt: "Do you require sponsorship? (now or in the future)", kind: "choice", content: "Yes", options: ["Yes", "No"] },
+      ],
+    });
+    expect((p.doc.querySelector("#s") as HTMLSelectElement).value).toBe("No");
+    expect((p.doc.querySelector("#fy") as HTMLInputElement).checked).toBe(true);
+  });
+
+  it("still finds a field whose label holds the question", async () => {
+    const p = page(`<label for="w">Portfolio Website (optional)</label><input id="w">`);
+    const [r] = await p.fill({ steps: [text("Portfolio Website", "https://pat.design")] });
+    expect(r.ok).toBe(true);
+    expect(p.value("#w")).toBe("https://pat.design");
+  });
+
   it("fires input and change so React-style forms see the value", async () => {
     const p = page(`<label for="fn">First Name</label><input id="fn">`);
     const seen: string[] = [];
