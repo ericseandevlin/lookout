@@ -23,3 +23,20 @@ export async function createInvite(email: string, by: { id: string; name: string
   }
   return { link, email, expiresAt: expiresAt.toISOString(), emailed };
 }
+
+export { MAX_BULK } from "@/lib/emailList";
+
+/** Invite several people in one step. One failure doesn't stop the rest; each result says what happened. */
+export async function inviteMany(emails: string[], by: { id: string; name: string; email: string }, send: boolean) {
+  const results: ({ email: string; link: string; emailed: boolean } | { email: string; error: string })[] = [];
+  for (const email of emails) {
+    try {
+      const r = await createInvite(email, by, send);
+      results.push({ email, link: r.link, emailed: r.emailed });
+    } catch (e) {
+      console.error("invite failed", email, e);
+      results.push({ email, error: "Couldn't invite" });
+    }
+  }
+  return results;
+}

@@ -105,3 +105,20 @@ describe("createInvite (#404)", () => {
     expect(sent[0].subject).toBe("paul@example.com invited you to Lookout");
   });
 });
+
+describe("inviteMany (#993)", () => {
+  it("invites each person and returns a link for each", async () => {
+    const { inviteMany } = await import("./invite");
+    const r = await inviteMany(["one@example.com", "two@example.com"], eric, false);
+    expect(r.map((x) => x.email)).toEqual(["one@example.com", "two@example.com"]);
+    expect(r.every((x) => "link" in x && !x.emailed)).toBe(true);
+    expect(await inviteRow("two@example.com")).toBeTruthy();
+  });
+
+  it("emails each one when asked and SMTP is set", async () => {
+    process.env.SMTP_URL = "smtp://mail.example.com";
+    const { inviteMany } = await import("./invite");
+    await inviteMany(["three@example.com", "four@example.com"], eric, true);
+    expect(sent.map((m) => m.to)).toEqual(["three@example.com", "four@example.com"]);
+  });
+});

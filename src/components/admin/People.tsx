@@ -8,6 +8,7 @@ import { useConfirm } from "../Confirm";
 import { usd, when, input, card, th, td, Tabs, Msg } from "./shared";
 import type { Overview, Config } from "./shared";
 import { color } from "@/lib/tokens";
+import { MAX_BULK, parseEmails } from "@/lib/emailList";
 
 // --- People ---------------------------------------------------------------------
 
@@ -94,6 +95,7 @@ export function AdminPeople() {
           </Row>
           <Requests requests={data.requests} emailEnabled={data.emailEnabled} onDone={load} />
           <Invite emailEnabled={data.emailEnabled} onDone={load} />
+          <GroupLinks />
 
           {data.invites.filter((i) => !i.accepted).length > 0 && (
             <Row title="Pending invites" help="Invited but not signed in yet. Resend sends a fresh link; if it keeps landing in spam, copy the link and text it to them.">
@@ -219,44 +221,68 @@ function MoneyInput({ label, value, onSave }: { label: string; value: number; on
   );
 }
 
+type InviteResult = { email: string; link: string; emailed: boolean } | { email: string; error: string };
+
 function Invite({ emailEnabled, onDone }: { emailEnabled: boolean; onDone: () => void }) {
-  const [email, setEmail] = useState("");
+  const [text, setText] = useState("");
   const [send, setSend] = useState(emailEnabled);
-  const [res, setRes] = useState<{ link: string; email: string; emailed: boolean } | null>(null);
-  const [copied, setCopied] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [res, setRes] = useState<InviteResult[] | null>(null);
+  const [copied, setCopied] = useState<string | null>(null);
   const [err, setErr] = useState<string | null>(null);
+  const { ok, bad } = parseEmails(text);
   const create = async () => {
     setErr(null);
-    setCopied(false);
+    setCopied(null);
+    if (!ok.length) return setErr(bad.length ? `Not an email address: ${bad.join(", ")}` : "Paste one or more email addresses.");
+    if (ok.length > MAX_BULK) return setErr(`Up to ${MAX_BULK} people at a time.`);
+    setBusy(true);
     try {
-      const r = await api<{ link: string; email: string; emailed: boolean }>("/api/admin/invite", { method: "POST", json: { email, send } });
-      setRes(r);
-      setEmail("");
+      const r = await api<{ results: InviteResult[] }>("/api/admin/invite", { method: "POST", json: { emails: ok, send: send && emailEnabled } });
+      setRes(r.results);
+      setText(bad.join(", "));
+      if (bad.length) setErr(`Skipped, not email addresses: ${bad.join(", ")}`);
       onDone();
     } catch (e) {
-      setErr(e instanceof Error ? e.message : "Couldn't create the invite");
+      setErr(e instanceof Error ? e.message : "Couldn't create the invites");
+    } finally {
+      setBusy(false);
     }
   };
+  const copy = (key: string, value: string) => navigator.clipboard?.writeText(value).then(() => setCopied(key)).catch(() => {});
+  const links = (res ?? []).filter((r): r is Extract<InviteResult, { link: string }> => "link" in r);
   return (
-    <Row title="Invite someone" help="Creates their invite and a sign-in link that works once and lasts 7 days. Text it to them, or email it if email is set up.">
-      <div style={{ display: "flex", flexDirection: "column", gap: 10, maxWidth: 460 }}>
-        <div style={{ display: "flex", gap: 6 }}>
-          <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} onKeyDown={(e) => e.key === "Enter" && create()} placeholder="their@email.com" aria-label="Email to invite" className="f-brick" style={{ ...input, flex: 1, minWidth: 0 }} />
-          <button onClick={create} style={btn("solid")}>Invite</button>
+    <Row title="Invite people" help="Paste one email or a whole list. Each person gets an invite and a sign-in link that works once and lasts 7 days. Text the links, or email them if email is set up.">
+      <div style={{ display: "flex", flexDirection: "column", gap: 10, maxWidth: 520 }}>
+        <textarea value={text} onChange={(e) => setText(e.target.value)} onKeyDown={(e) => e.key === "Enter" && (e.metaKey || e.ctrlKey) && create()} placeholder={"ana@example.com, bo@example.com\nor one per line"} aria-label="Emails to invite" rows={3} className="f-brick" style={{ ...input, maxWidth: "none", height: "auto", minHeight: 76, padding: "10px 13px", resize: "vertical", fontFamily: "inherit", lineHeight: 1.45 }} />
+        <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+          <button onClick={create} disabled={busy || !ok.length} style={{ ...btn("solid"), opacity: busy || !ok.length ? 0.6 : 1 }}>
+            {busy ? "Inviting..." : ok.length > 1 ? `Invite ${ok.length} people` : "Invite"}
+          </button>
+          <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 14, color: emailEnabled ? color.ink : "#A89F92" }}>
+            <input type="checkbox" checked={send && emailEnabled} disabled={!emailEnabled} onChange={(e) => setSend(e.target.checked)} />
+            {emailEnabled ? "Also email them the link" : "Email isn't set up yet, so copy the links and send them yourself"}
+          </label>
         </div>
-        <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 14, color: emailEnabled ? color.ink : "#A89F92" }}>
-          <input type="checkbox" checked={send && emailEnabled} disabled={!emailEnabled} onChange={(e) => setSend(e.target.checked)} />
-          {emailEnabled ? "Also email them the link" : "Email isn't set up yet, so copy the link and send it yourself"}
-        </label>
         <Msg text={err} />
         {res && (
           <div style={{ display: "flex", flexDirection: "column", gap: 8, padding: 12, borderRadius: 10, background: "#fff", border: `1.5px solid ${color.border}` }}>
-            <span style={{ fontSize: 14, color: color.t2 }}>
-              {res.emailed ? "Emailed to " : "Sign-in link for "}
-              <strong style={{ color: color.ink }}>{res.email}</strong>
-            </span>
-            <code style={{ fontSize: 14, wordBreak: "break-all" }}>{res.link}</code>
-            <button onClick={() => navigator.clipboard?.writeText(res.link).then(() => setCopied(true)).catch(() => {})} style={{ ...btn("outline"), alignSelf: "flex-start", height: 34 }}>{copied ? "Copied" : "Copy link"}</button>
+            {res.map((r) => (
+              <div key={r.email} style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap", fontSize: 14 }}>
+                <strong style={{ flex: 1, minWidth: 160, overflow: "hidden", textOverflow: "ellipsis" }}>{r.email}</strong>
+                {"error" in r ? (
+                  <span style={{ color: color.brick }}>{r.error}</span>
+                ) : (
+                  <>
+                    <span style={{ color: color.greenText, fontWeight: 600 }}>{r.emailed ? "Emailed" : "Link ready"}</span>
+                    <button onClick={() => copy(r.email, r.link)} style={{ ...btn("outline"), height: 30, padding: "0 10px", fontSize: 14 }}>{copied === r.email ? "Copied" : "Copy link"}</button>
+                  </>
+                )}
+              </div>
+            ))}
+            {links.length > 1 && (
+              <button onClick={() => copy("*", links.map((r) => `${r.email}: ${r.link}`).join("\n"))} style={{ ...btn("text"), alignSelf: "flex-start", height: 26, fontSize: 14 }}>{copied === "*" ? "Copied all" : "Copy all links"}</button>
+            )}
           </div>
         )}
       </div>
@@ -264,6 +290,122 @@ function Invite({ emailEnabled, onDone }: { emailEnabled: boolean; onDone: () =>
   );
 }
 
+type Group = { code: string; label: string; link: string; max: number; used: string[]; createdAt: string; expiresAt: string; closedAt?: string; state: "open" | "closed" | "expired" | "full" };
+
+/** Group links (#993): one link a class or meetup can use to make accounts. Was a script over SSH. */
+function GroupLinks() {
+  const ask = useConfirm();
+  const [groups, setGroups] = useState<Group[] | null>(null);
+  const [label, setLabel] = useState("");
+  const [max, setMax] = useState("20");
+  const [days, setDays] = useState("7");
+  const [code, setCode] = useState("");
+  const [more, setMore] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [made, setMade] = useState<string | null>(null);
+  const [copied, setCopied] = useState<string | null>(null);
+  const [showAll, setShowAll] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
+  const load = useCallback(
+    () => api<{ groups: Group[] }>("/api/admin/group-invites").then((r) => setGroups(r.groups)).catch((e) => setErr(e instanceof Error ? e.message : "Couldn't load group links")),
+    [],
+  );
+  useEffect(() => {
+    load();
+  }, [load]);
+  const copy = (key: string, value: string) => navigator.clipboard?.writeText(value).then(() => setCopied(key)).catch(() => {});
+  const create = async () => {
+    setErr(null);
+    const m = Math.floor(Number(max));
+    const d = Math.floor(Number(days));
+    if (!label.trim()) return setErr("Give the link a name, like the class or event.");
+    if (!(m >= 1 && m <= 500)) return setErr("People: 1 to 500.");
+    if (!(d >= 1 && d <= 90)) return setErr("Days: 1 to 90.");
+    setBusy(true);
+    try {
+      const g = await api<Group>("/api/admin/group-invites", { method: "POST", json: { label: label.trim(), max: m, days: d, ...(code.trim() ? { code: code.trim().toLowerCase() } : {}) } });
+      setMade(g.code);
+      setLabel("");
+      setCode("");
+      await load();
+      copy(g.code, g.link);
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : "Couldn't make the link");
+    } finally {
+      setBusy(false);
+    }
+  };
+  const close = async (g: Group) => {
+    if (!(await ask({ eyebrow: "Close group link", title: `Close ${g.label}?`, body: "Nobody new can join with it. The people who already made accounts keep them.", confirmLabel: "Close link", danger: true }))) return;
+    try {
+      await api(`/api/admin/group-invites/${encodeURIComponent(g.code)}`, { method: "DELETE" });
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : "Couldn't close the link");
+    }
+    await load();
+  };
+  const open = (groups ?? []).filter((g) => g.state === "open");
+  const old = (groups ?? []).filter((g) => g.state !== "open");
+  const shown = showAll ? [...open, ...old] : open;
+  const stateLabel = { open: "Open", closed: "Closed", expired: "Expired", full: "Full" } as const;
+  const small = { ...input, width: 90, height: 38 };
+  return (
+    <Row title="Group links" help="One link a whole class or meetup can use to make accounts, until it fills up, expires or you close it. Copy it and text it to the group.">
+      <div style={{ display: "flex", flexDirection: "column", gap: 10, maxWidth: 620 }}>
+        <div style={{ display: "flex", gap: 6, flexWrap: "wrap", alignItems: "flex-end" }}>
+          <input value={label} onChange={(e) => setLabel(e.target.value)} onKeyDown={(e) => e.key === "Enter" && create()} placeholder="Tuesday spin class" aria-label="Group link name" maxLength={80} className="f-brick" style={{ ...input, flex: 1, minWidth: 180, height: 38 }} />
+          <label style={{ display: "flex", flexDirection: "column", gap: 2, fontSize: 12, fontWeight: 600, color: color.t2 }}>
+            People
+            <input inputMode="numeric" value={max} onChange={(e) => setMax(e.target.value)} aria-label="Most people" className="f-brick" style={small} />
+          </label>
+          <label style={{ display: "flex", flexDirection: "column", gap: 2, fontSize: 12, fontWeight: 600, color: color.t2 }}>
+            Days
+            <input inputMode="numeric" value={days} onChange={(e) => setDays(e.target.value)} aria-label="Days it lasts" className="f-brick" style={small} />
+          </label>
+          <button onClick={create} disabled={busy} style={{ ...btn("solid"), height: 38, opacity: busy ? 0.6 : 1 }}>{busy ? "Making..." : "Make link"}</button>
+        </div>
+        {more ? (
+          <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 14, color: color.t2 }}>
+            Code in the link (optional)
+            <input value={code} onChange={(e) => setCode(e.target.value)} placeholder="spin-tuesday" aria-label="Code in the link" maxLength={40} className="f-brick" style={{ ...input, width: 200, height: 34 }} />
+          </label>
+        ) : (
+          <button onClick={() => setMore(true)} style={{ ...btn("text"), alignSelf: "flex-start", height: 24, fontSize: 14 }}>Pick the code in the link</button>
+        )}
+        <Msg text={err} />
+        {groups && !groups.length && <span style={{ fontSize: 14, color: color.t2 }}>No group links yet.</span>}
+        {shown.map((g) => (
+          <div key={g.code} style={{ display: "flex", flexDirection: "column", gap: 6, background: "#fff", border: `1.5px solid ${made === g.code ? color.greenText : color.border}`, borderRadius: 10, padding: "10px 10px 10px 12px", opacity: g.state === "open" ? 1 : 0.7 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+              <span style={{ flex: 1, minWidth: 140, fontSize: 14, fontWeight: 600, overflow: "hidden", textOverflow: "ellipsis" }}>{g.label}</span>
+              <span style={{ fontSize: 14, color: color.t2, fontVariantNumeric: "tabular-nums" }}>{g.used.length}/{g.max} joined</span>
+              <span style={{ fontSize: 14, color: g.state === "open" ? color.t2 : color.brick }}>{g.state === "open" ? `Until ${when(g.expiresAt)}` : stateLabel[g.state]}</span>
+              {g.state === "open" && (
+                <>
+                  <button onClick={() => copy(g.code, g.link)} style={{ ...btn("outline"), height: 30, padding: "0 10px", fontSize: 14 }}>{copied === g.code ? "Copied" : "Copy link"}</button>
+                  <button onClick={() => close(g)} className="h-danger" style={{ ...btn("danger"), height: 30, padding: "0 10px", fontSize: 14 }}>Close</button>
+                </>
+              )}
+            </div>
+            <code style={{ fontSize: 13, color: color.t2, wordBreak: "break-all" }}>{g.link}</code>
+            {made === g.code && <span style={{ fontSize: 14, color: color.greenText, fontWeight: 600 }}>{copied === g.code ? "Made and copied." : "Made."}</span>}
+            {g.used.length > 0 && (
+              <details style={{ fontSize: 14, color: color.t2 }}>
+                <summary style={{ cursor: "pointer" }}>Who joined</summary>
+                <div style={{ marginTop: 4 }}>{g.used.join(", ")}</div>
+              </details>
+            )}
+          </div>
+        ))}
+        {old.length > 0 && (
+          <button onClick={() => setShowAll((v) => !v)} style={{ ...btn("text"), alignSelf: "flex-start", height: 24, fontSize: 14 }}>
+            {showAll ? "Hide closed and expired" : `Show closed and expired (${old.length})`}
+          </button>
+        )}
+      </div>
+    </Row>
+  );
+}
 
 function Requests({ requests, emailEnabled, onDone }: { requests: Overview["requests"]; emailEnabled: boolean; onDone: () => void }) {
   const [links, setLinks] = useState<Record<string, { link: string; emailed: boolean }>>({});
