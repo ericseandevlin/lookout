@@ -19,13 +19,21 @@ vi.mock("@/lib/db", () => ({ db, schema }));
  * A fake application form in place of Chromium (#385). It answers the Playwright calls submit.ts
  * makes: controls found by label or role, a Submit button, and what the page shows after Submit.
  */
-type El = { kind: "control" | "file" | "button" | "option" | "confirm" | "captcha" | "group"; label: string; tag?: string; type?: string; role?: string; after?: boolean; options?: string[] };
+type El = { kind: "control" | "file" | "button" | "option" | "confirm" | "captcha" | "group" | "wrapper"; label: string; tag?: string; type?: string; role?: string; after?: boolean; options?: string[]; children?: El[] };
 type Page = ReturnType<typeof fakePage>;
+
+/** The full text content of an element: its own label plus all descendants' labels. */
+function textOf(e: El): string {
+  if (!e.children?.length) return e.label;
+  return [e.label, ...e.children.flatMap((c) => textOf(c))].join(" ");
+}
 
 function fakePage(els: El[]) {
   const did: string[] = [];
   let submitted = false;
-  const shown = () => els.filter((e) => !e.after || submitted);
+  /** All descendant elements, flat for discovery. */
+  const allEls = (el: El): El[] => [el, ...(el.children ?? []).flatMap(allEls)];
+  const shown = () => els.flatMap(allEls).filter((e) => !e.after || submitted);
   const loc = (find: () => El[]): Loc => {
     const one = () => {
       const e = find()[0];
@@ -37,16 +45,20 @@ function fakePage(els: El[]) {
       last: () => loc(() => find().slice(-1)),
       nth: (i) => loc(() => find().slice(i, i + 1)),
       or: (o) => loc(() => [...find(), ...o.all()]),
-      filter: ({ hasText, has }) => loc(() => find().filter((e) => (!hasText || e.label.includes(hasText)) && (!has || has.all().includes(e)))),
+      filter: ({ hasText, has }) => loc(() => find().filter((e) => (!hasText || textOf(e).includes(hasText)) && (!has || has.all().includes(e)))),
       locator: (sel) =>
         loc(() =>
           sel === "input[type=file]"
             ? find().filter((e) => e.kind === "file")
-            : sel === "option"
-              ? find().flatMap((e) => (e.options ?? []).map((o) => ({ kind: "option" as const, label: o })))
-              : sel === "input[type=radio]"
-                ? find().filter((e) => e.kind === "group" && e.type === "radio")
-                : [],
+            : sel === "input:not([type=file]):not([type=hidden]),textarea,select"
+              ? find().filter((e) => e.kind === "control")
+              : sel === "input,textarea,select"
+                ? find().filter((e) => e.kind === "control" || e.kind === "file")
+                : sel === "option"
+                  ? find().flatMap((e) => (e.options ?? []).map((o) => ({ kind: "option" as const, label: o })))
+                  : sel === "input[type=radio]"
+                    ? find().filter((e) => e.kind === "group" && e.type === "radio")
+                    : [],
         ),
       // Inside a checkbox or radio group: one box per option, found by its exact label.
       getByLabel: (l) => loc(() => find().flatMap((g) => (g.kind === "group" && g.options?.includes(l) ? [{ kind: "control" as const, label: l, type: "checkbox" }] : []))),
@@ -99,7 +111,9 @@ function fakePage(els: El[]) {
       loc(() => {
         if (sel === "form input, form textarea") return shown().filter((e) => e.kind === "control" || e.kind === "file" || e.kind === "group");
         // The file box (":is(div,...)" with an upload inside) and the upload itself are the same element here.
-        if (sel === "input[type=file]" || sel.startsWith(":is(")) return shown().filter((e) => e.kind === "file");
+        // A wrapper with children is also a container, for nested-DOM tests (#913).
+        if (sel === "input[type=file]") return shown().filter((e) => e.kind === "file");
+        if (sel.startsWith(":is(")) return shown().filter((e) => e.kind === "file" || e.kind === "wrapper");
         if (sel.startsWith("iframe")) return shown().filter((e) => e.kind === "captcha");
         // A checkbox or radio group and the boxes inside it are the same element here, like the file box.
         if (sel === "fieldset, [role=group], [role=radiogroup]" || sel === "input[type=checkbox], input[type=radio]") return shown().filter((e) => e.kind === "group" && e.role !== "radiogroup");
@@ -508,6 +522,24 @@ describe("runFill controls (#567)", () => {
       expect(r.log.find((l) => l.prompt === "Cover Letter")).toMatchObject({ ok: false, how: "upload field not found" });
       expect(r.missing).toEqual(["Cover Letter"]);
       expect(uploads()).toEqual(["upload Resume=Pat Lee - Acme Inc. Resume.docx"]);
+    });
+
+    it("does not take the resume input when cover letter text is in the same wrapper (#913)", async () => {
+      const id = await seed("approved", [RESUME, LETTER]);
+      // A shared wrapper: the resume file input and "A cover letter is optional." text in the same container.
+      page = fakePage([
+        { kind: "wrapper", label: "", children: [
+          { kind: "file", label: "Resume/CV", type: "file" },
+          { kind: "control", label: "A cover letter is optional.", tag: "span" },
+        ]},
+      ]);
+      const r = await runFill(id, "test");
+      // The cover letter should NOT take the resume input. It has no upload box of its own and no text box
+      // labeled "Cover Letter", so it reports not found.
+      expect(r.log.find((l) => l.prompt === "Cover Letter")).toMatchObject({ ok: false, how: "upload field not found" });
+      expect(r.missing).toEqual(["Cover Letter"]);
+      // Resume upload is unaffected.
+      expect(uploads()).toEqual(["upload Resume/CV=Pat Lee - Acme Inc. Resume.docx"]);
     });
   });
 

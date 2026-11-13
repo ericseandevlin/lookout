@@ -7,6 +7,16 @@
   const norm = (t) => (t || "").replace(/\*/g, "").replace(/\s+/g, " ").trim().toLowerCase();
   const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
   const visible = (el) => !!el && el.getClientRects().length > 0 && getComputedStyle(el).visibility !== "hidden";
+  /** Does a sibling branch at any level between `descendant` and `container` have the key text? (#913) */
+  function siblingHas(container, descendant, key) {
+    let cur = descendant.parentElement;
+    while (cur && cur !== container) {
+      for (const sibling of [...cur.parentElement.children].filter((c) => c !== cur))
+        if (norm(sibling.textContent).includes(key)) return true;
+      cur = cur.parentElement;
+    }
+    return false;
+  }
 
   /** The words a control is labeled with: <label for>, a wrapping label, aria-labelledby, aria-label. */
   function labelOf(el) {
@@ -83,11 +93,15 @@
     const inputs = [...document.querySelectorAll("input[type=file]")];
     const key = norm(prompt).slice(0, 40);
     // Nearest labeled box wins, one level at a time: a section holding both uploads holds both labels (#590).
+    // A cover letter's prompt must not match a resume input whose outer ancestor happens to hold the text
+    // in a sibling subtree (#913): verify the matching text is in the input's own branch, not a sibling.
     for (let depth = 0; depth < 6; depth++)
       for (const input of inputs) {
         let n = input.parentElement;
         for (let i = 0; n && i < depth; i++) n = n.parentElement;
-        if (n && norm(n.textContent).includes(key)) return input;
+        if (!n || !norm(n.textContent).includes(key)) continue;
+        if (depth > 0 && itemKind === "cover_letter" && siblingHas(n, input, key)) continue;
+        return input;
       }
     return itemKind === "cover_letter" ? inputs[1] || null : inputs[0] || null;
   }
