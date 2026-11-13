@@ -76,6 +76,17 @@ describe("spend alerts (#990)", () => {
     expect(sendMail).toHaveBeenCalledTimes(2);
   });
 
+  it("sends one cap email when two runs hit the cap at once, and keeps the key alert's month (#1022)", async () => {
+    keyReply(15);
+    await checkKeyLimit(new Date("2027-01-13T12:00:00Z"));
+    expect(sendMail).toHaveBeenCalledOnce();
+    const now = new Date("2027-01-13T15:00:00Z");
+    await Promise.all([alertDailyCap(16, now), alertDailyCap(16, now), alertDailyCap(16, now)]);
+    expect(sendMail).toHaveBeenCalledTimes(2);
+    const [row] = await db.select().from(schema.appSettings);
+    expect(row.value).toEqual({ keyMonth: "2027-01", capDay: "2027-01-13" });
+  });
+
   it("never throws when the email fails", async () => {
     sendMail.mockRejectedValueOnce(new Error("smtp down"));
     vi.spyOn(console, "error").mockImplementation(() => {});
