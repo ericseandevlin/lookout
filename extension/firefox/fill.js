@@ -204,7 +204,11 @@
   async function fillOne(step) {
     try {
       if (step.kind === "file") return await fillFile(step);
-      const el = controlFor(step.prompt);
+      const found = controlFor(step.prompt);
+      // A choice whose group is named by the question beats a box whose label only holds it: "How did you hear about us?"
+      // is not "If other, how did you hear about us?" (#952). Same as the worker.
+      const named = found && step.kind === "choice" && labelOf(found) !== norm(step.prompt) ? groupFor(step.prompt) : null;
+      const el = named && groupName(named) === norm(step.prompt) ? null : found;
       // A lone box labeled with the question is the answer's field for any kind, before the group and radio lookup,
       // same as the worker: a Yes/No question can be one "I consent" box (#940).
       const box = el ? null : checkboxFor(step.prompt);
