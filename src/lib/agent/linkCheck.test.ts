@@ -247,11 +247,37 @@ describe("closeGonePostings", () => {
       expect(fetchPage).not.toHaveBeenCalledWith(`${GH}/jobs/123`);
     });
 
-    it("reads an Ashby embed as gone when the org no longer has the job", async () => {
+    it("never closes on a guessed board that exists but lacks the job, and tries the next guess (#1046)", async () => {
+      const url = "https://acme-corp.test/careers?gh_jid=123";
+      const id = await addFind(url);
+      pages.set(url, "Careers at Acme");
+      // A board named "acme-corp" exists but is another company's; the real one is "acmecorp".
+      pages.set("https://boards-api.greenhouse.io/v1/boards/acme-corp/jobs/123", gone404());
+      await closeGonePostings(userId, T0);
+      await closeGonePostings(userId, new Date(T0.getTime() + 2 * 86_400_000));
+      expect((await find(id)).linkCheck?.state).toBe("open");
+      expect(fetchPage).toHaveBeenCalledWith("https://boards-api.greenhouse.io/v1/boards/acmecorp/jobs/123");
+    });
+
+    it("never closes on a guessed Ashby org that lacks the job (#1046)", async () => {
       const jid = "0b5c9f3e-1111-4222-8333-444455556666";
       const url = `https://acme.test/careers?ashby_jid=${jid}`;
       const id = await addFind(url);
       pages.set(url, "Careers at Acme");
+      vi.stubGlobal("fetch", vi.fn(async () => new Response(JSON.stringify({ data: { jobPosting: null } }), { headers: { "content-type": "application/json" } })));
+      try {
+        await closeGonePostings(userId, T0);
+      } finally {
+        vi.unstubAllGlobals();
+      }
+      expect((await find(id)).linkCheck?.state).toBe("open");
+    });
+
+    it("reads an Ashby embed as gone when the org no longer has the job", async () => {
+      const jid = "0b5c9f3e-1111-4222-8333-444455556666";
+      const url = `https://acme.test/careers?ashby_jid=${jid}`;
+      const id = await addFind(url);
+      pages.set(url, `Careers at Acme <iframe src="https://jobs.ashbyhq.com/acme/embed"></iframe>`);
       const post = vi.fn(async () => new Response(JSON.stringify({ data: { jobPosting: null } }), { headers: { "content-type": "application/json" } }));
       vi.stubGlobal("fetch", post);
       try {
