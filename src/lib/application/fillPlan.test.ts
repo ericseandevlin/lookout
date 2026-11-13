@@ -76,6 +76,10 @@ describe("checksBox (#669)", () => {
     for (const a of ["I have read and understand the privacy policy", "I've read and understood", "I’ve read and understood the terms", "I read and understand", "I understood"]) expect(checksBox(a), a).toBe(true);
     for (const a of ["I have read and do not understand", "I have read and do not agree"]) expect(checksBox(a), a).toBe(false);
   });
+  it("ticks on hereby, a bare understood and read-and-agreed (#899)", () => {
+    for (const a of ["I hereby agree", "I hereby certify that the information above is true", "I hereby acknowledge", "Understood", "Understood.", "Read and agreed", "Read and understood"]) expect(checksBox(a), a).toBe(true);
+    for (const a of ["I hereby decline", "Understanding pending", "Read and declined", "I hereby do not agree"]) expect(checksBox(a), a).toBe(false);
+  });
   it("leaves the box on no, empty or anything else", () => {
     for (const a of ["", "No", "false", "No, I do not agree", "I do not agree", "I don't consent", "Yesterday", "Agreement pending", "N/A", "Maybe", "I have read the terms", "I do not understand", "Disagreed", "Acceptance pending"]) expect(checksBox(a), a).toBe(false);
   });
