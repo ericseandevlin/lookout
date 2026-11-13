@@ -27,6 +27,7 @@ type Data = {
   costPerActiveMonth: number | null;
   applyCost: { applications: number; avg: number | null; median: number | null; max: number | null };
   searchCost: { searches: number; avg: number | null };
+  spend: { monthToDate: number; actives: number; perActive: number | null; key: { usd: number; limit: number; reset: string | null } | null };
   weeks: { week: string; active: number; acted: number; actedPerActive: number }[];
   growth: { channels: { channel: string; signups: number; joined: number; active: number }[]; invites: { sent: number; accepted: number; rate: number | null } };
 };
@@ -110,6 +111,13 @@ export function AdminMetrics() {
           note: d.quality.score.ignored === null ? "No finds left alone" : `${one(d.quality.score.ignored)} for finds nobody acted on`,
         },
         { measure: "Offers from a find", now: String(d.offers), note: from(d.outcomes.board.offers, d.outcomes.survey.offers, "Offer", "an offer") },
+        {
+          measure: "AI spend this month",
+          now: usd(d.spend.monthToDate),
+          note:
+            (d.spend.perActive === null ? "Nobody active since the 1st" : `${usd(d.spend.perActive)} per active person (${plural(d.spend.actives, "person", "people")}), since the 1st (UTC)`) +
+            (d.spend.key ? `. AI key: ${usd(d.spend.key.usd)} of its ${usd(d.spend.key.limit)} limit (${percent(d.spend.key.usd / d.spend.key.limit)}); admins get an email at 70%.` : "."),
+        },
         {
           measure: "AI cost of one application",
           now: cents(d.applyCost.avg),

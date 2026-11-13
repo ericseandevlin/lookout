@@ -10,6 +10,8 @@ const pg = new PGlite();
 const db = drizzle(pg, { schema });
 vi.mock("@/lib/db", () => ({ db, schema }));
 vi.mock("server-only", () => ({}));
+// The AI key's own count is read from OpenRouter; tested in spendAlerts.test.ts.
+vi.mock("./spendAlerts", () => ({ keyUsage: async () => ({ usd: 9, limit: 20, reset: "monthly" }) }));
 
 const NOW = new Date();
 const ago = (d: number) => new Date(NOW.getTime() - d * 864e5);
@@ -119,5 +121,29 @@ describe("metrics (#369)", () => {
       { channel: "direct", signups: 1, joined: 0, active: 0 },
     ]);
     expect(m.growth.invites).toEqual({ sent: 2, accepted: 1, rate: 0.5 });
+  });
+
+  it("adds month-to-date spend per active person and the key's count, and leaves cap skips out of search success (#990)", async () => {
+    const { metrics } = await import("./metricsStore");
+    await db.delete(schema.users);
+    const now = new Date("2026-11-13T12:00:00Z");
+    const at = (iso: string) => new Date(iso);
+    const [a] = await db.insert(schema.users).values({ email: "mtd-a@example.com" }).returning();
+    const [b] = await db.insert(schema.users).values({ email: "mtd-b@example.com" }).returning();
+    await db.insert(schema.runs).values([
+      { userId: a.id, trigger: "manual", status: "done", costUsd: "1.2", startedAt: at("2026-11-02T10:00:00Z") },
+      { userId: b.id, trigger: "scheduled", status: "done", costUsd: "0.3", startedAt: at("2026-11-12T10:00:00Z") },
+      // Last month: in the 30-day total, not the month to date.
+      { userId: a.id, trigger: "scheduled", status: "done", costUsd: "2", startedAt: at("2026-10-30T10:00:00Z") },
+      { userId: b.id, trigger: "scheduled", status: "failed", error: "capped", request: { skipped: "user_cap" }, startedAt: at("2026-11-12T11:00:00Z") },
+    ]);
+    await db.insert(schema.events).values([
+      { userId: a.id, type: "page_view", at: at("2026-11-10T10:00:00Z") },
+      { userId: b.id, type: "page_view", at: at("2026-10-28T10:00:00Z") },
+    ]);
+    const m = await metrics(now);
+    expect(m.spend).toEqual({ monthToDate: 1.5, actives: 1, perActive: 1.5, key: { usd: 9, limit: 20, reset: "monthly" } });
+    expect(m.costMonth).toBe(3.5);
+    expect(m.search.searches).toBe(3);
   });
 });

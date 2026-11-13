@@ -33,6 +33,7 @@ vi.mock("@/lib/retention", () => ({ cleanup: async () => ({ loginTokens: 0, sess
 vi.mock("@/lib/errorLog", () => ({ recordError: async () => {} }));
 vi.mock("@/lib/agent/discover", () => ({ discover: vi.fn(), isRunning: vi.fn() }));
 vi.mock("@/lib/digest", () => ({ sendDigest: vi.fn() }));
+vi.mock("@/lib/spendAlerts", () => ({ checkKeyLimit: async () => {} }));
 vi.mock("@/lib/application/run", () => ({ sweepApplications: vi.fn() }));
 
 const { tick } = await import("./scheduler");

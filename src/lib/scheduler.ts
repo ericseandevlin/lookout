@@ -4,6 +4,8 @@ import { db, schema, sqlClient } from "@/lib/db";
 import { env } from "@/lib/env";
 import { answeredCount, kinds } from "@/lib/kinds";
 import { BudgetError } from "@/lib/ai/runs";
+import { USER_CAP_MESSAGE } from "@/lib/spend";
+import { checkKeyLimit } from "@/lib/spendAlerts";
 import { AiConfigError } from "@/lib/ai/llm";
 import { SearchConfigError } from "@/lib/ai/search";
 import { discover, isRunning } from "@/lib/agent/discover";
@@ -93,6 +95,20 @@ function fail(what: string, e: unknown) {
   void recordError("scheduler", e, { path: what });
 }
 
+/**
+ * A scheduled search skipped because the person reached their own daily cap shows on their board as a run
+ * that didn't finish, with a plain reason. One note a day per search, not one per tick (#990).
+ */
+async function noteUserCap(userId: string, searchId: string) {
+  const [{ n }] = await db
+    .select({ n: sql<number>`count(*)::int` })
+    .from(schema.runs)
+    .where(and(eq(schema.runs.searchId, searchId), eq(schema.runs.error, USER_CAP_MESSAGE), gte(schema.runs.startedAt, new Date(Date.now() - 24 * 3600_000))));
+  if (n > 0) return;
+  const now = new Date();
+  await db.insert(schema.runs).values({ userId, searchId, trigger: "scheduled", status: "failed", error: USER_CAP_MESSAGE, finishedAt: now, startedAt: now, request: { skipped: "user_cap" } });
+}
+
 export async function tick() {
   // Advisory lock so overlapping ticks (or a second instance) never double-run. The lock belongs to
   // one session, so take and release it on one reserved connection, not whichever the pool hands out (#316).
@@ -132,13 +148,20 @@ async function work() {
     .where(and(eq(schema.runs.status, "queued"), lt(schema.runs.startedAt, new Date(Date.now() - 24 * 3600_000))));
   // Auto-apply work left queued or interrupted (normally it starts the moment it's queued).
   await sweepApplications().catch((e) => fail("apply sweep", e));
+  // Warn the admins before the AI key's monthly limit stops everything (#990). Checks at most once an hour.
+  await checkKeyLimit().catch((e) => fail("key limit check", e));
   for (const { userId, searchId } of await dueSearches()) {
     try {
       const r = await discover(searchId, "scheduled");
       // Even with nothing new: pinned finds due soon still go out, once a day (#304).
       await sendDigest(userId, "runId" in r ? r.runId : undefined);
     } catch (e) {
-      // Caps and missing config affect everyone; stop this tick instead of failing search by search.
+      // One person's own cap: tell them on their board and go on to the next person (#990).
+      if (e instanceof BudgetError && e.scope === "user") {
+        await noteUserCap(userId, searchId).catch((err) => fail("user cap note", err));
+        continue;
+      }
+      // The app-wide cap and missing config affect everyone; stop this tick instead of failing search by search.
       if (e instanceof BudgetError || e instanceof AiConfigError || e instanceof SearchConfigError) break;
       fail(`run failed for search ${searchId}`, e);
     }

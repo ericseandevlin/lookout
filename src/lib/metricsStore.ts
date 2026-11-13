@@ -5,6 +5,8 @@ import { weekOf } from "./events";
 import { actedOn, activation, activeSince, applyCost, byChannel, GOALS, outcomes, retention, scoreSplit, searchSuccess, weekly, weekOneSettings, type MetricEvent, type OutcomeReport } from "./metrics";
 import { APPLIED, topReasons } from "./quality";
 import { isAdmin } from "./users";
+import { monthStart, perActive } from "./spend";
+import { keyUsage } from "./spendAlerts";
 
 const DAY = 864e5;
 
@@ -92,7 +94,8 @@ export async function metrics(now = new Date()) {
     .select({ status: schema.runs.status, read: sql<number | null>`(${schema.runs.report} ->> 'read')::int` })
     .from(schema.runs)
     .innerJoin(schema.users, eq(schema.users.id, schema.runs.userId))
-    .where(and(gte(schema.runs.startedAt, monthAgo), inArray(schema.runs.trigger, ["scheduled", "manual"]), eq(schema.users.disabled, false)));
+    // A search skipped at the person's own cap never ran, so it is not a failed search (#990).
+    .where(and(gte(schema.runs.startedAt, monthAgo), inArray(schema.runs.trigger, ["scheduled", "manual"]), eq(schema.users.disabled, false), sql`${schema.runs.request} ->> 'skipped' is null`));
   // Growth (#527): waitlist requests by channel, joined meaning an account under that email, active meaning
   // any event in the last full week; and invites not revoked, accepted meaning they signed in.
   const lastWeekActive = new Set(events.filter((e) => weekOf(e.at) === last.week).map((e) => e.userId));
@@ -119,6 +122,17 @@ export async function metrics(now = new Date()) {
     .from(schema.runs)
     .where(and(gte(schema.runs.startedAt, monthAgo), inArray(schema.runs.trigger, ["scheduled", "manual"]), eq(schema.runs.status, "done")));
 
+  // Spend alerts (#990): AI spend since the 1st (UTC, when the key's limit resets), per person active since then,
+  // and the key's own count against its limit when the provider reports one.
+  const month = monthStart(now);
+  const [{ usd: mtd }] = await db
+    .select({ usd: sql<string>`coalesce(sum(${schema.runs.costUsd}), 0)` })
+    .from(schema.runs)
+    .where(gte(schema.runs.startedAt, month));
+  const monthToDate = Number(mtd);
+  const mtdActives = activeSince(events, month);
+  const key = await keyUsage();
+
   const cost = Number(usd);
   return {
     goals: GOALS,
@@ -138,6 +152,7 @@ export async function metrics(now = new Date()) {
     monthActives,
     costPerActiveMonth: monthActives ? cost / monthActives : null,
     applyCost: applyCost(drafted.map((d) => Number(d.usd ?? 0))),
+    spend: { monthToDate, actives: mtdActives, perActive: perActive(monthToDate, mtdActives), key },
     searchCost: { searches: perSearch.searches, avg: perSearch.avg === null ? null : Number(perSearch.avg) },
     weeks: weeks.slice(0, -1),
     growth: {

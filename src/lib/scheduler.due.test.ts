@@ -23,10 +23,12 @@ vi.mock("@/lib/agent/discover", () => ({ discover, isRunning }));
 const sendDigest = vi.fn(async () => {});
 vi.mock("@/lib/digest", () => ({ sendDigest }));
 const sweepApplications = vi.fn(async () => {});
+vi.mock("@/lib/spendAlerts", () => ({ checkKeyLimit: async () => {} }));
 vi.mock("@/lib/application/run", () => ({ sweepApplications }));
 
 const { tick } = await import("./scheduler");
 const { BudgetError } = await import("@/lib/ai/runs");
+const { USER_CAP_MESSAGE } = await import("@/lib/spend");
 
 // Monday 2026-11-09, noon in New York (the default APP_TZ).
 const MON_NOON = new Date("2026-11-09T17:00:00Z");
@@ -215,6 +217,25 @@ describe("the rest of a pass (#377)", () => {
     discover.mockRejectedValue(new BudgetError("Daily cap reached"));
     await tick();
     expect(discover).toHaveBeenCalledOnce();
+    expect(recordError).not.toHaveBeenCalled();
+  });
+
+  it("skips a person at their own cap, tells them once on their board, and runs the next person (#990)", async () => {
+    const a = await seed();
+    const b = await seed();
+    discover.mockImplementation(async (searchId: string) => {
+      if (searchId === a.searchId) throw new BudgetError("cap", "user");
+      return { runId: `run-${searchId}` };
+    });
+    await tick();
+    expect(ran().sort()).toEqual([a.searchId, b.searchId].sort());
+    const notes = await db.select().from(schema.runs).where(eq(schema.runs.searchId, a.searchId));
+    expect(notes).toHaveLength(1);
+    expect(notes[0]).toMatchObject({ status: "failed", trigger: "scheduled", error: USER_CAP_MESSAGE, request: { skipped: "user_cap" } });
+    // After the 2-hour back-off it is due again and still capped: no second note the same day.
+    await db.update(schema.runs).set({ startedAt: ago(3) }).where(eq(schema.runs.searchId, a.searchId));
+    await tick();
+    expect(await db.select().from(schema.runs).where(eq(schema.runs.searchId, a.searchId))).toHaveLength(1);
     expect(recordError).not.toHaveBeenCalled();
   });
 

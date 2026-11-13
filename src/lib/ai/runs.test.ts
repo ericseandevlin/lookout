@@ -10,6 +10,8 @@ const pg = new PGlite();
 const db = drizzle(pg, { schema });
 vi.mock("@/lib/db", () => ({ db, schema }));
 // Caps: $10 a day across everyone, $2 a day per person.
+const alertDailyCap = vi.fn(async () => {});
+vi.mock("@/lib/spendAlerts", () => ({ alertDailyCap }));
 vi.mock("@/lib/config", () => ({ getAccessConfig: async () => ({ signupMode: "invite", dailyBudgetUsd: 10, userDailyBudgetUsd: 2 }) }));
 
 const { assertBudget, BudgetError } = await import("./runs");
@@ -48,7 +50,7 @@ describe("assertBudget", () => {
   it("stops one person at their own cap without stopping others", async () => {
     await spend(me, 1.5);
     await spend(me, 0.5);
-    await expect(assertBudget(me)).rejects.toThrow("You've hit today's search limit");
+    await expect(assertBudget(me)).rejects.toThrow("daily AI spend limit");
     await expect(assertBudget(other)).resolves.toBeUndefined();
   });
 

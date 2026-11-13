@@ -5,6 +5,7 @@ import { useState, useSyncExternalStore } from "react";
 import type { RunReport } from "@/lib/db/schema";
 import type { RunInfo } from "@/lib/types";
 import { noNewBody } from "@/lib/agent/runOutcome";
+import { USER_CAP_MESSAGE } from "@/lib/spend";
 import { CheckIcon, XIcon } from "./icons";
 import { useStore } from "./store";
 import { trackClient } from "./track";
@@ -124,8 +125,10 @@ function Live({ run }: { run: RunInfo }) {
 
 function Finished({ run, onDismiss, onRetry, retrying, retryError }: { run: RunInfo; onDismiss: () => void; onRetry: () => void; retrying: boolean; retryError: string | null }) {
   const failed = run.status === "failed";
+  // The person's own daily cap (#990): nothing to retry until it resets.
+  const capped = failed && run.error === USER_CAP_MESSAGE;
   const title = failed
-    ? run.trigger === "url" ? "Couldn't add that link" : "The search didn't finish"
+    ? capped ? "Searches paused for today" : run.trigger === "url" ? "Couldn't add that link" : "The search didn't finish"
     : run.added
       ? `${run.added} new ${run.added === 1 ? "find" : "finds"} on your board`
       : run.trigger === "url" ? "That posting is already on your board" : "No new finds this time";
@@ -147,7 +150,7 @@ function Finished({ run, onDismiss, onRetry, retrying, retryError }: { run: RunI
           <Title>{title}</Title>
           <Body>{body}</Body>
           {!failed && run.report && <Report r={run.report} />}
-          {failed && run.trigger !== "url" && (
+          {failed && !capped && run.trigger !== "url" && (
             <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap", marginTop: 6 }}>
               <button onClick={onRetry} disabled={retrying} style={primaryBtn}>{retrying ? "Starting…" : "Try again"}</button>
               {retryError && <span role="alert" style={{ fontSize: 14, color: color.orange }}>{retryError}</span>}

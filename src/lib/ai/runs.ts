@@ -3,22 +3,32 @@ import { and, eq, gte, sql } from "drizzle-orm";
 import { db, schema } from "@/lib/db";
 import type { RunReport } from "@/lib/db/schema";
 import { getAccessConfig } from "@/lib/config";
+import { alertDailyCap } from "@/lib/spendAlerts";
+import { USER_CAP_MESSAGE } from "@/lib/spend";
 import type { Usage } from "./llm";
 
-export class BudgetError extends Error {}
+/** A spend cap stopped AI work: "all" is the app-wide cap, "user" is this person's own (#990). */
+export class BudgetError extends Error {
+  constructor(message: string, readonly scope: "all" | "user" = "all") {
+    super(message);
+  }
+}
 
-/** Refuse new AI work once the rolling 24h spend (all users, or this user) reaches its cap. */
+/** Refuse new AI work once the rolling 24h spend (all users, or this user) reaches its cap. The app-wide cap emails the admins (#990). */
 export async function assertBudget(userId: string) {
   const cfg = await getAccessConfig();
   const since = new Date(Date.now() - 24 * 3600_000);
   const total = sql<string>`coalesce(sum(${schema.runs.costUsd}), 0)`;
   const [all] = await db.select({ usd: total }).from(schema.runs).where(gte(schema.runs.startedAt, since));
-  if (Number(all.usd) >= cfg.dailyBudgetUsd) throw new BudgetError("Lookout hit its daily spend cap. Try again tomorrow.");
+  if (Number(all.usd) >= cfg.dailyBudgetUsd) {
+    await alertDailyCap(Number(all.usd));
+    throw new BudgetError("Lookout hit its daily spend cap. Try again tomorrow.");
+  }
   const [mine] = await db
     .select({ usd: total })
     .from(schema.runs)
     .where(and(eq(schema.runs.userId, userId), gte(schema.runs.startedAt, since)));
-  if (Number(mine.usd) >= cfg.userDailyBudgetUsd) throw new BudgetError("You've hit today's search limit. Try again tomorrow.");
+  if (Number(mine.usd) >= cfg.userDailyBudgetUsd) throw new BudgetError(USER_CAP_MESSAGE, "user");
 }
 
 export async function startRun(
