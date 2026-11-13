@@ -37,9 +37,12 @@ export const EEO_CHOICES: Record<EeoCategory, { label: string; choices: string[]
 /** Which category a form question asks about, or null when it isn't an EEO question we know. */
 export function classify(prompt: string): EeoCategory | null {
   const p = prompt.toLowerCase();
+  // "Do you identify as LGBTQ+ (lesbian, gay, bisexual, transgender...)?" asks neither one alone; ask the person (#909).
+  if (/\blgbt|\blesbian|\bgay\b|\bbisexual|\bqueer\b/.test(p) && !/sexual orientation/.test(p)) return null;
   if (/transgender/.test(p)) return "transgender";
   if (/sexual orientation/.test(p)) return "orientation";
-  if (/veteran|armed forces|military/.test(p)) return "veteran";
+  // "Are you a military spouse?" is about family, not the person's own service (#909).
+  if (/veteran|armed forces|military/.test(p)) return /spouse|dependent|family member/.test(p) ? null : "veteran";
   if (/disabilit/.test(p)) return "disability";
   if (/\brace\b|racial|ethnic/.test(p)) return "race";
   if (/hispanic|latin[oax]/.test(p)) return "hispanic";

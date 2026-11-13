@@ -36,6 +36,16 @@ describe("classify", () => {
     expect(classify("Sex *")).toBe("gender");
     expect(classify("Sexual Orientation")).toBe("orientation");
   });
+
+  it("leaves an LGBTQ+ question and a military-spouse question unclassified (#909)", () => {
+    expect(classify("Do you identify as LGBTQ+ (lesbian, gay, bisexual, transgender, queer or another identity)?")).toBeNull();
+    expect(classify("Do you identify as a member of the LGBTQIA+ community?")).toBeNull();
+    expect(classify("Are you a military spouse?")).toBeNull();
+    expect(classify("Are you the spouse or dependent of an active duty military member?")).toBeNull();
+    expect(classify("Do you identify as transgender?")).toBe("transgender");
+    expect(classify("What is your sexual orientation? (e.g. gay, lesbian, bisexual)")).toBe("orientation");
+    expect(classify("Protected veteran status")).toBe("veteran");
+  });
 });
 
 describe("matchOption", () => {
