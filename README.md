@@ -108,7 +108,7 @@ AI and search settings can live in env or be set in Admin > AI settings (the dat
 | `ANTHROPIC_API_KEY` | Used as the key when `AI_PROVIDER=anthropic` and `AI_API_KEY` is empty |
 | `AGENT_TOKEN` | 32+ chars; bearer token for the Claude agent queue |
 | `AGENT_ERRORS_TOKEN` | 32+ chars; staging only. Lets agents read server errors at `GET /api/agent/errors?since=<ISO>` (#486) and the week's bad AI results at `GET /api/agent/bad-results` ([ai-review](docs/ai-review.md), #994). Unset on prod, where the route is a 404 and errors stay in Admin > Errors |
-| `SEARCH_PROVIDER`, `SEARXNG_URL`, `BRAVE_API_KEY`, `SEARCH_PRICE` | Web search |
+| `SEARCH_PROVIDER`, `SEARXNG_URL`, `BRAVE_API_KEY`, `SEARCH_PRICE`, `BRAVE_PRICE` | Web search. With SearXNG and a Brave key set, a query SearXNG fails or returns nothing for is retried on Brave, priced at `BRAVE_PRICE` (default 0.005) |
 | `SAM_API_KEY` | Free key from a SAM.gov account; turns on RFP searches (federal solicitations). RFP search stays off without it |
 | `TURNSTILE_SITE_KEY`, `TURNSTILE_SECRET_KEY` | Cloudflare Turnstile keys; with both set, Request access shows a bot check and the server verifies it (#13). Off without them |
 | `SIGNUP_MODE` | `invite` (default) or `open` |

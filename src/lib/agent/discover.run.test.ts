@@ -30,7 +30,10 @@ vi.mock("./rfp", () => ({ discoverRfp }));
 
 /** Search results by query; a query with no entry fails like a search backend outage. */
 const results = new Map<string, SearchHit[]>();
-const webSearch = vi.fn(async (q: string) => {
+/** Queries the search backend answers from its Brave fallback (#987). */
+const viaBrave = new Set<string>();
+const webSearch = vi.fn(async (q: string, _u?: unknown, _c?: unknown, o?: { onFallback?: () => void }) => {
+  if (viaBrave.has(q)) o?.onFallback?.();
   const r = results.get(q);
   if (!r) throw new Error("Search backend down");
   return r;
@@ -110,6 +113,7 @@ beforeEach(async () => {
   provider = "openrouter";
   searchProfile = null;
   results.clear();
+  viaBrave.clear();
   pages.clear();
   verdicts.clear();
   for (const k of Object.keys(replies)) delete replies[k];
@@ -235,6 +239,19 @@ describe("discover (#379)", () => {
     };
     await expect(discover(searchId)).resolves.toMatchObject({ found: 1, added: 1 });
     expect((await runRow()).report?.tally).toMatchObject({ postings: 1, notPostings: 0, known: 0, added: 1 });
+  });
+
+  it("counts the queries that fell back to Brave in the run report, and leaves the count off when none did (#987)", async () => {
+    results.set("design systems lead", [hit("https://jobs.example.com/a")]);
+    pages.set("https://jobs.example.com/a", posting());
+    await discover(searchId);
+    expect((await runRow()).report).not.toHaveProperty("fallbacks");
+
+    await db.delete(schema.runs);
+    viaBrave.add("design systems lead");
+    viaBrave.add("design systems lead site:greenhouse.io");
+    await discover(searchId);
+    expect((await runRow()).report?.fallbacks).toBe(2);
   });
 
   it("keeps going when one search fails, and fails the run only when every search does", async () => {

@@ -274,7 +274,8 @@ export type RunProgress = { pct: number; step: string; log: { at: string; text: 
 export type RunTally = { postings: number; notPostings: number; known: number; dealbreaker: number; belowFloor: number; offLocation: number; added: number; closed?: number };
 export type RunTip = { text: string; href?: string; label?: string };
 /** The after-search report: the funnel, the queries used, and what to change. */
-export type RunReport = { queries: string[]; results: number; picked: number; read: number; tally: RunTally; tips: RunTip[] };
+/** `fallbacks`: queries that went to Brave because SearXNG failed or came back empty (#987). Older reports have none. */
+export type RunReport = { queries: string[]; results: number; picked: number; read: number; tally: RunTally; tips: RunTip[]; fallbacks?: number };
 
 export const runs = pgTable(
   "runs",

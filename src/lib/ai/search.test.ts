@@ -4,7 +4,10 @@ import { SearchConfigError, webSearch } from "./search";
 
 const cfg = { provider: "searxng" as const, searxngUrl: "https://search.example.com", braveKey: "", pricePerQuery: 0.01 };
 
-afterEach(() => vi.unstubAllGlobals());
+afterEach(() => {
+  vi.unstubAllGlobals();
+  vi.restoreAllMocks();
+});
 
 describe("webSearch freshness", () => {
   it("keeps job discovery limited to the past month by default", async () => {
@@ -100,5 +103,79 @@ describe("webSearch config errors", () => {
     vi.stubGlobal("fetch", fetchMock);
     await expect(webSearch("q", emptyUsage(), { ...brave, braveKey: "" })).rejects.toThrow("Brave Search needs an API key.");
     expect(fetchMock).not.toHaveBeenCalled();
+  });
+});
+
+describe("webSearch Brave fallback (#987)", () => {
+  const withKey = { ...cfg, braveKey: "brave-key" };
+  const hit = { title: "Design Lead", url: "https://jobs.example.com/1", description: "A role" };
+  const isBrave = (u: unknown) => String(u).startsWith("https://api.search.brave.com/");
+
+  it("does not call Brave when SearXNG has results", async () => {
+    const fetchMock = ok({ results: [{ url: "https://jobs.example.com/1" }] });
+    vi.stubGlobal("fetch", fetchMock);
+    const onFallback = vi.fn();
+    const usage = emptyUsage();
+    expect(await webSearch("q", usage, withKey, { onFallback })).toHaveLength(1);
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(onFallback).not.toHaveBeenCalled();
+    expect(usage).toEqual({ input: 0, output: 0, searches: 1, usd: 0.01 });
+  });
+
+  it("asks Brave when SearXNG comes back empty, and counts and prices the extra query", async () => {
+    const fetchMock = vi.fn(async (u: unknown) => ({ ok: true, json: async () => (isBrave(u) ? { web: { results: [hit] } } : { results: [] }) }));
+    vi.stubGlobal("fetch", fetchMock);
+    const onFallback = vi.fn();
+    const usage = emptyUsage();
+    expect(await webSearch("designer jobs", usage, withKey, { onFallback })).toEqual([{ title: "Design Lead", url: "https://jobs.example.com/1", snippet: "A role", published: undefined }]);
+    expect(onFallback).toHaveBeenCalledTimes(1);
+    expect(new URL(String(fetchMock.mock.calls[1][0])).searchParams.get("q")).toBe("designer jobs");
+    expect(usage.searches).toBe(2);
+    expect(usage.usd).toBeCloseTo(0.015);
+  });
+
+  it("asks Brave when SearXNG fails, with the same freshness", async () => {
+    const fetchMock = vi.fn(async (u: unknown) => (isBrave(u) ? { ok: true, json: async () => ({ web: { results: [hit] } }) } : { ok: false, status: 502 }));
+    vi.stubGlobal("fetch", fetchMock);
+    expect(await webSearch("q", emptyUsage(), withKey, { recent: false })).toHaveLength(1);
+    expect(new URL(String(fetchMock.mock.calls[1][0])).searchParams.has("freshness")).toBe(false);
+  });
+
+  it("asks Brave when SearXNG times out or can't be reached", async () => {
+    vi.stubGlobal("fetch", vi.fn(async (u: unknown) => {
+      if (!isBrave(u)) throw new TypeError("fetch failed");
+      return { ok: true, json: async () => ({ web: { results: [hit] } }) };
+    }));
+    expect(await webSearch("q", emptyUsage(), withKey)).toHaveLength(1);
+  });
+
+  it("keeps SearXNG's error when Brave fails too", async () => {
+    vi.stubGlobal("fetch", vi.fn(async (u: unknown) => ({ ok: false, status: isBrave(u) ? 429 : 503 })));
+    vi.spyOn(console, "warn").mockImplementation(() => {});
+    await expect(webSearch("q", emptyUsage(), withKey)).rejects.toThrow("SearXNG 503");
+  });
+
+  it("returns no hits when SearXNG was empty and Brave fails", async () => {
+    vi.stubGlobal("fetch", vi.fn(async (u: unknown) => (isBrave(u) ? { ok: false, status: 429 } : { ok: true, json: async () => ({ results: [] }) })));
+    vi.spyOn(console, "warn").mockImplementation(() => {});
+    expect(await webSearch("q", emptyUsage(), withKey)).toEqual([]);
+  });
+
+  it("stays on SearXNG alone without a Brave key", async () => {
+    const fetchMock = vi.fn().mockResolvedValue({ ok: false, status: 503 });
+    vi.stubGlobal("fetch", fetchMock);
+    const onFallback = vi.fn();
+    await expect(webSearch("q", emptyUsage(), cfg, { onFallback })).rejects.toThrow("SearXNG 503");
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(onFallback).not.toHaveBeenCalled();
+  });
+
+  it("reads the fallback price from BRAVE_PRICE", async () => {
+    vi.stubEnv("BRAVE_PRICE", "0.009");
+    vi.stubGlobal("fetch", vi.fn(async (u: unknown) => ({ ok: true, json: async () => (isBrave(u) ? { web: { results: [] } } : { results: [] }) })));
+    const usage = emptyUsage();
+    await webSearch("q", usage, { ...withKey, pricePerQuery: 0 });
+    expect(usage.usd).toBeCloseTo(0.009);
+    vi.unstubAllEnvs();
   });
 });
