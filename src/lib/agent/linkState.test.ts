@@ -174,3 +174,27 @@ describe("live wording that reads like closed, and closed wording that was misse
     expect(classifyPage(200, `TITLE: Senior Product Designer\nTEXT:\n${text}`).state).toBe("gone");
   });
 });
+
+describe("a condition word only counts when it leads into the closed phrase (#1006)", () => {
+  it.each([
+    "Thank you for your interest. After careful consideration, this position has been filled.",
+    "Unfortunately, after a great response, this job is no longer available.",
+    "Due to a high volume of applications received before the deadline, applications are now closed.",
+    "When we posted this role we got a big response; this posting has expired.",
+  ])("reads a closed posting as gone: %s", (text) => {
+    expect(classifyPage(200, `TITLE: Senior Product Designer\nTEXT:\n${text}`).state).toBe("gone");
+  });
+
+  it("reads the line before \"No longer available\" as its own line", () => {
+    expect(classifyPage(200, "TITLE: After School Program Coordinator\nTEXT:\nAfter School Program Coordinator\nNo longer available").state).toBe("gone");
+  });
+
+  it.each([
+    "Once the role is filled, the posting is closed.",
+    "If the position has been filled, this page will say so.",
+    "Applications are reviewed after the deadline until the position has been filled.",
+    "We review applications weekly; after the role has been filled the posting is removed.",
+  ])("keeps a live posting open: %s", (text) => {
+    expect(classifyPage(200, `TITLE: Senior Product Designer\nTEXT:\n${text}`).state).toBe("open");
+  });
+});
