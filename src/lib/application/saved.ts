@@ -18,8 +18,12 @@ const EEO = /ethnic|\brace\b|racial|hispanic|latin[oax]|gender|\bsex\b|sexual or
 // \b: "referr" sits inside "preferred", which made every preferred name a referrer's (#1048).
 const ONE_EMPLOYER = /previously (worked|employed)|ever (been )?employed by|worked (here|for us)|\breferr/i;
 const START = /start date|earliest.*start|when can you start/i;
-// A calendar date ("12/1", "2026-12-01", "Dec 1") passes; "2 weeks after an offer" stays true.
-const DATE = /\b\d{1,2}[/.-]\d{1,2}([/.-]\d{2,4})?\b|\b\d{4}-\d{2}-\d{2}\b|\b(jan|feb|mar|apr|jun|jul|aug|sep|sept|oct|nov|dec)[a-z]*\.? \d{1,2}\b|\bmay \d{1,2}\b/i;
+// A calendar date ("12/1", "2026-12-01", "Dec 1", "June 1st", "1st December", "January 2027") passes;
+// "2 weeks after an offer" stays true (#1079).
+// Whole month names only: "dec" must not match "decision". "May" alone is a verb too, so it needs a day or year beside it.
+const MONTH = /\b(jan(uary)?|feb(ruary)?|mar(ch)?|apr(il)?|june?|july?|aug(ust)?|sept?(ember)?|oct(ober)?|nov(ember)?|dec(ember)?)\b\.?/i;
+const DATE_FORMS = /\b\d{1,2}[/.-]\d{1,2}([/.-]\d{2,4})?\b|\b\d{4}-\d{2}-\d{2}\b|\bmay,?\s+(\d{1,2}|(19|20)\d{2})\b|\b\d{1,2}(st|nd|rd|th)?\s+(of\s+)?may\b|\b\d{1,2}(st|nd|rd|th)\b|\b(19|20)\d{2}\b/i;
+const DATE = { test: (a: string) => MONTH.test(a) || DATE_FORMS.test(a) };
 
 /** An answer that fits only the application it was given on, so it must not travel to the next one (#1032). */
 export const onlyThisOne = (question: string, answer: string) =>
