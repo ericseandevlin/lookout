@@ -15,6 +15,16 @@ describe("findPay", () => {
     expect(findPay(html)).toMatchObject({ min: 224000, max: 308000, currency: "USD", source: "pay range" });
   });
 
+  it("reads Greenhouse pay_ranges in euros with European separators (#962)", () => {
+    const html = `<html><script>window.x={"pay_ranges":[{"title":"Salary","description":"x","min":"€36.000","max":"€45.000","currency_type":"EUR"}]}</script></html>`;
+    expect(findPay(html)).toMatchObject({ min: 36000, max: 45000, currency: "EUR", source: "pay range" });
+  });
+
+  it("reads Greenhouse pay_ranges in pounds with British separators (#962)", () => {
+    const html = `<html><script>window.x={"pay_ranges":[{"title":"Salary","description":"x","min":"£60,000","max":"£70,000","currency_type":"GBP"}]}</script></html>`;
+    expect(findPay(html)).toMatchObject({ min: 60000, max: 70000, currency: "GBP", source: "pay range" });
+  });
+
   it("prefers schema.org baseSalary and annualizes hourly", () => {
     const ld = { "@type": "JobPosting", baseSalary: { "@type": "MonetaryAmount", currency: "USD", value: { minValue: 60, maxValue: 80, unitText: "HOUR" } } };
     const html = `<script type="application/ld+json">${JSON.stringify(ld)}</script>`;
