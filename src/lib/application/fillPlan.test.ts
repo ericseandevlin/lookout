@@ -135,6 +135,9 @@ describe("CONFIRMATION (#692, #748, #762)", () => {
       // #844: a later sentence still counts.
       "Once you applied, we said we'd write. Your application has been received.",
       "Thank you! Your application has been submitted.",
+      // #886: a negation earlier in the line doesn't hide a real confirmation.
+      "Don't close this page yet. You have successfully applied.",
+      "Not what you expected? You have successfully submitted your application.",
     ])
       expect(CONFIRMATION.test(t), t).toBe(true);
   });
@@ -157,6 +160,13 @@ describe("CONFIRMATION (#692, #748, #762)", () => {
       "If your application was received, you will get an email within a day.",
       "Upon successfully submitting, you'll see a summary.",
       "We will contact you after your application has been received.",
+      // #886: a failed submit says it didn't go through.
+      "Your application was not successfully submitted. Please correct the errors below.",
+      "Your application could not be successfully submitted.",
+      "Your application couldn't be successfully submitted.",
+      "You have not successfully applied yet.",
+      "You have never successfully applied for this role.",
+      "Your application has not been successfully submitted.",
     ])
       expect(CONFIRMATION.test(t), t).toBe(false);
   });

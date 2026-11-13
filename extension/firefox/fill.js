@@ -3,7 +3,7 @@
   if (window.__lookoutFill) return;
   window.__lookoutFill = true;
 
-  const THANKS = /(?<!\b(?:once|after|when|if|before|until|upon)\b[^.!?\n]{0,40})(?:thank(?:s| you) for (?:applying|your application|submitting|your submission)|(?:application|submission|candidacy) (?:has been |was )?(?:successfully )?(?:received|submitted|sent)\b|application for [^.!?\n]{1,80}? (?:has been|was) (?:successfully )?(?:received|submitted|sent)\b|we(?:'ve|’ve| have)? (?:successfully )?(?:received|got) your (?:application|submission)|successfully (?:applied|submitted)\b)/i;
+  const THANKS = /(?<!\b(?:once|after|when|if|before|until|upon)\b[^.!?\n]{0,40})(?:thank(?:s| you) for (?:applying|your application|submitting|your submission)|(?:application|submission|candidacy) (?:has been |was )?(?:successfully )?(?:received|submitted|sent)\b|application for [^.!?\n]{1,80}? (?:has been|was) (?:successfully )?(?:received|submitted|sent)\b|we(?:'ve|’ve| have)? (?:successfully )?(?:received|got) your (?:application|submission)|(?<!(?:\bnot|\bnever|n't|n’t)\s+(?:(?:be|been|yet)\s+)?)successfully (?:applied|submitted)\b)/i;
   const norm = (t) => (t || "").replace(/\*/g, "").replace(/\s+/g, " ").trim().toLowerCase();
   const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
   const visible = (el) => !!el && el.getClientRects().length > 0 && getComputedStyle(el).visibility !== "hidden";
