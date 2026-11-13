@@ -127,6 +127,16 @@ function payUnit(tail: string, yearly = false) {
   return yearly && best[0] !== "YEAR" && !RIGHT_AFTER.test(said.slice(0, best[1])) ? "YEAR" : best[0];
 }
 
+/**
+ * The label right before a range: the start of its line, or the line above when the range starts its own line. "Hourly
+ * rate: $45 - $55" and "Monthly salary\n$8,000 - $10,000" name the unit there, not after the numbers (#945).
+ */
+function label(text: string, at: number) {
+  const lines = text.slice(Math.max(0, at - 120), at).split("\n");
+  const own = lines.pop() ?? "";
+  return (own.trim() ? own : (lines.pop() ?? "")).slice(-60);
+}
+
 function fromText(text: string): Pay | null {
   // In page order, so the first range on the page still wins.
   for (const m of RANGES.flatMap((re) => [...text.matchAll(re)]).sort((x, y) => x.index - y.index)) {
@@ -148,7 +158,10 @@ function fromText(text: string): Pay | null {
     // A range that is already a year's pay stays yearly when only a pay schedule follows it; "$4,000 - $5,000 paid
     // twice a month" still reads by the schedule (#716).
     const yearly = plausible(a) && plausible(b);
-    const p = annual(a, b, payUnit(said.replace(SCHEDULE, " "), yearly), currency, "text") ?? annual(a, b, payUnit(said, yearly), currency, "text");
+    const p =
+      annual(a, b, payUnit(said.replace(SCHEDULE, " "), yearly), currency, "text") ??
+      annual(a, b, payUnit(said, yearly), currency, "text") ??
+      (yearly ? null : annual(a, b, payUnit(label(text, m.index).replace(SCHEDULE, " ")), currency, "text"));
     if (p) return p;
   }
   return null;
