@@ -88,6 +88,12 @@ describe("kindFor", () => {
     expect(kindFor("Website", "textarea")).toBe("answer");
   });
 
+  it("reads a text question that starts with the resume words as a question (#972)", () => {
+    for (const l of ["Resume gap explanation", "CV summary", "Résumé highlights", "Resume gaps: anything to explain"]) expect(kindFor(l, "textarea"), l).toBe("answer");
+    for (const l of ["Resume", "Resume/CV *", "CV (PDF preferred)", "Resume or CV", "Upload your resume", "Resume link", "Résumé:"]) expect(kindFor(l, "text"), l).toBe("resume");
+    expect(kindFor("Resume gap explanation", "file")).toBe("resume");
+  });
+
   it("reads a question that mentions a cover letter as a question (#804)", () => {
     expect(kindFor("Would you like to include a cover letter?", "select")).toBe("answer");
     expect(kindFor("Why do you want to work here? (No cover letter needed)", "textarea")).toBe("answer");
