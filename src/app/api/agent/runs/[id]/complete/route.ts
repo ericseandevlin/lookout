@@ -3,7 +3,7 @@ import { z } from "zod";
 import { body, HttpError, json } from "@/lib/api";
 import { agentRoute } from "@/lib/agentAuth";
 import { db, schema } from "@/lib/db";
-import { loadContext, makeReport, save, ScoredList } from "@/lib/agent/discover";
+import { loadContext, makeReport, save, saveAddedLink, ScoredList } from "@/lib/agent/discover";
 import { doneStep } from "@/lib/agent/runOutcome";
 import { autoQueue } from "@/lib/apply";
 import { applyResumeResult, Fills } from "@/lib/agent/resume";
@@ -56,12 +56,16 @@ export const POST = agentRoute<Ctx>(async (req, { params }) => {
   }
   const ctx = await loadContext(searchId);
   const finds = (p.finds ?? []).map((f, index) => ({ ...f, index }));
-  const { newFinds, ...tally } = await save(ctx, finds, type === "url" ? "manual" : "agent");
-  if (type !== "url") await autoQueue(run.userId, newFinds).catch((e) => console.error("[auto-apply] queue failed", e));
+  if (type === "url") {
+    // Same as the in-process read: the link the person typed, kept even if the agent calls it closed (#876).
+    const url = (run.request as { url?: string }).url ?? finds[0]?.url ?? "";
+    return json({ ok: true, ...(await saveAddedLink(ctx, id, url, finds, usage)) });
+  }
+  const { newFinds, ...tally } = await save(ctx, finds, "agent");
+  await autoQueue(run.userId, newFinds).catch((e) => console.error("[auto-apply] queue failed", e));
   const { added, postings: found } = tally;
   await progress(id, 100, doneStep(tally));
-  const report =
-    type === "url" ? undefined : makeReport(ctx, { queries: p.queries ?? [], results: p.results ?? finds.length, picked: p.read ?? finds.length, read: p.read ?? finds.length, tally });
+  const report = makeReport(ctx, { queries: p.queries ?? [], results: p.results ?? finds.length, picked: p.read ?? finds.length, read: p.read ?? finds.length, tally });
   await finishRun(id, usage, { found, added, report });
   // Even with nothing new: pinned finds due soon still go out, once a day (#304).
   if (run.trigger === "scheduled") await sendDigest(run.userId, id).catch(() => {});
