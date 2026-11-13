@@ -83,3 +83,22 @@ The calls that shaped Lookout, what each one costs, and where it lives in the co
 **Cost.** Lookout competes with other tools for memory and disk until then. Each app container is capped at 1 GB, the uptime check opens a `capacity` issue when the disk passes 85% (#995), and the weekly cleanup removes only dangling images and old build cache.
 
 **Where.** `src/app/api/health/route.ts` (`disk`), `scripts/uptime-check.sh`, `deploy/disk-prune.sh`, the weekly report in `/opt/lookout-staging/DISK.txt`.
+
+## 9. Run Lookout through an existing LLC (2026-11-07)
+
+**Decision.** Lookout operates under Genius Industries International LLC, Eric's existing company, with Lookout filed as an assumed name. No new LLC (#23, Paperclip ERI-143).
+
+**Why.** It separates Eric's personal assets from the product's liability without the cost and wait of forming and publishing a new company. The Terms limitation of liability means more when a company, not a person, is the operator.
+
+**Cost.** Lookout shares liability with anything else the LLC does. Until the steps below are done, the Terms and Privacy Policy still name Eric personally, and no one can be charged.
+
+**Steps before paid launch (Eric's; agents can't do these):**
+1. Confirm the LLC's publication requirement is met and it is in good standing.
+2. Confirm the employer's outside-activity policy allows it; keep the work on personal time and equipment.
+3. File "Lookout" as an assumed name for the LLC.
+4. Open a business bank account for the LLC.
+5. Move the domain and vendor accounts (AWS, Hostinger, OpenRouter, Resend) to the LLC.
+6. Get cyber liability and errors and omissions insurance quotes before charging anyone.
+7. Then name the LLC as operator in the Terms and Privacy Policy and bump `TERMS_VERSION` and `PRIVACY_VERSION` in `src/lib/legal.ts`, ideally with the lawyer review (#22).
+
+**Where.** `src/app/terms/page.tsx`, `src/app/privacy/page.tsx`, `docs/legal-review.md`.
