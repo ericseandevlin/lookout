@@ -41,14 +41,23 @@ const NOT_A_VERDICT = [
   /(down|offline|closed|unavailable) (for|due to) (scheduled |planned )?maintenance|(under|undergoing) (scheduled )?maintenance|(scheduled|planned) maintenance|maintenance (mode|window|in progress|underway)/i, /temporarily unavailable/i, /access denied|forbidden|captcha|verify you are human|enable javascript/i];
 
 // "Until such time as this position has been filled", "as soon as the role is filled": a condition about the future (#980).
-const CONDITION = /\b(until|as soon as|once(?! again\b)|when|whenever|after|if|before|unless)\b/i;
+// "Once the role is filled, the posting is closed" leads in a clause early, so these count anywhere in the sentence.
+const CONDITION = /\b(until|as soon as|once(?! again\b)|when|whenever|if|unless)\b/i;
+// "After" and "before" are mostly prepositions ("After careful consideration, this position has been filled"), so they
+// count only in the clause right before the phrase (#1006).
+const NEAR_CONDITION = /\b(after|before)\b/i;
 
-/** A closed phrase counts unless the same sentence leads into it with a condition (#980). */
+const lastOf = (s: string, marks: string[]) => Math.max(...marks.map((c) => s.lastIndexOf(c)));
+
+/** A closed phrase counts unless it is led into with a condition (#980). */
 function saysClosed(r: RegExp, text: string) {
   for (const m of text.matchAll(new RegExp(r.source, r.flags.includes("g") ? r.flags : `${r.flags}g`))) {
-    const before = text.slice(0, m.index);
-    const sentence = before.slice(Math.max(before.lastIndexOf("."), before.lastIndexOf("!"), before.lastIndexOf("?"), before.lastIndexOf("\n")) + 1);
-    if (!CONDITION.test(sentence)) return true;
+    // A match can start on the separator before the phrase ("\nNo longer available"): look back from the phrase itself,
+    // not from the line above (#1006).
+    const before = text.slice(0, m.index + (/^[.!?:;\n\s]*/.exec(m[0])?.[0].length ?? 0));
+    const sentence = before.slice(lastOf(before, [".", "!", "?", "\n", ";"]) + 1);
+    const clause = sentence.slice(lastOf(sentence, [",", ":"]) + 1);
+    if (!CONDITION.test(sentence) && !NEAR_CONDITION.test(clause)) return true;
   }
   return false;
 }
