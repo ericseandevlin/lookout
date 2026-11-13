@@ -37,6 +37,16 @@ export const answerKey = (q: string) =>
     .replace(/\s+/g, " ")
     .trim();
 
+/**
+ * What the parentheses add to a question: "(United States)" or "(US roles)", but not a field marker like "(required)".
+ * The key ignores parentheses so stored answers keep matching; reuse also needs this to agree (#1089).
+ */
+const qualifier = (q: string) =>
+  [...q.toLowerCase().matchAll(/\((.*?)\)/g)]
+    .map((m) => m[1].replace(/[^a-z0-9 ]+/g, " ").replace(/\s+/g, " ").trim())
+    .filter((t) => t && !/^(required|optional|y n|yes no|select one|choose one|please select|if applicable)$/.test(t))
+    .join("|");
+
 /** Is this question one we should remember the answer to? */
 export function isCommon(question: string, answer: string) {
   return COMMON.test(question) && !NEVER.test(question) && !EEO.test(question) && answer.trim().length > 0 && answer.length <= 300 && !onlyThisOne(question, answer);
@@ -51,7 +61,7 @@ export function upsert(list: SavedAnswer[], question: string, answer: string): S
 /** A saved answer for the same question, if it fits the form's choices. */
 export function match(list: SavedAnswer[], question: string, options?: string[] | null): string | null {
   // Answers saved before #1032 may still hold one employer's Yes: never reuse those.
-  const hit = list.find((s) => s.key === answerKey(question) && !onlyThisOne(s.question, s.answer) && !EEO.test(s.question));
+  const hit = list.find((s) => s.key === answerKey(question) && qualifier(s.question) === qualifier(question) && !onlyThisOne(s.question, s.answer) && !EEO.test(s.question));
   if (!hit) return null;
   if (!options?.length) return hit.answer;
   return options.find((o) => o.toLowerCase() === hit.answer.toLowerCase()) ?? null;

@@ -55,6 +55,18 @@ describe("saved answers", () => {
     expect(savedBlock(upsert(old, "Zip / Postal", "10001"))).toContain("Zip / Postal: 10001");
   });
 
+  it("never reuses an answer for a different country or region in parentheses (#1089)", () => {
+    const us = upsert([], "Are you legally authorized to work in the country (United States)?", "Yes");
+    expect(match(us, "Are you legally authorized to work in the country (United Kingdom)?", ["Yes", "No"])).toBeNull();
+    expect(match(us, "Are you legally authorized to work in the country (United States)?", ["Yes", "No"])).toBe("Yes");
+    const visa = upsert([], "Will you require visa sponsorship? (US roles)", "No");
+    expect(match(visa, "Will you require visa sponsorship? (UK roles)")).toBeNull();
+    // A field marker in parentheses still matches the plain question.
+    const zip = upsert([], "Zip / Postal", "10001");
+    expect(match(zip, "Zip / Postal (required)")).toBe("10001");
+    expect(match(upsert([], "Phone (optional)", "555"), "Phone")).toBe("555");
+  });
+
   it("replaces an older answer to the same question", () => {
     const list = upsert(upsert([], "Zip / Postal", "10001"), "Zip/Postal", "11211");
     expect(list).toHaveLength(1);
