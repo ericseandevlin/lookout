@@ -342,3 +342,25 @@ describe("a negated period is not the ask's period (#974)", () => {
     expect(askPer("Desired hourly rate (not salaried)")).toBe("hour");
   });
 });
+
+describe("words about hours or contract length are not the pay period (#1002)", () => {
+  it.each([
+    ["What are your salary expectations for this full-time, 40 hours per week role?", null],
+    ["Expected salary (full-time, 40 hours a week)", null],
+    ["Desired salary (37.5 hrs/week)", null],
+    ["Salary expectations for a 5 days a week, on-site role", null],
+    ["What is your desired hourly rate? This contract is expected to last a year.", "hour"],
+    ["Hourly rate for a contract lasting about a year", "hour"],
+    ["What is your expected semi-monthly salary?", null],
+    ["Expected semimonthly pay", null],
+    ["Weekly pay for a role of 40 hours per week", "week"],
+    ["Desired monthly salary for a contract that runs for a year", "month"],
+  ])("%s asks per %s", (q, per) => {
+    expect(askPer(q)).toBe(per);
+  });
+
+  it("asks the yearly amount when the question only mentions working hours", () => {
+    const q = "What are your salary expectations for this full-time, 40 hours per week role?";
+    expect(suggestSalary({ floor: "150k", min: 160000, max: 200000, per: askPer(q) })?.amount).toBe("$190,000");
+  });
+});
