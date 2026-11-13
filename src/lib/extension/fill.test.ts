@@ -478,6 +478,18 @@ describe("extension fill: uploads", () => {
     expect([name("a"), name("b")]).toEqual(["r.docx", "c.docx"]);
   });
 
+  it("never puts another upload in the resume's input when its own label isn't found (#1030)", async () => {
+    const p = page(`<div><label>Resume/CV</label><input type="file" id="cv"></div><div><span>Attach a file</span><input type="file" id="pf"></div>`);
+    const log = await p.fill({
+      steps: [
+        { prompt: "Resume/CV", kind: "file", itemKind: "resume", file: docx("Resume.docx") },
+        { prompt: "Writing sample", kind: "file", itemKind: "answer", file: docx("Writing sample.docx") },
+      ],
+    });
+    expect(fileName(p, "cv")).toBe("Resume.docx");
+    expect(log.map((r) => r.how)).toEqual(["uploaded .docx", "upload field not found"]);
+  });
+
   it("reports a missing file or a page with no upload field", async () => {
     const none = page(`<p>No uploads here</p>`);
     const [a] = await none.fill({ steps: [{ prompt: "Resume", kind: "file", itemKind: "resume", file: docx("r.docx") }] });

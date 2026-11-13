@@ -497,6 +497,15 @@ describe("runFill controls (#567)", () => {
     expect(r.missing).toEqual(["Portfolio"]);
   });
 
+  it("never puts another upload in the resume's input when no box names it (#1030)", async () => {
+    const id = await seed("approved", [ITEMS[0], { kind: "answer", prompt: "Writing sample", content: "My essay", fieldType: "file" }]);
+    page = fakePage([{ kind: "file", label: "Resume", type: "file" }, { kind: "file", label: "Attach a file", type: "file" }]);
+    const r = await runFill(id, "test");
+    expect(page.did.filter((d) => d.startsWith("upload "))).toEqual(["upload Resume=Pat Lee - Acme Inc. Resume.docx"]);
+    expect(r.log.find((l) => l.prompt === "Writing sample")).toMatchObject({ ok: false, how: "upload field not found" });
+    expect(r.missing).toEqual(["Writing sample"]);
+  });
+
   describe("cover letter upload (#860)", () => {
     const LETTER: ItemSeed = { kind: "cover_letter", prompt: "Cover Letter", content: "Dear Acme team,\n\nI lead design systems.\n\nPat Lee" };
     const RESUME = ITEMS[0];
