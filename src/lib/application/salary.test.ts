@@ -168,6 +168,10 @@ describe("asksBase", () => {
     expect(asksBase("Desired base plus commission")).toBe(false);
     expect(asksBase("Salary expectations")).toBe(false);
   });
+  it.each(["What are your base salary and bonus expectations?", "Expected base salary plus commission (OTE)", "Desired base pay + bonus"])(
+    "a word between base and the bonus still means total pay: %s (#1060)",
+    (q) => expect(asksBase(q)).toBe(false),
+  );
 });
 
 describe("isSalaryQuestion", () => {
@@ -362,5 +366,15 @@ describe("words about hours or contract length are not the pay period (#1002)", 
   it("asks the yearly amount when the question only mentions working hours", () => {
     const q = "What are your salary expectations for this full-time, 40 hours per week role?";
     expect(suggestSalary({ floor: "150k", min: 160000, max: 200000, per: askPer(q) })?.amount).toBe("$190,000");
+  });
+});
+
+describe("a year-end bonus or a year-long contract is not a yearly ask (#1060)", () => {
+  it.each(["Expected hourly rate (plus a year-end bonus)", "What hourly rate do you want? This is a year-long contract."])("%s", (q) => {
+    expect(askPer(q)).toBe("hour");
+  });
+  it("still reads a plain yearly ask", () => {
+    expect(askPer("Desired salary, a year")).toBeNull();
+    expect(askPer("What hourly rate, or what pay a year?")).toBeNull();
   });
 });
