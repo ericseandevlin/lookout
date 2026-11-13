@@ -1,4 +1,5 @@
 import { PGlite } from "@electric-sql/pglite";
+import { eq } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/pglite";
 import { migrate } from "drizzle-orm/pglite/migrator";
 import path from "node:path";
@@ -168,6 +169,34 @@ describe("closeGonePostings", () => {
     pages.set("https://jobs.test/1", `</p><script type="application/ld+json">${ld}</script><p>This job is no longer available.`);
     await closeGonePostings(userId, T0);
     expect((await find(id)).linkCheck).toMatchObject({ state: "gone", goneSince: T0.toISOString() });
+  });
+
+  it("leaves a repost another run saved during the check alone (#1034)", async () => {
+    const goneSince = hoursLater(-30).toISOString();
+    const id = await addFind("https://jobs.test/old", { attributes: { linkCheck: { checkedAt: goneSince, state: "gone", reason: "page answered 404", goneSince }, team: "Design" } });
+    fetchPage.mockImplementationOnce(async (url: string) => {
+      // Another person's run saves the repost while this one is reading the old link.
+      await db.update(schema.opportunities).set({ sourceUrl: "https://jobs.test/new", attributes: { team: "Design", seen: 2 } }).where(eq(schema.opportunities.id, id));
+      throw new FetchError(`The page answered 404 (${url})`);
+    });
+    expect(await closeGonePostings(userId, T0)).toBe(0);
+    const f = await find(id);
+    expect(f.stage).toBe("Not applied");
+    expect(f.archived).toBe(false);
+    const [o] = await db.select().from(schema.opportunities);
+    expect(o.sourceUrl).toBe("https://jobs.test/new");
+    expect(o.attributes).toEqual({ team: "Design", seen: 2 });
+  });
+
+  it("writes only the link check, keeping attributes another run changed (#1034)", async () => {
+    const id = await addFind("https://jobs.test/1", { attributes: { team: "Design" } });
+    fetchPage.mockImplementationOnce(async (url: string) => {
+      await db.update(schema.opportunities).set({ attributes: { team: "Design", seen: 2 } }).where(eq(schema.opportunities.id, id));
+      return { url, html: "<p>Apply now</p>" };
+    });
+    await closeGonePostings(userId, T0);
+    const [o] = await db.select().from(schema.opportunities);
+    expect(o.attributes).toMatchObject({ team: "Design", seen: 2, linkCheck: { state: "open" } });
   });
 
   it("counts a 404 as gone without retrying", async () => {

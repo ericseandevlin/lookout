@@ -123,10 +123,15 @@ export async function closeGonePostings(userId: string, now = new Date()): Promi
       // goneSince starts at the first gone result and survives "unknown" (a maintenance page proves nothing); an open result clears it.
       const goneSince = state === "gone" ? (prev?.goneSince ?? now.toISOString()) : state === "open" ? undefined : prev?.goneSince;
       const lc: LinkCheck = { checkedAt: now.toISOString(), state, reason, ...(goneSince && { goneSince }) };
-      await db
+      // Only the link check, and only while the posting still has the link checked: another run may have saved a
+      // repost at a new link meanwhile (#830), and writing the old verdict back would close a live job (#1034).
+      const attrs = schema.opportunities.attributes;
+      const wrote = await db
         .update(schema.opportunities)
-        .set({ attributes: { ...(r.o.attributes ?? {}), linkCheck: lc } })
-        .where(eq(schema.opportunities.id, r.o.id));
+        .set({ attributes: sql`jsonb_set(coalesce(${attrs}, '{}'::jsonb), '{linkCheck}', ${JSON.stringify(lc)}::jsonb)` })
+        .where(and(eq(schema.opportunities.id, r.o.id), eq(schema.opportunities.sourceUrl, r.o.sourceUrl!)))
+        .returning({ id: schema.opportunities.id });
+      if (!wrote.length) continue;
       if (lc.state === "gone" && lc.goneSince && now.getTime() - Date.parse(lc.goneSince) >= CONFIRM_MS) {
         const day = lc.goneSince.slice(0, 10);
         const line = closedNote(lc.reason, day);
