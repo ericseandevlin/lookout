@@ -136,11 +136,25 @@ describe("parseMoney", () => {
     ["$180s", 180000],
     ["upper 190ks", 190000],
     ["120000 salary", 120000],
+    // An hourly, weekly or monthly rate is annualized (#941).
+    ["$85/hr", 176800],
+    ["$85 an hour", 176800],
+    ["85 per hour", 176800],
+    ["$85 hourly", 176800],
+    ["$85.50/h", 177840],
+    ["$85-95/hr", 176800],
+    ["$12,500/month", 150000],
+    ["12.5k per month", 150000],
+    ["$12,500 a month", 150000],
+    ["$3,000/week", 156000],
+    ["$250k/year", 250000],
+    ["150k a year", 150000],
+    ["150k base, hourly ok", 150000],
   ])("reads %s as %d", (v, n) => {
     expect(parseMoney(v)).toBe(n);
   });
 
-  it.each([[""], ["  "], ["0"], ["€90k"], ["90k EUR"], ["£80,000"], ["negotiable"], [null], [120000], [["120k"]]])("returns null for %j", (v) => {
+  it.each([[""], ["  "], ["0"], ["€90k"], ["90k EUR"], ["£80,000"], ["negotiable"], ["6 figures"], ["low 6 figures"], [null], [120000], [["120k"]]])("returns null for %j", (v) => {
     expect(parseMoney(v)).toBeNull();
   });
 });
