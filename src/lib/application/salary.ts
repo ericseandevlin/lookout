@@ -35,12 +35,16 @@ const PACKAGE = /\b(rewards?|benefits?|package|perks|offerings?)\b/i;
 // "Total compensation also includes a bonus" is about the whole offer, not the posted range, unless it gives the amount
 // itself: "Total compensation of $200k-$250k includes a bonus" (#927).
 const WHOLE_OFFER = /\btotal (compensation|comp|pay)\b/i;
+// Pay on top of the range: "also eligible for additional compensation, including a bonus", "Other compensation may
+// include a bonus" (#1074). "Total compensation of $200k-$250k also includes a bonus" is left to WHOLE_OFFER.
+const EXTRA_PAY = /\b(eligib\w*|additional|other|also)\b/i;
 const PAY_INCLUDES_BONUS = (s: string) => {
   const m = s.match(INCLUDES_BONUS);
   if (!m || m.index === undefined) return false;
   const subject = s.slice(0, m.index);
   if (THE_RANGE.test(subject)) return ABOUT_PAY.test(s);
-  if (WHOLE_OFFER.test(subject) && !/\$\s?\d/.test(s)) return false;
+  if (WHOLE_OFFER.test(subject)) return /\$\s?\d/.test(s) && ABOUT_PAY.test(s) && !PACKAGE.test(subject);
+  if (EXTRA_PAY.test(subject)) return false;
   return ABOUT_PAY.test(s) && !PACKAGE.test(subject);
 };
 const SAYS_TOTAL = (s: string) =>

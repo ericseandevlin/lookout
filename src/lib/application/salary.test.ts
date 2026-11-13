@@ -143,6 +143,15 @@ describe("rangeBasis", () => {
     expect(rangeBasis("Base salary range: $150k-$180k. We offer competitive total compensation and great benefits.")).toBe("base");
   });
 
+  it("keeps a bonus the role is also eligible for as base (#1074)", () => {
+    expect(rangeBasis("The base salary range for this role is $150,000 - $180,000. You will also be eligible for additional compensation, including an annual bonus and equity.")).toBe("base");
+    expect(rangeBasis("Base salary range: $150k-$180k. This position is eligible for incentive compensation, including an annual bonus.")).toBe("base");
+    expect(rangeBasis("Base pay range: $150k-$180k. Other compensation may include a performance bonus.")).toBe("base");
+    expect(rangeBasis("Salary: $150k-$180k. You may also be eligible for compensation including a bonus.")).toBeNull();
+    expect(rangeBasis("The range also includes a target bonus.")).toBe("total");
+    expect(rangeBasis("Total compensation of $200,000 - $250,000 also includes a target bonus.")).toBe("total");
+  });
+
   it("reads a total compensation line about the whole offer as not naming the range (#927)", () => {
     expect(rangeBasis("The base salary range for this role is $150,000 - $200,000. Total compensation also includes an annual bonus and equity.")).toBe("base");
     expect(rangeBasis("Base pay range: $150k-$180k. Total pay includes a performance bonus.")).toBe("base");
