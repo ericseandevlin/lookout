@@ -45,7 +45,8 @@ const startsWord = (a: string, b: string) => !!a && b.startsWith(a) && (b.length
  * Prefixes stop at a word boundary and the closest length wins, so "None" is "None of the above", not "No" (#632).
  */
 export function pickOptions(content: string, options: string[] = []): string[] {
-  const norm = (t: string) => t.replace(/\s+/g, " ").trim().toLowerCase();
+  // A required mark ("Yes*") is not part of the option, as in pickOne and fill.js (#1061).
+  const norm = (t: string) => t.replace(/\*/g, "").replace(/\s+/g, " ").trim().toLowerCase();
   const out: string[] = [];
   for (const part of content.split(/\n+/).map((t) => t.trim()).filter(Boolean)) {
     const p = norm(part);
