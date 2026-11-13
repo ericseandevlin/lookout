@@ -2,7 +2,7 @@ import "server-only";
 import { and, eq, gte, inArray, isNotNull, isNull, ne, or, sql } from "drizzle-orm";
 import { db, schema } from "@/lib/db";
 import { weekOf } from "./events";
-import { actedOn, activation, activeSince, byChannel, GOALS, outcomes, retention, scoreSplit, searchSuccess, weekly, type MetricEvent, type OutcomeReport } from "./metrics";
+import { actedOn, activation, activeSince, applyCost, byChannel, GOALS, outcomes, retention, scoreSplit, searchSuccess, weekly, type MetricEvent, type OutcomeReport } from "./metrics";
 import { APPLIED, topReasons } from "./quality";
 
 const DAY = 864e5;
@@ -102,6 +102,18 @@ export async function metrics(now = new Date()) {
     .leftJoin(schema.users, sql`lower(${schema.users.email}) = ${schema.invites.email}`)
     .where(and(isNull(schema.invites.revokedAt), or(isNull(schema.users.id), eq(schema.users.disabled, false))));
 
+  // Auto-apply cost (#991): every application drafted at least once, all time and all accounts (it is real spend).
+  // The first one an account drafts also pays for building its master resume.
+  const drafted = await db
+    .select({ usd: sql<string | null>`${schema.applications.report} ->> 'usd'` })
+    .from(schema.applications)
+    .where(sql`${schema.applications.report} ->> 'draftedAt' is not null`);
+  // A search, for comparison: finished searches in the last 30 days.
+  const [perSearch] = await db
+    .select({ searches: sql<number>`count(*)::int`, avg: sql<string | null>`avg(${schema.runs.costUsd})` })
+    .from(schema.runs)
+    .where(and(gte(schema.runs.startedAt, monthAgo), inArray(schema.runs.trigger, ["scheduled", "manual"]), eq(schema.runs.status, "done")));
+
   const cost = Number(usd);
   return {
     goals: GOALS,
@@ -119,6 +131,8 @@ export async function metrics(now = new Date()) {
     costMonth: cost,
     monthActives,
     costPerActiveMonth: monthActives ? cost / monthActives : null,
+    applyCost: applyCost(drafted.map((d) => Number(d.usd ?? 0))),
+    searchCost: { searches: perSearch.searches, avg: perSearch.avg === null ? null : Number(perSearch.avg) },
     weeks: weeks.slice(0, -1),
     growth: {
       channels: byChannel(signups.map((r) => ({ channel: r.channel, joined: !!r.userId, active: !!r.userId && lastWeekActive.has(r.userId) }))),

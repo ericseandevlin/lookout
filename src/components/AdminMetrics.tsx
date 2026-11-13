@@ -24,6 +24,8 @@ type Data = {
   costMonth: number;
   monthActives: number;
   costPerActiveMonth: number | null;
+  applyCost: { applications: number; avg: number | null; median: number | null; max: number | null };
+  searchCost: { searches: number; avg: number | null };
   weeks: { week: string; active: number; acted: number; actedPerActive: number }[];
   growth: { channels: { channel: string; signups: number; joined: number; active: number }[]; invites: { sent: number; accepted: number; rate: number | null } };
 };
@@ -35,6 +37,8 @@ const muted: React.CSSProperties = { fontSize: 14, color: color.t2 };
 const day = (week: string) => new Date(`${week}T12:00:00Z`).toLocaleDateString("en-US", { month: "short", day: "numeric" });
 const one = (n: number) => (Math.round(n * 10) / 10).toString();
 const usd = (n: number) => `$${n.toFixed(2)}`;
+/** Small amounts (one search, one application) need more than cents. */
+const cents = (n: number | null) => (n === null ? "–" : n < 0.1 ? `$${n.toFixed(3)}` : usd(n));
 const percent = (r: number | null) => (r === null ? "–" : `${Math.round(r * 100)}%`);
 const plural = (n: number, one: string, many: string) => `${n} ${n === 1 ? one : many}`;
 const share = (n: number, of: number) => (of ? `${Math.round((n / of) * 100)}%` : "–");
@@ -98,6 +102,14 @@ export function AdminMetrics() {
           note: d.quality.score.ignored === null ? "No finds left alone" : `${one(d.quality.score.ignored)} for finds nobody acted on`,
         },
         { measure: "Offers from a find", now: String(d.offers), note: from(d.outcomes.board.offers, d.outcomes.survey.offers, "Offer", "an offer") },
+        {
+          measure: "AI cost of one application",
+          now: cents(d.applyCost.avg),
+          note: d.applyCost.applications
+            ? `Average over ${plural(d.applyCost.applications, "drafted application", "drafted applications")}, all time: scan, drafts, Recruiter Analysis, redrafts and AI edits. Median ${cents(d.applyCost.median)}, worst ${cents(d.applyCost.max)}.` +
+              (d.searchCost.avg !== null ? ` One search averaged ${cents(d.searchCost.avg)} over the last 30 days.` : "")
+            : "No application drafted yet",
+        },
         { measure: "Searches that read a page", now: percent(d.search.rate), note: `${d.search.succeeded} of ${d.search.searches} finished searches, last 30 days` },
       ]
     : [];

@@ -86,6 +86,16 @@ describe("metrics (#369)", () => {
     ]);
     await db.insert(schema.invites).values([{ email: "a@example.com" }, { email: "waiting@example.com" }, { email: "gone@example.com", revokedAt: ago(1) }]);
 
+    // Auto-apply cost (#991): drafted applications only, every account (real spend); one still queued is left out.
+    const app = async (userId: string, key: string, report: Record<string, unknown>) => {
+      const [o] = await db.insert(schema.opportunities).values({ company: "Acme", title: key, fingerprint: `app-${key}` }).returning();
+      await db.insert(schema.applications).values({ userId, opportunityId: o.id, status: "needs_review", report });
+    };
+    await app(a.id, "one", { draftedAt: ago(2).toISOString(), usd: 0.08 });
+    await app(b.id, "two", { draftedAt: ago(1).toISOString(), usd: 0.12 });
+    await app(off.id, "three", { draftedAt: ago(1).toISOString(), usd: 0.31 });
+    await app(a.id, "queued", { usd: 0.01 });
+
     const m = await metrics(NOW);
     expect(m.weeklyActives).toBe(2);
     expect(m.actedPerActive).toBe(0.5);
@@ -101,6 +111,9 @@ describe("metrics (#369)", () => {
     expect(m.costMonth).toBe(1.75);
     expect(m.monthActives).toBe(2);
     expect(m.costPerActiveMonth).toBe(0.875);
+    expect(m.applyCost).toEqual({ applications: 3, avg: expect.closeTo(0.17), median: 0.12, max: 0.31 });
+    // Only the finished searches: a's and the disabled account's.
+    expect(m.searchCost).toEqual({ searches: 2, avg: 0.75 });
     expect(m.growth.channels).toEqual([
       { channel: "reddit", signups: 2, joined: 2, active: 2 },
       { channel: "direct", signups: 1, joined: 0, active: 0 },
