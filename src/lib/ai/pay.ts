@@ -54,11 +54,18 @@ function fromJsonLd(html: string): Pay | null {
   return null;
 }
 
+/** Greenhouse amounts use the posting's local format, e.g. "€36.000" or "£60,000". Strip the symbol and
+ *  treat a dot that is followed by exactly three digits as a thousands separator before feeding to money(). */
+function greenhouseAmount(s: string): number | null {
+  const cleaned = s.replace(/^[€£$¥]/, "").replace(/\.(?=\d{3}(?:[^\d]|$))/g, "");
+  return money(cleaned);
+}
+
 function fromGreenhouse(html: string): Pay | null {
   const block = html.match(/"pay_ranges"\s*:\s*\[([^\]]*)\]/)?.[1];
   if (!block) return null;
-  const min = money(block.match(/"min"\s*:\s*"([^"]+)"/)?.[1] ?? "");
-  const max = money(block.match(/"max"\s*:\s*"([^"]+)"/)?.[1] ?? "");
+  const min = greenhouseAmount(block.match(/"min"\s*:\s*"([^"]+)"/)?.[1] ?? "");
+  const max = greenhouseAmount(block.match(/"max"\s*:\s*"([^"]+)"/)?.[1] ?? "");
   const cur = block.match(/"currency_type"\s*:\s*"([A-Z]{3})"/)?.[1] ?? "USD";
   return min && max ? annual(min, max, "YEAR", cur, "pay range") : null;
 }
