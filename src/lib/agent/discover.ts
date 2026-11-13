@@ -297,6 +297,9 @@ const annualPay = (n: number | null) => (n != null && Number.isFinite(n) && n >=
 /** In an insert's conflict update: the shared row's link check says gone and the new find is at another URL (#830). */
 const reposted = sql`(${schema.opportunities.attributes} -> 'linkCheck' ->> 'state' = 'gone' and excluded.source_url is distinct from ${schema.opportunities.sourceUrl})`;
 
+/** In an insert's conflict update: the shared row has no pay stored (#846). */
+const noPay = sql`(${schema.opportunities.compMin} is null and ${schema.opportunities.compMax} is null)`;
+
 /**
  * The posting's dedupe key. The fingerprint drops title parentheticals, so "Designer (Payments)" and "Designer (Identity)"
  * at one company and city share it, and the second job was saved onto the first's row and never shown (#838). When the
@@ -368,7 +371,7 @@ export async function save(ctx: Context, finds: ScoredT[], via: "agent" | "manua
         description: f.description.slice(0, 2000),
         fingerprint: await postingKey(f),
       })
-      // The row is shared by everyone who has this find: keep its link and summary, only fill what's missing (#585).
+      // The row is shared by everyone who has this find: keep its link and summary, only fill what's missing (#585, #846).
       // A posting the link check found gone and the company put up again at a new URL takes the new link, summary and
       // date, and drops the old check, so the repost isn't shown with the dead link and closed at once on its next check (#830).
       .onConflictDoUpdate({
@@ -376,7 +379,12 @@ export async function save(ctx: Context, finds: ScoredT[], via: "agent" | "manua
         set: {
           sourceUrl: sql`case when ${reposted} then excluded.source_url else coalesce(${schema.opportunities.sourceUrl}, excluded.source_url) end`,
           description: sql`case when ${reposted} then excluded.description else coalesce(nullif(${schema.opportunities.description}, ''), excluded.description) end`,
-          postedAt: sql`case when ${reposted} then coalesce(excluded.posted_at, ${schema.opportunities.postedAt}) else ${schema.opportunities.postedAt} end`,
+          postedAt: sql`case when ${reposted} then coalesce(excluded.posted_at, ${schema.opportunities.postedAt}) else coalesce(${schema.opportunities.postedAt}, excluded.posted_at) end`,
+          // A first read that missed the pay, date or work mode takes them from a later read; stored values stay (#846).
+          // Pay fills as a pair, so a stored range is never half replaced.
+          compMin: sql`case when ${noPay} then excluded.comp_min else ${schema.opportunities.compMin} end`,
+          compMax: sql`case when ${noPay} then excluded.comp_max else ${schema.opportunities.compMax} end`,
+          workMode: sql`coalesce(${schema.opportunities.workMode}, excluded.work_mode)`,
           attributes: sql`case when ${reposted} then ${schema.opportunities.attributes} - 'linkCheck' else ${schema.opportunities.attributes} end`,
         },
       })
