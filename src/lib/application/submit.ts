@@ -271,9 +271,15 @@ async function fillOne(page: Page, s: FillStep): Promise<{ ok: boolean; how: str
       const want = i >= 0 ? s.options![i] : s.content;
       await field.click();
       await field.fill(want).catch(() => {});
+      // Options that load after typing (Greenhouse Location or School) need a moment. No option, no fill: Enter on an
+      // empty menu left the field blank while the step said "picked", and Submit went out to a rejection (#1073).
       const opt = page.getByRole("option", { name: want, exact: true }).first();
-      if (await opt.isVisible().catch(() => false)) await opt.click();
-      else await field.press("Enter");
+      const shown = await opt.waitFor({ state: "visible", timeout: 2000 }).then(() => true, () => false);
+      if (!shown) {
+        await field.press("Escape").catch(() => {});
+        return { ok: false, how: `option did not show: ${want.slice(0, 60)}` };
+      }
+      await opt.click();
       return { ok: true, how: "picked option" };
     }
     await field.fill(s.content);
