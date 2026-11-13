@@ -10,8 +10,9 @@ export const ownNotes = (notes: string) => notes.replace(CLOSED_NOTE, "").trim()
 
 // Phrases job boards use for a posting that's no longer live. Checked against the start of the page text only.
 const CLOSED = [
-  // Not "no longer open to candidates requiring sponsorship" (#903) or "no longer accepting candidates from agencies" (#933).
-  /no longer (accepting (applications|applicants|candidates)\b(?! from\b)|open(?! to\b))/i,
+  // Not "no longer open to candidates requiring sponsorship" (#903), "no longer accepting candidates from agencies" (#933),
+  // or "no longer accepting applications via email; apply on this page" (#1027).
+  /no longer (accepting (applications|applicants|candidates)\b(?! (from|via|by (e-?mail|mail|post|phone|fax)|through (e-?mail|mail|linkedin|indeed|recruiters?|agencies))\b)|open(?! to\b))/i,
   // "Available", "active" and "posted" need the job as the subject, or start a sentence: "Visa sponsorship is no longer
   // available for this role" is about the visa, not the job (#933).
   // Not "Visa sponsorship for this position is no longer available": there the job is the object of "for" (#980).
