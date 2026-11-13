@@ -574,6 +574,31 @@ describe("runFill controls (#567)", () => {
   });
 });
 
+describe("startFill test (#923)", () => {
+  it("a test fill that finishes after a submit keeps the submit's record", async () => {
+    const id = await seed("manual", ITEMS);
+    const submitted = { mode: "submit" as const, at: "2026-11-13T09:00:00.000Z", log: [], missing: [], clicked: true, stopped: "Lookout clicked Submit but didn't see a confirmation." };
+    const before = new Date("2026-11-13T09:00:00.000Z");
+    await db.update(schema.applications).set({ report: { applyUrl: "https://jobs.example.com/apply", fill: submitted }, updatedAt: before }).where(eq(schema.applications.id, id));
+    page = fakePage(FORM);
+    await startFill(id, "test");
+    const a = await vi.waitFor(async () => {
+      const a = await app(id);
+      if (a.updatedAt.getTime() === before.getTime()) throw new Error("still filling");
+      return a;
+    });
+    expect(a.report.fill).toEqual(submitted);
+  });
+
+  it("a test fill with no submit before it records its result", async () => {
+    const id = await seed("approved", ITEMS);
+    page = fakePage(FORM);
+    await startFill(id, "test");
+    const a = await settled(id);
+    expect(a.report.fill?.mode).toBe("test");
+  });
+});
+
 describe("startFill submit (#385)", () => {
   it("a confirmation on the page records it submitted, with what was sent, and moves the find to Applied", async () => {
     const id = await seed("approved", ITEMS);
