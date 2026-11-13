@@ -8,6 +8,7 @@ import { findPay, type Pay } from "@/lib/ai/pay";
 import type { RunReport, RunTally, SearchProfile } from "@/lib/db/schema";
 import { ensureSearchProfile, loadRawInputs, renderSearchProfile } from "./searchProfile";
 import { buildTips, emptyTally } from "./report";
+import { doneStep } from "./runOutcome";
 import { autoQueue } from "@/lib/apply";
 import { completeJSON, emptyUsage, type Usage } from "@/lib/ai/llm";
 import { assertBudget, finishRun, progress, startRun } from "@/lib/ai/runs";
@@ -465,7 +466,7 @@ export async function discover(searchId: string, trigger: "scheduled" | "manual"
     // Networking events (#7): only for people who set event interests, on their weekly or monthly schedule (#265); never fails the job search.
     const events = !featureOn("EVENTS") ? null : await findEventsIfDue(ctx, usage, (step) => report(99, step)).catch((e) => (console.error("[events] failed", e), null));
     const eventsNote = events ? `, plus ${events} ${events === 1 ? "event" : "events"}` : "";
-    await progress(run.id, 100, (added ? `Added ${added} new ${added === 1 ? "find" : "finds"}` : found ? "No new finds this time. Everything matching is already on your board" : "No matching open roles this time") + eventsNote);
+    await progress(run.id, 100, doneStep(tally) + eventsNote);
     const summary = makeReport(ctx, { queries, results: hits.length, picked: picks.length, read: pages.length, tally });
     await finishRun(run.id, usage, { found, added, report: summary });
     return { found, added, runId: run.id };

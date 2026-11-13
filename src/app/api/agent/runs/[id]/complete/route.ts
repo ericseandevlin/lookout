@@ -4,6 +4,7 @@ import { body, HttpError, json } from "@/lib/api";
 import { agentRoute } from "@/lib/agentAuth";
 import { db, schema } from "@/lib/db";
 import { loadContext, makeReport, save, ScoredList } from "@/lib/agent/discover";
+import { doneStep } from "@/lib/agent/runOutcome";
 import { autoQueue } from "@/lib/apply";
 import { applyResumeResult, Fills } from "@/lib/agent/resume";
 import { emptyUsage } from "@/lib/ai/llm";
@@ -58,7 +59,7 @@ export const POST = agentRoute<Ctx>(async (req, { params }) => {
   const { newFinds, ...tally } = await save(ctx, finds, type === "url" ? "manual" : "agent");
   if (type !== "url") await autoQueue(run.userId, newFinds).catch((e) => console.error("[auto-apply] queue failed", e));
   const { added, postings: found } = tally;
-  await progress(id, 100, added ? `Added ${added} new ${added === 1 ? "find" : "finds"}` : found ? "No new finds this time. Everything matching is already on your board" : "No matching open roles this time");
+  await progress(id, 100, doneStep(tally));
   const report =
     type === "url" ? undefined : makeReport(ctx, { queries: p.queries ?? [], results: p.results ?? finds.length, picked: p.read ?? finds.length, read: p.read ?? finds.length, tally });
   await finishRun(id, usage, { found, added, report });
