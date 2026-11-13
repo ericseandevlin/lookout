@@ -37,14 +37,16 @@ function fromJsonLd(html: string): Pay | null {
     for (const node of [data].flat(2) as Record<string, unknown>[]) {
       const graph = (node?.["@graph"] as Record<string, unknown>[] | undefined) ?? [node];
       for (const n of graph) {
-        const bs = n?.baseSalary as Record<string, unknown> | undefined;
-        if (!bs) continue;
-        // schema.org lets value be a QuantitativeValue or a plain number, with min/max and unitText on either level (#647).
-        const v = (typeof bs.value === "object" && bs.value ? bs.value : { value: bs.value }) as Record<string, unknown>;
-        const min = amount(v.minValue ?? bs.minValue ?? v.value), max = amount(v.maxValue ?? bs.maxValue ?? v.value);
-        if (Number.isFinite(min) && Number.isFinite(max) && min > 0) {
-          const p = annual(min, max, String(v.unitText ?? bs.unitText ?? "YEAR"), String(bs.currency ?? "USD"), "structured data");
-          if (p) return p;
+        // baseSalary may also be a list, one entry per location or level; the first plausible one wins (#850).
+        for (const bs of [n?.baseSalary ?? []].flat() as Record<string, unknown>[]) {
+          if (!bs || typeof bs !== "object") continue;
+          // schema.org lets value be a QuantitativeValue or a plain number, with min/max and unitText on either level (#647).
+          const v = (typeof bs.value === "object" && bs.value ? bs.value : { value: bs.value }) as Record<string, unknown>;
+          const min = amount(v.minValue ?? bs.minValue ?? v.value), max = amount(v.maxValue ?? bs.maxValue ?? v.value);
+          if (Number.isFinite(min) && Number.isFinite(max) && min > 0) {
+            const p = annual(min, max, String(v.unitText ?? bs.unitText ?? "YEAR"), String(bs.currency ?? "USD"), "structured data");
+            if (p) return p;
+          }
         }
       }
     }
