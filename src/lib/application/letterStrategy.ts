@@ -40,12 +40,33 @@ const THEME_WORDS: Partial<Record<StoryTheme, RegExp>> = {
   community: /\b(communit\w*|nonprofit|civic|neighbou?rhoods?|volunteer\w*)\b/gi,
 };
 
+// Benefits and tech phrases that use theme words but say nothing about what the company does (#856).
+const NOT_THEME = [
+  /\b(?:health|medical|dental|vision|life|disability|wellness|well-being|wellbeing)(?:\s*(?:,|and|&|\/)\s*(?:health|medical|dental|vision|life|disability))*\s+(?:insurance|plans?|benefits?|coverage|care|savings|accounts?|stipends?|programs?|reimbursements?|days?|allowances?|perks?)\b/gi,
+  /\b(?:medical|dental|vision)\s*(?:,|and|&|\/)\s*(?:dental|vision|medical)\b/gi,
+  /\b(?:health|wellness)\s+(?:and|&)\s+(?:wellness|wellbeing|well-being|fitness)\b/gi,
+  /\b(?:hsa|fsa|health savings|flexible spending)\b/gi,
+  /\b(?:machine|deep|reinforcement|federated|statistical)\s+learning\b/gi,
+  /\blearning\s+(?:and|&)\s+development\b/gi,
+  /\blearning\s+(?:budgets?|stipends?|allowances?)\b/gi,
+  /\bcontinuous learning\b/gi,
+  /\bsocial media\b/gi,
+  /\b(?:paid\s+)?(?:family|parental)\s+(?:leave|planning|medical leave)\b/gi,
+  /\bfamily[- ]friendly\b/gi,
+  /\binvest(?:s|ing|ed)?\s+in\s+(?:our|its|your|you|their|the growth)\b/gi,
+  /\b(?:we|who|that)\s+(?:truly\s+|really\s+|deeply\s+)?care\b/gi,
+  /\btake care\b/gi,
+];
+
+const themeText = (t: string) => NOT_THEME.reduce((s, re) => s.replace(re, " "), t);
+
 /** The story that fits this posting best, if one clearly does: its theme shows up in the posting at least twice. */
 export function fittingStory(stories: PersonalStory[], postingText: string) {
+  const text = themeText(postingText);
   let best: { story: PersonalStory; hits: number } | null = null;
   for (const s of stories) {
     const re = THEME_WORDS[s.theme];
-    const hits = re ? (postingText.match(re) ?? []).length : 0;
+    const hits = re ? (text.match(re) ?? []).length : 0;
     if (hits >= 2 && (!best || hits > best.hits)) best = { story: s, hits };
   }
   return best?.story ?? null;

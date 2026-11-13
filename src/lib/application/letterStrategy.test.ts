@@ -16,6 +16,23 @@ describe("cover letter strategies (#738)", () => {
     expect(fittingStory([story("health")], "We offer health insurance.")).toBeNull();
   });
 
+  it("does not count benefits or tech phrases as a theme (#856)", () => {
+    const benefits = "Medical, dental and vision insurance. A health savings account and a wellness stipend. Health and wellness perks.";
+    expect(fittingStory([story("health")], benefits)).toBeNull();
+    expect(suggestStrategy({ title: "Designer", text: benefits }, [story("health")]).strategy).toBe("match");
+    expect(fittingStory([story("education")], "Machine learning and deep learning models. A learning and development budget.")).toBeNull();
+    expect(fittingStory([story("entertainment")], "Run our social media. Grow social media reach.")).toBeNull();
+    expect(fittingStory([story("family")], "Paid family leave and parental leave. A family-friendly culture.")).toBeNull();
+    expect(fittingStory([story("finance")], "We invest in our people and invest in your growth.")).toBeNull();
+    expect(fittingStory([story("health")], "We care about craft. We truly care about users.")).toBeNull();
+  });
+
+  it("still counts the theme when the company works in it, benefits aside (#856)", () => {
+    const text = "We build tools for patients and clinical teams. Plus medical and dental insurance.";
+    expect(fittingStory([story("health")], text)?.id).toBe("s1");
+    expect(fittingStory([story("education")], "We help students and teachers. Machine learning powers it.")?.id).toBe("s1");
+  });
+
   it("suggests lead-with-proof for senior roles and match-the-asks otherwise", () => {
     expect(suggestStrategy({ title: "Senior Design Engineer", text: "Build things." }, []).strategy).toBe("proof");
     expect(suggestStrategy({ title: "Director, UX Engineering", text: "Build things." }, []).strategy).toBe("proof");
