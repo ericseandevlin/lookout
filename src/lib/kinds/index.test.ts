@@ -150,11 +150,22 @@ describe("parseMoney", () => {
     ["$250k/year", 250000],
     ["150k a year", 150000],
     ["150k base, hourly ok", 150000],
+    // A day rate, biweekly and semimonthly pay (#982).
+    ["$650/day", 169000],
+    ["$650 a day", 169000],
+    ["650 daily", 169000],
+    ["$4,000 bi-weekly", 104000],
+    ["$4,000 biweekly", 104000],
+    ["$4000 every two weeks", 104000],
+    ["$6,250 semi-monthly", 150000],
+    ["$6,250 twice a month", 150000],
+    ["$150,000 per year", 150000],
+    ["150k/yr", 150000],
   ])("reads %s as %d", (v, n) => {
     expect(parseMoney(v)).toBe(n);
   });
 
-  it.each([[""], ["  "], ["0"], ["€90k"], ["90k EUR"], ["£80,000"], ["negotiable"], ["6 figures"], ["low 6 figures"], [null], [120000], [["120k"]]])("returns null for %j", (v) => {
+  it.each([[""], ["  "], ["0"], ["€90k"], ["90k EUR"], ["£80,000"], ["negotiable"], ["6 figures"], ["low 6 figures"], [null], [120000], [["120k"]], ["$95 per project"], ["500/visit"]])("returns null for %j", (v) => {
     expect(parseMoney(v)).toBeNull();
   });
 });

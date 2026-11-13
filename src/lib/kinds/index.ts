@@ -269,7 +269,12 @@ export function answeredCount(cfg: KindConfig, a: Record<string, string | string
 const SCALE: Record<string, number> = { k: 1e3, m: 1e6, b: 1e9 };
 // A pay rate per hour, week or month right after the number (or after the top of a range, "85-95/hr"). The floor is
 // compared with yearly salaries, so it is annualized the way ai/pay.ts does it: 2080 hours, 52 weeks, 12 months (#941).
-const PER_UNIT = /^(?:\s*(?:-|to)\s*\d+(?:\.\d+)?\s*k?)?\s*(?:(?:\/\s?|\b(?:per|an?|each)\s+)(hours?|hrs?|h|weeks?|wks?|months?|mos?)\b|(hourly|weekly|monthly)\b)/;
+// Day rates (260 working days), biweekly (26) and semimonthly (24) pay too, named before weekly and monthly (#982).
+const PER_UNIT =
+  /^(?:\s*(?:-|to)\s*\d+(?:\.\d+)?\s*k?)?\s*(?:(?:\/\s?|\b(?:per|an?|each)\s+)(hours?|hrs?|h|days?|weeks?|wks?|months?|mos?)\b|(hourly|daily|bi-?weekly|every (?:two|2) weeks|semi-?monthly|twice (?:a|per|each) month|weekly|monthly)\b)/;
+// "$95 per project", "500/visit": a rate per something Lookout can't turn into a year (#982).
+const OTHER_UNIT = /^(?:\s*(?:-|to)\s*\d+(?:\.\d+)?\s*k?)?\s*(?:\/\s?|\bper\s+)(?!y(?:ea)?rs?\b|annum\b|annual)[a-z]/;
+const periods = (unit: string) => (/^(bi|every)/.test(unit) ? 26 : /^(semi|twice)/.test(unit) ? 24 : /^h/.test(unit) ? 2080 : /^d/.test(unit) ? 260 : /^w/.test(unit) ? 52 : 12);
 
 /**
  * "$120,000" / "120k" / "120000" -> 120000; "$2M" / "2 million" -> 2000000; "$1.2B" -> 1200000000 (#482).
@@ -277,7 +282,8 @@ const PER_UNIT = /^(?:\s*(?:-|to)\s*\d+(?:\.\d+)?\s*k?)?\s*(?:(?:\/\s?|\b(?:per|
  * The field is free text, so words before the number ("~$150k", "USD 150,000", "about 100k") don't hide it, and a word
  * after it ("150 base") isn't a B for billions (#797). A plural like "low 200s" or "$180s" reads the whole number, not
  * the first two digits (#882). Euros, pounds and other non-dollar amounts stay unread. An hourly, weekly or monthly
- * rate is turned into a year ("$85/hr" is $176,800), and "6 figures" is not a number to filter on (#941).
+ * rate is turned into a year ("$85/hr" is $176,800), and "6 figures" is not a number to filter on (#941). So is a day
+ * rate, biweekly or semimonthly pay; a rate per anything else ("per project") is unread (#982).
  */
 export function parseMoney(v: unknown): number | null {
   const s = str(v).toLowerCase().replace(/[,$]/g, "").replace(/(\d)\s+(?=\d{3}\b)/g, "$1");
@@ -285,10 +291,12 @@ export function parseMoney(v: unknown): number | null {
   const m = /(\d+(?:\.\d+)?)(?![\d.])\s*(k|mm|mil|million|m|bn|billion|b)?s?(?![a-z])/.exec(s);
   if (!m) return null;
   const bare = parseFloat(m[1]);
-  const per = PER_UNIT.exec(s.slice(m.index + m[0].length));
+  const rest = s.slice(m.index + m[0].length);
+  const per = PER_UNIT.exec(rest);
   const unit = per && (per[1] || per[2]);
+  if (!unit && OTHER_UNIT.test(rest)) return null;
   const n = unit
-    ? bare * (m[2] ? SCALE[m[2][0]] : 1) * (/^h/.test(unit) ? 2080 : /^w/.test(unit) ? 52 : 12)
+    ? bare * (m[2] ? SCALE[m[2][0]] : 1) * periods(unit)
     : bare * (m[2] ? SCALE[m[2][0]] : bare < 1000 ? 1e3 : 1);
   return Number.isFinite(n) && n > 0 ? Math.round(n) : null;
 }
