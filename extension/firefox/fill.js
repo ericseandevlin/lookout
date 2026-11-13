@@ -115,6 +115,17 @@
     return [...document.querySelectorAll("input[type=radio]")].filter((el) => labelOf(el).startsWith(q));
   }
 
+  /**
+   * The text matched only in another branch of this container that holds its own upload box: a section with a shallow
+   * Cover Letter box and a deeper Resume box must not hand the resume to the cover letter's input (#1085).
+   */
+  function otherBoxHas(container, input, key) {
+    for (let cur = input; cur.parentElement && cur !== container; cur = cur.parentElement)
+      for (const sibling of cur.parentElement.children)
+        if (sibling !== cur && sibling.querySelector("input[type=file]") && norm(sibling.textContent).includes(key)) return true;
+    return false;
+  }
+
   function fileInputFor(prompt, itemKind) {
     const inputs = [...document.querySelectorAll("input[type=file]")];
     const key = norm(prompt).slice(0, 40);
@@ -126,7 +137,7 @@
         let n = input.parentElement;
         for (let i = 0; n && i < depth; i++) n = n.parentElement;
         if (!n || !norm(n.textContent).includes(key)) continue;
-        if (depth > 0 && itemKind === "cover_letter" && siblingHas(n, input, key)) continue;
+        if (depth > 0 && (itemKind === "cover_letter" ? siblingHas(n, input, key) : otherBoxHas(n, input, key))) continue;
         return input;
       }
     // Unlabeled, only the resume takes the first upload and the letter the second. Any other upload (writing sample,
