@@ -10,6 +10,16 @@ const COMMON =
 // Never kept: salary and essays change per role; commute and office questions depend on where each job is.
 const NEVER = /salary|compensation|pay|expected|why|describe|tell us|cover letter|portfolio|years of|commut|in.?office|hybrid|remote|location (listed|of the)|this (role|position|location)/i;
 
+// Questions about one employer: a No is true almost everywhere, but a Yes or a referrer's name is about that company only.
+const ONE_EMPLOYER = /previously (worked|employed)|ever (been )?employed by|worked (here|for us)|referr/i;
+const START = /start date|earliest.*start|when can you start/i;
+// A calendar date ("12/1", "2026-12-01", "Dec 1") passes; "2 weeks after an offer" stays true.
+const DATE = /\b\d{1,2}[/.-]\d{1,2}([/.-]\d{2,4})?\b|\b\d{4}-\d{2}-\d{2}\b|\b(jan|feb|mar|apr|jun|jul|aug|sep|sept|oct|nov|dec)[a-z]*\.? \d{1,2}\b|\bmay \d{1,2}\b/i;
+
+/** An answer that fits only the application it was given on, so it must not travel to the next one (#1032). */
+export const onlyThisOne = (question: string, answer: string) =>
+  (ONE_EMPLOYER.test(question) && !/^no\b/i.test(answer.trim())) || (START.test(question) && DATE.test(answer));
+
 export const answerKey = (q: string) =>
   q
     .toLowerCase()
@@ -20,7 +30,7 @@ export const answerKey = (q: string) =>
 
 /** Is this question one we should remember the answer to? */
 export function isCommon(question: string, answer: string) {
-  return COMMON.test(question) && !NEVER.test(question) && answer.trim().length > 0 && answer.length <= 300;
+  return COMMON.test(question) && !NEVER.test(question) && answer.trim().length > 0 && answer.length <= 300 && !onlyThisOne(question, answer);
 }
 
 export function upsert(list: SavedAnswer[], question: string, answer: string): SavedAnswer[] {
@@ -31,12 +41,15 @@ export function upsert(list: SavedAnswer[], question: string, answer: string): S
 
 /** A saved answer for the same question, if it fits the form's choices. */
 export function match(list: SavedAnswer[], question: string, options?: string[] | null): string | null {
-  const hit = list.find((s) => s.key === answerKey(question));
+  // Answers saved before #1032 may still hold one employer's Yes: never reuse those.
+  const hit = list.find((s) => s.key === answerKey(question) && !onlyThisOne(s.question, s.answer));
   if (!hit) return null;
   if (!options?.length) return hit.answer;
   return options.find((o) => o.toLowerCase() === hit.answer.toLowerCase()) ?? null;
 }
 
 /** For the drafting prompt: the model may reuse these when a question means the same thing. */
-export const savedBlock = (list: SavedAnswer[]) =>
-  list.length ? `\n\n<saved_answers from the person's earlier applications; reuse when a question asks the same thing, source "saved answer">\n${list.map((s) => `- ${s.question}: ${s.answer}`).join("\n")}\n</saved_answers>` : "";
+export const savedBlock = (all: SavedAnswer[]) => {
+  const list = all.filter((s) => !onlyThisOne(s.question, s.answer));
+  return list.length ? `\n\n<saved_answers from the person's earlier applications; reuse when a question asks the same thing, source "saved answer">\n${list.map((s) => `- ${s.question}: ${s.answer}`).join("\n")}\n</saved_answers>` : "";
+};
