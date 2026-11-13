@@ -45,6 +45,20 @@ describe("dedupe keys", () => {
       fingerprint("tishman speyer", "Director of Banquets (Rainbow Room)", "Rockefeller Center"),
     );
   });
+  it("keeps the fingerprints of Latin-script postings stored before #1075", () => {
+    expect(fingerprint("Tishman Speyer", "Director of Banquets", "Rockefeller Center, NY")).toBe("17ef17fd57dd4d6761d52d8fa79b4c4684a3352d");
+    expect(fingerprint("Café Société", "Sous-Chef (Nuit)", "Montréal, QC")).toBe("e82bc15d03229e2083e76c1f412fdc15adb57778");
+  });
+  it("tells apart postings whose company and title are in a non-Latin script (#1075)", () => {
+    expect(fingerprint("メルカリ", "シニアエンジニア", "東京")).not.toBe(fingerprint("ソニー", "デザイナー", "東京"));
+    expect(fingerprint("Яндекс", "Дизайнер", "Москва")).not.toBe(fingerprint("Сбер", "Аналитик", "Москва"));
+    expect(fingerprint("Acme", "Senior エンジニア", "Tokyo")).not.toBe(fingerprint("Acme", "Senior デザイナー", "Tokyo"));
+    expect(fingerprint("मेरा", "डिज़ाइनर", "दिल्ली")).not.toBe(fingerprint("मेरा", "डिजाइन", "दिल्ली"));
+  });
+  it("still ignores width, punctuation and parentheticals in non-Latin text", () => {
+    expect(fingerprint("メルカリ", "シニア・エンジニア (正社員)", "東京, 日本")).toBe(fingerprint("メルカリ", "シニア エンジニア", "東京"));
+    expect(fingerprint("ﾒﾙｶﾘ", "エンジニア", "東京")).toBe(fingerprint("メルカリ", "エンジニア", "東京"));
+  });
   it("normalizes tracking params out of URLs", () => {
     expect(normUrl("https://www.boards.greenhouse.io/x/jobs/1?utm_source=li&gh_src=a")).toBe("boards.greenhouse.io/x/jobs/1");
     expect(normUrl("https://jobs.lever.co/x/1?lever-source=LinkedIn&lever-origin=applied&ref=hn&src=feed&source=x")).toBe("jobs.lever.co/x/1");
