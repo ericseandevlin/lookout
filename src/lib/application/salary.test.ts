@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { asksBase, isSalaryQuestion, rangeBasis, suggestSalary } from "./salary";
+import { askPer, asksBase, isSalaryQuestion, rangeBasis, suggestSalary } from "./salary";
 
 describe("suggestSalary", () => {
   // Quill's criteria 1 and 3 first: these are the cases where a wrong number looks confident.
@@ -282,5 +282,40 @@ describe("salary note wording", () => {
         "• Minimum question: still answered inside their range. Naming less than they budgeted leaves money on the table.",
       ].join("\n"),
     );
+  });
+});
+
+describe("hourly and monthly salary questions (#949)", () => {
+  it.each([
+    ["What are your hourly wage expectations?", "hour"],
+    ["Expected salary (per hour)", "hour"],
+    ["Desired pay rate ($/hr)", "hour"],
+    ["Salary expectations (hourly)", "hour"],
+    ["What is your desired monthly salary?", "month"],
+    ["Expected salary per month", "month"],
+    ["Weekly pay expectations", "week"],
+    ["Desired salary", null],
+    ["Desired annual salary (paid monthly)", null],
+    ["Salary expectations, paid bi-weekly", null],
+  ])("%s asks per %s", (q, per) => {
+    expect(askPer(q)).toBe(per);
+  });
+
+  it("divides the yearly ask down and shows where it came from", () => {
+    const r = suggestSalary({ floor: "150k", min: 160000, max: 200000, per: "hour" });
+    expect(r?.amount).toBe("$91");
+    expect(r?.note).toContain("$190,000 a year divided by 2,080 working hours: $91 per hour");
+    expect(suggestSalary({ floor: "150k", min: 160000, max: 200000, per: "month" })?.amount).toBe("$15,833");
+    expect(suggestSalary({ target: "156k", per: "week" })?.amount).toBe("$3,000");
+  });
+
+  it("keeps a blank answer blank and a yearly question yearly", () => {
+    expect(suggestSalary({ floor: "250k", min: 160000, max: 200000, per: "hour" })?.amount).toBeNull();
+    expect(suggestSalary({ floor: "150k", min: 160000, max: 200000 })?.amount).toBe("$190,000");
+  });
+
+  it("names the converted amount in the base-or-total question", () => {
+    const r = suggestSalary({ min: 160000, max: 200000, asksBase: true, per: "hour" });
+    expect(r?.question).toContain("$91 per hour as base");
   });
 });

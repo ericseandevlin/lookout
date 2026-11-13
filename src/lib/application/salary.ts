@@ -110,7 +110,35 @@ function asksPastPay(s: string) {
  * amount is null when Lookout shouldn't put a number in: the floor is above their range, or their range
  * is total cash and the question asks base. question is set when the person has to decide.
  */
-export function suggestSalary(i: { floor?: unknown; target?: unknown; min?: number | null; max?: number | null; basis?: "total" | "base" | null; asksBase?: boolean; asksMinimum?: boolean }): { amount: string | null; note: string; question?: string } | null {
+/** The pay period the question asks in: "hourly wage expectations", "desired monthly salary". Null is a year (#949). */
+export function askPer(prompt: string): "hour" | "week" | "month" | null {
+  if (/\b(annual(ly)?|yearly|per (year|annum)|a year|\/\s?y(ea)?r)\b/i.test(prompt)) return null;
+  if (/\bhourly\b|\b(per|an|each) (hour|hr)\b|\/\s?h(ou)?r\b/i.test(prompt)) return "hour";
+  if (/\bweekly\b|\b(per|a|each) week\b|\/\s?w(ee)?k\b/i.test(prompt) && !/\bbi-?weekly\b/i.test(prompt)) return "week";
+  if (/\bmonthly\b|\b(per|a|each) month\b|\/\s?mo(nth)?\b/i.test(prompt)) return "month";
+  return null;
+}
+
+const PER: Record<"hour" | "week" | "month", { n: number; how: string }> = {
+  hour: { n: 2080, how: "2,080 working hours" },
+  week: { n: 52, how: "52 weeks" },
+  month: { n: 12, how: "12 months" },
+};
+
+/**
+ * The ask in the period the question uses. Every number above is a year's pay, so an hourly or monthly question gets
+ * the yearly ask divided down, not "$165,000" in an hourly-rate field (#949).
+ */
+export function suggestSalary(i: Parameters<typeof yearlyAsk>[0] & { per?: "hour" | "week" | "month" | null }): { amount: string | null; note: string; question?: string } | null {
+  const r = yearlyAsk(i);
+  if (!r || !r.amount || !i.per) return r;
+  const yearly = Number(r.amount.replace(/\D/g, ""));
+  const p = PER[i.per];
+  const amount = usd(Math.round(yearly / p.n));
+  return { ...r, amount, ...(r.question ? { question: r.question.replace(r.amount, `${amount} per ${i.per}`) } : {}), note: `${r.note}\n• This question asks per ${i.per}, so the ask is ${r.amount} a year divided by ${p.how}: ${amount} per ${i.per}.` };
+}
+
+function yearlyAsk(i: { floor?: unknown; target?: unknown; min?: number | null; max?: number | null; basis?: "total" | "base" | null; asksBase?: boolean; asksMinimum?: boolean }): { amount: string | null; note: string; question?: string } | null {
   // The same reading discovery uses for the floor, so "150" is $150,000 in both places (#761).
   const floor = parseMoney(i.floor);
   const target = parseMoney(i.target);
