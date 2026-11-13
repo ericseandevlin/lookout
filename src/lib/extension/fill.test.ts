@@ -230,6 +230,19 @@ describe("extension fill: choices", () => {
     expect((p.doc.querySelector("#w-y") as HTMLInputElement).checked).toBe(false);
   });
 
+  it("checks a radio in a group named by aria-labelledby whose question sits outside it (#951)", async () => {
+    const p = page(`<label id="q-auth">Are you legally authorized to work in the United States?</label>
+      <div role="radiogroup" aria-labelledby="q-auth">
+        <label><input type="radio" name="auth" id="y"> Yes</label><label><input type="radio" name="auth" id="n"> No</label>
+      </div>`);
+    const steps = [{ prompt: "Are you legally authorized to work in the United States?", kind: "choice", content: "Yes", options: ["Yes", "No"], required: true }];
+    expect(await p.probe({ steps })).toEqual({ score: 1 });
+    const [r] = await p.fill({ steps });
+    expect(r).toMatchObject({ ok: true, how: "checked 1" });
+    expect((p.doc.querySelector("#y") as HTMLInputElement).checked).toBe(true);
+    expect((p.doc.querySelector("#n") as HTMLInputElement).checked).toBe(false);
+  });
+
   it("never clicks a question-labeled radio the answer doesn't name (#773)", async () => {
     const p = page(`<span id="q">Preferred office</span>
       <input type="radio" name="o" id="o1" aria-labelledby="q l1"><span id="l1">Austin</span>`);
