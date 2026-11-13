@@ -439,12 +439,14 @@ describe("runFill controls (#567)", () => {
     expect(page.did).toEqual(["goto https://jobs.example.com/apply", "click Location", "fill Location=New York, NY", "click New York, NY", "screenshot filled.png"]);
   });
 
-  it("presses Enter in a choice field when no exact option shows", async () => {
+  it("reports a choice field missing when its option never shows, and does not submit (#1073)", async () => {
     const id = await seed("approved", [{ kind: "field", prompt: "How did you hear about us?", content: "LinkedIn", options: ["LinkedIn", "Referral"] }]);
     page = fakePage([{ kind: "control", label: "How did you hear about us?" }]);
-    const r = await runFill(id, "test");
-    expect(r.log[0]).toMatchObject({ ok: true, how: "picked option" });
-    expect(page.did).toContain("press How did you hear about us? Enter");
+    const r = await runFill(id, "submit");
+    expect(r.log[0]).toMatchObject({ ok: false, how: "option did not show: LinkedIn" });
+    expect(r.missing).toEqual(["How did you hear about us?"]);
+    expect(page.did).not.toContain("press How did you hear about us? Enter");
+    expect(page.did.some((d) => /^click .*submit/i.test(d))).toBe(false);
   });
 
   it("a custom dropdown types and clicks the option the answer means, not the whole answer (#700)", async () => {
