@@ -112,6 +112,24 @@ describe("findPay", () => {
     expect(findPay("", text)).toMatchObject({ min, max });
   });
 
+  it.each([
+    ["Salary: $95,000 - $115,000 plus a monthly wellness stipend", 95000, 115000],
+    ["Base pay $120,000 - $140,000 + monthly phone stipend", 120000, 140000],
+    ["Compensation: $150,000 - $180,000, hybrid 3x a week in NYC", 150000, 180000],
+    ["$130,000 - $150,000 and monthly team offsites", 130000, 150000],
+    ["$110,000 - $125,000 with an hourly on-call stipend", 110000, 125000],
+  ])("keeps %s yearly: a unit further along the line is about something else (#881)", (text, min, max) => {
+    expect(findPay("", text)).toMatchObject({ min, max });
+  });
+
+  it.each([
+    ["$8,000 - $10,000 plus benefits, per month", 96000, 120000],
+    ["$40 - $55 depending on experience, hourly", 83200, 114400],
+    ["$2,500 - $3,000 USD per week", 130000, 156000],
+  ])("still reads %s by a unit later in the line when the range isn't a year's pay (#881)", (text, min, max) => {
+    expect(findPay("", text)).toMatchObject({ min, max });
+  });
+
   it("still reads a weekly range as weekly (#732)", () => {
     expect(findPay("", "$2,000 - $2,500 per week")).toMatchObject({ min: 104000, max: 130000 });
   });

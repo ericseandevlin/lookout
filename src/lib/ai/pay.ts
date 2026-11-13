@@ -107,14 +107,22 @@ const UNITS: [string, RegExp][] = [
 const SCHEDULE = /\bpaid\s+(?:on\s+an?\s+)?(?:bi-?weekly|weekly|semi-?monthly|monthly|every (?:two|2) weeks|twice (?:a|per|each) month)\b/gi;
 // "3 days a week" or "40 hours per week" is how much you work, not what the range is per (#732).
 const WORKLOAD = /\b(?:\d+(?:\.\d+)?|one|two|three|four|five)(?:\s?(?:-|to)\s?\d+)?\s+(?:days?|hours?|hrs?)\s*(?:a|per|each|\/)\s*week\b/gi;
-function payUnit(tail: string) {
+// Only punctuation and a currency code between the numbers and the unit: "/mo", " USD per month", "(monthly)". A "+" or
+// "&" joins something else to the pay.
+const RIGHT_AFTER = /^[\s,.;:()[\]\/-]*(?:(?:usd|cad|aud|eur|gbp|sgd|nzd|hkd|chf|jpy|inr|mxn)\b[\s,.;:()[\]\/-]*)?$/i;
+
+/**
+ * A range that already looks like a year's pay takes another unit only when it comes right after the numbers. Further
+ * along the line it is about something else: "$95,000 - $115,000 plus a monthly wellness stipend", "hybrid 3x a week" (#881).
+ */
+function payUnit(tail: string, yearly = false) {
   let best: [string, number] = ["YEAR", Infinity];
   const said = tail.replace(WORKLOAD, " ");
   for (const [unit, re] of UNITS) {
     const at = said.search(re);
     if (at >= 0 && at < best[1]) best = [unit, at];
   }
-  return best[0];
+  return yearly && best[0] !== "YEAR" && !RIGHT_AFTER.test(said.slice(0, best[1])) ? "YEAR" : best[0];
 }
 
 function fromText(text: string): Pay | null {
@@ -135,7 +143,8 @@ function fromText(text: string): Pay | null {
     const currency = named ?? (/CAD/.test(own) ? "CAD" : /AUD/.test(own) ? "AUD" : /EUR|€/.test(own) ? "EUR" : /GBP|£/.test(own) ? "GBP" : "USD");
     // A range that is already a year's pay stays yearly when only a pay schedule follows it; "$4,000 - $5,000 paid
     // twice a month" still reads by the schedule (#716).
-    const p = annual(a, b, payUnit(said.replace(SCHEDULE, " ")), currency, "text") ?? annual(a, b, payUnit(said), currency, "text");
+    const yearly = plausible(a) && plausible(b);
+    const p = annual(a, b, payUnit(said.replace(SCHEDULE, " "), yearly), currency, "text") ?? annual(a, b, payUnit(said, yearly), currency, "text");
     if (p) return p;
   }
   return null;
