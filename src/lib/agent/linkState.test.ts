@@ -91,6 +91,38 @@ describe("classifyPage", () => {
   it.each(["Sorry, the position has been filled.", "This position has been filled. Thank you for your interest.", "This job is no longer open."])("still reads %s as closed (#903)", (text) => {
     expect(classifyPage(200, text).state).toBe("gone");
   });
+  it.each([
+    "TITLE: Senior Product Designer, Design Systems\nTEXT: You will own the creation and maintenance of our design system. Apply now.",
+    "TITLE: Facilities Maintenance Manager\nTEXT: Keep our offices running. Apply now.",
+  ])("reads a live posting that mentions maintenance as open (#933): %s", (text) => {
+    expect(classifyPage(200, text).state).toBe("open");
+  });
+
+  it.each([
+    "TITLE: Designer\nTEXT: Visa sponsorship is no longer available for this role. Apply now",
+    "TITLE: Designer\nTEXT: We are no longer accepting candidates from third-party agencies. Apply now",
+    "TITLE: Designer\nTEXT: Our old office is no longer active; we are fully remote. Apply now",
+  ])("keeps a live posting whose side note says no longer (#933): %s", (text) => {
+    expect(classifyPage(200, text).state).toBe("open");
+  });
+
+  it.each([
+    "This listing is no longer available.",
+    "Sorry, this job may be no longer available.",
+    "TITLE: Designer\nNo longer available",
+    "Oops! No longer posted.",
+    "We are no longer accepting candidates for this role.",
+  ])("still reads %s as closed (#933)", (text) => {
+    expect(classifyPage(200, text).state).toBe("gone");
+  });
+
+  it.each(["Scheduled maintenance in progress. Back soon.", "This site is under maintenance.", "Careers is offline due to planned maintenance."])(
+    "still reads a maintenance page as unknown (#933): %s",
+    (text) => {
+      expect(classifyPage(200, text).state).toBe("unknown");
+    },
+  );
+
   it("closed wording beats a stray maintenance mention", () => {
     expect(classifyPage(200, "We're sorry, but it looks like this job may be no longer available or does not exist. Site maintenance notice").state).toBe("gone");
   });

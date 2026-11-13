@@ -10,8 +10,12 @@ export const ownNotes = (notes: string) => notes.replace(CLOSED_NOTE, "").trim()
 
 // Phrases job boards use for a posting that's no longer live. Checked against the start of the page text only.
 const CLOSED = [
-  // Not "no longer open to candidates requiring sponsorship" (#903).
-  /no longer (accepting (applications|candidates)|available|open(?! to\b)|active|posted)/i,
+  // Not "no longer open to candidates requiring sponsorship" (#903) or "no longer accepting candidates from agencies" (#933).
+  /no longer (accepting (applications|candidates)\b(?! from\b)|open(?! to\b))/i,
+  // "Available", "active" and "posted" need the job as the subject, or start a sentence: "Visa sponsorship is no longer
+  // available for this role" is about the visa, not the job (#933).
+  /\b(job|position|posting|role|opening|requisition|listing|vacancy|opportunity|page)\b[^.!?\n]{0,30}?\bno longer (available|active|posted)\b/i,
+  /(?:^|[.!?:\n]\s*)(?:sorry[,!]?\s*)?no longer (available|active|posted)\b/im,
   // Not "open until the position has been filled" or "once the position has been filled, this posting will be removed" (#903).
   /(?<!\b(?:until|once|when|after|if|before|unless) (?:the |this |a )?)(job|position|posting|role|requisition|opening) (is )?(no longer|has been) (available|filled|closed|removed)/i,
   /(job|posting|position|page) (was )?not found/i,
@@ -31,7 +35,9 @@ const CLOSED = [
   /\bpage not found\b|\b404\b.{0,40}(not found|doesn.t exist)/i,
 ];
 // Pages that prove nothing either way.
-const NOT_A_VERDICT = [/maintenance/i, /temporarily unavailable/i, /access denied|forbidden|captcha|verify you are human|enable javascript/i];
+// Only a maintenance page's own wording: "the creation and maintenance of our design system" is a live posting (#933).
+const NOT_A_VERDICT = [
+  /(down|offline|closed|unavailable) (for|due to) (scheduled |planned )?maintenance|(under|undergoing) (scheduled )?maintenance|(scheduled|planned) maintenance|maintenance (mode|window|in progress|underway)/i, /temporarily unavailable/i, /access denied|forbidden|captcha|verify you are human|enable javascript/i];
 
 export function classifyPage(status: number, text: string, finalUrl = ""): { state: LinkState; reason: string } {
   if (status === 404 || status === 410) return { state: "gone", reason: `page answered ${status}` };
