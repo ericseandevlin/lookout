@@ -202,16 +202,20 @@ async function fillOne(page: Page, s: FillStep): Promise<{ ok: boolean; how: str
     }
     // The label that is the question first, then any label holding it: "Website" is not the earlier "Portfolio Website" (#698).
     const exact = page.getByLabel(labelIs(s.prompt)).first();
-    const field = (await exact.count()) ? exact : page.getByLabel(s.prompt, { exact: false }).first();
-    const tag = (await field.count()) ? await field.evaluate((e) => `${e.tagName.toLowerCase()}:${e.getAttribute("type") ?? ""}:${e.getAttribute("role") ?? ""}`) : "";
+    // "Select any that apply" (#165) and one-of radio questions (#694) are a group of boxes under one legend, with no single labeled control.
+    const boxes = page.locator("input[type=checkbox], input[type=radio]");
+    // The group named by the question itself first: "Do you require sponsorship?" is not the later group
+    // "Do you require sponsorship? (now or in the future)", which also contains its text (#720).
+    const named = page.getByRole("group", { name: labelIs(s.prompt) }).or(page.getByRole("radiogroup", { name: labelIs(s.prompt) })).filter({ has: boxes }).last();
+    // A choice whose group is named by the question beats a box whose label only holds it: "How did you hear about us?"
+    // is not "If other, how did you hear about us?" (#952).
+    const hasExact = (await exact.count()) > 0;
+    const groupFirst = !hasExact && s.kind === "choice" && (await named.count()) > 0;
+    const field = hasExact ? exact : page.getByLabel(s.prompt, { exact: false }).first();
+    const tag = !groupFirst && (await field.count()) ? await field.evaluate((e) => `${e.tagName.toLowerCase()}:${e.getAttribute("type") ?? ""}:${e.getAttribute("role") ?? ""}`) : "";
     // A [role=radiogroup] named by aria-labelledby is the labeled control itself.
     const labeledGroup = /:(radio)?group$/.test(tag);
     if (!tag || labeledGroup) {
-      // "Select any that apply" (#165) and one-of radio questions (#694) are a group of boxes under one legend, with no single labeled control.
-      const boxes = page.locator("input[type=checkbox], input[type=radio]");
-      // The group named by the question itself first: "Do you require sponsorship?" is not the later group
-      // "Do you require sponsorship? (now or in the future)", which also contains its text (#720).
-      const named = page.getByRole("group", { name: labelIs(s.prompt) }).or(page.getByRole("radiogroup", { name: labelIs(s.prompt) })).filter({ has: boxes }).last();
       const group = labeledGroup
         ? field
         : (await named.count())

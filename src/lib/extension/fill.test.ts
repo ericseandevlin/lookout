@@ -218,6 +218,25 @@ describe("extension fill: choices", () => {
     expect([on("a-y"), on("a-n"), on("b-y"), on("b-n")]).toEqual([false, true, true, false]);
   });
 
+  it("checks the radio group named by the question, not a later \"If other\" box whose label holds it (#952)", async () => {
+    const p = page(`<fieldset><legend>How did you hear about us?</legend>
+        <label><input type="radio" name="src" id="li"> LinkedIn</label><label><input type="radio" name="src" id="ot"> Other</label></fieldset>
+      <label for="other">If other, how did you hear about us?</label><input id="other">`);
+    const [r] = await p.fill({ steps: [{ prompt: "How did you hear about us?", kind: "choice", content: "LinkedIn", options: ["LinkedIn", "Other"] }] });
+    expect(r).toMatchObject({ ok: true, how: "checked 1" });
+    expect((p.doc.querySelector("#li") as HTMLInputElement).checked).toBe(true);
+    expect(p.value("#other")).toBe("");
+  });
+
+  it("still types a text answer into the box whose label holds the question (#952)", async () => {
+    const p = page(`<fieldset><legend>How did you hear about us?</legend>
+        <label><input type="radio" name="src" id="li"> LinkedIn</label></fieldset>
+      <label for="other">If other, how did you hear about us?</label><input id="other">`);
+    const [r] = await p.fill({ steps: [{ prompt: "If other, how did you hear about us?", kind: "text", content: "A friend", required: true }] });
+    expect(r).toMatchObject({ ok: true, how: "typed" });
+    expect(p.value("#other")).toBe("A friend");
+  });
+
   it("checks the radio labeled with the question and the option the answer means (#773)", async () => {
     const p = page(`<span id="q9">Can you work onsite? *</span>
       <input type="radio" name="w" id="w-y" aria-labelledby="q9 l1"><span id="l1">Yes</span>
