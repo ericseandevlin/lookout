@@ -71,7 +71,11 @@
 
   /** A lone checkbox labeled with the question itself ("I agree to the privacy policy", #669). */
   function checkboxFor(prompt) {
-    return labeledBy([...document.querySelectorAll("input[type=checkbox]")], prompt);
+    const all = [...document.querySelectorAll("input[type=checkbox]")];
+    const q = norm(prompt);
+    // Several boxes each labeled "question + option" are a group, not one consent box: the first would be "No" (#1091).
+    if (!all.some((el) => labelOf(el) === q) && all.filter((el) => labelOf(el).includes(q)).length > 1) return null;
+    return labeledBy(all, prompt);
   }
 
   /** A group's own question: its <legend>, else its aria-labelledby or aria-label. */
@@ -269,7 +273,11 @@
         if (!picks.length) return { ok: false, how: "answer matches no option" };
         for (const label of picks) {
           // Exact label first: the loose match alone puts "None of the above" on the "No" box (#632).
-          const box = boxes.find((b) => labelOf(b) === norm(label)) || boxes.find((b) => sameText(labelOf(b), label));
+          // A box labeled with the question and its option ("Are you 18 or older? Yes") is that option (#1091).
+          const box =
+            boxes.find((b) => labelOf(b) === norm(label)) ||
+            boxes.find((b) => labelOf(b) === norm(step.prompt) + " " + norm(label)) ||
+            boxes.find((b) => sameText(labelOf(b), label));
           if (!box) return { ok: false, how: `option not found: ${label.slice(0, 60)}` };
           if (!box.checked) box.click();
         }
