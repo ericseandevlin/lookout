@@ -333,3 +333,12 @@ describe("rate wording is a salary ask (#953)", () => {
     expect(isSalaryQuestion("Are you comfortable with the posted hourly rate?")).toBe(false);
   });
 });
+
+describe("a negated period is not the ask's period (#974)", () => {
+  it.each(["Desired salary (this role is salaried, not hourly)", "Expected compensation (non-hourly)", "Salary expectations, not per hour", "Desired pay (non-monthly)"])("%s is a year", (q) => {
+    expect(askPer(q)).toBeNull();
+  });
+  it("still reads a real period", () => {
+    expect(askPer("Desired hourly rate (not salaried)")).toBe("hour");
+  });
+});
