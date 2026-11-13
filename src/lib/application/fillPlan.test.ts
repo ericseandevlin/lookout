@@ -198,3 +198,10 @@ describe("uploadLabels (#918)", () => {
     expect(uploadLabels([f("answer", "Portfolio / work samples?"), f("answer", "***")])).toEqual(["Portfolio work samples", "Document"]);
   });
 });
+
+describe("options with a required mark (#1061)", () => {
+  it("matches \"Yes*\" the way the extension does", () => {
+    expect(pickOne("Yes, I am authorized", ["Yes*", "No*"])).toBe(0);
+    expect(pickOptions("Spanish\nFrench", ["English*", "Spanish*", "French*"])).toEqual(["Spanish*", "French*"]);
+  });
+});
