@@ -335,6 +335,10 @@ export async function save(ctx: Context, finds: ScoredT[], via: "agent" | "manua
       t.known++;
       continue;
     }
+    const key = await postingKey(f);
+    // A shared posting keeps the pay already stored (#846), so the rules and the floor judge that pay, not this read's (#879).
+    const [stored] = await db.select({ min: schema.opportunities.compMin, max: schema.opportunities.compMax }).from(schema.opportunities).where(eq(schema.opportunities.fingerprint, key));
+    const pay = stored && (stored.min != null || stored.max != null) ? stored : { min: f.comp_min, max: f.comp_max };
     const ruled = applyRules(
       {
         score: f.score,
@@ -342,8 +346,8 @@ export async function save(ctx: Context, finds: ScoredT[], via: "agent" | "manua
         reasonsGap: f.reasons_gap,
         locationFit: f.location_fit,
         dealbreaker: via === "manual" ? false : f.dealbreaker,
-        compMin: f.comp_min,
-        compMax: f.comp_max,
+        compMin: pay.min,
+        compMax: pay.max,
       },
       ctx.floor,
     );
@@ -352,7 +356,7 @@ export async function save(ctx: Context, finds: ScoredT[], via: "agent" | "manua
       continue;
     }
     // A range that tops out under the floor does not make the board (#740). A link the person adds still goes on, marked down.
-    const top = f.comp_max ?? f.comp_min;
+    const top = pay.max ?? pay.min;
     if (ctx.floor && top && top < ctx.floor) {
       t.belowFloor++;
       if (via !== "manual") continue;
@@ -371,7 +375,7 @@ export async function save(ctx: Context, finds: ScoredT[], via: "agent" | "manua
         postedAt: realDate(f.posted_at),
         sourceUrl: f.url.slice(0, 1000),
         description: f.description.slice(0, 2000),
-        fingerprint: await postingKey(f),
+        fingerprint: key,
       })
       // The row is shared by everyone who has this find: keep its link and summary, only fill what's missing (#585, #846).
       // A posting the link check found gone and the company put up again at a new URL takes the new link, summary and
