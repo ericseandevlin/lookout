@@ -113,6 +113,8 @@ function asksPastPay(s: string) {
  */
 /** The pay period the question asks in: "hourly wage expectations", "desired monthly salary". Null is a year (#949). */
 export function askPer(prompt: string): "hour" | "week" | "month" | null {
+  // "This role is salaried, not hourly" and "(non-hourly)" rule a period out, not in (#974).
+  prompt = prompt.replace(/\b(not|non)[\s-]+(hourly|weekly|monthly|(per|an|a|each) (hour|hr|week|month))\b/gi, " ");
   if (/\b(annual(ly)?|yearly|per (year|annum)|a year|\/\s?y(ea)?r)\b/i.test(prompt)) return null;
   if (/\bhourly\b|\b(per|an|each) (hour|hr)\b|\/\s?h(ou)?r\b/i.test(prompt)) return "hour";
   if (/\bweekly\b|\b(per|a|each) week\b|\/\s?w(ee)?k\b/i.test(prompt) && !/\bbi-?weekly\b/i.test(prompt)) return "week";
