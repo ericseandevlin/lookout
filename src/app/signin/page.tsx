@@ -11,10 +11,11 @@ export const dynamic = "force-dynamic";
 export const metadata = { title: "Sign in · Lookout" };
 
 /** /signin (#517): the sign-in screen at its own address. Sign-out lands here with ?out=1; ?ref= tags a channel test (#527). */
-export default async function SignInPage({ searchParams }: { searchParams: Promise<{ out?: string; ref?: string; utm_source?: string }> }) {
-  if (await getSessionUser()) redirect("/finds");
+export default async function SignInPage({ searchParams }: { searchParams: Promise<{ out?: string; ref?: string; utm_source?: string; view?: string }> }) {
+  const { out, ref, utm_source, view } = await searchParams;
+  // ?view=1 shows the page to a signed-in person (#999).
+  if (view !== "1" && (await getSessionUser())) redirect("/finds");
   const { signupMode } = await getAccessConfig();
-  const { out, ref, utm_source } = await searchParams;
   return (
     <main>
       <Login emailEnabled={!!env.smtpUrl || env.logEmails} inviteOnly={signupMode === "invite"} turnstileSiteKey={turnstileSiteKey()} kinds={featureOn("SEARCHES")} signedOut={out === "1"} channel={channelOf(ref ?? utm_source)} />

@@ -12,9 +12,10 @@ export const metadata = {
 };
 
 /** The one-page site (#600). Signed-in people go straight to their board. A channel test's ?ref= (#527) rides along to /request-access. */
-export default async function Home({ searchParams }: { searchParams: Promise<{ ref?: string; utm_source?: string }> }) {
-  if (await getSessionUser()) redirect("/finds");
+export default async function Home({ searchParams }: { searchParams: Promise<{ ref?: string; utm_source?: string; view?: string }> }) {
+  const { ref, utm_source, view } = await searchParams;
+  // ?view=1 shows the site to a signed-in person (#999).
+  if (view !== "1" && (await getSessionUser())) redirect("/finds");
   const { signupMode } = await getAccessConfig();
-  const { ref, utm_source } = await searchParams;
   return <Landing inviteOnly={signupMode === "invite"} channel={channelOf(ref ?? utm_source)} />;
 }
