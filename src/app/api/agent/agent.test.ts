@@ -159,6 +159,23 @@ describe("POST /api/agent/runs/[id]/complete, other job types", () => {
     expect(after.report).toBeNull();
   });
 
+  it("keeps a link-added find the agent calls closed, under the URL the person typed (#876)", async () => {
+    const typed = "https://zenith.example.com/careers/123";
+    const r = await run({ status: "running", trigger: "url", request: { type: "url", url: typed } });
+    expect(await (await post(r.id, { finds: [{ ...find, company: "Zenith", url: "https://jobs.example.com/zenith/1", is_open_job_posting: false }, { ...find, company: "Zenith", url: "https://jobs.example.com/zenith/2", title: "Other" }] })).json()).toMatchObject({ ok: true, added: 1 });
+    const saved = await db.select().from(schema.userOpportunities).where(eq(schema.userOpportunities.userId, userId));
+    expect(saved).toHaveLength(1);
+    const [opp] = await db.select().from(schema.opportunities).where(eq(schema.opportunities.id, saved[0].opportunityId));
+    expect(opp.sourceUrl).toBe(typed);
+    expect((await reload(r.id)).status).toBe("done");
+  });
+
+  it("fails a link-added run that came back with no posting (#876)", async () => {
+    const r = await run({ status: "running", trigger: "url", request: { type: "url", url: find.url } });
+    expect(await (await post(r.id, { finds: [] })).json()).toMatchObject({ ok: true, added: 0 });
+    expect((await reload(r.id)).error).toBe("That page didn't look like a job posting");
+  });
+
   it("auto-queues new agent finds and writes the after-search report", async () => {
     const r = await run({ status: "running" });
     await post(r.id, { finds: [find], queries: ["design director nyc"], results: 12, read: 3 });
