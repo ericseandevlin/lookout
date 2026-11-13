@@ -36,7 +36,7 @@ Screenshots use a made-up demo account; no real user data. The Screenshots workf
   - **Materials** (`/profile/materials`): resume (PDF/DOCX, fills empty answers), LinkedIn PDF (LinkedIn has no usable API and blocks scraping, so people use its Save to PDF; steps are on the page), and other links, which Lookout reads and shows as Read / why it couldn't.
   - **What Lookout sees** (`/profile/sees`): the saved search profile every search uses, with links to edit each part and a Rebuild button.
 - **Settings** (`/settings`): schedule, digest, density, name, change email, signed-in devices, export, reset board, delete everything, privacy link.
-- **Admin** (`/admin`, admins only): people, access mode, spend caps, access requests, invites (with Resend and copy link), recent runs. **AI settings** (`/admin/ai`): provider presets (OpenRouter, OpenCode Zen/Go, DeepInfra, Together, Groq, Ollama, Custom), model pickers, encrypted keys, Test buttons. Everything autosaves. **Metrics** (`/admin/metrics`): the beta goals from ROADMAP > Goals (weekly actives, finds acted on per active person, interviews, week-4 retention, cost per active person) and where each stands. **Errors** (`/admin/errors`): server errors Lookout recorded, newest first, with search (#12).
+- **Admin** (`/admin`, admins only): people, access mode, spend caps, access requests, invites (with Resend and copy link), recent runs. **AI settings** (`/admin/ai`): provider presets (OpenRouter, OpenCode Zen/Go, DeepInfra, Together, Groq, Ollama, Custom), model pickers, encrypted keys, Test buttons. Everything autosaves. **Metrics** (`/admin/metrics`): the beta goals from ROADMAP > Goals (weekly actives, finds acted on per active person, interviews, week-4 retention, cost per active person) and where each stands, plus AI spend this month and the OpenRouter key's count against its limit. **Errors** (`/admin/errors`): server errors Lookout recorded, newest first, with search (#12).
 - **Privacy** (`/privacy`): what's kept, who sees it, services used, controls.
 
 ## How a search works
@@ -117,7 +117,7 @@ AI and search settings can live in env or be set in Admin > AI settings (the dat
 | `MAIL_POSTAL_ADDRESS` | Postal address in the footer of the finds email and of news and waitlist mail (#28). News and waitlist mail won't send without it. Rules: `docs/email-rules.md` |
 | `RESEND_API_KEY`, `RESEND_WEBHOOK_SECRET` | Incoming email at lookout.ericdevlin.co (#178): a Resend key that can read received email (the SMTP key only sends) and the `whsec_` secret of the email.received webhook pointed at `/api/inbound/resend`. Agents read new mail at `/api/agent/inbox` with `AGENT_TOKEN` |
 | `MAIL_REPLY_TO` | Where replies go (default: the first `ADMIN_EMAILS` address) |
-| `DAILY_BUDGET_USD`, `USER_DAILY_BUDGET_USD` | Rolling 24h spend caps (also editable in Admin) |
+| `DAILY_BUDGET_USD`, `USER_DAILY_BUDGET_USD` | Rolling 24h spend caps (also editable in Admin). Admins get an email when the app-wide cap stops work (once a day) and when the OpenRouter key reaches 70% of its monthly limit (once a month). A person at their own cap sees a plain note on their board and their scheduled search waits; others keep running (#990). |
 | `APP_TZ` | Timezone for run days (default `America/New_York`) |
 | `SCHEDULER` | `off` disables scheduled runs |
 | `FEATURE_AUTO_APPLY` | `on` shows auto-apply to admins (staging only until released) |

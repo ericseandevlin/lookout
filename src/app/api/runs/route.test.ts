@@ -117,7 +117,7 @@ describe("POST /api/runs (#456)", () => {
     await addRun({ status: "done", costUsd: "1.5" });
     let res = await post();
     expect(res.status).toBe(429);
-    expect(await errorOf(res)).toMatch(/today's search limit/);
+    expect(await errorOf(res)).toMatch(/daily AI spend limit/);
     await db.delete(schema.runs);
     const [other] = await db.insert(schema.users).values({ email: "other@example.com" }).returning();
     await db.insert(schema.runs).values({ userId: other.id, trigger: "scheduled", status: "done", costUsd: "12" });
