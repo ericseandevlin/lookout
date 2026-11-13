@@ -93,8 +93,14 @@ export function matchOption(choice: string, options: string[]): string | null {
   if (choice === "Veteran") return options.find((o) => !SYNONYMS["Not a veteran"].test(o) && re.test(o)) ?? null;
   // Workday race lists say "White (Not Hispanic or Latino)": a Hispanic person must not get one of those (#662).
   const negated = (o: string) => choice === "Hispanic or Latino" && /\bnot\s+(hispanic|latin)/i.test(o);
-  return re ? (options.find((o) => !DECLINES.test(o) && re.test(o) && !negated(o)) ?? null) : null;
+  const hits = re ? options.filter((o) => !DECLINES.test(o) && re.test(o) && !negated(o)) : [];
+  // A race answer that fits several options ("Asian" on a list with East, South and Southeast Asian) is not a guess
+  // to make: ask once and remember the exact wording (#954).
+  if (hits.length > 1 && RACES.has(choice)) return null;
+  return hits[0] ?? null;
 }
+
+const RACES = new Set(["American Indian or Alaska Native", "Asian", "Black or African American", "Hispanic or Latino", "Middle Eastern or North African", "Native Hawaiian or Pacific Islander", "White", "Two or more races"]);
 
 // Race names other than Hispanic or Latino. A race-worded question whose options name none of them asks only Hispanic ethnicity (#805).
 const RACE_NAME = /american indian|alaska|indigenous|\basian\b|black|african|middle eastern|hawaiian|pacific islander|\bwhite\b|caucasian|two or more|multiracial|multiple races/i;
