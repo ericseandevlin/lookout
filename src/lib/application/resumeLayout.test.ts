@@ -129,6 +129,12 @@ describe("sentences", () => {
     expect(sentences("Led design at U.S. Bank and Acme Inc. Teams for 10 years.")).toHaveLength(1);
     expect(sentences("Builds design systems. Leads teams of 12.")).toHaveLength(2);
   });
+
+  it('keeps "e.g." and "i.e." inside the sentence (#890)', () => {
+    expect(sentences("UX engineer who builds design systems in modern frameworks (e.g. React and Vue) used by 40 product teams.")).toHaveLength(1);
+    expect(sentences("Leads platform work, i.e. Design tokens and components. Mentors 6 designers.")).toHaveLength(2);
+    expect(sentences("Ships tools for regulated teams. E.g. Banking apps.")).toHaveLength(2);
+  });
 });
 
 describe("shapeResume (#129)", () => {

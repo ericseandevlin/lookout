@@ -190,10 +190,13 @@ export function letterHeaderFrom(resumeMd: string | undefined, fallbackName: str
 export const SUMMARY_HEADING = /^(?:(?:professional|executive|career|personal|qualifications)\s+)?(?:summary|profile)(?:\s+summary)?(?:\s+of\s+qualifications)?$|^about(?:\s+me)?$/i;
 const EXPERIENCE = /^(experience|work experience|professional experience|employment|work history)$/i;
 
-/** Sentence ends: a period after a lowercase letter, digit, % or ), then a capital. "U.S. Bank" and "Inc." don't count. */
+/**
+ * Sentence ends: a period after a lowercase letter, digit, % or ), then a capital. "U.S. Bank" and "Inc." don't count,
+ * and neither do "e.g. React" or "i.e. Vue" (#890).
+ */
 export function sentences(text: string): string[] {
   return text
-    .split(/(?<=[a-z0-9%)][.!?])(?<!\b(?:Inc|Co|Corp|Ltd|Jr|Sr|St|Mr|Ms|Dr|vs|etc)\.)\s+(?=[A-Z])/)
+    .split(/(?<=[a-z0-9%)][.!?])(?<!\b(?:Inc|Co|Corp|Ltd|Jr|Sr|St|Mr|Ms|Dr|vs|etc|[eE]\.g|[iI]\.e)\.)\s+(?=[A-Z])/)
     .map((x) => x.trim())
     .filter(Boolean);
 }
