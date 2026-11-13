@@ -58,12 +58,37 @@ export type Trap = { text: string; words: string[]; hidden: boolean };
 
 const HIDDEN_STYLE = /display\s*:\s*none|visibility\s*:\s*hidden|font-size\s*:\s*(0+(\.0*)?|\.0+)(px|pt|em|rem|%)?\s*(;|"|'|!)|font-size\s*:\s*1px|opacity\s*:\s*0(\.0*)?\s*(;|"|')|(?<![\w-])color\s*:\s*(#fff(fff)?\b|white\b|rgba?\(\s*255\s*,\s*255\s*,\s*255)|(?<![\w-])(left|top|text-indent)\s*:\s*-\d{3,}|height\s*:\s*0(px)?\s*;[^"']*overflow\s*:\s*hidden|clip\s*:\s*rect\(0/i;
 
+/**
+ * The same checks read one declaration at a time, so "!important" and the order of declarations don't matter (#971):
+ * "opacity:0 !important", "overflow:hidden;height:0", "color:transparent", "font-size:0.1px".
+ */
+function hiddenByDeclarations(value: string) {
+  const d = new Map<string, string>();
+  for (const part of value.replace(/^["']|["']$/g, "").split(";")) {
+    const i = part.indexOf(":");
+    if (i > 0) d.set(part.slice(0, i).trim().toLowerCase(), part.slice(i + 1).replace(/!\s*important/i, "").trim().toLowerCase());
+  }
+  const zero = (v?: string) => !!v && /^(0+(\.0*)?|\.0+)(px|pt|em|rem|%)?$/.test(v);
+  const color = d.get("color");
+  const font = d.get("font-size")?.match(/^(\d*\.?\d+)(px|pt)$/);
+  return (
+    d.get("display") === "none" ||
+    d.get("visibility") === "hidden" ||
+    zero(d.get("opacity")) ||
+    zero(d.get("font-size")) ||
+    (!!font && Number(font[1]) < 2) ||
+    color === "transparent" ||
+    (!!color && /^rgba\((.*,){3}\s*0(\.0*)?\s*\)$/.test(color)) ||
+    ((zero(d.get("height")) || zero(d.get("max-height"))) && d.get("overflow") === "hidden")
+  );
+}
+
 const isHiddenTag = (attrs: string) => {
   // Quoted, or unquoted as HTML allows ("style=display:none"), read with quotes so the patterns' value ends still match (#967).
   const style = attrs.match(/\bstyle\s*=\s*("[^"]*"|'[^']*'|[^\s"'=<>`]+)/i);
   const value = style && (/^["']/.test(style[1]) ? style[1] : `"${style[1]}"`);
   // The bare attribute only: "hidden" inside a quoted value is a class name, e.g. Tailwind's "hidden md:block" (#786).
-  return (!!value && HIDDEN_STYLE.test(value)) || /\shidden(?=[\s>=/]|$)/i.test(attrs.replace(/"[^"]*"|'[^']*'/g, '""'));
+  return (!!value && (HIDDEN_STYLE.test(value) || hiddenByDeclarations(value))) || /\shidden(?=[\s>=/]|$)/i.test(attrs.replace(/"[^"]*"|'[^']*'/g, '""'));
 };
 
 /** Where the element opened just before `from` ends, counting nested tags of the same name (#616). */
