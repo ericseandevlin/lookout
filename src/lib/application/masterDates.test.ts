@@ -63,6 +63,19 @@ Staff Engineer, Acme Corp
     }
   });
 
+  it("says nothing for a short title whose dates were on its line (#858)", () => {
+    expect(looseDates("### CTO | Acme Corp | 2019 - 2023", "CTO, Acme Corp 2019 – 2023")).toEqual([]);
+    expect(looseDates("### VP, UX | 2016 - 2019", "VP, UX at Globex 2016 - 2019")).toEqual([]);
+  });
+
+  it("still warns for a short title whose dates sat elsewhere (#858)", () => {
+    const out = looseDates("### CTO | Acme Corp | 2019 - 2023", "CTO\nAcme Corp\n2019 - 2023\nDevelopment work 2019 - 2023");
+    expect(out).toHaveLength(1);
+    expect(out[0]).toContain('"CTO"');
+    // A short word matches whole: "vp" is not in "development".
+    expect(looseDates("### VP | 2019 - 2023", "Development 2019 - 2023")).toHaveLength(1);
+  });
+
   it("ignores headings without a year", () => {
     expect(looseDates("### Staff Engineer | Acme Corp | Remote", source)).toEqual([]);
     expect(looseDates("### Side Projects | Present", source)).toEqual([]);
