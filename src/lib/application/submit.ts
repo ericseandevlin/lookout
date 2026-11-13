@@ -162,12 +162,31 @@ async function phoneCountry(page: Page): Promise<{ ok: boolean; how: string } | 
 const pattern = (text: string) => text.trim().replace(/[.*+?^${}()|[\]\\]/g, "\\$&").replace(/\s+/g, "\\s+");
 const labelIs = (text: string) => new RegExp(`^\\s*${pattern(text)}\\s*\\*?\\s*$`, "i");
 
+/** The text box labeled with a cover letter prompt, or null: a textarea or a plain text input, never an upload. */
+async function letterBox(page: Page, prompt: string) {
+  const exact = page.getByLabel(labelIs(prompt)).first();
+  const field = (await exact.count()) ? exact : page.getByLabel(prompt, { exact: false }).first();
+  if (!(await field.count())) return null;
+  const tag = await field.evaluate((e) => `${e.tagName.toLowerCase()}:${e.getAttribute("type") ?? ""}`);
+  return /^textarea:|^input:(text)?$/.test(tag) ? field : null;
+}
+
 /** Find the control for one question by its label and put the approved answer in. */
 async function fillOne(page: Page, s: FillStep): Promise<{ ok: boolean; how: string }> {
   try {
     if (s.kind === "file") {
       const box = page.locator(":is(div,fieldset,section,li)").filter({ hasText: s.prompt }).filter({ has: page.locator("input[type=file]") }).last();
-      const input = (await box.count()) ? box.locator("input[type=file]").first() : page.locator("input[type=file]").first();
+      const letter = s.itemKind === "cover_letter";
+      // With no box of its own, a cover letter takes the second upload, never the first: that one is the resume's,
+      // and the letter replaced it (#860). The extension's fileInputFor does the same.
+      const input = (await box.count()) ? box.locator("input[type=file]").first() : page.locator("input[type=file]").nth(letter ? 1 : 0);
+      if (!(await input.count())) {
+        // A cover letter asked for as text, not a file: type it into the box labeled with the prompt (#860).
+        const text = letter && s.content.trim() ? await letterBox(page, s.prompt) : null;
+        if (!text) return { ok: false, how: "upload field not found" };
+        await text.fill(s.content);
+        return { ok: true, how: "typed the letter" };
+      }
       if (!s.file) return { ok: false, how: "no file" };
       await input.setInputFiles(s.file);
       return { ok: true, how: "uploaded .docx" };
