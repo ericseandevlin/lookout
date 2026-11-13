@@ -15,8 +15,10 @@ const CLOSED = [
   // "Available", "active" and "posted" need the job as the subject, or start a sentence: "Visa sponsorship is no longer
   // available for this role" is about the visa, not the job (#933).
   // Not "Visa sponsorship for this position is no longer available": there the job is the object of "for" (#980).
-  /(?<!\b(?:for|of|to|on|with|in|about) (?:this |the |a |our )?)\b(job|position|posting|role|opening|requisition|listing|vacancy|opportunity|page)\b[^.!?\n]{0,30}?\bno longer (available|active|posted)\b/i,
-  /(?:^|[.!?:\n]\s*)(?:sorry[,!]?\s*)?no longer (available|active|posted)\b/im,
+  // Not "the opportunity to work fully remote is no longer available": the noun leads into something else (#1007).
+  /(?<!\b(?:for|of|to|on|with|in|about) (?:this |the |a |our )?)\b(job|position|posting|role|opening|requisition|listing|vacancy|opportunity|page)\b(?!\s+to\b)[^.!?\n]{0,30}?\bno longer (available|active|posted)\b/i,
+  // A colon starts one only after a status label: "Visa sponsorship: No longer available" is about the visa (#1007).
+  /(?:^|[.!?\n]\s*|\b(?:text|status|job status|posting status|job|posting|position|role):\s*)(?:sorry[,!]?\s*)?no longer (available|active|posted)\b/im,
   // Not "open until the position has been filled" or "once the position has been filled, this posting will be removed" (#903).
   /(?<!\b(?:until(?: such time as)?|once|when|after|if|before|unless|for|of|to|on|with|in|about) (?:the |this |a |our )?)(job|position|posting|role|requisition|opening) (is )?(no longer|has (?:already |now )?been) (available|filled|closed|removed)/i,
   /(job|posting|position|page) (was )?not found/i,

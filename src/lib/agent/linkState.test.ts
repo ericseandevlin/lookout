@@ -198,3 +198,20 @@ describe("a condition word only counts when it leads into the closed phrase (#10
     expect(classifyPage(200, `TITLE: Senior Product Designer\nTEXT:\n${text}`).state).toBe("open");
   });
 });
+
+describe("a perk that is no longer available is not the job (#1007)", () => {
+  const live = (line: string) => `TITLE: Senior Product Designer\nTEXT:\nSenior Product Designer\nNew York, NY (Hybrid)\nAbout the role: lead design for our payments app.\n${line}\nResponsibilities: ship work. Apply now.`;
+  it.each([
+    "Visa sponsorship: No longer available for this role.",
+    "Relocation assistance: no longer available.",
+    "Please note: the opportunity to work fully remote is no longer available; this role is hybrid.",
+  ])("keeps a live posting open: %s", (line) => {
+    expect(classifyPage(200, live(line)).state).toBe("open");
+  });
+  it.each(["TITLE: Designer\nTEXT: No longer available", "Status: No longer available", "Job: no longer posted", "This opportunity is no longer available."])(
+    "still reads a closed page as gone: %s",
+    (text) => {
+      expect(classifyPage(200, text).state).toBe("gone");
+    },
+  );
+});
