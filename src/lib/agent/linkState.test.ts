@@ -79,6 +79,18 @@ describe("classifyPage", () => {
   it.each(["This job has closed. Closed date: 2026-11-01", "Job Closed - see our other openings", "This position is closed."])("still reads %s as closed (#832)", (text) => {
     expect(classifyPage(200, text).state).toBe("gone");
   });
+  it.each([
+    "Review of applications begins November 1 and continues until the position has been filled.",
+    "This posting will remain open until the position has been filled.",
+    "Once the position has been filled, this posting will be removed.",
+    "Applications are accepted until this position has been filled.",
+    "This role is no longer open to candidates requiring sponsorship.",
+  ])("keeps %s open (#903)", (text) => {
+    expect(classifyPage(200, text).state).toBe("open");
+  });
+  it.each(["Sorry, the position has been filled.", "This position has been filled. Thank you for your interest.", "This job is no longer open."])("still reads %s as closed (#903)", (text) => {
+    expect(classifyPage(200, text).state).toBe("gone");
+  });
   it("closed wording beats a stray maintenance mention", () => {
     expect(classifyPage(200, "We're sorry, but it looks like this job may be no longer available or does not exist. Site maintenance notice").state).toBe("gone");
   });

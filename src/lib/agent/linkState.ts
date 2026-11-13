@@ -10,10 +10,12 @@ export const ownNotes = (notes: string) => notes.replace(CLOSED_NOTE, "").trim()
 
 // Phrases job boards use for a posting that's no longer live. Checked against the start of the page text only.
 const CLOSED = [
-  /no longer (accepting (applications|candidates)|available|open|active|posted)/i,
-  /(job|position|posting|role|requisition|opening) (is )?(no longer|has been) (available|filled|closed|removed)/i,
+  // Not "no longer open to candidates requiring sponsorship" (#903).
+  /no longer (accepting (applications|candidates)|available|open(?! to\b)|active|posted)/i,
+  // Not "open until the position has been filled" or "once the position has been filled, this posting will be removed" (#903).
+  /(?<!\b(?:until|once|when|after|if|before|unless) (?:the |this |a )?)(job|position|posting|role|requisition|opening) (is )?(no longer|has been) (available|filled|closed|removed)/i,
   /(job|posting|position|page) (was )?not found/i,
-  /this (job|position|posting|role)( ad)? (is |has )?(now )?(expired|closed|been filled)\b(?! to\b|[- ]?date\b|-)/i,
+  /(?<!\b(?:until|once|when|after|if|before|unless) )this (job|position|posting|role)( ad)? (is |has )?(now )?(expired|closed|been filled)\b(?! to\b|[- ]?date\b|-)/i,
   // More wordings careers sites use (#747).
   /\b(job|posting|position|listing)( ad)? (has )?expired\b/i,
   /(job|position|posting|role|page) you(['’]re| are) (looking for|trying to (apply for|access|view|reach)) (has|is|was|might have|may have) (been )?(filled|removed|closed|deleted|expired)\b/i,
