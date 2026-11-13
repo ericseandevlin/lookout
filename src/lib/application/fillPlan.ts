@@ -58,10 +58,11 @@ export function pickOne(answer: string, labels: string[]): number {
 
 /**
  * The page text that means an application went through, after Submit (#692). Never a bare "thank you": forms often open
- * with "Thank you for your interest", so a submit that failed validation read as sent. extension/firefox/fill.js and
- * background.js carry the same pattern.
+ * with "Thank you for your interest", so a submit that failed validation read as sent. A sentence that starts with once,
+ * after, when, if, before, until or upon only says what happens later ("Once your application has been received, we will
+ * review it"), so it never counts (#844). extension/firefox/fill.js and background.js carry the same pattern.
  */
-export const CONFIRMATION = /thank(?:s| you) for (?:applying|your application|submitting|your submission)|(?:application|submission|candidacy) (?:has been |was )?(?:successfully )?(?:received|submitted|sent)\b|application for [^.!?\n]{1,80}? (?:has been|was) (?:successfully )?(?:received|submitted|sent)\b|we(?:'ve|’ve| have)? (?:successfully )?(?:received|got) your (?:application|submission)|successfully (?:applied|submitted)\b/i;
+export const CONFIRMATION = /(?<!\b(?:once|after|when|if|before|until|upon)\b[^.!?\n]{0,40})(?:thank(?:s| you) for (?:applying|your application|submitting|your submission)|(?:application|submission|candidacy) (?:has been |was )?(?:successfully )?(?:received|submitted|sent)\b|application for [^.!?\n]{1,80}? (?:has been|was) (?:successfully )?(?:received|submitted|sent)\b|we(?:'ve|’ve| have)? (?:successfully )?(?:received|got) your (?:application|submission)|successfully (?:applied|submitted)\b)/i;
 
 /**
  * Whether an answer to a lone checkbox ("I agree to the privacy policy") means tick it (#669).
