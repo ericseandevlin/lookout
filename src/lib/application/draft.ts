@@ -160,7 +160,17 @@ export function keywordReport(master: string, tailored: string, d: z.infer<typeo
  * only when it ends the token, so "6 mid-level" is 6, not 6m (#891).
  */
 export function newNumbers(master: string, draft: string): string[] {
-  const nums = (s: string) => new Set((s.match(/\$?\d[\d,.]*(?:\s?(?:%|mm|k|m|b|x|\+)(?![a-z]))?/gi) ?? []).map((n) => n.toLowerCase().replace(/[,\s]/g, "").replace(/\.$/, "")));
+  // One fact, one spelling: "$1.2 million" is "$1.2m", "over 15" is "15+", and a MM/YYYY date is a date, not a number (#901).
+  const UNIT: Record<string, string> = { thousand: "k", million: "m", billion: "b", percent: "%" };
+  const norm = (s: string) =>
+    s
+      .replace(/\b(?:0?[1-9]|1[0-2])\/(?:19|20)\d\d\b/g, " ")
+      .replace(/(\d)\s*(thousand|million|billion|percent)\b/gi, (_, d: string, u: string) => d + UNIT[u.toLowerCase()])
+      .replace(/\b(?:over|more than)\s+(\$?\d[\d,.]*(?:%|k|m|b)?)(?![\w+])/gi, "$1+");
+  const nums = (raw: string) => {
+    const s = norm(raw);
+    return new Set((s.match(/\$?\d[\d,.]*(?:\s?(?:%|mm|k|m|b|x|\+)(?![a-z]))?/gi) ?? []).map((n) => n.toLowerCase().replace(/[,\s]/g, "").replace(/\.$/, "")));
+  };
   const have = nums(master);
   return [...nums(draft)].filter((n) => n && !have.has(n) && !/^(19|20)\d\d$/.test(n));
 }
