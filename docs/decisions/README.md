@@ -69,3 +69,17 @@ The calls that shaped Lookout, what each one costs, and where it lives in the co
 **Cost.** Someone can run a changed Lookout as a closed hosted service without sharing their changes. AGPL would have prevented that; for a project meant to be shown and reused, that risk is acceptable.
 
 **Where.** `LICENSE`, `license` in `package.json`, the License section of the README, `CONTRIBUTING.md`.
+
+## 8. One shared server until prod outgrows it (2026-11-13, proposed)
+
+**Decision.** Lookout prod and staging stay on the shared VPS (4 CPU, 15 GB RAM, 193 GB disk) with Paperclip, the agents and other tools. Prod moves to its own server when any one of these is true:
+- the disk is still over 85% the day after the weekly cleanup (`deploy/disk-prune.sh`),
+- prod has 50 active accounts,
+- a slow or failed prod request is traced to another tool on the box (memory, CPU or disk), twice in a month,
+- someone outside Eric's circle depends on it (a paying user, a group running its search on Lookout).
+
+**Why.** At 5 accounts (2026-11-13) a second server is cost and upkeep with no gain. The triggers are things the server already measures, so the move is a check, not a debate.
+
+**Cost.** Lookout competes with other tools for memory and disk until then. Each app container is capped at 1 GB, the uptime check opens a `capacity` issue when the disk passes 85% (#995), and the weekly cleanup removes only dangling images and old build cache.
+
+**Where.** `src/app/api/health/route.ts` (`disk`), `scripts/uptime-check.sh`, `deploy/disk-prune.sh`, the weekly report in `/opt/lookout-staging/DISK.txt`.

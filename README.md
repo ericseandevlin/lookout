@@ -129,6 +129,7 @@ AI and search settings can live in env or be set in Admin > AI settings (the dat
 | `MIGRATIONS_DIR` | Database migrations folder (default `./drizzle`, set in the Docker image) |
 | `GIT_COMMIT` | Build arg; the commit `/api/health` reports. `deploy/deploy.sh` sets it |
 | `DATA_DIR` | Where uploads are stored |
+| `DISK_ALERT_PERCENT` | `/api/health` reports `"disk":"low"` once the disk holding `DATA_DIR` is this % full (default 85); the uptime check then opens a `capacity` issue |
 | `EMAIL_DEV_LOG` | `1` prints emails to the log instead of sending |
 
 ## How we work

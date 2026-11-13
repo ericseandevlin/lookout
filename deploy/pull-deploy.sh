@@ -59,6 +59,12 @@ if [ "$ch" = prod ]; then
   # Nightly backup at 07:15 UTC (3:15 AM New York); idempotent.
   (crontab -l 2>/dev/null | grep -v 'lookout/backup.sh'; echo "15 7 * * * $dir/backup.sh >> $dir/backups.log 2>&1") | crontab -
 fi
+if [ "$ch" = stage ]; then
+  # One disk for the whole server, so one cleanup: staging installs it. Sundays 08:30 UTC (3:30 or 4:30 AM
+  # New York), after the nightly backup; idempotent (#995).
+  install -m 700 "$repo/deploy/disk-prune.sh" /root/bin/lookout-disk-prune
+  (crontab -l 2>/dev/null | grep -v 'lookout-disk-prune'; echo "30 8 * * 0 /root/bin/lookout-disk-prune >> /var/log/lookout-disk-prune.log 2>&1") | crontab -
+fi
 
 prev=lookout:previous-$ch
 [ -z "$cur" ] || docker tag "$tag" "$prev"
