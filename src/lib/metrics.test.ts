@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { actedOn, activation, activeSince, applyCost, byChannel, channelOf, outcomes, retention, scoreSplit, searchSuccess, week4Retention, weekly, type MetricEvent } from "./metrics";
+import { actedOn, activation, activeSince, applyCost, byChannel, channelOf, outcomes, retention, scoreSplit, searchSuccess, week4Retention, weekly, weekOneSettings, type MetricEvent } from "./metrics";
 
 const ev = (userId: string, type: string, at: string, target: string | null = null, meta: Record<string, unknown> | null = null): MetricEvent => ({ userId, type, target, meta, at: new Date(at) });
 
@@ -166,5 +166,39 @@ describe("applyCost (#991)", () => {
     expect(applyCost([])).toEqual({ applications: 0, avg: null, median: null, max: null });
     expect(applyCost([0.3, 0.1, 0.2])).toEqual({ applications: 3, avg: expect.closeTo(0.2), median: 0.2, max: 0.3 });
     expect(applyCost([0.4, 0.1, 0.2, 0.1])).toMatchObject({ applications: 4, median: expect.closeTo(0.15), max: 0.4 });
+  });
+});
+
+describe("weekOneSettings (#992)", () => {
+  const now = new Date("2026-11-20T12:00:00Z");
+  const since = new Date("2026-09-01T00:00:00Z");
+  const people = [
+    { userId: "a", createdAt: new Date("2026-11-01T12:00:00Z") },
+    { userId: "b", createdAt: new Date("2026-11-01T12:00:00Z") },
+    { userId: "c", createdAt: new Date("2026-11-01T12:00:00Z") },
+    { userId: "new", createdAt: new Date("2026-11-18T12:00:00Z") },
+    { userId: "old", createdAt: new Date("2026-08-01T12:00:00Z") },
+  ];
+  it("counts people who opened Settings or changed how often, in their first 7 days", () => {
+    const r = weekOneSettings(
+      people,
+      [
+        ev("a", "page_view", "2026-11-02T10:00:00Z", "/settings"),
+        ev("b", "settings_change", "2026-11-03T10:00:00Z", "freq"),
+        ev("b", "page_view", "2026-11-03T09:00:00Z", "/settings"),
+        // Too late, and not about how often.
+        ev("c", "page_view", "2026-11-12T10:00:00Z", "/settings"),
+        ev("c", "settings_change", "2026-11-02T10:00:00Z", "density"),
+        // Joined under 7 days ago, or before events start: not counted either way.
+        ev("new", "page_view", "2026-11-18T13:00:00Z", "/settings"),
+        ev("old", "page_view", "2026-08-02T10:00:00Z", "/settings"),
+      ],
+      since,
+      now,
+    );
+    expect(r).toEqual({ eligible: 3, opened: 2, changed: 1, reached: 2, rate: 2 / 3 });
+  });
+  it("has no rate when nobody is eligible", () => {
+    expect(weekOneSettings([], [], since, now).rate).toBeNull();
   });
 });

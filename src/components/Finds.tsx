@@ -16,6 +16,7 @@ import { trackClient } from "./track";
 import { sortsFor, chip, seg, type SortKey } from "./finds/shared";
 import { IconBtn, Menu, StageMenu, Switch } from "./finds/Controls";
 import { SetupPanel } from "./finds/SetupPanel";
+import { FirstWeek } from "./finds/FirstWeek";
 import { SearchNowButton } from "./finds/SearchNowButton";
 import { AddLink } from "./finds/AddLink";
 import { FilterSheet } from "./finds/FilterSheet";
@@ -228,6 +229,7 @@ export function Finds() {
         {showReport && !state.running && state.lastReport && <LastReport {...state.lastReport} onClose={() => setShowReport(false)} />}
         <SearchPanel reportOpen={showReport && !!state.lastReport} ready={counts.answered === counts.total && state.materials.resume?.status === "done"} />
         <SetupPanel answered={counts.answered} sources={counts.sources} />
+        <FirstWeek ready={counts.answered === counts.total && state.materials.resume?.status === "done"} />
 
         <section className="board-sec" style={{ background: "#fff", overflow: "hidden" }}>
           {/* Desktop toolbar */}

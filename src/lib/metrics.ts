@@ -92,6 +92,27 @@ export function activation(people: Joiner[], now = new Date()) {
   return { eligible, activated, rate: eligible ? activated / eligible : null };
 }
 
+/** Settings that change when and how often Lookout searches. */
+const SCHEDULE = new Set(["freq", "day", "days"]);
+
+/**
+ * First-week discovery (#992): of people who joined 7+ days ago (and no earlier than `since`, where
+ * the events start), the share who opened Settings or changed how often Lookout searches in their first 7 days.
+ */
+export function weekOneSettings(people: { userId: string; createdAt: Date }[], events: MetricEvent[], since: Date, now = new Date()) {
+  const joined = new Map(people.filter((p) => p.createdAt >= since && p.createdAt.getTime() + 7 * 864e5 <= now.getTime()).map((p) => [p.userId, p.createdAt.getTime()]));
+  const opened = new Set<string>();
+  const changed = new Set<string>();
+  for (const e of events) {
+    const start = joined.get(e.userId);
+    if (start === undefined || e.at.getTime() < start || e.at.getTime() > start + 7 * 864e5) continue;
+    if (e.type === "page_view" && e.target?.startsWith("/settings")) opened.add(e.userId);
+    if (e.type === "settings_change" && SCHEDULE.has(e.target ?? "")) changed.add(e.userId);
+  }
+  const reached = new Set([...opened, ...changed]).size;
+  return { eligible: joined.size, opened: opened.size, changed: changed.size, reached, rate: joined.size ? reached / joined.size : null };
+}
+
 /** Average match score of finds people acted on and of the rest, or null when a side is empty. */
 export function scoreSplit(finds: { score: number; acted: boolean }[]) {
   const avg = (xs: number[]) => (xs.length ? xs.reduce((a, b) => a + b, 0) / xs.length : null);

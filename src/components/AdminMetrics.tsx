@@ -17,6 +17,7 @@ type Data = {
   retention: Rate & { retained: number };
   week8: Rate & { retained: number };
   activation: Rate & { activated: number };
+  weekOne: Rate & { opened: number; changed: number; reached: number };
   offers: number;
   outcomes: { board: { interviews: number; offers: number }; survey: { interviews: number; offers: number }; questions: number };
   quality: { days: number; added: number; acted: number; notFit: number; topReason: { reason: string; count: number } | null; score: { acted: number | null; ignored: number | null } };
@@ -88,6 +89,13 @@ export function AdminMetrics() {
           note: d.activation.eligible
             ? `${d.activation.activated} of ${d.activation.eligible} people who joined 7+ days ago have a saved profile and a resume, and a first search done within 7 days`
             : "Nobody joined 7+ days ago",
+        },
+        {
+          measure: "Found Settings in week one",
+          now: percent(d.weekOne.rate),
+          note: d.weekOne.eligible
+            ? `${d.weekOne.reached} of ${d.weekOne.eligible} people who joined 7+ days ago opened Settings or changed how often Lookout searches in their first 7 days (${d.weekOne.opened} opened Settings, ${d.weekOne.changed} changed how often). Admins left out`
+            : "Nobody joined 7+ days ago since events started",
         },
         { measure: "Week-8 retention", now: percent(d.week8.rate), note: d.week8.eligible ? `${d.week8.retained} of ${d.week8.eligible} people active in their 8th week` : "Nobody has reached week 8 yet" },
         { measure: "Finds acted on", now: share(d.quality.acted, d.quality.added), note: `${d.quality.acted} of ${d.quality.added} finds Lookout added, last ${d.quality.days} days` },

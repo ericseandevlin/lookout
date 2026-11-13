@@ -2,8 +2,9 @@ import "server-only";
 import { and, eq, gte, inArray, isNotNull, isNull, ne, or, sql } from "drizzle-orm";
 import { db, schema } from "@/lib/db";
 import { weekOf } from "./events";
-import { actedOn, activation, activeSince, applyCost, byChannel, GOALS, outcomes, retention, scoreSplit, searchSuccess, weekly, type MetricEvent, type OutcomeReport } from "./metrics";
+import { actedOn, activation, activeSince, applyCost, byChannel, GOALS, outcomes, retention, scoreSplit, searchSuccess, weekly, weekOneSettings, type MetricEvent, type OutcomeReport } from "./metrics";
 import { APPLIED, topReasons } from "./quality";
+import { isAdmin } from "./users";
 
 const DAY = 864e5;
 
@@ -59,6 +60,10 @@ export async function metrics(now = new Date()) {
     .from(schema.users)
     .where(eq(schema.users.disabled, false));
   const activated = activation(joiners.map((j) => ({ ...j, firstSearchAt: j.firstSearchAt ? new Date(j.firstSearchAt) : null })), now);
+
+  // First week (#992): who found Settings or changed how often Lookout searches. Admins are left out: they built it.
+  const people = await db.select({ userId: schema.users.id, createdAt: schema.users.createdAt, email: schema.users.email, isAdmin: schema.users.isAdmin }).from(schema.users).where(eq(schema.users.disabled, false));
+  const weekOne = weekOneSettings(people.filter((p) => !isAdmin(p)), events, since, now);
 
   // Quality: finds Lookout added in the last 90 days, same rules as Admin > Finds quality, plus find clicks from events.
   const quarterAgo = new Date(now.getTime() - 90 * DAY);
@@ -124,6 +129,7 @@ export async function metrics(now = new Date()) {
     retention: week4,
     week8,
     activation: activated,
+    weekOne,
     offers: outcome.offers,
     outcomes: { board, survey: outcome.survey, questions: asked },
     quality: { days: 90, added: finds.length, acted: rated.filter((f) => f.acted).length, notFit: finds.filter((f) => f.feedback).length, topReason: topReasons(finds, 1)[0] ?? null, score: scoreSplit(rated) },

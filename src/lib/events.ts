@@ -3,7 +3,7 @@
  * only the few things the server can't see, from a fixed list. No third-party scripts.
  */
 
-export const SERVER_EVENTS = ["sign_in", "welcome_done", "search_run", "find_added", "pin", "stage_change", "not_a_fit", "profile_edit", "material_upload", "email_click", "auto_apply_on", "auto_apply_off", "search_created", "consent_accepted"] as const;
+export const SERVER_EVENTS = ["sign_in", "welcome_done", "search_run", "find_added", "pin", "stage_change", "not_a_fit", "profile_edit", "material_upload", "email_click", "auto_apply_on", "auto_apply_off", "search_created", "consent_accepted", "settings_change"] as const;
 /** The only types the browser may send. */
 export const CLIENT_EVENTS = ["page_view", "heartbeat", "find_opened", "posting_clicked", "report_opened", "tip_clicked"] as const;
 export type EventType = (typeof SERVER_EVENTS)[number] | (typeof CLIENT_EVENTS)[number];
@@ -27,6 +27,7 @@ export const EVENT_LABEL: Record<EventType, string> = {
   auto_apply_off: "Turned auto-apply off",
   search_created: "Created a search",
   consent_accepted: "Agreed to the terms",
+  settings_change: "Changed a setting",
   page_view: "Opened page",
   heartbeat: "On page",
   find_opened: "Opened a find",

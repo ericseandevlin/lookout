@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { authed, body, json } from "@/lib/api";
 import { db, schema } from "@/lib/db";
+import { track } from "@/lib/eventStore";
 
 const Day = z.enum(["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]);
 const Input = z.object({
@@ -31,5 +32,7 @@ export const PATCH = authed(async (req, { user }) => {
     .insert(schema.settings)
     .values({ userId: user.id, ...clean })
     .onConflictDoUpdate({ target: schema.settings.userId, set: clean });
+  // Which settings people find in their first week (#992). Opening or closing the sidebar isn't a choice about Lookout.
+  for (const k of Object.keys(p) as (keyof typeof p)[]) if (k !== "railClosed" && p[k] !== undefined) await track(user.id, "settings_change", k);
   return json({ ok: true });
 });

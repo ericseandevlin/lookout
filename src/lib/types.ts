@@ -56,7 +56,7 @@ export type Answers = Record<string, string | string[]>;
 export type SearchInfo = { id: string; name: string; kind: string };
 
 export type AppState = {
-  user: { name: string; email: string; isAdmin: boolean; autoApply: boolean; events: boolean; searches: boolean };
+  user: { name: string; email: string; joinedAt: string; isAdmin: boolean; autoApply: boolean; events: boolean; searches: boolean };
   settings: Settings;
   /** Every search the account holds; the board, profile and runs follow `searchId` (#8). */
   searches: SearchInfo[];

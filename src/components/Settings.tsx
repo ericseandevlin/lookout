@@ -15,8 +15,8 @@ import { color } from "@/lib/tokens";
 
 const ORDER = Object.keys(DAYS);
 
-export const Section = ({ children }: { children: React.ReactNode }) => (
-  <div style={{ fontSize: 14, fontWeight: 700, letterSpacing: ".14em", textTransform: "uppercase", color: color.brick, padding: "28px 0 4px" }}>{children}</div>
+export const Section = ({ id, children }: { id?: string; children: React.ReactNode }) => (
+  <div id={id} style={{ scrollMarginTop: 16, fontSize: 14, fontWeight: 700, letterSpacing: ".14em", textTransform: "uppercase", color: color.brick, padding: "28px 0 4px" }}>{children}</div>
 );
 
 export function Row({ title, help, danger, children }: { title: string; help: React.ReactNode; danger?: boolean; children: React.ReactNode }) {
@@ -123,7 +123,7 @@ export function Settings() {
         <button onClick={signOut} style={btn("outline")}>Sign out</button>
       </Row>
 
-      <Section>Discovery</Section>
+      <Section id="discovery">Discovery</Section>
       <Row title="How often to search" help="Lookout checks job boards and company sites on this schedule.">
         <Seg opts={[["Weekly", "Weekly"], ["Twice a week", "Twice a week"], ["Daily", "Daily"]]} cur={st.freq} pick={(v) => put({ freq: v })} />
       </Row>
