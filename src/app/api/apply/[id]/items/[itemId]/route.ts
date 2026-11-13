@@ -29,8 +29,8 @@ export const POST = authed<Ctx>(async (req, { user, params }) => {
     const app = await ownApplication(user.id, id);
     assertEditable(app.status);
     const [it] = await db.select({ kind: schema.applicationItems.kind }).from(schema.applicationItems).where(and(eq(schema.applicationItems.id, itemId), eq(schema.applicationItems.applicationId, app.id)));
-    if (it?.kind === "cover_letter") await redraftLetter(app.id, a.strategy);
-    else if (it?.kind === "resume") await redraftResume(app.id);
+    if (it?.kind === "cover_letter") await redraftLetter(app.id, a.strategy, itemId);
+    else if (it?.kind === "resume") await redraftResume(app.id, itemId);
     else throw new HttpError(400, "Only the resume and cover letter can be redrafted.");
     return json({ status: (await ownApplication(user.id, id)).status });
   }
