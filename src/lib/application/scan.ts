@@ -109,6 +109,8 @@ export function boardGuesses(host: string): string[] {
 
 // \b only knows ASCII letters, so it never follows the "é" of "Résumé": end on anything that isn't a letter (#680).
 const RESUME = /^((upload|attach)( your| a)? )?(r[eé]sum[eé]|cv|curriculum vitae)(?![\p{L}\p{N}])/iu;
+// On an upload, the word anywhere names it: "Please upload your resume", "Your CV" (#935).
+const RESUME_WORD = /(?<![\p{L}\p{N}])(r[eé]sum[eé]|cv|curriculum vitae)(?![\p{L}\p{N}])/iu;
 const COVER = /cover\s*letter/i;
 const FIELD = /^(first name|last name|preferred (first )?name|full name|name|email|e-mail|phone|phone number|mobile|linkedin( profile| url)?|website|portfolio( url| link)?|github( url)?|current company|current location|location|city|address)\b/i;
 
@@ -131,6 +133,7 @@ export function kindFor(label: string, fieldType: string): ApplicationItemKind {
   const l = label.trim();
   // "Resume gaps: anything to explain?" is a question, not the upload.
   if (RESUME.test(l) && !l.includes("?")) return "resume";
+  if (/file/i.test(fieldType) && RESUME_WORD.test(l) && !COVER.test(l) && !l.includes("?")) return "resume";
   // "Would you like to include a cover letter?" is a Yes/No question, not the upload (#804).
   if (COVER.test(l) && !l.includes("?") && !/select|checkbox/i.test(fieldType)) return "cover_letter";
   if (/portfolio|work samples?/i.test(l) && /file/i.test(fieldType)) return "portfolio";
