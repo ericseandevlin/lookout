@@ -38,15 +38,24 @@
     return x === y || x.startsWith(y.slice(0, 80)) || y.startsWith(x.slice(0, 80));
   }
 
+  /**
+   * The control labeled with the question: the exact label first, then a label that holds the question, same as the worker
+   * (#698). A shorter label the question only starts with is another field: "Location" is not "Location: can you work
+   * onsite?" (#888). Long labels (80+ characters) match on their first 80, as in pickOne.
+   */
+  function labeledBy(all, prompt) {
+    const q = norm(prompt);
+    const long = (el) => Math.min(labelOf(el).length, q.length) >= 80 && sameText(labelOf(el), prompt);
+    return all.find((el) => labelOf(el) === q) || all.find((el) => labelOf(el).includes(q)) || all.find(long) || null;
+  }
+
   function controlFor(prompt) {
-    const all = [...document.querySelectorAll("input:not([type=hidden]):not([type=file]):not([type=checkbox]):not([type=radio]), textarea, select, [role=combobox]")];
-    return all.find((el) => labelOf(el) === norm(prompt)) || all.find((el) => sameText(labelOf(el), prompt)) || null;
+    return labeledBy([...document.querySelectorAll("input:not([type=hidden]):not([type=file]):not([type=checkbox]):not([type=radio]), textarea, select, [role=combobox]")], prompt);
   }
 
   /** A lone checkbox labeled with the question itself ("I agree to the privacy policy", #669). */
   function checkboxFor(prompt) {
-    const all = [...document.querySelectorAll("input[type=checkbox]")];
-    return all.find((el) => labelOf(el) === norm(prompt)) || all.find((el) => sameText(labelOf(el), prompt)) || null;
+    return labeledBy([...document.querySelectorAll("input[type=checkbox]")], prompt);
   }
 
   /** A group's own question: its <legend>, else its aria-labelledby or aria-label. */
