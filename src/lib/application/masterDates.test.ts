@@ -17,6 +17,26 @@ describe("looseDates", () => {
     expect(looseDates("### Senior Developer, Globex | 2015 - 2019", source)).toEqual([]);
   });
 
+  it.each([
+    "Staff Engineer, Acme Corp  March 2019 – June 2021",
+    "Staff Engineer, Acme Corp  Mar 2019 - Jun 2021",
+    "Staff Engineer, Acme Corp  Mar. 2019 to Jun. 2021",
+    "Staff Engineer, Acme Corp  3/2019 - 6/2021",
+    "Staff Engineer, Acme Corp  2019 - 2021",
+  ])("says nothing when the file wrote the same dates another way: %s (#907)", (line) => {
+    expect(looseDates("### Staff Engineer | Acme Corp | 03/2019 – 06/2021", `Jane Doe\n${line}\n- Built billing.`)).toEqual([]);
+  });
+
+  it("reads Present the same whatever the word (#907)", () => {
+    expect(looseDates("### Staff Engineer | Acme Corp | 03/2019 – Present", "Staff Engineer, Acme Corp  March 2019 - Current")).toEqual([]);
+  });
+
+  it("still warns when the months differ or the dates sit on another line (#907)", () => {
+    expect(looseDates("### Staff Engineer | Acme Corp | 03/2019 – 06/2021", "Staff Engineer, Acme Corp  April 2019 - June 2021")).toHaveLength(1);
+    expect(looseDates("### Staff Engineer | Acme Corp | 03/2019 – 06/2021", "Staff Engineer, Acme Corp\nMarch 2019 - June 2021")).toHaveLength(1);
+    expect(looseDates("### Staff Engineer | Acme Corp | 03/2019 – Present", "Staff Engineer, Acme Corp  March 2019 - June 2021")).toHaveLength(1);
+  });
+
   it("warns once, naming the job, when the dates sat elsewhere in the file", () => {
     // Two-column PDF: dates float to their own line, away from the title.
     const loose = `Jane Doe
