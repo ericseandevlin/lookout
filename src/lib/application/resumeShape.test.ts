@@ -101,6 +101,20 @@ describe("Experience shape in code (#137)", () => {
     expect(r.fixed.join(" ")).not.toContain("Selected Projects");
   });
 
+  it("keeps a year-only job in Experience when it shares a year with another job (#939)", () => {
+    const md = "# M\n## Experience\n### Designer, Beta | NY | 2021 – 2022\n- b\n### Designer, Alpha | NY | 2018 – 2021\n- a\n### Intern, Gamma | NY | 2018\n- g\n";
+    const r = shapeResume(md);
+    expect(r.md).not.toContain("Selected Projects");
+    expect(r.fixed.join(" ")).not.toContain("Selected Projects");
+    expect(parseDraft(r.md).filter((x) => x.t === "role").map((x) => x.text)).toEqual(["Designer, Beta | NY", "Designer, Alpha | NY", "Intern, Gamma | NY"]);
+    // Months on one side only: the other side's bare year still makes the edge a tie.
+    expect(shapeResume(md.replace("| 2018\n", "| Jun 2018 – Aug 2018\n")).md).not.toContain("Selected Projects");
+    // A year-only job strictly inside another job's years is still side work.
+    expect(shapeResume(md.replace("| 2018\n", "| 2019\n")).md).toContain("Selected Projects");
+    // Months on both sides: a summer inside the year is containment.
+    expect(shapeResume(md.replace("2018 – 2021", "01/2018 – 06/2021").replace("| 2018\n", "| 06/2018 – 08/2018\n")).md).toContain("Selected Projects");
+  });
+
   it("keeps two stints at one employer apart when another job sits between them (#896)", () => {
     const md = `# A
 
