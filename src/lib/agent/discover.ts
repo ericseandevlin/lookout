@@ -129,7 +129,7 @@ const AGGREGATOR = /(indeed|linkedin|glassdoor|ziprecruiter|simplyhired|monster|
 type Report = (pct: number, step: string) => Promise<void>;
 
 /**
- * One key per job on Greenhouse, Lever, Ashby and Workday, whatever host or path the link uses. A posting is saved
+ * One key per job on Greenhouse, Lever, Ashby, Workday and iCIMS, whatever host or path the link uses. A posting is saved
  * under the URL it redirected to, and search often returns the old one (boards.greenhouse.io for job-boards.greenhouse.io),
  * so text alone missed it and the run read and scored it again (#670). Other sites keep the exact URL match.
  */
