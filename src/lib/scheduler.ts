@@ -163,6 +163,9 @@ async function runDue(due: { userId: string; searchId: string }[]) {
   let stopped = false;
   const runOne = async ({ userId, searchId }: { userId: string; searchId: string }) => {
     try {
+      // The due list was built at the start of the pass; a person who pressed Search now while this waited
+      // for a slot already has a run going, so don't start a second one (#1020).
+      if (await isRunning(userId)) return;
       const r = await discover(searchId, "scheduled");
       // Even with nothing new: pinned finds due soon still go out, once a day (#304).
       await sendDigest(userId, "runId" in r ? r.runId : undefined);

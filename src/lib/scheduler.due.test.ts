@@ -18,7 +18,7 @@ vi.mock("@/lib/retention", () => ({ cleanup: async () => ({ loginTokens: 0, sess
 const recordError = vi.fn(async () => {});
 vi.mock("@/lib/errorLog", () => ({ recordError }));
 const discover = vi.fn(async (searchId: string) => ({ runId: `run-${searchId}` }));
-const isRunning = vi.fn(async () => false);
+const isRunning = vi.fn<(userId: string) => Promise<boolean>>(async () => false);
 vi.mock("@/lib/agent/discover", () => ({ discover, isRunning }));
 const sendDigest = vi.fn(async () => {});
 vi.mock("@/lib/digest", () => ({ sendDigest }));
@@ -265,6 +265,28 @@ describe("the rest of a pass (#377)", () => {
 });
 
 describe("running due searches side by side (#988)", () => {
+  it("skips a person whose run started while their search waited for a slot (#1020)", async () => {
+    const all = [];
+    for (let i = 0; i < 4; i++) all.push(await seed());
+    let release = () => {};
+    const gate = new Promise<void>((r) => (release = r));
+    const started = new Set<string>();
+    discover.mockImplementation(async (searchId: string) => {
+      await gate;
+      return { runId: `run-${searchId}` };
+    });
+    // Not running when the due list is built; running once they press Search now during the pass.
+    isRunning.mockImplementation(async (userId: string) => started.has(userId));
+    const pass = tick();
+    await vi.waitFor(() => expect(discover).toHaveBeenCalledTimes(3));
+    const waiting = all.find((s) => !ran().includes(s.searchId))!;
+    started.add(waiting.userId);
+    release();
+    await pass;
+    expect(discover).toHaveBeenCalledTimes(3);
+    expect(ran()).not.toContain(waiting.searchId);
+  });
+
   it("runs at most 3 at once and still runs every due search", async () => {
     const all = [];
     for (let i = 0; i < 7; i++) all.push(await seed());
