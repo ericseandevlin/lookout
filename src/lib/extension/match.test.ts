@@ -78,4 +78,14 @@ describe("sameJob", () => {
     expect(sameJob(["https://careers.acme.com/#!/job/101/apply"], ["https://careers.acme.com/#!/job/101"])).toBe(true);
     expect(sameJob(["https://jobs.example.com/acme/123#apply"], ["https://jobs.example.com/acme/123"])).toBe(true);
   });
+  it("keys an iCIMS job by host and job number through its login and apply steps (#852)", () => {
+    const job = "https://careers-acme.icims.com/jobs/1234/senior-designer/job";
+    expect(jobKey(job)).toBe("icims:careers-acme.icims.com:1234");
+    expect(sameJob(["https://careers-acme.icims.com/jobs/1234/senior-designer/login?in_iframe=1"], [job])).toBe(true);
+    expect(sameJob(["https://careers-acme.icims.com/jobs/1234/senior-designer/candidate?mode=job&iis=Indeed"], [job])).toBe(true);
+    expect(sameJob(["https://careers-acme.icims.com/jobs/5678/senior-designer/job"], [job])).toBe(false);
+    expect(sameJob(["https://careers-other.icims.com/jobs/1234/senior-designer/job"], [job])).toBe(false);
+    // The search list isn't one job.
+    expect(jobKey("https://careers-acme.icims.com/jobs/search?ss=1")).toMatch(/^url:/);
+  });
 });

@@ -26,6 +26,9 @@ export function jobKey(raw: string | null | undefined): string | null {
   const wdHost = /myworkdayjobs\.com$/.test(host) ? host : /myworkdaysite\.com$/.test(host) ? `${host}/${u.pathname.match(/\/recruiting\/([^/]+)/i)?.[1]?.toLowerCase() ?? ""}` : null;
   const wd = wdHost && u.pathname.match(/\/(?:job|details)\/(?:[^/]+\/)*?([^/]+)\/*(?:\/apply\b.*)?$/i)?.[1];
   if (wd) return `workday:${wdHost}:${decodeURIComponent(wd).toLowerCase()}`;
+  // iCIMS (#852): careers-acme.icims.com/jobs/1234/<title>/job, then .../login and .../candidate on the way to the form.
+  const icims = /(^|\.)icims\.com$/.test(host) && u.pathname.match(/^\/jobs\/(\d+)(?:\/|$)/i)?.[1];
+  if (icims) return `icims:${host}:${icims}`;
   const path = u.pathname.replace(/\/(apply|application)\/?$/i, "").replace(/\/+$/, "");
   return `url:${host.replace(/^www\./, "")}${path.toLowerCase()}${idQuery(u.searchParams)}${hashRoute(u)}`;
 }
