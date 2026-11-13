@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useState, useSyncExternalStore } from "react";
 import type { RunReport } from "@/lib/db/schema";
 import type { RunInfo } from "@/lib/types";
+import { noNewBody } from "@/lib/agent/runOutcome";
 import { CheckIcon, XIcon } from "./icons";
 import { useStore } from "./store";
 import { trackClient } from "./track";
@@ -133,7 +134,7 @@ function Finished({ run, onDismiss, onRetry, retrying, retryError }: { run: RunI
     : run.added
       ? "They're marked with a green dot. Open one to see why it matched."
       : run.found
-        ? `Lookout read ${run.found} matching ${run.found === 1 ? "posting" : "postings"}, and they're already on your board. It'll look again on your schedule.`
+        ? noNewBody(run.found, run.report?.tally)
         : "Nothing new matched your profile. It'll look again on your schedule.";
   return (
     <Shell>

@@ -185,6 +185,15 @@ describe("discover (#379)", () => {
     expect(rows).toEqual([{ min: 150000, max: 200000 }]);
   });
 
+  it("says a posting under the floor was left off, not that it is already on the board (#862)", async () => {
+    results.set("design systems lead", [hit("https://jobs.example.com/a")]);
+    results.set("design systems lead site:greenhouse.io", []);
+    pages.set("https://jobs.example.com/a", posting());
+    verdicts.set("https://jobs.example.com/a", { comp_min: 120000, comp_max: 150000 });
+    await expect(discover(searchId)).resolves.toMatchObject({ found: 1, added: 0 });
+    expect((await runRow()).progress).toMatchObject({ step: "No new finds this time: 1 under your pay floor" });
+  });
+
   it("reads an hourly rate from the model as no annual pay, and takes the page's annualized range (#702)", async () => {
     results.set("design systems lead", [hit("https://jobs.example.com/a"), hit("https://jobs.example.com/b")]);
     results.set("design systems lead site:greenhouse.io", []);
