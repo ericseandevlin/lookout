@@ -1,13 +1,13 @@
 import "server-only";
 import { createHash } from "node:crypto";
-import { and, asc, desc, eq, ne } from "drizzle-orm";
+import { and, asc, desc, eq, sql } from "drizzle-orm";
 import { z } from "zod";
 import { db, schema } from "@/lib/db";
 import type { SearchProfile } from "@/lib/db/schema";
 import { kinds } from "@/lib/kinds";
 import { AiConfigError, completeJSON, type Usage } from "@/lib/ai/llm";
 import { getAiConfig } from "@/lib/config";
-import { ownNotes } from "./linkState";
+import { CLOSED_NOTE_SQL, ownNotes } from "./linkState";
 
 /**
  * The search profile is what every search actually uses: one compact picture of
@@ -69,7 +69,9 @@ export async function loadRawInputs(searchId: string): Promise<RawInputs & { sto
     })
     .from(schema.userOpportunities)
     .innerJoin(schema.opportunities, eq(schema.opportunities.id, schema.userOpportunities.opportunityId))
-    .where(and(eq(schema.userOpportunities.searchId, searchId), ne(schema.userOpportunities.notes, "")))
+    // Notes that are only Lookout's closed line are dropped here, before the limit: every find the link check closes gets
+    // one, and 60 of them pushed the person's own older corrections out of the window (#1050).
+    .where(and(eq(schema.userOpportunities.searchId, searchId), sql`regexp_replace(${schema.userOpportunities.notes}, ${CLOSED_NOTE_SQL}, '', 'gn') ~ '\\S'`))
     .orderBy(desc(schema.userOpportunities.addedAt))
     .limit(60);
   // Each note travels with the bullets Lookout showed on that find, so the model can tell when a note is correcting one.

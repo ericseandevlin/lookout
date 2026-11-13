@@ -5,6 +5,9 @@ export type LinkState = "open" | "gone" | "unknown";
 export const closedNote = (reason: string, day: string) => `Closed: the posting was gone (${reason}) as of ${day}. Lookout archived it.`;
 const CLOSED_NOTE = /^Closed: the posting was gone \(.*\) as of \d{4}-\d{2}-\d{2}\. Lookout archived it\.$/gm;
 
+/** The same closed line for Postgres (newline-sensitive "n" flag), to drop closed-only notes inside a query (#1050). */
+export const CLOSED_NOTE_SQL = CLOSED_NOTE.source;
+
 /** A find's notes without Lookout's own closed line: what the person wrote (#792). */
 export const ownNotes = (notes: string) => notes.replace(CLOSED_NOTE, "").trim();
 

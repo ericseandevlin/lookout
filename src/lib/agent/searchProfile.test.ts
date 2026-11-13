@@ -200,6 +200,20 @@ describe("what the model is given (#581)", () => {
     expect((await ensure()).raw.hash).toBe(before);
   });
 
+  it("keeps an older note of theirs when 60 newer finds hold only Lookout's closed line (#1050)", async () => {
+    const closed = "Closed: the posting was gone (page says it's closed) as of 2026-11-01. Lookout archived it.";
+    const [old] = await db.insert(schema.opportunities).values({ company: "Acme", title: "Designer", fingerprint: crypto.randomUUID() }).returning();
+    await db.insert(schema.userOpportunities).values({ userId, searchId, opportunityId: old.id, score: 70, notes: "I have 5 years in banking.", addedAt: new Date("2026-09-01T00:00:00Z") });
+    const opps = await db
+      .insert(schema.opportunities)
+      .values(Array.from({ length: 61 }, (_, i) => ({ company: "Acme", title: `Closed ${i}`, fingerprint: crypto.randomUUID() })))
+      .returning();
+    await db.insert(schema.userOpportunities).values(opps.map((o, i) => ({ userId, searchId, opportunityId: o.id, score: 70, notes: closed, addedAt: new Date(Date.UTC(2026, 9, 1, 0, i)) })));
+    const { raw } = await ensure();
+    expect(raw.sources.notes).toBe(1);
+    expect(prompt()).toContain("Their note: I have 5 years in banking.");
+  });
+
   it("uses the resume text when the summary step never ran, and counts only answers with something in them", async () => {
     await db.insert(schema.materials).values({ userId, kind: "resume", extracted: { text: "Ten years leading design." } });
     await db.update(schema.searches).set({ answers: { q1: "A step up", q2: ["Remote", "Hybrid"], q3: [], q4: "  " } }).where(eq(schema.searches.id, searchId));
