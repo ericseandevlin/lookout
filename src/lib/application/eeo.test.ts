@@ -142,3 +142,20 @@ describe("resolve", () => {
     expect(resolve(p, "How would you describe your racial/ethnic background?", clearRace)).toBe("White");
   });
 });
+
+describe("a race answer that fits several options is asked (#954)", () => {
+  // Greenhouse's demographic race question, full list.
+  const ghRace = ["Black or of African descent", "East Asian", "Hispanic, Latinx or of Spanish Origin", "Indigenous or Native American", "Middle Eastern or North African", "Native Hawaiian or Pacific Islander", "South Asian", "Southeast Asian", "White or European", "I prefer to self-describe", "I don't wish to answer"];
+  it("does not guess East Asian for Asian", () => {
+    expect(matchOption("Asian", ghRace)).toBeNull();
+    expect(resolve({ answers: { race: "Asian" }, exact: {} }, "How would you describe your racial/ethnic background?", ghRace)).toBeNull();
+  });
+  it("still matches a race with one option on the same list", () => {
+    expect(matchOption("White", ghRace)).toBe("White or European");
+    expect(matchOption("Black or African American", ghRace)).toBe("Black or of African descent");
+  });
+  it("still matches Asian when the list has one Asian option", () => {
+    expect(matchOption("Asian", ["Asian", "White", "Decline to self-identify"])).toBe("Asian");
+  });
+});
+
