@@ -93,6 +93,14 @@ describe("Experience shape in code (#137)", () => {
     expect(shapeResume(plain).fixed).toEqual([]);
   });
 
+  it("keeps a current job in Experience when an older job also runs to Present (#916)", () => {
+    const md = "# A\n\n## Experience\n### Senior Engineer, BigCo | 03/2021 – Present\n- x\n### Founder, Doe Studio | 2015 – Present\n- y";
+    const r = shapeResume(md);
+    expect(r.md).not.toContain("Selected Projects");
+    expect(r.md).toContain("### Senior Engineer, BigCo | 03/2021 – Present");
+    expect(r.fixed.join(" ")).not.toContain("Selected Projects");
+  });
+
   it("keeps two stints at one employer apart when another job sits between them (#896)", () => {
     const md = `# A
 
