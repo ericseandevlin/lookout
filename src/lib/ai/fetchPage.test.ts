@@ -58,10 +58,13 @@ describe("Workday postings (#724)", () => {
     ["https://swbc.wd1.myworkdayjobs.com/InformationTechnology/job/Remote/Director-of-Product_R0015578-2", "https://swbc.wd1.myworkdayjobs.com/wday/cxs/swbc/InformationTechnology/job/Remote/Director-of-Product_R0015578-2"],
     ["https://arcticwolf.wd1.myworkdayjobs.com/en-US/External/job/Director--Product---XDR_R26_810?source=x", "https://arcticwolf.wd1.myworkdayjobs.com/wday/cxs/arcticwolf/External/job/Director--Product---XDR_R26_810"],
     ["https://acme.wd503.myworkdayjobs.com/fr-CA/Careers/job/Toronto/PM_1/", "https://acme.wd503.myworkdayjobs.com/wday/cxs/acme/Careers/job/Toronto/PM_1"],
+    // A share link: /details/ instead of /job/, same JSON address (#1071).
+    ["https://swbc.wd1.myworkdayjobs.com/en-US/InformationTechnology/details/Senior-Network-Security-Engineer_R0015735", "https://swbc.wd1.myworkdayjobs.com/wday/cxs/swbc/InformationTechnology/job/Senior-Network-Security-Engineer_R0015735"],
   ])("maps %s to the JSON address", (page, api) => expect(workdayApi(page)).toBe(api));
 
   it.each([
     "https://swbc.wd1.myworkdayjobs.com/InformationTechnology", // a job list, not a posting
+    "https://swbc.wd1.myworkdayjobs.com/InformationTechnology/details", // no posting after /details/
     "https://swbc.wd1.myworkdayjobs.com/wday/cxs/swbc/InformationTechnology/job/X_1", // already the JSON address
     "http://swbc.wd1.myworkdayjobs.com/Site/job/X_1",
     "https://myworkdayjobs.com.evil.example/Site/job/X_1",
