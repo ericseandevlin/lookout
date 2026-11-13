@@ -139,9 +139,15 @@ export function removeTraps(visibleText: string, hiddenTexts: string[]) {
   return { text, traps: [...hidden, ...visible] };
 }
 
+// The word on its own, not inside a longer one. Lookarounds, not \b: \b needs a letter or digit at each edge, so a planted
+// emoji, "C++" or "#orca" never matched (#848).
+const wordIn = (w: string, text: string) => new RegExp(`(?<!\\w)${w.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}(?!\\w)`, "i").test(text);
+// One character is too little to count, unless it is an emoji ("Include the emoji '⭐'").
+const longEnough = (w: string) => [...w].length > 1 || /\p{Extended_Pictographic}/u.test(w);
+
 /** Trap words that slipped into a draft and aren't in the person's own materials. */
 export const trapWordsIn = (draft: string, traps: Trap[], own: string) =>
-  [...new Set(traps.flatMap((t) => t.words))].filter((w) => w.length > 1 && new RegExp(`\\b${w.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\b`, "i").test(draft) && !new RegExp(`\\b${w.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\b`, "i").test(own));
+  [...new Set(traps.flatMap((t) => t.words))].filter((w) => longEnough(w) && wordIn(w, draft) && !wordIn(w, own));
 
 // --- Display (#41): the stored posting text as readable blocks for the review screen.
 
