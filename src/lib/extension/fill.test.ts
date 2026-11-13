@@ -392,6 +392,25 @@ describe("extension fill: choices", () => {
     expect((p.doc.querySelector("#ml") as HTMLInputElement).checked).toBe(false);
   });
 
+  // Each box labeled with the question and its option (#1091).
+  const asked = (q: string, opts: string[]) =>
+    `<fieldset><legend>${q}</legend><span id="q">${q}</span>${opts.map((o, i) => `<input type="checkbox" id="b${i}" aria-labelledby="q l${i}"><span id="l${i}">${o}</span>`).join("")}</fieldset>`;
+  const ticked = (p: ReturnType<typeof page>, n: number) => Array.from({ length: n }, (_, i) => (p.doc.querySelector(`#b${i}`) as HTMLInputElement).checked);
+
+  it("checks the option the answer means when each box is labeled question + option (#1091)", async () => {
+    const p = page(asked("Are you 18 or older?", ["No", "Yes"]));
+    const [r] = await p.fill({ steps: [{ prompt: "Are you 18 or older?", kind: "choice", content: "Yes", options: ["No", "Yes"], required: true }] });
+    expect(r.ok).toBe(true);
+    expect(ticked(p, 2)).toEqual([false, true]);
+  });
+
+  it("checks a multi-select option labeled question + option (#1091)", async () => {
+    const p = page(asked("Which days can you work?", ["Weekdays", "Weekends"]));
+    const [r] = await p.fill({ steps: [{ prompt: "Which days can you work?", kind: "choice", content: "Weekends", options: ["Weekdays", "Weekends"] }] });
+    expect(r.ok).toBe(true);
+    expect(ticked(p, 2)).toEqual([false, true]);
+  });
+
   it("does not untick a lone checkbox that is already ticked", async () => {
     const p = page(`<label><input type="checkbox" id="t" checked> I agree to the terms</label>`);
     const [r] = await p.fill({ steps: [{ prompt: "I agree to the terms", kind: "text", content: "Yes" }] });
