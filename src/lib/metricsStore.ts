@@ -2,7 +2,7 @@ import "server-only";
 import { and, eq, gte, inArray, isNotNull, isNull, ne, or, sql } from "drizzle-orm";
 import { db, schema } from "@/lib/db";
 import { weekOf } from "./events";
-import { actedOn, activation, activeSince, applyCost, byChannel, GOALS, outcomes, retention, scoreSplit, searchSuccess, weekly, weekOneSettings, type MetricEvent, type OutcomeReport } from "./metrics";
+import { actedOn, activation, activeSince, applyCost, byChannel, fallbacksByDay, GOALS, outcomes, retention, scoreSplit, searchSuccess, weekly, weekOneSettings, type MetricEvent, type OutcomeReport } from "./metrics";
 import { APPLIED, topReasons } from "./quality";
 import { isAdmin } from "./users";
 import { monthStart, perActive } from "./spend";
@@ -91,7 +91,12 @@ export async function metrics(now = new Date()) {
   const rated = finds.map((f) => ({ score: f.score, acted: f.pinned || (APPLIED as readonly string[]).includes(f.stage) || touched.has(`${f.userId}:${f.opportunityId}`) }));
 
   const searches = await db
-    .select({ status: schema.runs.status, read: sql<number | null>`(${schema.runs.report} ->> 'read')::int` })
+    .select({
+      status: schema.runs.status,
+      startedAt: schema.runs.startedAt,
+      read: sql<number | null>`(${schema.runs.report} ->> 'read')::int`,
+      fallbacks: sql<number | null>`(${schema.runs.report} ->> 'fallbacks')::int`,
+    })
     .from(schema.runs)
     .innerJoin(schema.users, eq(schema.users.id, schema.runs.userId))
     // A search skipped at the person's own cap never ran, so it is not a failed search (#990).
@@ -148,6 +153,7 @@ export async function metrics(now = new Date()) {
     outcomes: { board, survey: outcome.survey, questions: asked },
     quality: { days: 90, added: finds.length, acted: rated.filter((f) => f.acted).length, notFit: finds.filter((f) => f.feedback).length, topReason: topReasons(finds, 1)[0] ?? null, score: scoreSplit(rated) },
     search: searchSuccess(searches),
+    fallbacks: fallbacksByDay(searches.map((s) => ({ startedAt: new Date(s.startedAt), fallbacks: s.fallbacks })), now),
     costMonth: cost,
     monthActives,
     costPerActiveMonth: monthActives ? cost / monthActives : null,

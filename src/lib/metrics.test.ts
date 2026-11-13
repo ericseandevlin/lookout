@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { actedOn, activation, activeSince, applyCost, byChannel, channelOf, outcomes, retention, scoreSplit, searchSuccess, week4Retention, weekly, weekOneSettings, type MetricEvent } from "./metrics";
+import { actedOn, activation, activeSince, applyCost, byChannel, channelOf, fallbacksByDay, outcomes, retention, scoreSplit, searchSuccess, week4Retention, weekly, weekOneSettings, type MetricEvent } from "./metrics";
 
 const ev = (userId: string, type: string, at: string, target: string | null = null, meta: Record<string, unknown> | null = null): MetricEvent => ({ userId, type, target, meta, at: new Date(at) });
 
@@ -200,5 +200,28 @@ describe("weekOneSettings (#992)", () => {
   });
   it("has no rate when nobody is eligible", () => {
     expect(weekOneSettings([], [], since, now).rate).toBeNull();
+  });
+});
+
+describe("fallbacksByDay (#987)", () => {
+  it("sums each day's Brave fallbacks for the last 7 UTC days, newest first, and skips older runs", () => {
+    const now = new Date("2026-11-13T16:00:00Z");
+    const days = fallbacksByDay(
+      [
+        { startedAt: new Date("2026-11-13T01:00:00Z"), fallbacks: 2 },
+        { startedAt: new Date("2026-11-13T15:00:00Z"), fallbacks: 1 },
+        { startedAt: new Date("2026-11-11T09:00:00Z"), fallbacks: 4 },
+        { startedAt: new Date("2026-11-12T09:00:00Z"), fallbacks: null },
+        { startedAt: new Date("2026-11-01T09:00:00Z"), fallbacks: 9 },
+      ],
+      now,
+    );
+    expect(days).toHaveLength(7);
+    expect(days.slice(0, 3)).toEqual([
+      { day: "2026-11-13", count: 3 },
+      { day: "2026-11-12", count: 0 },
+      { day: "2026-11-11", count: 4 },
+    ]);
+    expect(days[6]).toEqual({ day: "2026-11-07", count: 0 });
   });
 });
