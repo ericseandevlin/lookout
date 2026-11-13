@@ -112,20 +112,24 @@ const TRAP = [
 const quoted = (s: string) => [...s.matchAll(/["'“‘]([^"'”’\n]{1,40})["'”’]/g)].map((m) => m[1].trim()).filter(Boolean);
 const afterWord = (s: string) => [...s.matchAll(/\b(?:word|phrase|term)\s+([A-Za-z][\w-]{2,30})/gi)].map((m) => m[1]).filter((w) => !/^(in|on|at|to|that|somewhere|anywhere|into|within|the|your)$/i.test(w));
 
-/** Sentences that instruct the applicant or an AI rather than describe the job, with the words they want inserted. */
-export function findTraps(text: string, hidden = false): Trap[] {
-  const out: Trap[] = [];
+/** Each trap with its whole sentence. Trap.text is cut to 300 characters for the review page; removal needs all of it (#965). */
+function trapSentences(text: string, hidden: boolean): { sentence: string; trap: Trap }[] {
+  const out: { sentence: string; trap: Trap }[] = [];
   for (const sentence of text.split(/(?<=[.!?])\s+|\n+/)) {
     const s = sentence.trim();
     if (!s || !TRAP.some((re) => re.test(s))) continue;
-    out.push({ text: s.slice(0, 300), words: [...new Set([...quoted(s), ...afterWord(s)])], hidden });
+    out.push({ sentence: s, trap: { text: s.slice(0, 300), words: [...new Set([...quoted(s), ...afterWord(s)])], hidden } });
   }
   return out;
 }
 
+/** Sentences that instruct the applicant or an AI rather than describe the job, with the words they want inserted. */
+export const findTraps = (text: string, hidden = false): Trap[] => trapSentences(text, hidden).map((x) => x.trap);
+
 /** Hidden text is always a trap candidate; visible text only where it instructs. Returns the cleaned text too. */
 export function removeTraps(visibleText: string, hiddenTexts: string[]) {
-  const visible = findTraps(visibleText, false);
+  const found = trapSentences(visibleText, false);
+  const visible = found.map((x) => x.trap);
   // Hidden text never reaches the model either way. Report it only when it instructs (or quotes words to
   // insert); menu labels and tracking tags ("Open Menu", "#LI-Remote") are routine and dropped quietly.
   const hidden = hiddenTexts.flatMap((h) => {
@@ -135,7 +139,7 @@ export function removeTraps(visibleText: string, hiddenTexts: string[]) {
     return words.length ? [{ text: h.slice(0, 300), words, hidden: true }] : [];
   });
   let text = visibleText;
-  for (const t of visible) text = text.split(t.text).join(" ");
+  for (const { sentence } of found) text = text.split(sentence).join(" ");
   return { text, traps: [...hidden, ...visible] };
 }
 
