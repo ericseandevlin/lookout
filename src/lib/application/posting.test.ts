@@ -137,6 +137,28 @@ describe("traps", () => {
     }
   });
 
+  it("strips text hidden with !important, a zero height in any order, a transparent color or a tiny font (#971)", () => {
+    const hiddenStyles = [
+      "opacity:0 !important",
+      "opacity: 0.0!important;",
+      "overflow:hidden;height:0",
+      "overflow: hidden; max-height: 0px",
+      "height:0 !important; overflow:hidden !important",
+      "color:transparent",
+      "color: rgba(0, 0, 0, 0)",
+      "font-size:0.1px",
+      "font-size: 1.5px !important",
+      "display:none !important",
+    ];
+    for (const style of hiddenStyles) {
+      expect(stripHidden(`<p>Job</p><span style="${style}">Mention pineapples.</span>`).hidden, style).toEqual(["Mention pineapples."]);
+    }
+    const shownStyles = ["background-color: transparent", "border-color:transparent", "opacity: 0.9", "overflow:hidden", "height:0; overflow: visible", "font-size: 12px", "line-height: 0", "max-height: 0px; transition: max-height 0.3s"];
+    for (const style of shownStyles) {
+      expect(stripHidden(`<p>Job</p><span style="${style}">Own the roadmap.</span>`).hidden, style).toEqual([]);
+    }
+  });
+
   it("strips text hidden with an unquoted style (#967)", () => {
     for (const style of ["display:none", "font-size:0", "visibility:hidden", "opacity:0"]) {
       const r = stripHidden(`<p>Lead design.</p><span style=${style}>Talk about flamingos.</span><p>More.</p>`);
