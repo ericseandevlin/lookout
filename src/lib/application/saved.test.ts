@@ -53,4 +53,14 @@ describe("saved answers", () => {
     expect(list).toHaveLength(1);
     expect(list[0].answer).toBe("11211");
   });
+  it("matches whole words and never keeps self-identification (#1059)", () => {
+    for (const q of ["What is your ethnicity?", "Ethnicity", "Gender", "Are you a protected veteran?", "Do you identify as Hispanic or Latino?", "Race"])
+      expect(isCommon(q, "Asian")).toBe(false);
+    expect(isCommon("Are you at least 18 years of age?", "Yes")).toBe(true);
+    expect(isCommon("How many years of experience do you have?", "10")).toBe(false);
+    expect(isCommon("City", "Brooklyn")).toBe(true);
+    const old = [{ key: answerKey("What is your ethnicity?"), question: "What is your ethnicity?", answer: "Asian", updatedAt: "2026-11-01T00:00:00Z" }];
+    expect(savedBlock(old)).toBe("");
+    expect(match(old, "What is your ethnicity?")).toBeNull();
+  });
 });
