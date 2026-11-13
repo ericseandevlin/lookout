@@ -1,5 +1,5 @@
 import "server-only";
-import { and, eq, inArray, lt, max } from "drizzle-orm";
+import { and, eq, inArray, lt, max, sql } from "drizzle-orm";
 import { fetch } from "undici";
 import { db, schema } from "@/lib/db";
 import type { ApplicationReport, ApplicationStatus } from "@/lib/db/schema";
@@ -427,7 +427,15 @@ async function draftAll(id: string, userId: string, opp: typeof schema.opportuni
   return { keywordPlan, keywords: undefined, keywordsApproved: undefined, postingText: inp.posting.text, traps: inp.traps ?? [], letterStrategy: items.some((i) => i.kind === "cover_letter") ? inp.letterStrategy : undefined };
 }
 
-/** Re-queue work a restart interrupted, then return what's waiting. One user, or everyone. */
+/** What a submit the server lost track of records (#864). It may have gone through, so it counts as clicked (#865). */
+export const LOST_SUBMIT = "Lookout lost track of this submit, most likely because the server restarted. Check the job site and your email to see whether it went through before you send it again.";
+
+/**
+ * Re-queue work a restart interrupted, then return what's waiting. One user, or everyone.
+ * A submit runs in the background of one process (startFill); if that process dies the application sat in
+ * "submitting" for good, locked against edits, cancel and marking it sent (#864). After 10 minutes it moves to the
+ * manual checklist with a note to check whether it went out.
+ */
 async function leftovers(userId?: string) {
   const stale = new Date(Date.now() - 30 * 60_000);
   const mine = userId ? [eq(schema.applications.userId, userId)] : [];
@@ -435,6 +443,11 @@ async function leftovers(userId?: string) {
     .update(schema.applications)
     .set({ status: "queued", updatedAt: new Date() })
     .where(and(inArray(schema.applications.status, ["scanning", "drafting"]), lt(schema.applications.updatedAt, stale), ...mine));
+  const fill: NonNullable<ApplicationReport["fill"]> = { mode: "submit", at: new Date().toISOString(), log: [], missing: [], stopped: LOST_SUBMIT, clicked: true };
+  await db
+    .update(schema.applications)
+    .set({ status: "manual", updatedAt: new Date(), report: sql`${schema.applications.report} || ${JSON.stringify({ fill })}::jsonb` })
+    .where(and(eq(schema.applications.status, "submitting"), lt(schema.applications.updatedAt, new Date(Date.now() - 10 * 60_000)), ...mine));
   return db.select({ id: schema.applications.id }).from(schema.applications).where(and(eq(schema.applications.status, "queued"), ...mine)).limit(10);
 }
 
