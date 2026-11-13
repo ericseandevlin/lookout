@@ -29,11 +29,16 @@ const NAMES_TOTAL = (s: string) =>
 // What includes the bonus must be the pay or the range. "Our total rewards package includes base salary, bonus and
 // equity" lists benefits; it says nothing about what the range covers (#815).
 const PACKAGE = /\b(rewards?|benefits?|package|perks|offerings?)\b/i;
+// "Total compensation also includes a bonus" is about the whole offer, not the posted range, unless it gives the amount
+// itself: "Total compensation of $200k-$250k includes a bonus" (#927).
+const WHOLE_OFFER = /\btotal (compensation|comp|pay)\b/i;
 const PAY_INCLUDES_BONUS = (s: string) => {
   const m = s.match(INCLUDES_BONUS);
   if (!m || m.index === undefined) return false;
   const subject = s.slice(0, m.index);
-  return ABOUT_PAY.test(s) && (!PACKAGE.test(subject) || THE_RANGE.test(subject));
+  if (THE_RANGE.test(subject)) return ABOUT_PAY.test(s);
+  if (WHOLE_OFFER.test(subject) && !/\$\s?\d/.test(s)) return false;
+  return ABOUT_PAY.test(s) && !PACKAGE.test(subject);
 };
 const SAYS_TOTAL = (s: string) =>
   !NEGATED.test(s) && (PAY_INCLUDES_BONUS(s) || (BASE_PLUS.test(s) && THE_RANGE.test(s)) || ON_TARGET.test(s) || NAMES_TOTAL(s));
