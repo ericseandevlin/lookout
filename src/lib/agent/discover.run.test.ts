@@ -281,15 +281,15 @@ describe("discover (#379)", () => {
     expect(fetchPage).toHaveBeenCalledTimes(15);
   });
 
-  it("finishes with no finds when scoring fails, instead of failing the run", async () => {
+  it("fails the run when every scoring call fails, so it retries instead of reporting no matches (#920)", async () => {
     results.set("design systems lead", [hit("https://jobs.example.com/a")]);
     results.set("design systems lead site:greenhouse.io", []);
     pages.set("https://jobs.example.com/a", posting());
     replies.score = () => {
       throw new Error("Model timed out");
     };
-    await expect(discover(searchId)).resolves.toMatchObject({ found: 0, added: 0 });
-    expect(await runRow()).toMatchObject({ status: "done", progress: { step: "No matching open roles this time" } });
+    await expect(discover(searchId)).rejects.toThrow("couldn't score any of them");
+    expect(await runRow()).toMatchObject({ status: "failed" });
   });
 
   it("queues the run for the search agent instead of calling a model", async () => {
