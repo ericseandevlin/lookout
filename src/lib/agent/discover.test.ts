@@ -188,6 +188,26 @@ describe("save", () => {
     expect(o).toMatchObject({ sourceUrl: "https://jobs.example.com/acme/123", description: "Lead the design team." });
   });
 
+  it("fills pay, date and work mode a later read finds when the shared posting has none, and keeps stored ones (#846)", async () => {
+    await save(ctx(), [find({ comp_min: null, comp_max: null, posted_at: null, work_mode: "Unknown" })], "agent");
+    const [u2] = await db.insert(schema.users).values({ email: "b@example.com" }).returning();
+    const [s2] = await db.insert(schema.searches).values({ userId: u2.id, name: "Job search", answers: {} }).returning();
+    await save(ctx({ userId: u2.id, searchId: s2.id }), [find({ url: "https://boards.example.org/acme-director" })], "agent");
+    const [o] = await db.select().from(schema.opportunities);
+    expect(o).toMatchObject({ sourceUrl: "https://jobs.example.com/acme/123", compMin: 200000, compMax: 250000, postedAt: "2026-11-01", workMode: "Hybrid" });
+    // A third read with other values changes nothing already stored, and pay is never half replaced.
+    await save(ctx(), [find({ url: "https://aggregator.example.net/job/9", comp_min: 150000, comp_max: null, posted_at: "2026-11-09", work_mode: "Remote" })], "agent");
+    const [again] = await db.select().from(schema.opportunities);
+    expect(again).toMatchObject({ compMin: 200000, compMax: 250000, postedAt: "2026-11-01", workMode: "Hybrid" });
+  });
+
+  it("keeps a stored one-ended range as is when a later read has both ends (#846)", async () => {
+    await save(ctx(), [find({ comp_min: 190000, comp_max: null })], "agent");
+    await save(ctx(), [find({ url: "https://boards.example.org/acme-director", comp_min: 200000, comp_max: 250000 })], "agent");
+    const [o] = await db.select().from(schema.opportunities);
+    expect(o).toMatchObject({ compMin: 190000, compMax: null });
+  });
+
   it("takes a repost's link, summary and date when the shared posting was found gone, and drops the old check (#830)", async () => {
     await save(ctx(), [find()], "agent");
     const goneCheck = { linkCheck: { checkedAt: "2026-11-01T00:00:00.000Z", state: "gone", reason: "404", goneSince: "2026-10-30T00:00:00.000Z" } };
