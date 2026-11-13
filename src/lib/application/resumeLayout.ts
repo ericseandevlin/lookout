@@ -346,7 +346,10 @@ function shapeExperience(secs: { title: string; lines: string[] }[]): string[] {
     const k = key || `#${i}`;
     buckets.set(k, [...(buckets.get(k) ?? []), e]);
   });
-  for (const group of buckets.values()) {
+  const groups = [...buckets.values()].flatMap((g) => stints(g, entries));
+  // Each group sits where its first entry was, so a split stint doesn't read as a reorder.
+  groups.sort((a, b) => Math.min(...a.map((e) => entries.indexOf(e))) - Math.min(...b.map((e) => entries.indexOf(e))));
+  for (const group of groups) {
     out.push(group.length > 1 ? merge(group, false) : group[0]);
     if (group.length > 1) fixed.push(`Put your ${countKids(group)} titles at ${roleOf(out[out.length - 1].head).first} under one heading, newest first.`);
   }
@@ -392,6 +395,28 @@ function shapeExperience(secs: { title: string; lines: string[] }[]): string[] {
   }
   if (fixed.length) ex.lines = [ex.lines[0], ...pre.filter((l) => l.trim()), ...final.flatMap(lines), ""];
   return fixed;
+}
+
+/**
+ * One employer's entries split into stints wherever a job at another employer sits between them (#896). Merged, they
+ * read as unbroken tenure, and the job in the gap then looked like side work inside it and moved to Selected Projects.
+ */
+function stints(group: Entry[], all: Entry[]): Entry[][] {
+  if (group.length < 2) return [group];
+  const spans = group.map(entrySpan);
+  if (spans.some((x) => !x)) return [group];
+  const sorted = group.map((e, i) => ({ e, sp: spans[i]! })).sort((a, b) => a.sp.s - b.sp.s);
+  const others = all.filter((o) => !group.includes(o)).map(entrySpan).filter((x): x is Span => !!x);
+  const runs: Entry[][] = [[sorted[0].e]];
+  for (let i = 1; i < sorted.length; i++) {
+    const prev = sorted[i - 1].sp;
+    const next = sorted[i].sp;
+    // A month of overlap at either end still counts as between: people often start the next job the month they leave.
+    const between = others.some((o) => o.s >= prev.e - 1 && o.e <= next.s + 1 && o.s <= o.e);
+    if (between) runs.push([sorted[i].e]);
+    else runs[runs.length - 1].push(sorted[i].e);
+  }
+  return runs;
 }
 
 const countKids = (group: Entry[]) => group.reduce((n, e) => n + (e.kids.length || 1), 0);

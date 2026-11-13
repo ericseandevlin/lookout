@@ -93,6 +93,30 @@ describe("Experience shape in code (#137)", () => {
     expect(shapeResume(plain).fixed).toEqual([]);
   });
 
+  it("keeps two stints at one employer apart when another job sits between them (#896)", () => {
+    const md = `# A
+
+## Experience
+### Staff Engineer, Acme | 03/2019 – Present
+- Leads platform.
+### Senior Engineer, Globex | 06/2015 – 02/2019
+- Built billing.
+### Engineer, Acme | 01/2012 – 05/2015
+- Shipped search.`;
+    const out = shapeResume(md);
+    const b = parseDraft(out.md);
+    expect(b.filter((x) => x.t === "section").map((x) => x.text)).toEqual(["Experience"]);
+    expect(b.filter((x) => x.t === "role").map((x) => [x.text, x.right])).toEqual([
+      ["Staff Engineer, Acme", "03/2019 – Present"],
+      ["Senior Engineer, Globex", "06/2015 – 02/2019"],
+      ["Engineer, Acme", "01/2012 – 05/2015"],
+    ]);
+    expect(out.fixed).toEqual([]);
+    // Back to back at one employer, with nothing between, still merges.
+    const promo = md.replace(/### Senior Engineer, Globex[^\n]*\n- Built billing.\n/, "").replace("01/2012 – 05/2015", "01/2012 – 02/2019");
+    expect(parseDraft(shapeResume(promo).md).filter((x) => x.t === "role").map((x) => x.text)).toEqual(["Acme"]);
+  });
+
   it("reads right in the rendered file, not just the data", async () => {
     const p = await rendered(r.md, "4338CA");
     const text = p.map((x) => x.text);
