@@ -29,7 +29,7 @@ import {
   ResumeDraft,
   answersPrompt,
   checkAnswer,
-  fillField,
+  fillField, PREFERRED_NAME,
   linkedinUrl,
   withLinkedin,
   keywordReport,
@@ -403,7 +403,9 @@ async function draftAll(id: string, userId: string, opp: typeof schema.opportuni
       continue;
     }
     const savedHit = match(inp.saved ?? [], it.prompt, it.options);
-    const fact = (it.kind === "field" ? fillField(it.prompt, inp) : null) ?? (savedHit ? { content: savedHit, note: "From your saved answers. Edit them on your profile.", sources: ["saved answer"], question: null } : null);
+    const saved = savedHit ? { content: savedHit, note: "From your saved answers. Edit them on your profile.", sources: ["saved answer"], question: null } : null;
+    // A preferred name they typed once ("Bob") beats the account's first name ("Robert") (#1048).
+    const fact = saved && PREFERRED_NAME.test(it.prompt) ? saved : ((it.kind === "field" ? fillField(it.prompt, inp) : null) ?? saved);
     if (fact) out.set(it.id, fact);
     else rest.push({ id: it.id, index, kind: it.kind, prompt: it.prompt, required: it.required, options: it.options, multi: it.fieldType === "multiselect" });
   }

@@ -59,12 +59,15 @@ export function withLinkedin(md: string, url: string | null | undefined) {
   return md.slice(0, at).replace(/(?:https?:\/\/)?(?:www\.)?linkedin\.com\/in\/[\w%-]+\/?/gi, `linkedin.com/in/${handle}`) + md.slice(at);
 }
 
+/** "Preferred name", "Preferred first name": a saved answer here beats the account's first name (#1048). */
+export const PREFERRED_NAME = /preferred (first )?name/i;
+
 /** Name, email and profile links come straight from the account. Returns null when the model should handle it. */
 export function fillField(prompt: string, inp: DraftInputs): Drafted | null {
   const p = prompt.toLowerCase();
   const [first, ...rest] = inp.name.trim().split(/\s+/);
   const fact = (content: string, source: string): Drafted => ({ content, note: `From your ${source}.`, sources: [source], question: null });
-  if (/preferred (first )?name/.test(p)) return first ? fact(first, "account name") : null;
+  if (PREFERRED_NAME.test(p)) return first ? fact(first, "account name") : null;
   if (/^first name/.test(p)) return first ? fact(first, "account name") : null;
   if (/^last name/.test(p)) return rest.length ? fact(rest.join(" "), "account name") : null;
   // Labels often carry a required marker: "Name *", "Full name (required)", "Name:" (#817).

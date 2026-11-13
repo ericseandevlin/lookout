@@ -6,12 +6,13 @@ import type { SavedAnswer } from "@/lib/db/schema";
  */
 
 const COMMON =
-  /authori[sz]ed to work|work authori[sz]ation|legally (authorized|eligible)|sponsor|visa|zip|postal|state of residence|^state$|city|address|phone|mobile|country|relocat|notice period|start date|earliest.*start|when can you start|previously (worked|employed)|ever (been )?employed by|criminal|background check|drug|18 years|age of|security clearance|how did you hear|referr|pronoun|preferred name/i;
+  /authori[sz]ed to work|work authori[sz]ation|legally (authorized|eligible)|sponsor|visa|zip|postal|state of residence|^state$|city|address|phone|mobile|country|relocat|notice period|start date|earliest.*start|when can you start|previously (worked|employed)|ever (been )?employed by|criminal|background check|drug|18 years|age of|security clearance|how did you hear|referr|pronoun|preferred (first )?name/i;
 // Never kept: salary and essays change per role; commute and office questions depend on where each job is.
 const NEVER = /salary|compensation|pay|expected|why|describe|tell us|cover letter|portfolio|years of|commut|in.?office|hybrid|remote|location (listed|of the)|this (role|position|location)/i;
 
 // Questions about one employer: a No is true almost everywhere, but a Yes or a referrer's name is about that company only.
-const ONE_EMPLOYER = /previously (worked|employed)|ever (been )?employed by|worked (here|for us)|referr/i;
+// \b: "referr" sits inside "preferred", which made every preferred name a referrer's (#1048).
+const ONE_EMPLOYER = /previously (worked|employed)|ever (been )?employed by|worked (here|for us)|\breferr/i;
 const START = /start date|earliest.*start|when can you start/i;
 // A calendar date ("12/1", "2026-12-01", "Dec 1") passes; "2 weeks after an offer" stays true.
 const DATE = /\b\d{1,2}[/.-]\d{1,2}([/.-]\d{2,4})?\b|\b\d{4}-\d{2}-\d{2}\b|\b(jan|feb|mar|apr|jun|jul|aug|sep|sept|oct|nov|dec)[a-z]*\.? \d{1,2}\b|\bmay \d{1,2}\b/i;

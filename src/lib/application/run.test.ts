@@ -609,6 +609,17 @@ describe("planted words, salary asks and saved answers in drafts (#569)", () => 
     expect(item.approvedVersionId).toBeNull();
   });
 
+  it("fills a saved preferred name, not the account first name (#1048)", async () => {
+    pages.set(GH_API, ghJob([...FORM, { label: "Preferred First Name", type: "input_text" }]));
+    const { user, app } = await seedApp();
+    const q = "Preferred First Name";
+    await db.insert(schema.profiles).values({ userId: user.id, applyAnswers: [{ key: answerKey(q), question: q, answer: "Addie", updatedAt: new Date().toISOString() }] });
+    await processApplication(app.id);
+    const items = await itemsOf(app.id);
+    expect(items.find((i) => i.prompt === q)!.versions[0].content).toBe("Addie");
+    expect(items.find((i) => i.prompt === "First Name")!.versions[0].content).toBe("Ada");
+  });
+
   it("fills a question from a saved answer without asking the model for it", async () => {
     const { user, app } = await seedApp();
     await db.insert(schema.profiles).values({
