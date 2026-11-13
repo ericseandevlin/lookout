@@ -33,6 +33,11 @@ describe("cover letter strategies (#738)", () => {
     expect(fittingStory([story("education")], "We help students and teachers. Machine learning powers it.")?.id).toBe("s1");
   });
 
+  it("counts healthcare and hospitals as health words (#942)", () => {
+    expect(fittingStory([story("health")], "We build software for hospitals. Our healthcare platform runs in 40 states.")?.id).toBe("s1");
+    expect(fittingStory([story("health")], "Healthcare benefits and healthcare insurance. Healthcare, dental and vision.")).toBeNull();
+  });
+
   it("suggests lead-with-proof for senior roles and match-the-asks otherwise", () => {
     expect(suggestStrategy({ title: "Senior Design Engineer", text: "Build things." }, []).strategy).toBe("proof");
     expect(suggestStrategy({ title: "Director, UX Engineering", text: "Build things." }, []).strategy).toBe("proof");

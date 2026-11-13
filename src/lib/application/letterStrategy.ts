@@ -31,7 +31,7 @@ const SENIOR = /\b(senior|sr\.?|staff|principal|lead|head|director|vp|vice presi
 
 // Posting words that show a company works in a story's theme.
 const THEME_WORDS: Partial<Record<StoryTheme, RegExp>> = {
-  health: /\b(health|patients?|care|clinical|medical|wellness|hospital)\b/gi,
+  health: /\b(health|healthcare|patients?|care|clinical|medical|wellness|hospitals?)\b/gi,
   education: /\b(education|students?|learners?|learning|teachers?|schools?)\b/gi,
   finance: /\b(financ\w*|banking|payments?|money|savings|invest\w*)\b/gi,
   accessibility: /\b(accessib\w*|disabilit\w*|assistive|inclusive)\b/gi,
@@ -42,7 +42,7 @@ const THEME_WORDS: Partial<Record<StoryTheme, RegExp>> = {
 
 // Benefits and tech phrases that use theme words but say nothing about what the company does (#856).
 const NOT_THEME = [
-  /\b(?:health|medical|dental|vision|life|disability|wellness|well-being|wellbeing)(?:\s*(?:,|and|&|\/)\s*(?:health|medical|dental|vision|life|disability))*\s+(?:insurance|plans?|benefits?|coverage|care|savings|accounts?|stipends?|programs?|reimbursements?|days?|allowances?|perks?)\b/gi,
+  /\b(?:health|healthcare|medical|dental|vision|life|disability|wellness|well-being|wellbeing)(?:\s*(?:,|and|&|\/)\s*(?:health|healthcare|medical|dental|vision|life|disability))*\s+(?:insurance|plans?|benefits?|coverage|care|savings|accounts?|stipends?|programs?|reimbursements?|days?|allowances?|perks?)\b/gi,
   /\b(?:medical|dental|vision)\s*(?:,|and|&|\/)\s*(?:dental|vision|medical)\b/gi,
   /\b(?:health|wellness)\s+(?:and|&)\s+(?:wellness|wellbeing|well-being|fitness)\b/gi,
   /\b(?:hsa|fsa|health savings|flexible spending)\b/gi,
