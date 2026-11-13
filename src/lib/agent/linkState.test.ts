@@ -102,6 +102,10 @@ describe("classifyPage", () => {
     "TITLE: Designer\nTEXT: Visa sponsorship is no longer available for this role. Apply now",
     "TITLE: Designer\nTEXT: We are no longer accepting candidates from third-party agencies. Apply now",
     "TITLE: Designer\nTEXT: Our old office is no longer active; we are fully remote. Apply now",
+    // #1027: the channel changed, not the job.
+    "TITLE: Designer\nTEXT: We are no longer accepting applications via email. Please apply through this page.",
+    "TITLE: Designer\nTEXT: We are no longer accepting applications by email; use the form below.",
+    "TITLE: Designer\nTEXT: We are no longer accepting applications through LinkedIn. Apply here instead.",
   ])("keeps a live posting whose side note says no longer (#933): %s", (text) => {
     expect(classifyPage(200, text).state).toBe("open");
   });
@@ -112,6 +116,8 @@ describe("classifyPage", () => {
     "TITLE: Designer\nNo longer available",
     "Oops! No longer posted.",
     "We are no longer accepting candidates for this role.",
+    "We are no longer accepting applications.",
+    "This role is no longer accepting applications through this portal.",
   ])("still reads %s as closed (#933)", (text) => {
     expect(classifyPage(200, text).state).toBe("gone");
   });
