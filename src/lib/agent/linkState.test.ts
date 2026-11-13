@@ -76,6 +76,17 @@ describe("classifyPage", () => {
   ])("keeps %s open (#832)", (text) => {
     expect(classifyPage(200, text).state).toBe("open");
   });
+  it.each([
+    "TITLE: Designer\nWe are not accepting applications at this time from third-party recruiters.",
+    "TITLE: Designer\nWe are not accepting applications for this role from candidates who require sponsorship.",
+    "TITLE: Senior Designer\nJob Posting Expired Date: 12/31/2026\nApply now",
+    "TITLE: Design Lead\nPosting Expired-Date: December 15, 2026",
+  ])("keeps %s open (#1083)", (text) => {
+    expect(classifyPage(200, text).state).toBe("open");
+  });
+  it.each(["We are not accepting applications at this time.", "This job has expired.", "Job posting expired"])("still reads %s as closed (#1083)", (text) => {
+    expect(classifyPage(200, text).state).toBe("gone");
+  });
   it.each(["This job has closed. Closed date: 2026-11-01", "Job Closed - see our other openings", "This position is closed."])("still reads %s as closed (#832)", (text) => {
     expect(classifyPage(200, text).state).toBe("gone");
   });
