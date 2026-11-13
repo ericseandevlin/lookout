@@ -33,6 +33,12 @@ describe("findPay", () => {
     expect(findPay(html)).toMatchObject({ min, max, source: "structured data" });
   });
 
+  it("takes the JobPosting's salaryCurrency when baseSalary names none (#905)", () => {
+    const ld = { "@type": "JobPosting", salaryCurrency: "CAD", baseSalary: { value: { minValue: 100000, maxValue: 130000, unitText: "YEAR" } } };
+    const html = `<script type="application/ld+json">${JSON.stringify(ld)}</script>`;
+    expect(findPay(html)).toMatchObject({ min: 100000, max: 130000, currency: "CAD", source: "structured data" });
+  });
+
   it("reads a baseSalary list, skipping entries it can't use (#850)", () => {
     const ld = {
       "@type": "JobPosting",
@@ -203,6 +209,19 @@ describe("findPay", () => {
     ["$150,000 - $180,000 plus equity", "USD"],
   ])("reads the currency of %s as %s (#883)", (text, currency) => {
     expect(findPay("", text)).toMatchObject({ currency });
+  });
+
+  it.each([
+    ["Salary: SGD $120,000 - $150,000 per annum", 120000, 150000, "SGD"],
+    ["NZD $110,000 - $130,000", 110000, 130000, "NZD"],
+    ["HKD $600,000 - $800,000", 600000, 800000, "HKD"],
+    ["Salary: AU$140,000 – AU$170,000", 140000, 170000, "AUD"],
+    ["MX$900,000 - MX$1,100,000 per year", 900000, 1100000, "MXN"],
+    ["SGD 120,000 - 150,000", 120000, 150000, "SGD"],
+    ["180,000 - 220,000 NZD", 180000, 220000, "NZD"],
+    ["CAD $120,000 - $150,000", 120000, 150000, "CAD"],
+  ])("reads %s in its own currency (#905)", (text, min, max, currency) => {
+    expect(findPay("", text)).toMatchObject({ min, max, currency });
   });
 
   it("keeps an hourly range hourly when a yearly word follows it (#646)", () => {
