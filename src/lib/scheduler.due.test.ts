@@ -252,6 +252,14 @@ describe("the rest of a pass (#377)", () => {
     expect(recordError).not.toHaveBeenCalled();
   });
 
+  it("sends no email for a run only queued for the search agent; its complete route does (#1039)", async () => {
+    await seed();
+    discover.mockImplementationOnce(async () => ({ found: 0, added: 0, queued: true }) as never);
+    await tick();
+    expect(discover).toHaveBeenCalledOnce();
+    expect(sendDigest).not.toHaveBeenCalled();
+  });
+
   it("logs any other failure to Admin > Errors and moves on to the next search", async () => {
     const a = await seed();
     const b = await seed();

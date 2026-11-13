@@ -167,6 +167,8 @@ async function runDue(due: { userId: string; searchId: string }[]) {
       // for a slot already has a run going, so don't start a second one (#1020).
       if (await isRunning(userId)) return;
       const r = await discover(searchId, "scheduled");
+      // Only queued for the search agent: its complete route sends the email once it has found something (#1039).
+      if ("queued" in r && r.queued) return;
       // Even with nothing new: pinned finds due soon still go out, once a day (#304).
       await sendDigest(userId, "runId" in r ? r.runId : undefined);
     } catch (e) {
