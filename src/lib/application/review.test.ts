@@ -168,6 +168,17 @@ describe("approveItem", () => {
     expect((await item(ids[0].item)).approvedVersionId).toBeNull();
   });
 
+  it("refuses a version that isn't one of the options, case aside (#1054)", async () => {
+    const { appId, ids } = await seed("needs_review", [
+      { kind: "answer", prompt: "Do you need sponsorship?", options: ["Yes", "No"], content: "No, I do not require sponsorship" },
+      { kind: "answer", prompt: "Are you 18?", options: ["Yes", "No"], content: "yes" },
+    ]);
+    await expect(approveItem(userId, appId, ids[0].item, ids[0].version)).rejects.toMatchObject({ status: 400 });
+    expect((await item(ids[0].item)).approvedVersionId).toBeNull();
+    await approveItem(userId, appId, ids[1].item, ids[1].version);
+    expect((await item(ids[1].item)).approvedVersionId).toBe(ids[1].version);
+  });
+
   it("un-approving moves a ready application back to needs review", async () => {
     const { appId, ids } = await seed("manual", [{ kind: "resume", prompt: "Resume", approved: true }]);
     expect(await approveItem(userId, appId, ids[0].item, null)).toBe("needs_review");
@@ -214,6 +225,17 @@ describe("reviseItem", () => {
     const { appId, ids } = await seed("needs_review", [{ kind: "answer", prompt: "Why us?" }]);
     expect(await reviseItem(userId, appId, ids[0].item, "add my start year")).toEqual({ status: "needs_review", question: "Which year did you start?" });
     expect(await versions(ids[0].item)).toHaveLength(1);
+  });
+
+  it("asks instead of saving a choice answer that isn't one of the options, and snaps case to the option (#1054)", async () => {
+    const { appId, ids } = await seed("needs_review", [{ kind: "answer", prompt: "Do you need sponsorship?", options: ["Yes", "No"], content: "Yes" }]);
+    completeJSON.mockResolvedValue({ content: "No, I do not require sponsorship", note: "Changed to No.", question: "" });
+    const r = await reviseItem(userId, appId, ids[0].item, "make it no");
+    expect(r.question).toContain("Yes, No");
+    expect(await versions(ids[0].item)).toHaveLength(1);
+    completeJSON.mockResolvedValue({ content: "no", note: "Changed to No.", question: "" });
+    expect(await reviseItem(userId, appId, ids[0].item, "make it no")).toMatchObject({ question: null });
+    expect((await versions(ids[0].item)).at(-1)!.content).toBe("No");
   });
 
   it("drops the revision when Submit for me claimed the application during the model call (#871)", async () => {

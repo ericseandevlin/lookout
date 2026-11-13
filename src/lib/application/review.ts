@@ -7,7 +7,7 @@ import { completeJSON, emptyUsage } from "@/lib/ai/llm";
 import { traceAs } from "@/lib/ai/trace";
 import { assertBudget } from "@/lib/ai/runs";
 import { HttpError } from "@/lib/api";
-import { newNumbers } from "./draft";
+import { checkAnswer, newNumbers } from "./draft";
 import { humanize, shapeResume } from "./resumeLayout";
 import { isCommon, upsert } from "./saved";
 import { notesBlock } from "./skills";
@@ -223,11 +223,16 @@ export async function editItem(userId: string, appId: string, itemId: string, co
 export async function approveItem(userId: string, appId: string, itemId: string, versionId: string | null) {
   const a = await ownApplication(userId, appId);
   assertEditable(a.status);
-  await ownItem(appId, itemId);
+  const it = await ownItem(appId, itemId);
   if (versionId) {
     const [v] = await db.select().from(schema.itemVersions).where(and(eq(schema.itemVersions.id, versionId), eq(schema.itemVersions.itemId, itemId)));
     if (!v) throw new HttpError(404, "That version doesn't exist");
     if (!v.content.trim()) throw new HttpError(400, "This one is empty. Answer it before approving.");
+    // Only an answer the form can take: the fill would pick the wrong option or stop (#1054). Case is the fill's to match.
+    const multi = it.fieldType === "multiselect";
+    const lower = (t: string) => t.trim().toLowerCase();
+    if (it.options?.length && !optionAnswerAllowed(it.options.map(lower), multi ? v.content.split("\n").map(lower).join("\n") : lower(v.content), multi))
+      throw new HttpError(400, `${multi ? "Pick from, one per line" : "Pick one of"}: ${it.options.join(", ")}`);
   }
   await db.update(schema.applicationItems).set({ approvedVersionId: versionId }).where(eq(schema.applicationItems.id, itemId));
   return settleStatus(appId);
@@ -270,8 +275,11 @@ export async function reviseItem(userId: string, appId: string, itemId: string, 
   ]);
   await patchReport(appId, addUsd(usage.usd));
   if (!r.content.trim()) return { status: a.status, question: r.question.trim() || "Lookout needs more detail to make that change." };
+  // A choice answer must be one of the form's options, same check as the first draft (#1054).
+  const fit = it.options?.length ? checkAnswer({ index: 0, kind: it.kind, prompt: it.prompt, required: it.required, options: it.options, multi: it.fieldType === "multiselect" }, { index: 0, content: r.content, note: r.note, question: r.question, sources: [] }) : null;
+  if (fit && !fit.content) return { status: a.status, question: fit.question ?? `Pick one of: ${it.options!.join(", ")}` };
   const invented = newNumbers(master, r.content).filter((n) => !newNumbers(master, cur?.content ?? "").includes(n) && !(cur?.content ?? "").includes(n));
-  const shaped = it.kind === "resume" ? shapeResume(humanize(r.content.trim())) : { md: it.options?.length ? r.content.trim() : humanize(r.content.trim()), fixed: [] };
+  const shaped = it.kind === "resume" ? shapeResume(humanize(r.content.trim())) : { md: fit ? fit.content : humanize(r.content.trim()), fixed: [] };
   const note = bullets([`You asked: "${instruction.slice(0, 160)}"`, r.note.trim(), ...shaped.fixed, invented.length > 0 && `Check these numbers, they aren't in your master resume: ${invented.join(", ")}`]);
   await insertVersion(itemId, { content: shaped.md, note, author: "ai", sources: ["your instruction", ...(cur ? [`version ${cur.version}`] : [])] }, appId);
   return { status: await settleStatus(appId), question: r.question.trim() || null };
