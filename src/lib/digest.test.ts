@@ -57,11 +57,10 @@ async function find(title: string, o: { ago?: number; score?: number; due?: stri
   return opp.id;
 }
 
-/** A date `days` from today as YYYY-MM-DD, in local time like the due-date reader. */
+/** A date `days` from today as YYYY-MM-DD, today in the app's zone like the digest counts it (#867). */
 function inDays(days: number) {
-  const d = new Date();
-  d.setDate(d.getDate() + days);
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+  const [y, m, d] = new Intl.DateTimeFormat("en-CA", { timeZone: process.env.APP_TZ || "America/New_York" }).format(new Date()).split("-").map(Number);
+  return new Date(Date.UTC(y, m - 1, d + days)).toISOString().slice(0, 10);
 }
 
 const digests = () => db.select().from(schema.digests).where(eq(schema.digests.userId, userId));

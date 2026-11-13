@@ -19,6 +19,15 @@ describe("due soon (#304)", () => {
     const beforeChange = new Date("2026-10-31T12:00:00").getTime();
     expect(pickDueSoon([row("a", "2026-11-01")], beforeChange).map((x) => x.days)).toEqual([1]);
   });
+  it("counts today in the zone it's given, not the server's UTC clock (#867)", () => {
+    // 8:30pm Nov 12 in New York is already Nov 13 in UTC.
+    const evening = Date.parse("2026-11-13T01:30:00Z");
+    const got = pickDueSoon([row("today", "2026-11-12"), row("tomorrow", "2026-11-13")], evening, "America/New_York");
+    expect(got.map((x) => [x.row.id, x.days])).toEqual([["today", 0], ["tomorrow", 1]]);
+    expect(pickDueSoon([row("tomorrow", "2026-11-13")], evening, "UTC").map((x) => x.days)).toEqual([0]);
+    // Across the fall clock change, in the zone.
+    expect(pickDueSoon([row("a", "2026-11-02")], Date.parse("2026-11-02T03:30:00Z"), "America/New_York").map((x) => x.days)).toEqual([1]);
+  });
   it("labels the day", () => {
     expect([0, 1, 4].map(dueLabel)).toEqual(["Due today", "Due tomorrow", "Due in 4 days"]);
   });
