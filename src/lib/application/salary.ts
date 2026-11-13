@@ -14,7 +14,10 @@ const sentences = (t: string) => t.split(/(?<=[.?!])\s+|\n+/);
 // is a base range, and "our total rewards include a bonus program" is a benefits list (#650).
 const INCLUDES_BONUS = /\b(includ|reflect)\w*\b[^.?!]{0,40}?\b(bonus|commission|incentive)/i;
 const ABOUT_PAY = /\b(range|salary|pay|compensation|amount|figure)\b/i;
-const NEGATED = /(\bnot|n't)\s+(includ|reflect)|\bexclud|in addition to|on top of|\bseparate/i;
+// "In addition to", "on top of" and "separate" put the bonus outside the range only when they are about the bonus:
+// "includes base and bonus, in addition to equity" is still total cash (#937).
+const NEGATED =
+  /(\bnot|n't)\s+(includ|reflect)|\bexclud|\b(in addition to|on top of|separate(ly)? from)\b[^.?!]{0,60}?\b(bonus|commission|incentive)|\b(bonus|commission|incentive)\w*\s+(is|are)\s+(\w+\s+)?separate/i;
 // Other ways a posting says its range is total cash (#690): "base pay plus bonus", "on-target earnings",
 // "Total compensation range: $200,000 - $250,000".
 const BASE_PLUS = /\bbase\b[^.?!]{0,30}?(\+|\bplus\b|\band\b)[^.?!]{0,20}?\b(bonus|commission|incentive)/i;
