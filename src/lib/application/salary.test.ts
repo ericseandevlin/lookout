@@ -124,6 +124,18 @@ describe("rangeBasis", () => {
     expect(rangeBasis(posting)).toBe("total");
   });
 
+  it("reads total cash when the add-on words are about equity, not the bonus (#937)", () => {
+    expect(rangeBasis("The salary range for this position is $200,000 - $250,000. This range includes base salary and target bonus, in addition to equity and a comprehensive benefits package.")).toBe("total");
+    expect(rangeBasis("This range includes base salary and target bonus; equity is granted separately.")).toBe("total");
+    expect(rangeBasis("The range includes base and bonus, on top of equity.")).toBe("total");
+  });
+
+  it("keeps a bonus the posting puts outside the range as base (#937)", () => {
+    expect(rangeBasis("In addition to the base salary range above, this role includes a bonus.")).toBe("base");
+    expect(rangeBasis("The base salary range is $150k-$180k; commissions are paid separately.")).toBe("base");
+    expect(rangeBasis("Base pay range $150k-$180k, separate from any bonus.")).toBe("base");
+  });
+
   it("keeps a bonus paid on top of the range as base (#690)", () => {
     expect(rangeBasis("Base salary range: $150k-$180k. This role is eligible for a bonus in addition to base salary.")).toBe("base");
     expect(rangeBasis("The base salary range is $150k-$180k, and the bonus is paid separately.")).toBe("base");
