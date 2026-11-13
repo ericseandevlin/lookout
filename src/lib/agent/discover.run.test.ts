@@ -175,6 +175,16 @@ describe("discover (#379)", () => {
     expect((await board())[0].compMin).toBe(190000);
   });
 
+  it("takes the page's full range when the model reads only one end, so the find isn't cut as below the floor (#851)", async () => {
+    results.set("design systems lead", [hit("https://jobs.example.com/a")]);
+    results.set("design systems lead site:greenhouse.io", []);
+    pages.set("https://jobs.example.com/a", posting("<p>Base salary: $150,000 to $200,000 per year.</p>"));
+    verdicts.set("https://jobs.example.com/a", { comp_min: 150000, comp_max: null });
+    await discover(searchId);
+    const rows = await db.select({ min: schema.opportunities.compMin, max: schema.opportunities.compMax }).from(schema.opportunities);
+    expect(rows).toEqual([{ min: 150000, max: 200000 }]);
+  });
+
   it("reads an hourly rate from the model as no annual pay, and takes the page's annualized range (#702)", async () => {
     results.set("design systems lead", [hit("https://jobs.example.com/a"), hit("https://jobs.example.com/b")]);
     results.set("design systems lead site:greenhouse.io", []);
