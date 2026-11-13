@@ -1,6 +1,23 @@
 /* Lookout Autofill background: after you press Submit, spot the thank-you page and mark the application Submitted in Lookout. */
 const THANKS = /(?<!\b(?:once|after|when|if|before|until|upon)\b[^.!?\n]{0,40})(?:thank(?:s| you) for (?:applying|your application|submitting|your submission)|(?:application|submission|candidacy) (?:has been |was )?(?:successfully )?(?:received|submitted|sent)\b|application for [^.!?\n]{1,80}? (?:has been|was) (?:successfully )?(?:received|submitted|sent)\b|we(?:'ve|’ve| have)? (?:successfully )?(?:received|got) your (?:application|submission)|(?<!(?:\bnot|\bnever|n't|n’t)\s+(?:(?:be|been|yet)\s+)?)successfully (?:applied|submitted)\b)/i;
 
+/** The base domain of a URL ("job-boards.greenhouse.io" -> "greenhouse.io", "acme.co.uk" -> "acme.co.uk"), or null. */
+function site(url) {
+  try {
+    const labels = new URL(url).hostname.toLowerCase().split(".");
+    const n = labels.length;
+    const sld = n >= 3 && labels[n - 1].length === 2 && /^(co|com|org|net|ac|gov|edu)$/.test(labels[n - 2]);
+    return labels.slice(sld ? -3 : -2).join(".") || null;
+  } catch {
+    return null;
+  }
+}
+
+/** A thank-you counts only on a site the application was filled on: another employer's page or a webmail tab is not ours (#1052). */
+function ours(watch, url) {
+  return !watch.sites || !watch.sites.length || watch.sites.includes(site(url));
+}
+
 async function watches() {
   return (await browser.storage.session.get("watches")).watches || {};
 }
@@ -42,11 +59,13 @@ browser.runtime.onMessage.addListener(async (msg, sender) => {
   }
   const tabId = msg.tabId ?? sender.tab?.id;
   if (msg.type === "lookout-armed" && w[tabId]) {
-    w[tabId] = { ...w[tabId], armed: true, until: Date.now() + 15 * 60_000 };
+    // The sites of the tab and of the frame Submit was pressed in: an embedded form's thank-you can show on either.
+    const sites = [...new Set([sender.url, sender.tab?.url].map((u) => u && site(u)).filter(Boolean))];
+    w[tabId] = { ...w[tabId], armed: true, until: Date.now() + 15 * 60_000, sites };
     await saveWatches(w);
     return { ok: true };
   }
-  if (msg.type === "lookout-thanks" && w[tabId]?.armed) return mark(tabId, msg.url, msg.text);
+  if (msg.type === "lookout-thanks" && w[tabId]?.armed && ours(w[tabId], msg.url)) return mark(tabId, msg.url, msg.text);
   if (msg.type === "lookout-mark") return mark(tabId);
 });
 
@@ -59,6 +78,7 @@ browser.webNavigation.onCompleted.addListener(async ({ tabId, frameId, url }) =>
     delete w[tabId];
     return saveWatches(w);
   }
+  if (!ours(watch, url)) return;
   const [r] = await browser.scripting
     .executeScript({ target: { tabId, frameIds: [frameId] }, func: (src) => (document.body?.innerText.match(new RegExp(src, "i")) || [null])[0], args: [THANKS.source] })
     .catch(() => []);
