@@ -69,7 +69,8 @@ const AMT = String.raw`\d{1,3}(?:,\d{3})+(?:\.\d+)?|\d+(?:\.\d+)?\s?[kK]\b|\d{4,
 const FIRST_UNIT = String.raw`\s?(?:\/\s?|(?:per|an?)\s)(?:hours?|hr|h|years?|yr|months?|mo|weeks?|wk)\b`;
 // Either end may carry a currency: "US$120,000 - US$150,000", "CA$...", "$120,000 USD - $150,000 USD" (#686),
 // "CAD $120,000 - $150,000" (#709). Only a three-letter code may have a space, so "a $120,000" stays a word.
-const PRE = String.raw`(?:\b(US|CA|C|A|(?:USD|CAD|AUD) ?)(?=\$))?`;
+// "S$", "SG$", "NZ$" and "HK$" name their dollar too (#883).
+const PRE = String.raw`(?:\b(US|CA|C|A|SG|S|NZ|HK|(?:USD|CAD|AUD) ?)(?=\$))?`;
 const CODE = String.raw`(?:\s?(USD|CAD|AUD)\b)?`;
 // A code may stand in for the "$": "USD 150,000 - 200,000" (#753). A bare "120,000 - 150,000" still doesn't count.
 const CODE_LEAD = String.raw`\b(USD|CAD|AUD)\s?(?=\d)`;
@@ -88,7 +89,7 @@ const RANGES = [
   range("", "(?:-|–|—|to)", NO_LEAD, CODE_TRAIL),
   range(String.raw`\bbetween\s+`, "and", NO_LEAD, CODE_TRAIL),
 ];
-const PREFIX: Record<string, string> = { us: "USD", ca: "CAD", c: "CAD", a: "AUD", usd: "USD", cad: "CAD", aud: "AUD" };
+const PREFIX: Record<string, string> = { us: "USD", ca: "CAD", c: "CAD", a: "AUD", s: "SGD", sg: "SGD", nz: "NZD", hk: "HKD", usd: "USD", cad: "CAD", aud: "AUD" };
 
 // What the range is per, from the words after it. The unit named first wins, so "per year, paid monthly" stays yearly (#484)
 // and "per hour, plus an annual bonus" stays hourly (#646).
@@ -140,7 +141,9 @@ function fromText(text: string): Pay | null {
     const named = PREFIX[(pre1 ?? pre2 ?? "").trim().toLowerCase()] ?? code?.toUpperCase();
     // The currency is read only up to the next number, so a Canada range after a US one doesn't make it CAD (#811).
     const own = tail.split(/\d/)[0];
-    const currency = named ?? (/CAD/.test(own) ? "CAD" : /AUD/.test(own) ? "AUD" : /EUR|€/.test(own) ? "EUR" : /GBP|£/.test(own) ? "GBP" : "USD");
+    // Any common code there counts, so "SGD" or "NZD" after a range isn't read as US dollars (#883).
+    const code3 = own.match(/\b(CAD|AUD|EUR|GBP|SGD|NZD|HKD|CHF|MXN|INR|JPY|CNY|USD)\b|€|£/)?.[0];
+    const currency = named ?? (code3 === "€" ? "EUR" : code3 === "£" ? "GBP" : (code3 ?? "USD"));
     // A range that is already a year's pay stays yearly when only a pay schedule follows it; "$4,000 - $5,000 paid
     // twice a month" still reads by the schedule (#716).
     const yearly = plausible(a) && plausible(b);
