@@ -41,7 +41,7 @@ vi.mock("./master", () => ({ ensureMaster: async () => ({ md: RESUME, built: fal
 const findOutreach = vi.fn(async () => [] as unknown[]);
 vi.mock("./outreach", () => ({ findOutreach }));
 
-const { scanPosting, processApplication, sweepApplications, resumeFor, redraftLetter, redraftResume } = await import("./run");
+const { scanPosting, processApplication, sweepApplications, resumeFor, redraftLetter, redraftResume, LOST_SUBMIT } = await import("./run");
 const { keywordState } = await import("./review");
 const { finalTerms } = await import("./evidence");
 const { answerKey } = await import("./saved");
@@ -289,6 +289,17 @@ describe("sweepApplications (#378)", () => {
     expect((await getApp(working.app.id)).status).toBe("drafting");
     expect((await getApp(reviewed.app.id)).status).toBe("needs_review");
     expect(fetchPage.mock.calls.filter((c) => c[0] === GH_API)).toHaveLength(2);
+  });
+
+  it("moves a submit the server lost track of to the manual checklist, and leaves one still sending (#864)", async () => {
+    const lost = await seedApp({ status: "submitting", updatedAt: new Date(Date.now() - 15 * 60_000), report: { applyUrl: "https://jobs.example.com/apply" } });
+    const sending = await seedApp({ status: "submitting", updatedAt: new Date(Date.now() - 2 * 60_000) });
+    await sweepApplications();
+    const a = await getApp(lost.app.id);
+    expect(a.status).toBe("manual");
+    expect(a.report.applyUrl).toBe("https://jobs.example.com/apply");
+    expect(a.report.fill).toMatchObject({ mode: "submit", clicked: true, stopped: LOST_SUBMIT });
+    expect((await getApp(sending.app.id)).status).toBe("submitting");
   });
 });
 
