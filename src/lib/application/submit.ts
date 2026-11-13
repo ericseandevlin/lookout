@@ -28,7 +28,8 @@ export const shotDir = (appId: string) => path.resolve(env.dataDir, "apply", app
 
 type Log = { prompt: string; ok: boolean; how: string }[];
 
-export type FillReport = { mode: "test" | "submit"; at: string; log: Log; missing: string[]; stopped?: string; captcha?: boolean; confirmation?: string; finalUrl?: string };
+/** clicked: Lookout pressed the form's Submit button, so the application may have gone out even without a confirmation (#865). */
+export type FillReport = { mode: "test" | "submit"; at: string; log: Log; missing: string[]; stopped?: string; captcha?: boolean; clicked?: boolean; confirmation?: string; finalUrl?: string };
 
 async function loadPacket(appId: string) {
   const [a] = await db.select().from(schema.applications).where(eq(schema.applications.id, appId));
@@ -119,6 +120,7 @@ export async function runFill(appId: string, mode: "test" | "submit"): Promise<F
     const seen = await page.getByText(CONFIRMATION).count().catch(() => 0);
     const confirmation = page.getByText(CONFIRMATION).nth(seen);
     await submit.click();
+    report.clicked = true;
     const outcome = await Promise.race([
       confirmation.waitFor({ timeout: 25000 }).then(() => "done" as const),
       page.locator("iframe[src*='recaptcha'][title*='challenge'], iframe[src*='hcaptcha'], iframe[title*='captcha' i]").first().waitFor({ state: "visible", timeout: 25000 }).then(() => "captcha" as const),

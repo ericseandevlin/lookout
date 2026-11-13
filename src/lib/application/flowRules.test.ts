@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { autoApproveField, optionAnswerAllowed, settledStatus, statusAfterFill, toggleOption } from "./flowRules";
+import { autoApproveField, optionAnswerAllowed, settledStatus, statusAfterFill, submitClicked, toggleOption } from "./flowRules";
 
 const approved = { required: true, approvedVersionId: "version-1" };
 
@@ -25,6 +25,22 @@ describe("settledStatus", () => {
     expect(settledStatus("api", [approved], true)).toBe("manual");
     expect(settledStatus("manual", [approved], true)).toBe("manual");
     expect(settledStatus(null, [approved], true)).toBe("manual");
+  });
+
+  it("never turns Submit for me back on after Lookout clicked Submit (#865)", () => {
+    expect(settledStatus("browser", [approved], true, true)).toBe("manual");
+    expect(settledStatus("browser", [{ required: true, approvedVersionId: null }], true, true)).toBe("needs_review");
+  });
+});
+
+describe("submitClicked (#865)", () => {
+  it("is true only for a real submit that got as far as the click", () => {
+    expect(submitClicked({ mode: "submit", clicked: true })).toBe(true);
+    // Reports from before `clicked`: finalUrl is only recorded after the click.
+    expect(submitClicked({ mode: "submit", finalUrl: "https://jobs.example.com/thanks" })).toBe(true);
+    expect(submitClicked({ mode: "submit" })).toBe(false);
+    expect(submitClicked({ mode: "test", clicked: true })).toBe(false);
+    expect(submitClicked(undefined)).toBe(false);
   });
 });
 

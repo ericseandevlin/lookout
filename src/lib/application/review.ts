@@ -24,7 +24,7 @@ import { approvedFor, keywordPicks, keywordRows } from "./evidence";
 import { suggestStrategy } from "./letterStrategy";
 import { finishAnalysis, honestyFindings, RECRUITER_SYSTEM, RecruiterDraft, recruiterChecks, recruiterPrompt } from "./recruiter";
 import { addUsd, patchReport } from "./reportStore";
-import { autoApproveField, optionAnswerAllowed, settledStatus } from "./flowRules";
+import { autoApproveField, optionAnswerAllowed, settledStatus, submitClicked } from "./flowRules";
 
 /**
  * Auto-apply step 4 (#41): review, edit, revise with AI, approve; then the manual submit record (#42 part 1).
@@ -150,7 +150,7 @@ async function settleStatus(appId: string) {
   const [a] = await db.select().from(schema.applications).where(eq(schema.applications.id, appId));
   if (!a || LOCKED.includes(a.status)) return a?.status;
   const items = await db.select().from(schema.applicationItems).where(eq(schema.applicationItems.applicationId, appId));
-  const status = settledStatus(a.route, items, canAutoSubmit());
+  const status = settledStatus(a.route, items, canAutoSubmit(), submitClicked(a.report.fill));
   if (status !== a.status) await db.update(schema.applications).set({ status, updatedAt: new Date() }).where(eq(schema.applications.id, appId));
   return status;
 }

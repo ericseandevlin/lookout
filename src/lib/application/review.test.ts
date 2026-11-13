@@ -138,6 +138,26 @@ describe("approveItem", () => {
     expect(await approveItem(userId, appId, ids[0].item, ids[0].version)).toBe("approved");
   });
 
+  it("keeps a submit that stopped after the click on the manual checklist, so it can't be sent twice (#865)", async () => {
+    vi.stubEnv("FEATURE_AUTO_SUBMIT", "on");
+    const { appId, ids } = await seed("manual", [{ kind: "resume", prompt: "Resume", approved: true }], "browser");
+    const fill = { mode: "submit" as const, at: new Date().toISOString(), log: [], missing: [], clicked: true, finalUrl: "https://jobs.example.com/apply", stopped: "Lookout clicked Submit but didn't see a confirmation." };
+    await db.update(schema.applications).set({ report: { applyUrl: "https://jobs.example.com/apply", fill } }).where(eq(schema.applications.id, appId));
+    expect(await approveItem(userId, appId, ids[0].item, ids[0].version)).toBe("manual");
+    expect(await editItem(userId, appId, ids[0].item, "New resume text", "")).toBe("needs_review");
+    const [v2] = (await versions(ids[0].item)).slice(-1);
+    expect(await approveItem(userId, appId, ids[0].item, v2.id)).toBe("manual");
+    expect((await app(appId)).status).toBe("manual");
+  });
+
+  it("turns Submit for me back on after a submit that stopped before the click", async () => {
+    vi.stubEnv("FEATURE_AUTO_SUBMIT", "on");
+    const { appId, ids } = await seed("manual", [{ kind: "resume", prompt: "Resume", approved: true }], "browser");
+    const fill = { mode: "submit" as const, at: new Date().toISOString(), log: [], missing: ["Phone"], stopped: "Couldn't fill: Phone" };
+    await db.update(schema.applications).set({ report: { applyUrl: "https://jobs.example.com/apply", fill } }).where(eq(schema.applications.id, appId));
+    expect(await approveItem(userId, appId, ids[0].item, ids[0].version)).toBe("approved");
+  });
+
   it("refuses an empty version and a version from another item", async () => {
     const { appId, ids } = await seed("needs_review", [
       { kind: "answer", prompt: "Why us?", content: "  " },
