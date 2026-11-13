@@ -575,6 +575,7 @@ describe("startFill submit (#385)", () => {
     const a = await settled(id);
     expect(a.status).toBe("manual");
     expect(a.report.fill?.stopped).toMatch(/didn't see a confirmation/);
+    expect(a.report.fill?.clicked).toBe(true);
     expect(await stage()).toBe("Not applied");
   });
 
