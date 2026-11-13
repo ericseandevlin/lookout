@@ -70,9 +70,10 @@ export const CONFIRMATION = /(?<!\b(?:once|after|when|if|before|until|upon)\b[^.
  * Yes, true and the consent verbs, alone or leading the answer ("Yes, I agree", "I certify the above"),
  * past tense too ("Agreed"), and "I have read and agree", "I understand" (#681), "I have read and understand", "I've read and understood" (#796),
  * "I hereby agree", "I hereby certify", a bare "Understood" and "Read and agreed" (#899).
+ * "I authorize", "I attest" and "I affirm", for background-check and attestation boxes (#911).
  * Anything else, including empty, leaves the box as it is.
  */
 export function checksBox(answer: string): boolean {
   const a = answer.replace(/\*/g, "").replace(/\s+/g, " ").trim().toLowerCase();
-  return /^(yes|true|(i(( have|'ve|’ve)? read| understand) and |read and |i (hereby )?)?(agreed?|acknowledged?|confirm(ed)?|consent(ed)?|certif(y|ied)|accept(ed)?)|(i(( have|'ve|’ve)? read and)? |read and )?underst(and|ood))\b/.test(a);
+  return /^(yes|true|(i(( have|'ve|’ve)? read| understand) and |read and |i (hereby )?)?(agreed?|acknowledged?|confirm(ed)?|consent(ed)?|certif(y|ied)|accept(ed)?|authori[sz]e[ds]?|attest(ed)?|affirm(ed)?)|(i(( have|'ve|’ve)? read and)? |read and )?underst(and|ood))\b/.test(a);
 }
