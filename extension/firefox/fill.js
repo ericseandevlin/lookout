@@ -81,7 +81,26 @@
     const groups = [...document.querySelectorAll("fieldset, [role=group], [role=radiogroup]")].filter((g) => (norm(g.textContent).includes(key) || groupName(g).includes(key)) && g.querySelector("input[type=checkbox], input[type=radio]"));
     // The group named by the question itself first: "Do you require sponsorship?" is not the later
     // "Do you require sponsorship? (now or in the future)", which also contains its text (#720).
-    return groups.filter((g) => groupName(g) === norm(prompt)).pop() || groups.pop() || null;
+    // Next a group whose own name starts with the question: "Do you require sponsorship? (required)" beats a later group
+    // that only quotes it ("If you answered Yes to "Do you require sponsorship?", which visa?") (#1044).
+    const q = norm(prompt);
+    return groups.filter((g) => groupName(g) === q).pop() || groups.filter((g) => groupName(g).startsWith(q)).pop() || groups.pop() || null;
+  }
+
+  /**
+   * The boxes that answer the question inside its group. A section fieldset ("Additional questions") can hold several radio
+   * questions, each a heading and radios with no fieldset of its own: take the radios right after the question, never the
+   * first "No" in the section, which belongs to an earlier question (#1044).
+   */
+  function boxesFor(group, prompt) {
+    const boxes = [...group.querySelectorAll("input[type=checkbox], input[type=radio]")];
+    const key = norm(prompt).slice(0, 60);
+    if (groupName(group).includes(key) || new Set(boxes.filter((b) => b.type === "radio").map((b) => b.name)).size < 2) return boxes;
+    let question = null;
+    for (const el of group.querySelectorAll("*")) if (norm(el.textContent).includes(key)) question = el;
+    if (!question) return boxes;
+    const next = boxes.find((b) => b.type === "radio" && question.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING);
+    return next ? boxes.filter((b) => b.type === "radio" && b.name === next.name) : boxes;
   }
 
   /** Radios labeled with the question and their option ("Can you work onsite? No"), no group around them (#773). */
@@ -239,11 +258,11 @@
           return { ok: true, how: "checked 1" };
         }
         // Radios take one answer: the first line that lands, same as the worker.
-        const picks = pickOptions(step.content, step.options).slice(0, group.querySelector("input[type=radio]") ? 1 : undefined);
+        const boxes = boxesFor(group, step.prompt);
+        const picks = pickOptions(step.content, step.options).slice(0, boxes.some((b) => b.type === "radio") ? 1 : undefined);
         if (!picks.length) return { ok: false, how: "answer matches no option" };
         for (const label of picks) {
           // Exact label first: the loose match alone puts "None of the above" on the "No" box (#632).
-          const boxes = [...group.querySelectorAll("input[type=checkbox], input[type=radio]")];
           const box = boxes.find((b) => labelOf(b) === norm(label)) || boxes.find((b) => sameText(labelOf(b), label));
           if (!box) return { ok: false, how: `option not found: ${label.slice(0, 60)}` };
           if (!box.checked) box.click();
