@@ -271,9 +271,10 @@ const SCALE: Record<string, number> = { k: 1e3, m: 1e6, b: 1e9 };
 // compared with yearly salaries, so it is annualized the way ai/pay.ts does it: 2080 hours, 52 weeks, 12 months (#941).
 // Day rates (260 working days), biweekly (26) and semimonthly (24) pay too, named before weekly and monthly (#982).
 const PER_UNIT =
-  /^(?:\s*(?:-|to)\s*\d+(?:\.\d+)?\s*k?)?\s*(?:(?:\/\s?|\b(?:per|an?|each)\s+)(hours?|hrs?|h|days?|weeks?|wks?|months?|mos?)\b|(hourly|daily|bi-?weekly|every (?:two|2) weeks|semi-?monthly|twice (?:a|per|each) month|weekly|monthly)\b)/;
+  /^(?:\s*(?:-|–|—|to)\s*\d+(?:\.\d+)?\s*k?)?\s*(?:(?:\/\s?|\b(?:per|an?|each)\s+)(hours?|hrs?|h|days?|weeks?|wks?|months?|mos?)\b|(hourly|daily|bi-?weekly|every (?:two|2) weeks|semi-?monthly|twice (?:a|per|each) month|weekly|monthly)\b)/;
+// An en or em dash marks a range like a hyphen does: "$60–70/hr" (#1081).
 // "$95 per project", "500/visit": a rate per something Lookout can't turn into a year (#982).
-const OTHER_UNIT = /^(?:\s*(?:-|to)\s*\d+(?:\.\d+)?\s*k?)?\s*(?:\/\s?|\bper\s+)(?!y(?:ea)?rs?\b|annum\b|annual)[a-z]/;
+const OTHER_UNIT = /^(?:\s*(?:-|–|—|to)\s*\d+(?:\.\d+)?\s*k?)?\s*(?:\/\s?|\bper\s+)(?!y(?:ea)?rs?\b|annum\b|annual)[a-z]/;
 const periods = (unit: string) => (/^(bi|every)/.test(unit) ? 26 : /^(semi|twice)/.test(unit) ? 24 : /^h/.test(unit) ? 2080 : /^d/.test(unit) ? 260 : /^w/.test(unit) ? 52 : 12);
 
 /**
