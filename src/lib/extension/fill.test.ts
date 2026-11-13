@@ -555,6 +555,29 @@ describe("extension fill: uploads", () => {
     expect([fileName(p, "cv"), fileName(p, "pf"), fileName(p, "cl")]).toEqual(["Pat Lee - Acme Resume.docx", "Pat Lee - Portfolio.docx", "Pat Lee - Acme Cover Letter.docx"]);
   });
 
+  // One box's input right under its label, another's two wrappers deeper (#1085).
+  const deep = (label: string, id: string) => `<div class="field"><label>${label}</label><div><div><input type="file" id="${id}"></div></div></div>`;
+  const shallow = (label: string, id: string) => `<div class="field"><label>${label}</label><input type="file" id="${id}"></div>`;
+
+  it("puts the resume in its own deeper box, not a shallower cover letter box (#1085)", async () => {
+    const p = page(`<div class="section">${shallow("Cover Letter", "cl")}${deep("Resume", "cv")}</div>`);
+    const log = await p.fill({ steps: [{ ...both[0], prompt: "Resume" }, both[1]] });
+    expect(log.map((r) => r.how)).toEqual(["uploaded .docx", "uploaded .docx"]);
+    expect([fileName(p, "cv"), fileName(p, "cl")]).toEqual(["Pat Lee - Acme Resume.docx", "Pat Lee - Acme Cover Letter.docx"]);
+  });
+
+  it("puts a portfolio in its own deeper box, not the resume's (#1085)", async () => {
+    const p = page(`<div class="section">${shallow("Resume", "cv")}${deep("Portfolio", "pf")}</div>`);
+    await p.fill({ steps: [{ ...both[0], prompt: "Resume" }, { prompt: "Portfolio", kind: "file", itemKind: "answer", file: docx("Pat Lee - Portfolio.docx") }] });
+    expect([fileName(p, "cv"), fileName(p, "pf")]).toEqual(["Pat Lee - Acme Resume.docx", "Pat Lee - Portfolio.docx"]);
+  });
+
+  it("still finds a box named by a sentence beside its wrapper (#1085)", async () => {
+    const p = page(`<div><p>Please attach your portfolio here.</p><div><input type="file" id="pf"></div></div>`);
+    const [r] = await p.fill({ steps: [{ prompt: "Portfolio", kind: "file", itemKind: "answer", file: docx("Pat Lee - Portfolio.docx") }] });
+    expect(r).toMatchObject({ ok: true, how: "uploaded .docx" });
+  });
+
   it("finds a lone cover letter box labeled beside its wrapper (#1067)", async () => {
     const p = page(field("Cover Letter", "cl"));
     const [r] = await p.fill({ steps: [both[1]] });
