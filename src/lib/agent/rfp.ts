@@ -4,7 +4,7 @@ import { z } from "zod";
 import { db, schema } from "@/lib/db";
 import { completeJSON, emptyUsage, type Usage } from "@/lib/ai/llm";
 import { traceAs } from "@/lib/ai/trace";
-import { startBudgetedRun, finishRun, progress, startRun } from "@/lib/ai/runs";
+import { startBudgetedRun, finishRun, progress } from "@/lib/ai/runs";
 import { emptyTally } from "./report";
 import { applyRules } from "./rules";
 import { kindOf } from "@/lib/kinds";

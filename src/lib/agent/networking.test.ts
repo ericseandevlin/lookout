@@ -23,7 +23,7 @@ vi.mock("@/lib/ai/search", () => ({ webSearch }));
 const fetchPage = vi.fn(async (url: string) => ({ html: `Events listed at ${url}. ${"Details. ".repeat(40)}` }));
 vi.mock("@/lib/ai/fetchPage", () => ({ fetchPage, pageToText: (html: string) => html }));
 // "Search now" checks the budget, loads the search's context and its profile; runs are real rows.
-const assertBudget = vi.fn(async (_userId: string) => {});
+const assertBudget = vi.fn(async (userId: string) => void userId);
 // The cap check is stubbed; the run itself is still written (#1038 moved the check into startBudgetedRun).
 vi.mock("@/lib/ai/runs", async (orig) => {
   const m = await orig<typeof import("@/lib/ai/runs")>();

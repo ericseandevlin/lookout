@@ -2,7 +2,7 @@ import "server-only";
 import { and, asc, desc, eq, isNull, lt, or } from "drizzle-orm";
 import { db, schema } from "@/lib/db";
 import { completeJSON, emptyUsage, type Usage } from "@/lib/ai/llm";
-import { startBudgetedRun, finishRun, progress, startRun } from "@/lib/ai/runs";
+import { startBudgetedRun, finishRun, progress } from "@/lib/ai/runs";
 import { fetchPage, pageToText } from "@/lib/ai/fetchPage";
 import { webSearch } from "@/lib/ai/search";
 import { cleanEvents, eventQueries, EventsDraft, eventsDue, suggestInterests, type EventFreq, type EventReach } from "@/lib/networking";
