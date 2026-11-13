@@ -364,12 +364,13 @@ function shapeExperience(secs: { title: string; lines: string[] }[]): string[] {
   }
 
   // Side work that sits inside another job's dates is a project, not a second employer.
+  // Two jobs that both run to Present are concurrent; the later one may be the main job, so neither moves (#916).
   const spanOf = (e: Entry) => entrySpan(e);
   const side = out.filter((e) => {
     const a = spanOf(e);
     return a && out.some((o) => {
       const b = spanOf(o);
-      return o !== e && b && b.s <= a.s && a.e <= b.e && (b.s < a.s || a.e < b.e);
+      return o !== e && b && !(a.e === Infinity && b.e === Infinity) && b.s <= a.s && a.e <= b.e && (b.s < a.s || a.e < b.e);
     });
   });
   if (side.length) {
