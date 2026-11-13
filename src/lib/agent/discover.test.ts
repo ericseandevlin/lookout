@@ -201,6 +201,24 @@ describe("save", () => {
     expect(again).toMatchObject({ compMin: 200000, compMax: 250000, postedAt: "2026-11-01", workMode: "Hybrid" });
   });
 
+  it("scores a shared posting on the pay it keeps, not this read's (#879)", async () => {
+    await save(ctx(), [find({ comp_min: 120000, comp_max: 150000 })], "manual");
+    const [u2] = await db.insert(schema.users).values({ email: "b@example.com" }).returning();
+    const [s2] = await db.insert(schema.searches).values({ userId: u2.id, name: "Job search", answers: {} }).returning();
+    // No pay on this read, or a range above the floor: the stored $120k to $150k is still what the card shows.
+    for (const [i, pay] of [{ comp_min: null, comp_max: null }, { comp_min: 200000, comp_max: 250000 }].entries()) {
+      const r = await save(ctx({ userId: u2.id, searchId: s2.id, floor: 180000 }), [find({ url: `https://boards.example.org/acme-director-${i}`, ...pay })], "agent");
+      expect(r).toMatchObject({ added: 0, belowFloor: 1 });
+    }
+    expect(await board(s2.id)).toEqual([]);
+    // A link the person adds still goes on, marked down, and without a false "No comp posted".
+    await save(ctx({ userId: u2.id, searchId: s2.id, floor: 180000 }), [find({ url: "https://boards.example.org/acme-director-9", comp_min: null, comp_max: null })], "manual");
+    const [row] = await board(s2.id);
+    expect(row.score).toBe(3);
+    expect(row.gap).toContain("Top of the posted range is below your floor");
+    expect(row.gap).not.toContain("No comp posted");
+  });
+
   it("keeps a stored one-ended range as is when a later read has both ends (#846)", async () => {
     await save(ctx(), [find({ comp_min: 190000, comp_max: null })], "agent");
     await save(ctx(), [find({ url: "https://boards.example.org/acme-director", comp_min: 200000, comp_max: 250000 })], "agent");
