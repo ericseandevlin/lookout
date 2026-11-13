@@ -19,7 +19,7 @@ Export the two pages to PDF from staging so the lawyer reads exactly what users 
 
 ## Facts the lawyer will ask for
 
-- **Who runs it:** Eric Devlin, as an individual. No LLC yet (#23). The Terms name him personally.
+- **Who runs it:** Eric Devlin today; the Terms name him personally. Lookout will operate under Genius Industries International LLC as an assumed name (#23, [decision 9](decisions/README.md#9-run-lookout-through-an-existing-llc-2026-11-07)). The filing, accounts and insurance are not done yet.
 - **Users:** invite-only beta, adults, mostly US. No payments yet.
 - **Data:** contact details, resumes, LinkedIn PDFs, career answers, job search activity, in-app usage events, and click tracking on the finds email. No payment data, no government IDs. Auto-apply drafts may include work authorization, EEO and salary answers.
 - **Where it lives:** one Hostinger VPS, and encrypted backups in AWS S3 (`eric-site-backups`). Confirm both regions before sending.
@@ -32,7 +32,7 @@ Export the two pages to PDF from staging so the lawyer reads exactly what users 
 2. **CCPA/CPRA and other state laws.** Lookout is far below the CCPA thresholds today. Does anything still apply (for example if a California user joins), and what should the privacy page say now so it doesn't need a rewrite later?
 3. **Auto-apply liability.** Lookout submits applications in the user's name after they approve each one. Is the Terms language enough ("you are the applicant", responsibility for accuracy, site terms)? What exposure is there if a job site's terms forbid automated submission, or if a submitted answer is wrong?
 4. **Sensitive answers.** Auto-apply can hold EEO, disability, veteran and work authorization answers. Do these need separate consent or different handling?
-5. **Personal liability.** With no LLC, is the limitation of liability ($50 or 12 months of fees) worth much? Should the Terms wait for #23, or ship now and be re-signed under the LLC?
+5. **Operator and liability.** Lookout will move under Eric's existing LLC as an assumed name (#23). Should the Terms name the LLC now or after the assumed name is filed? Is the limitation of liability ($50 or 12 months of fees) adequate, and what cyber and E&O coverage is sensible before charging?
 6. **Disputes.** The Terms pick New York law and NY courts. Should they add arbitration, a class action waiver, or a small claims carve-out?
 7. **Click and usage tracking.** Lookout records page views, time on page and finds-email link clicks itself, with no outside scripts. Is the disclosure enough, and is a cookie banner needed for this?
 8. **Admin access.** Is the read-only board view during the beta fine as disclosed, or does it need an opt-in?
