@@ -74,6 +74,13 @@ describe("detectAts", () => {
 describe("kindFor", () => {
   it("sorts fields, uploads and questions", () => {
     expect(kindFor("Resume/CV", "file")).toBe("resume");
+    // A leading word before the resume on an upload (#935).
+    expect(kindFor("Please upload your resume", "file")).toBe("resume");
+    expect(kindFor("Your Résumé", "file")).toBe("resume");
+    expect(kindFor("Attach an updated CV *", "file")).toBe("resume");
+    expect(kindFor("Please upload your resume", "text")).toBe("answer");
+    expect(kindFor("Please attach your cover letter, not your resume", "file")).toBe("cover_letter");
+    expect(kindFor("Anything in your resume to explain?", "file")).toBe("answer");
     expect(kindFor("Cover Letter", "file")).toBe("cover_letter");
     expect(kindFor("LinkedIn Profile", "text")).toBe("field");
     expect(kindFor("First Name", "text")).toBe("field");
