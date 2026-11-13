@@ -295,8 +295,15 @@ export async function scorePages(ctx: Context, pages: Page[], usage: Usage, repo
 
 // --- save ----------------------------------------------------------------------
 
-/** A real calendar day, or null: "2026-02-30" passes a pattern check but Postgres rejects it and the run fails (#626). */
-const realDate = (d: string | null) => (d && /^\d{4}-\d{2}-\d{2}$/.test(d) && new Date(`${d}T00:00:00Z`).toISOString().slice(0, 10) === d ? d : null);
+/**
+ * A real calendar day, or null: "2026-02-30" passes a pattern check but Postgres rejects it and the run fails (#626).
+ * "2026-11-00" or "2026-13-01" make an invalid Date, whose toISOString throws, and year 0 is no date Postgres takes (#1057).
+ */
+export const realDate = (d: string | null) => {
+  if (!d || !/^\d{4}-\d{2}-\d{2}$/.test(d) || Number(d.slice(0, 4)) < 1900) return null;
+  const t = new Date(`${d}T00:00:00Z`);
+  return !Number.isNaN(t.getTime()) && t.toISOString().slice(0, 10) === d ? d : null;
+};
 
 /**
  * An annual salary, or null. Under $10,000 is an hourly or monthly rate, not a year's pay: stored as annual it read as
