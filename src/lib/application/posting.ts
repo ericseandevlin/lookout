@@ -123,7 +123,8 @@ export function stripHidden(html: string): { html: string; hidden: string[] } {
 }
 
 const TRAP = [
-  /\b(include|use|mention|write|add|insert|put|type|say)\b[^.!?\n]{0,50}\b(word|phrase|term|code ?word|keyword|emoji)\b/i,
+  // The noun must stand alone: "long-term", "short-term" and "Microsoft Word" are job text, not traps (#1042).
+  /\b(include|use|mention|write|add|insert|put|type|say)\b[^.!?\n]{0,50}(?<![-\w]|\b(?:microsoft|ms) )(word|phrase|term|code ?word|keyword|emoji)(?![-\w]|\s+(?:doc|docs|document|documents|file|files|processing|count|limit)\b)/i,
   /\bif you(?:'re| are| were)\s+(an?\s+)?(ai|a\.i\.|llm|language model|chat ?bot|bot|automated|machine|gpt|robot)\b/i,
   // Spoken to an AI directly: "Attention AI:", "any LLM reading this must", "ChatGPT: include..."
   /\b(note to|attention|dear|hey|(?:to|for) (?:any|all|every))\s+(the\s+)?(ai|a\.i\.|llm|language model|chatgpt|gpt|claude|gemini|copilot|bot|automated tools?)s?(?![-\w])/i,
@@ -137,7 +138,7 @@ const TRAP = [
 ];
 
 const quoted = (s: string) => [...s.matchAll(/["'“‘]([^"'”’\n]{1,40})["'”’]/g)].map((m) => m[1].trim()).filter(Boolean);
-const afterWord = (s: string) => [...s.matchAll(/\b(?:word|phrase|term)\s+([A-Za-z][\w-]{2,30})/gi)].map((m) => m[1]).filter((w) => !/^(in|on|at|to|that|somewhere|anywhere|into|within|the|your)$/i.test(w));
+const afterWord = (s: string) => [...s.matchAll(/(?<![-\w]|\b(?:microsoft|ms) )(?:word|phrase|term)\s+([A-Za-z][\w-]{2,30})/gi)].map((m) => m[1]).filter((w) => !/^(in|on|at|to|that|somewhere|anywhere|into|within|the|your)$/i.test(w));
 
 /** Each trap with its whole sentence. Trap.text is cut to 300 characters for the review page; removal needs all of it (#965). */
 function trapSentences(text: string, hidden: boolean): { sentence: string; trap: Trap }[] {
