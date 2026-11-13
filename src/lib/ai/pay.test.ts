@@ -193,6 +193,18 @@ describe("findPay", () => {
     expect(findPay("", "$150,000 - $200,000 a year (AUD), plus super")).toMatchObject({ currency: "AUD" });
   });
 
+  it.each([
+    ["$150,000 - $180,000 SGD per year", "SGD"],
+    ["$120,000 - $150,000 NZD", "NZD"],
+    ["S$150,000 - S$180,000", "SGD"],
+    ["NZ$120,000 - NZ$150,000", "NZD"],
+    ["HK$800,000 - HK$1,000,000", "HKD"],
+    ["$150,000 - $180,000 USD", "USD"],
+    ["$150,000 - $180,000 plus equity", "USD"],
+  ])("reads the currency of %s as %s (#883)", (text, currency) => {
+    expect(findPay("", text)).toMatchObject({ currency });
+  });
+
   it("keeps an hourly range hourly when a yearly word follows it (#646)", () => {
     expect(findPay("", "$25.00 - $35.00 per hour, plus an annual bonus")).toMatchObject({ min: 52000, max: 72800 });
     expect(findPay("", "$40 - $55/hr. Eligible for yearly raises")).toMatchObject({ min: 83200, max: 114400 });
