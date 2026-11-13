@@ -11,7 +11,7 @@ const pg = new PGlite();
 const db = drizzle(pg, { schema });
 vi.mock("@/lib/db", () => ({ db, schema }));
 
-const { loadContext, save } = await import("./discover");
+const { loadContext, save, realDate } = await import("./discover");
 const { fingerprint } = await import("./rules");
 type Ctx = Awaited<ReturnType<typeof loadContext>>;
 type Find = Parameters<typeof save>[1][number];
@@ -308,5 +308,15 @@ describe("loadContext", () => {
     expect(c.rejected).toHaveLength(12);
     expect(c.rejected[0]).toBe("Director of Design at Co 13: reason 13");
     expect(c.rejected[11]).toBe("Director of Design at Co 2: reason 2");
+  });
+});
+
+describe("realDate (#1057)", () => {
+  it.each(["2026-11-00", "2026-13-01", "2026-00-00", "2026-02-30", "0000-01-01", "2026-1-5", ""])("drops %s instead of failing the run", (d) => {
+    expect(realDate(d)).toBeNull();
+  });
+  it("keeps a real day", () => {
+    expect(realDate("2026-11-13")).toBe("2026-11-13");
+    expect(realDate(null)).toBeNull();
   });
 });
