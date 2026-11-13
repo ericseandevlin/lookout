@@ -43,7 +43,7 @@ export async function spentSince(since: Date, userId?: string, d: Db = db) {
     })
     .from(schema.runs)
     .where(gte(schema.runs.startedAt, since))
-    .groupBy(schema.runs.trigger, isMine);
+    .groupBy(sql`1, 2`); // by position: a bound userId in the select and group by would be two different parameters
   const estimates = new Map<string, number>();
   for (const trigger of new Set(groups.filter((g) => g.inFlight > 0).map((g) => g.trigger))) {
     const recent = d
@@ -67,15 +67,27 @@ export async function spentSince(since: Date, userId?: string, d: Db = db) {
   return { all, mine };
 }
 
-/** Refuse new AI work once the rolling 24h spend (all users, or this user) reaches its cap. The app-wide cap emails the admins (#990). */
-export async function assertBudget(userId: string, d: Db = db) {
-  const cfg = await getAccessConfig();
+type Caps = Awaited<ReturnType<typeof getAccessConfig>>;
+
+/** The cap this spend breaks, if any. Reads only through `d`, so it is safe inside the start transaction. */
+async function overCap(userId: string, cfg: Caps, d: Db) {
   const { all, mine } = await spentSince(new Date(Date.now() - 24 * 3600_000), userId, d);
-  if (all >= cfg.dailyBudgetUsd) {
-    await alertDailyCap(all);
-    throw new BudgetError("Lookout hit its daily spend cap. Try again tomorrow.");
-  }
-  if (mine >= cfg.userDailyBudgetUsd) throw new BudgetError(USER_CAP_MESSAGE, "user");
+  if (all >= cfg.dailyBudgetUsd) return { scope: "all" as const, usd: all };
+  if (mine >= cfg.userDailyBudgetUsd) return { scope: "user" as const, usd: mine };
+  return null;
+}
+
+/** The app-wide cap emails the admins (#990); either cap throws a BudgetError. */
+async function refuse(over: NonNullable<Awaited<ReturnType<typeof overCap>>>): Promise<never> {
+  if (over.scope === "user") throw new BudgetError(USER_CAP_MESSAGE, "user");
+  await alertDailyCap(over.usd);
+  throw new BudgetError("Lookout hit its daily spend cap. Try again tomorrow.");
+}
+
+/** Refuse new AI work once the rolling 24h spend (all users, or this user) reaches its cap. The app-wide cap emails the admins (#990). */
+export async function assertBudget(userId: string) {
+  const over = await overCap(userId, await getAccessConfig(), db);
+  if (over) await refuse(over);
 }
 
 type RunOpts = { searchId?: string; status?: "queued" | "running"; request?: Record<string, unknown> };
@@ -93,11 +105,15 @@ export async function startRun(userId: string, trigger: Trigger, opts: RunOpts =
  * started before it (counted at their estimate) and three at once can't pass on the same total (#1038).
  */
 export async function startBudgetedRun(userId: string, trigger: Trigger, opts: RunOpts = {}) {
-  return db.transaction(async (tx) => {
+  // Config and the admin alert stay outside the transaction: they use their own queries (#1038).
+  const cfg = await getAccessConfig();
+  const r = await db.transaction(async (tx) => {
     await tx.execute(sql`select pg_advisory_xact_lock(${BUDGET_LOCK_ID})`);
-    await assertBudget(userId, tx);
-    return startRun(userId, trigger, opts, tx);
+    const over = await overCap(userId, cfg, tx);
+    return over ? { over } : { run: await startRun(userId, trigger, opts, tx) };
   });
+  if (r.over) return refuse(r.over);
+  return r.run;
 }
 
 export async function finishRun(id: string, u: Usage, r: { found?: number; added?: number; error?: string | null; report?: RunReport }) {
