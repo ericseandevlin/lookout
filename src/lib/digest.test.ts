@@ -148,6 +148,27 @@ describe("sendDigest", () => {
     expect(sent()).toEqual([]);
   });
 
+  it("lists the best 15 and says how many more are on the board (#931)", async () => {
+    for (let i = 1; i <= 18; i++) await find(`Role ${String(i).padStart(2, "0")}`, { score: i <= 15 ? 4 : 2 });
+    await sendDigest(userId);
+
+    const [m] = sent();
+    expect(m.subject).toBe("Lookout: 18 new finds");
+    expect(m.html).toContain("18 new finds today");
+    expect(m.html).not.toContain("Role 16");
+    expect(m.html).toContain("Role 15");
+    const [dg] = await digests();
+    expect(m.html).toContain(`href="https://lookout.example.com/go/${dg.id}/board" style="color:#99220F;font-weight:600">3 more on your board</a>`);
+    expect(m.text).toContain(`3 more on your board: https://lookout.example.com/go/${dg.id}/board`);
+  });
+
+  it("adds no more line when every new find is listed (#931)", async () => {
+    for (let i = 1; i <= 15; i++) await find(`Role ${i}`);
+    await sendDigest(userId);
+    expect(sent()[0].html).not.toContain("more on your board");
+    expect(sent()[0].text).not.toContain("more on your board");
+  });
+
   it("says one find, not one finds", async () => {
     await find("Only one");
     await sendDigest(userId);

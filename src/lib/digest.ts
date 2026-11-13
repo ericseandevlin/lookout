@@ -58,10 +58,14 @@ export async function sendDigest(userId: string, runId?: string) {
     return { o, uo, comp: posted ?? "No comp posted", posted: !!posted };
   });
   const n = rows.length;
+  // The list stops at 15; the rest are named, so the count in the subject adds up (#931).
+  const more = n - items.length;
   // Unsubscribe link, postal address and one-click headers, as for any bulk mail (#28).
   const { footer, headers } = unsubscribeParts("digest", u.email, "You get this because the finds email is on in your Lookout settings.");
   const [dg] = await db.insert(schema.digests).values({ userId, runId: runId ?? null, finds: n }).returning({ id: schema.digests.id });
   const link = (target: string) => goLink(env.appUrl, dg.id, target);
+  const moreLabel = `${more} more on your board`;
+  const moreHtml = more > 0 ? `<div style="font-size:14px;padding:12px 0;border-top:1px solid ${color.border}"><a href="${link("board")}" style="color:#99220F;font-weight:600">${moreLabel}</a></div>` : "";
   const dueHtml = due.length
     ? `<div style="font-size:13px;font-weight:700;letter-spacing:.04em;color:#6B6358;margin:${n ? "28px" : "0"} 0 4px">DUE SOON</div>
 <table width="100%" cellpadding="0" cellspacing="0">${due
@@ -85,11 +89,11 @@ export async function sendDigest(userId: string, runId?: string) {
 <div style="font-size:14px;color:#6B6358">${escapeHtml(o.company)} · ${escapeHtml(o.location)}</div>
 <div style="font-size:14px;color:${posted ? "#99220F" : "#6B6358"};margin-top:2px">${comp}</div></td></tr>`,
       )
-      .join("")}</table>` : ""}${dueHtml}
+      .join("")}</table>${moreHtml}` : ""}${dueHtml}
 <a href="${link("board")}" style="display:inline-block;margin-top:20px;background:#99220F;color:#fff;text-decoration:none;font-weight:600;font-size:14.5px;padding:13px 24px;border-radius:12px">Open your board</a>${footer.html}`,
   );
   const newText = items.map(({ o, uo, comp }) => `${uo.score}/5  ${o.title}, ${o.company} (${o.location}) ${comp}\n${link(o.id)}`).join("\n\n");
-  const text = [newText, dueText && `Due soon\n\n${dueText}`].filter(Boolean).join("\n\n");
+  const text = [newText, more > 0 && `${moreLabel}: ${link("board")}`, dueText && `Due soon\n\n${dueText}`].filter(Boolean).join("\n\n");
   try {
     await sendMail({
       to: u.email,
