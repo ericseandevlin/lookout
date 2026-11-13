@@ -105,6 +105,22 @@ export function searchSuccess(runs: { status: string; read: number | null }[]) {
   return { searches: ended.length, succeeded: ok, rate: ended.length ? ok / ended.length : null };
 }
 
+/**
+ * AI cost of one application (#991), from each application's stored spend: scan, drafts, Recruiter
+ * Analysis, redrafts and AI edits all add to it. Average, median and the worst case, in USD.
+ */
+export function applyCost(usds: number[]) {
+  const xs = usds.filter((n) => Number.isFinite(n)).sort((a, b) => a - b);
+  if (!xs.length) return { applications: 0, avg: null, median: null, max: null };
+  const mid = Math.floor(xs.length / 2);
+  return {
+    applications: xs.length,
+    avg: xs.reduce((a, b) => a + b, 0) / xs.length,
+    median: xs.length % 2 ? xs[mid] : (xs[mid - 1] + xs[mid]) / 2,
+    max: xs[xs.length - 1],
+  };
+}
+
 /** Distinct people with any event (not heartbeats) since a date. */
 export function activeSince(events: MetricEvent[], since: Date) {
   return new Set(events.filter((e) => e.type !== "heartbeat" && e.at >= since).map((e) => e.userId)).size;

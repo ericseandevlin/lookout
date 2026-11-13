@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { actedOn, activation, activeSince, byChannel, channelOf, outcomes, retention, scoreSplit, searchSuccess, week4Retention, weekly, type MetricEvent } from "./metrics";
+import { actedOn, activation, activeSince, applyCost, byChannel, channelOf, outcomes, retention, scoreSplit, searchSuccess, week4Retention, weekly, type MetricEvent } from "./metrics";
 
 const ev = (userId: string, type: string, at: string, target: string | null = null, meta: Record<string, unknown> | null = null): MetricEvent => ({ userId, type, target, meta, at: new Date(at) });
 
@@ -158,5 +158,13 @@ describe("byChannel (#527)", () => {
       { channel: "direct", signups: 1, joined: 1, active: 1 },
       { channel: "hn", signups: 1, joined: 0, active: 0 },
     ]);
+  });
+});
+
+describe("applyCost (#991)", () => {
+  it("gives average, median and worst case, and nulls with no applications", () => {
+    expect(applyCost([])).toEqual({ applications: 0, avg: null, median: null, max: null });
+    expect(applyCost([0.3, 0.1, 0.2])).toEqual({ applications: 3, avg: expect.closeTo(0.2), median: 0.2, max: 0.3 });
+    expect(applyCost([0.4, 0.1, 0.2, 0.1])).toMatchObject({ applications: 4, median: expect.closeTo(0.15), max: 0.4 });
   });
 });
