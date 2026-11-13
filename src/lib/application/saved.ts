@@ -5,10 +5,14 @@ import type { SavedAnswer } from "@/lib/db/schema";
  * nearly the same words. Job-specific essays and salary are never saved; they change per role.
  */
 
+// Short words need \b: "city" sits inside "ethnicity", which saved an ethnicity answer for the drafting model (#1059).
 const COMMON =
-  /authori[sz]ed to work|work authori[sz]ation|legally (authorized|eligible)|sponsor|visa|zip|postal|state of residence|^state$|city|address|phone|mobile|country|relocat|notice period|start date|earliest.*start|when can you start|previously (worked|employed)|ever (been )?employed by|criminal|background check|drug|18 years|age of|security clearance|how did you hear|referr|pronoun|preferred (first )?name/i;
+  /authori[sz]ed to work|work authori[sz]ation|legally (authorized|eligible)|sponsor|\bvisa\b|\bzip\b|postal|state of residence|^state$|\bcity\b|address|phone|mobile|country|relocat|notice period|start date|earliest.*start|when can you start|previously (worked|employed)|ever (been )?employed by|criminal|background check|\bdrug|18 years|\bage of\b|security clearance|how did you hear|referr|pronoun|preferred (first )?name/i;
 // Never kept: salary and essays change per role; commute and office questions depend on where each job is.
-const NEVER = /salary|compensation|pay|expected|why|describe|tell us|cover letter|portfolio|years of|commut|in.?office|hybrid|remote|location (listed|of the)|this (role|position|location)/i;
+// "years of" is experience, not "18 years of age" (#1059).
+const NEVER = /salary|compensation|pay|expected|why|describe|tell us|cover letter|portfolio|years of(?! age)|commut|in.?office|hybrid|remote|location (listed|of the)|this (role|position|location)/i;
+// Voluntary self-identification is never kept or shown to a model, even when a form asks it as a plain question (#1059).
+const EEO = /ethnic|\brace\b|racial|hispanic|latin[oax]|gender|\bsex\b|sexual orientation|transgender|veteran|disabilit|self[- ]identif/i;
 
 // Questions about one employer: a No is true almost everywhere, but a Yes or a referrer's name is about that company only.
 // \b: "referr" sits inside "preferred", which made every preferred name a referrer's (#1048).
@@ -31,7 +35,7 @@ export const answerKey = (q: string) =>
 
 /** Is this question one we should remember the answer to? */
 export function isCommon(question: string, answer: string) {
-  return COMMON.test(question) && !NEVER.test(question) && answer.trim().length > 0 && answer.length <= 300 && !onlyThisOne(question, answer);
+  return COMMON.test(question) && !NEVER.test(question) && !EEO.test(question) && answer.trim().length > 0 && answer.length <= 300 && !onlyThisOne(question, answer);
 }
 
 export function upsert(list: SavedAnswer[], question: string, answer: string): SavedAnswer[] {
@@ -43,7 +47,7 @@ export function upsert(list: SavedAnswer[], question: string, answer: string): S
 /** A saved answer for the same question, if it fits the form's choices. */
 export function match(list: SavedAnswer[], question: string, options?: string[] | null): string | null {
   // Answers saved before #1032 may still hold one employer's Yes: never reuse those.
-  const hit = list.find((s) => s.key === answerKey(question) && !onlyThisOne(s.question, s.answer));
+  const hit = list.find((s) => s.key === answerKey(question) && !onlyThisOne(s.question, s.answer) && !EEO.test(s.question));
   if (!hit) return null;
   if (!options?.length) return hit.answer;
   return options.find((o) => o.toLowerCase() === hit.answer.toLowerCase()) ?? null;
@@ -51,6 +55,7 @@ export function match(list: SavedAnswer[], question: string, options?: string[] 
 
 /** For the drafting prompt: the model may reuse these when a question means the same thing. */
 export const savedBlock = (all: SavedAnswer[]) => {
-  const list = all.filter((s) => !onlyThisOne(s.question, s.answer));
+  // An EEO answer saved before #1059 never reaches the model.
+  const list = all.filter((s) => !onlyThisOne(s.question, s.answer) && !EEO.test(s.question));
   return list.length ? `\n\n<saved_answers from the person's earlier applications; reuse when a question asks the same thing, source "saved answer">\n${list.map((s) => `- ${s.question}: ${s.answer}`).join("\n")}\n</saved_answers>` : "";
 };
