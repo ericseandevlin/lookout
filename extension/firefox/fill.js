@@ -104,7 +104,9 @@
         if (depth > 0 && itemKind === "cover_letter" && siblingHas(n, input, key)) continue;
         return input;
       }
-    return itemKind === "cover_letter" ? inputs[1] || null : inputs[0] || null;
+    // Unlabeled, only the resume takes the first upload and the letter the second. Any other upload (writing sample,
+    // portfolio) would replace the resume there, so it reports not found instead (#1030).
+    return itemKind === "cover_letter" ? inputs[1] || null : itemKind === "resume" ? inputs[0] || null : null;
   }
 
   /** a starts b and ends on a word boundary there: "no" starts "no, thanks" but not "none" (#632). A blank option starts nothing (#722). */
