@@ -1,6 +1,6 @@
 # Code map
 
-Where things live in Lookout, and how a request moves through them. For what the product does, see the [README](../README.md); for how to send a change, see [CONTRIBUTING](../CONTRIBUTING.md).
+Where things live in Lookout, and how a request moves through them. For what the product does, see the [README](../README.md); for each user flow as a diagram, see [flows.md](flows.md); for how to send a change, see [CONTRIBUTING](../CONTRIBUTING.md).
 
 ## The shape of it
 
