@@ -130,6 +130,12 @@ describe("parseMoney", () => {
     ["$1.5MM", 1500000],
     ["2 mil", 2000000],
     ["1 200 000", 1200000],
+    // A plural reads the whole number, not its first two digits (#882).
+    ["low 200s", 200000],
+    ["mid 150s", 150000],
+    ["$180s", 180000],
+    ["upper 190ks", 190000],
+    ["120000 salary", 120000],
   ])("reads %s as %d", (v, n) => {
     expect(parseMoney(v)).toBe(n);
   });

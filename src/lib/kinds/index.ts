@@ -272,12 +272,13 @@ const SCALE: Record<string, number> = { k: 1e3, m: 1e6, b: 1e9 };
  * "$120,000" / "120k" / "120000" -> 120000; "$2M" / "2 million" -> 2000000; "$1.2B" -> 1200000000 (#482).
  * A bare number under 1,000 is thousands: no one's floor is $150 a year, so "150" and "150-170k" mean $150,000 (#761).
  * The field is free text, so words before the number ("~$150k", "USD 150,000", "about 100k") don't hide it, and a word
- * after it ("150 base") isn't a B for billions (#797). Euros, pounds and other non-dollar amounts stay unread.
+ * after it ("150 base") isn't a B for billions (#797). A plural like "low 200s" or "$180s" reads the whole number, not
+ * the first two digits (#882). Euros, pounds and other non-dollar amounts stay unread.
  */
 export function parseMoney(v: unknown): number | null {
   const s = str(v).toLowerCase().replace(/[,$]/g, "").replace(/(\d)\s+(?=\d{3}\b)/g, "$1");
   if (!s || /[€£¥₹]|\b(eur|euros?|gbp|pounds?|inr|jpy)\b/.test(s)) return null;
-  const m = /(\d+(?:\.\d+)?)\s*(k|mm|mil|million|m|bn|billion|b)?(?![a-z])/.exec(s);
+  const m = /(\d+(?:\.\d+)?)(?![\d.])\s*(k|mm|mil|million|m|bn|billion|b)?s?(?![a-z])/.exec(s);
   if (!m) return null;
   const bare = parseFloat(m[1]);
   const n = bare * (m[2] ? SCALE[m[2][0]] : bare < 1000 ? 1e3 : 1);
