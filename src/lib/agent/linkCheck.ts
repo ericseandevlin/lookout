@@ -73,7 +73,9 @@ async function ashbyJobExists(org: string, id: string): Promise<boolean | null> 
 
 /**
  * A company page that embeds Greenhouse (?gh_jid=) or Ashby (?ashby_jid=) stays up after the job closes, so ask the ATS (#678).
- * Gone only when a board that exists no longer has the job; a wrong guess or a failed call keeps the page's verdict.
+ * Gone only when the board the page names no longer has the job; a failed call keeps the page's verdict. A board guessed from the
+ * host can only confirm the job is open: a board by that name may belong to another company, so a miss there proves nothing,
+ * and the next guess still gets its turn (#1046).
  */
 async function embedVerdict(url: string, html: string): Promise<{ state: LinkState; reason: string } | null> {
   const ref = detectAts(url);
@@ -86,7 +88,8 @@ async function embedVerdict(url: string, html: string): Promise<{ state: LinkSta
       const api = `https://boards-api.greenhouse.io/v1/boards/${encodeURIComponent(b)}`;
       if ((await answers(api)) !== true) continue;
       const job = await answers(`${api}/jobs/${ref.id}`);
-      return job === false ? { state: "gone", reason: "Greenhouse no longer lists the job" } : null;
+      if (found) return job === false ? { state: "gone", reason: "Greenhouse no longer lists the job" } : null;
+      if (job === true) return null;
     }
   }
   if (ref.ats === "ashby" && !ref.org) {
@@ -94,7 +97,8 @@ async function embedVerdict(url: string, html: string): Promise<{ state: LinkSta
     for (const o of found ? [found] : boardGuesses(host)) {
       if ((await answers(`https://api.ashbyhq.com/posting-api/job-board/${encodeURIComponent(o)}`)) !== true) continue;
       const job = await ashbyJobExists(o, ref.id);
-      return job === false ? { state: "gone", reason: "Ashby no longer lists the job" } : null;
+      if (found) return job === false ? { state: "gone", reason: "Ashby no longer lists the job" } : null;
+      if (job === true) return null;
     }
   }
   return null;
