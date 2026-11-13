@@ -152,3 +152,25 @@ describe("\"filled\" wording (#957)", () => {
   );
 });
 
+
+describe("live wording that reads like closed, and closed wording that was missed (#980)", () => {
+  it.each([
+    "Applications will be accepted until such time as this position has been filled.",
+    "This posting will be taken down as soon as the position has been filled.",
+    "Applications are reviewed on a rolling basis until the job opening has been filled.",
+    "We will accept applications until this role has been filled.",
+    "Visa sponsorship for this position is no longer available.",
+    "Relocation support for this role is no longer available.",
+  ])("keeps a live posting open: %s", (text) => {
+    expect(classifyPage(200, `TITLE: Senior Product Designer\nTEXT:\n${text}`).state).toBe("open");
+  });
+  it.each([
+    "This position is no longer accepting applicants.",
+    "This vacancy has expired.",
+    "This opportunity has expired.",
+    "Sorry, this job is no longer available.",
+    "Thanks for applying! Once again, this position has been filled.",
+  ])("reads a closed posting as gone: %s", (text) => {
+    expect(classifyPage(200, `TITLE: Senior Product Designer\nTEXT:\n${text}`).state).toBe("gone");
+  });
+});
