@@ -162,6 +162,14 @@ describe("closeGonePostings", () => {
     expect(fetchPage).not.toHaveBeenCalled();
   });
 
+  it("sees closed wording on a page that keeps its JobPosting data (#1026)", async () => {
+    const id = await addFind("https://jobs.test/1");
+    const ld = JSON.stringify({ "@type": "JobPosting", title: "Designer", description: "You will own end-to-end design for core flows. ".repeat(60) });
+    pages.set("https://jobs.test/1", `</p><script type="application/ld+json">${ld}</script><p>This job is no longer available.`);
+    await closeGonePostings(userId, T0);
+    expect((await find(id)).linkCheck).toMatchObject({ state: "gone", goneSince: T0.toISOString() });
+  });
+
   it("counts a 404 as gone without retrying", async () => {
     const id = await addFind("https://jobs.test/1");
     pages.set("https://jobs.test/1", new FetchError("The page answered 404"));
