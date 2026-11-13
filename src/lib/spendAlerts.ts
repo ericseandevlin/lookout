@@ -1,5 +1,5 @@
 import "server-only";
-import { eq } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 import { db, schema } from "@/lib/db";
 import { env } from "@/lib/env";
 import { getAiConfig, getAccessConfig } from "@/lib/config";
@@ -17,12 +17,22 @@ async function sent(): Promise<Sent> {
   return (row?.value ?? {}) as Sent;
 }
 
-async function markSent(patch: Sent) {
-  const value = { ...(await sent()), ...patch };
-  await db
-    .insert(schema.appSettings)
-    .values({ key: KEY, value })
-    .onConflictDoUpdate({ target: schema.appSettings.key, set: { value, updatedAt: new Date() } });
+/**
+ * Claim one alert: set its field to `value` unless it already holds it, in one statement, so two runs at the
+ * cap at once send one email, and neither write drops the other field (#1022). True when this call claimed it.
+ */
+async function claim(field: keyof Sent, value: string) {
+  const s = schema.appSettings;
+  const rows = await db
+    .insert(s)
+    .values({ key: KEY, value: { [field]: value } })
+    .onConflictDoUpdate({
+      target: s.key,
+      set: { value: sql`${s.value} || excluded.value`, updatedAt: new Date() },
+      setWhere: sql`${s.value} ->> ${field} is distinct from ${value}`,
+    })
+    .returning({ key: s.key });
+  return rows.length > 0;
 }
 
 /** Admins, the same way the app decides them: the account flag or ADMIN_EMAILS. Disabled accounts get nothing. */
@@ -71,8 +81,7 @@ export async function checkKeyLimit(now = new Date()) {
   const u = await keyUsage();
   if (!u) return;
   const month = monthKey(now);
-  if (!keyAlertDue(u, (await sent()).keyMonth, month)) return;
-  await markSent({ keyMonth: month });
+  if (!keyAlertDue(u, (await sent()).keyMonth, month) || !(await claim("keyMonth", month))) return;
   const pct = Math.round((u.usd / u.limit) * 100);
   await mailAdmins(`Lookout has used ${pct}% of its AI key limit`, [
     `The AI key has spent $${u.usd.toFixed(2)} of its $${u.limit.toFixed(2)} limit this month.`,
@@ -87,8 +96,7 @@ export async function checkKeyLimit(now = new Date()) {
 export async function alertDailyCap(spentUsd: number, now = new Date()) {
   try {
     const day = dayKey(now, env.timezone);
-    if ((await sent()).capDay === day) return;
-    await markSent({ capDay: day });
+    if (!(await claim("capDay", day))) return;
     const cap = (await getAccessConfig()).dailyBudgetUsd;
     await mailAdmins("Lookout's daily AI cap stopped searches", [
       `AI spend in the last 24 hours reached $${spentUsd.toFixed(2)}, at or over the $${cap.toFixed(2)} cap for everyone.`,
