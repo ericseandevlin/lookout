@@ -164,6 +164,13 @@ function periodIn(prompt: string): "year" | "hour" | "week" | "month" | null {
   return null;
 }
 
+/**
+ * The ask wants its number in thousands: "Desired salary (in thousands)", "Salary expectations in $K", "Base (000s)"
+ * (#1188). "401(k)" is a retirement plan, not a unit.
+ */
+export const asksThousands = (prompt: string) =>
+  /\bin (?:\$\s?|usd\s)?(?:thousands|k)\b|(?<![\d\w])\(\s*(?:in\s+)?(?:\$\s?)?(?:000s|000's|k|thousands)\s*\)|\bin 000s\b/i.test(prompt);
+
 const PER: Record<"hour" | "week" | "month", { n: number; how: string }> = {
   hour: { n: 2080, how: "2,080 working hours" },
   week: { n: 52, how: "52 weeks" },
@@ -174,9 +181,15 @@ const PER: Record<"hour" | "week" | "month", { n: number; how: string }> = {
  * The ask in the period the question uses. Every number above is a year's pay, so an hourly or monthly question gets
  * the yearly ask divided down, not "$165,000" in an hourly-rate field (#949).
  */
-export function suggestSalary(i: Parameters<typeof yearlyAsk>[0] & { per?: "hour" | "week" | "month" | null }): { amount: string | null; note: string; question?: string } | null {
+export function suggestSalary(i: Parameters<typeof yearlyAsk>[0] & { per?: "hour" | "week" | "month" | null; thousands?: boolean }): { amount: string | null; note: string; question?: string } | null {
   const r = yearlyAsk(i);
-  if (!r || !r.amount || !i.per) return r;
+  if (!r || !r.amount) return r;
+  // A yearly ask "in thousands" gets 165, not $165,000 (#1188).
+  if (!i.per && i.thousands) {
+    const k = String(Math.round(Number(r.amount.replace(/\D/g, "")) / 1000));
+    return { ...r, amount: k, ...(r.question ? { question: r.question.replace(r.amount, `${k} (thousands)`) } : {}), note: `${r.note}\n• This question asks in thousands, so ${r.amount} is entered as ${k}.` };
+  }
+  if (!i.per) return r;
   const yearly = Number(r.amount.replace(/\D/g, ""));
   const p = PER[i.per];
   const amount = usd(Math.round(yearly / p.n));

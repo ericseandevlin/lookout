@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { askPer, asksBase, isSalaryQuestion, rangeBasis, suggestSalary } from "./salary";
+import { askPer, asksBase, asksThousands, isSalaryQuestion, rangeBasis, suggestSalary } from "./salary";
 
 describe("suggestSalary", () => {
   // Quill's criteria 1 and 3 first: these are the cases where a wrong number looks confident.
@@ -433,5 +433,39 @@ describe("askPer reads the period from the ask, not a side sentence (#1136)", ()
     ["What are your salary expectations? This role is about 40 hours per week.", null],
   ] as const)("%s", (q, per) => {
     expect(askPer(q)).toBe(per);
+  });
+});
+
+describe("asks in thousands (#1188)", () => {
+  it.each([
+    ["Desired salary (in thousands, e.g. 150)", true],
+    ["Salary expectations in K", true],
+    ["What are your salary expectations in $K?", true],
+    ["Expected base salary ($000s)", true],
+    ["Desired annual compensation (thousands)", true],
+    ["What are your salary expectations? We offer a 401(k) match.", false],
+    ["What are your salary expectations?", false],
+    ["Tell us about your thousands of users", false],
+  ])("%j -> %s", (prompt, want) => expect(asksThousands(prompt)).toBe(want));
+
+  it("gives a yearly ask in thousands", () => {
+    const r = suggestSalary({ floor: "150k", min: 160000, max: 180000, thousands: true });
+    expect(r?.amount).toBe("175");
+    expect(r?.note).toContain("asks in thousands, so $175,000 is entered as 175");
+  });
+
+  it("uses thousands for the floor or target when there is no range", () => {
+    expect(suggestSalary({ target: "165k", thousands: true })?.amount).toBe("165");
+  });
+
+  it("leaves an hourly ask and a blank ask alone", () => {
+    expect(suggestSalary({ min: 160000, max: 200000, per: "hour", thousands: true })?.amount).toBe("$91");
+    expect(suggestSalary({ floor: "250k", min: 160000, max: 200000, thousands: true })?.amount).toBeNull();
+  });
+
+  it("names the number in thousands in the base check question", () => {
+    const r = suggestSalary({ min: 160000, max: 200000, asksBase: true, thousands: true });
+    expect(r?.amount).toBe("190");
+    expect(r?.question).toContain("190 (thousands)");
   });
 });
