@@ -152,7 +152,7 @@ const close = vi.fn(async () => {});
 const launch = vi.fn(async () => ({ newContext: async () => ({ newPage: async () => page }), close }));
 vi.mock("playwright-core", () => ({ chromium: { launch } }));
 
-const { numberAnswer, runFill, startFill } = await import("./submit");
+const { dateAnswer, numberAnswer, runFill, startFill } = await import("./submit");
 
 let dataDir: string;
 let userId: string;
@@ -311,6 +311,24 @@ describe("runFill (#385)", () => {
     expect(r.log[0]).toMatchObject({ ok: true, how: "typed" });
     expect(page.did).toContain("fill Desired salary=165000");
     expect(["$2.3K", "$1.2M", "7.5 years", "165000", "5 months", "$165,000 base"].map(numberAnswer)).toEqual(["2300", "1200000", "7.5", "165000", "5", "165000"]);
+  });
+
+  it("a date field gets the answer as yyyy-mm-dd, not \"12/01/2026\" (#1242)", async () => {
+    const id = await seed("approved", [{ kind: "answer", prompt: "Earliest start date", content: "12/01/2026" }]);
+    page = fakePage([{ kind: "control", label: "Earliest start date", type: "date" }]);
+    const r = await runFill(id, "test");
+    expect(r.log[0]).toMatchObject({ ok: true, how: "typed" });
+    expect(page.did).toContain("fill Earliest start date=2026-12-01");
+  });
+
+  it("a date field with no date in the answer is not filled (#1242)", async () => {
+    const id = await seed("approved", [{ kind: "answer", prompt: "Earliest start date", content: "Two weeks after an offer" }]);
+    page = fakePage([{ kind: "control", label: "Earliest start date", type: "date" }]);
+    const r = await runFill(id, "test");
+    expect(r.log[0]).toMatchObject({ ok: false, how: "date field, answer is not a date" });
+    expect(
+      ["December 1, 2026", "Dec. 1st 2026", "1 December 2026", "2026-12-01", "Available 3/5/2027", "13/01/2026", "ASAP"].map(dateAnswer),
+    ).toEqual(["2026-12-01", "2026-12-01", "2026-12-01", "2026-12-01", "2027-03-05", "", ""]);
   });
 
   it("a one-choice <select> with several lines takes the first and reports the rest not filled (#1132)", async () => {

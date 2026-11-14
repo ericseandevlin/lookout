@@ -216,6 +216,26 @@
     return m[2] ? String(Math.round(Number(n) * (m[2].toLowerCase() === "k" ? 1e3 : 1e6))) : n;
   }
 
+  /**
+   * A date field keeps only yyyy-mm-dd and drops anything else without a word, so "12/01/2026" or "December 1, 2026"
+   * is turned into "2026-12-01" first; "" when the answer holds no date. Same as the worker (#1242).
+   */
+  function dateAnswer(t) {
+    const s = String(t || "");
+    const months = ["jan", "feb", "mar", "apr", "may", "jun", "jul", "aug", "sep", "oct", "nov", "dec"];
+    const iso = (y, m, d) => (m >= 1 && m <= 12 && d >= 1 && d <= 31 ? `${y}-${String(m).padStart(2, "0")}-${String(d).padStart(2, "0")}` : "");
+    const mon = (w) => months.indexOf(w.slice(0, 3).toLowerCase()) + 1;
+    let m = s.match(/\b(\d{4})-(\d{1,2})-(\d{1,2})\b/);
+    if (m) return iso(+m[1], +m[2], +m[3]);
+    m = s.match(/\b(\d{1,2})[/-](\d{1,2})[/-](\d{4})\b/);
+    if (m) return iso(+m[3], +m[1], +m[2]);
+    m = s.match(/\b(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*\.?\s+(\d{1,2})(?:st|nd|rd|th)?,?\s+(\d{4})\b/i);
+    if (m) return iso(+m[3], mon(m[1]), +m[2]);
+    m = s.match(/\b(\d{1,2})(?:st|nd|rd|th)?\s+(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*\.?,?\s+(\d{4})\b/i);
+    if (m) return iso(+m[3], mon(m[2]), +m[1]);
+    return "";
+  }
+
   /** Set a value the way typing would, so React and friends notice. */
   function setValue(el, value) {
     const proto = el instanceof HTMLTextAreaElement ? HTMLTextAreaElement.prototype : HTMLInputElement.prototype;
@@ -394,7 +414,16 @@
         if (el.value === "") return { ok: false, how: "field rejected the answer" };
         return { ok: true, how: "typed" };
       }
+      if (el instanceof HTMLInputElement && el.type === "date") {
+        const d = dateAnswer(step.content);
+        if (!d) return { ok: false, how: "date field, answer is not a date" };
+        setValue(el, d);
+        if (el.value === "") return { ok: false, how: "field rejected the answer" };
+        return { ok: true, how: "typed" };
+      }
       setValue(el, step.content);
+      // Any field that drops what was typed is not filled, so the popup never says "Filled all" over a blank (#1242).
+      if ("value" in el && el.value === "" && String(step.content || "").trim()) return { ok: false, how: "field rejected the answer" };
       return { ok: true, how: "typed" };
     } catch (e) {
       return { ok: false, how: String(e && e.message ? e.message : e).slice(0, 120) };
