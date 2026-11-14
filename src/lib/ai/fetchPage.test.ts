@@ -60,6 +60,10 @@ describe("Workday postings (#724)", () => {
     ["https://acme.wd503.myworkdayjobs.com/fr-CA/Careers/job/Toronto/PM_1/", "https://acme.wd503.myworkdayjobs.com/wday/cxs/acme/Careers/job/Toronto/PM_1"],
     // A share link: /details/ instead of /job/, same JSON address (#1071).
     ["https://swbc.wd1.myworkdayjobs.com/en-US/InformationTechnology/details/Senior-Network-Security-Engineer_R0015735", "https://swbc.wd1.myworkdayjobs.com/wday/cxs/swbc/InformationTechnology/job/Senior-Network-Security-Engineer_R0015735"],
+    // The apply steps are not part of the job's address (#1206).
+    ["https://acme.wd5.myworkdayjobs.com/External/job/New-York-NY/Senior-Designer_R12345/apply", "https://acme.wd5.myworkdayjobs.com/wday/cxs/acme/External/job/New-York-NY/Senior-Designer_R12345"],
+    ["https://acme.wd5.myworkdayjobs.com/en-US/External/job/New-York-NY/Senior-Designer_R12345/apply/applyManually", "https://acme.wd5.myworkdayjobs.com/wday/cxs/acme/External/job/New-York-NY/Senior-Designer_R12345"],
+    ["https://acme.wd5.myworkdayjobs.com/External/job/Apply-Engineer_R5/apply", "https://acme.wd5.myworkdayjobs.com/wday/cxs/acme/External/job/Apply-Engineer_R5"],
   ])("maps %s to the JSON address", (page, api) => expect(workdayApi(page)).toBe(api));
 
   it.each([
