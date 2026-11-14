@@ -14,7 +14,7 @@ import { notesBlock } from "./skills";
 import { getAutoApplySettings } from "@/lib/apply";
 import { bullets } from "./notes";
 import { resolve } from "./eeo";
-import { askPer, asksBase, asksMinimum, isSalaryQuestion, rangeBasis, suggestSalary } from "./salary";
+import { askPer, asksBase, asksMinimum, asksThousands, isSalaryQuestion, rangeBasis, suggestSalary } from "./salary";
 import { getActiveSearch } from "@/lib/searches";
 import { loadEeo, saveEeo } from "./eeoStore";
 import { masterForDrafts, roleSwaps } from "./masterCheck";
@@ -106,7 +106,7 @@ export async function getApplicationDetail(userId: string, id: string) {
   const answers = search?.answers;
   const postingText = a.report.postingText || o?.description || "";
   const salaryHint = (prompt: string) =>
-    answers ? suggestSalary({ floor: answers.floor, target: answers.target, min: o?.compMin, max: o?.compMax, basis: rangeBasis(postingText), asksBase: asksBase(prompt), asksMinimum: asksMinimum(prompt), per: askPer(prompt) }) : null;
+    answers ? suggestSalary({ floor: answers.floor, target: answers.target, min: o?.compMin, max: o?.compMax, basis: rangeBasis(postingText), asksBase: asksBase(prompt), asksMinimum: asksMinimum(prompt), per: askPer(prompt), thousands: asksThousands(prompt) }) : null;
   // EEO answers are matched here from the encrypted profile, only with consent; they're never stored on the application (#122).
   const eeo = items.some((i) => i.kind === "eeo") ? await loadEeo(userId) : null;
   return {
