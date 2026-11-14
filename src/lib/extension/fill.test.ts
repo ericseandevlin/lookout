@@ -168,6 +168,13 @@ describe("extension fill: choices", () => {
     expect(p.value("#s")).toBe("d");
   });
 
+  it("selects an option whose dash is an en dash when the answer's is a hyphen (#1277)", async () => {
+    const p = page(`<label for="s">Are you authorized to work in the US?</label><select id="s"><option value="">Select</option><option value="y">Yes – I am authorized</option><option value="n">No – I am not authorized</option></select>`);
+    const [r] = await p.fill({ steps: [{ prompt: "Are you authorized to work in the US?", kind: "choice", content: "Yes - I am authorized", options: ["Yes - I am authorized", "No - I am not authorized"] }] });
+    expect(r).toMatchObject({ ok: true, how: "selected" });
+    expect(p.value("#s")).toBe("y");
+  });
+
   it("selects every line of the answer on a <select multiple> (#1132)", async () => {
     const p = page(`<label for="s">Which offices?</label><select id="s" multiple><option value="b">Boston</option><option value="d">Denver</option><option value="r">Remote</option></select>`);
     const [r] = await p.fill({ steps: [{ prompt: "Which offices?", kind: "choice", content: "Boston\nRemote" }] });
