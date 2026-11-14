@@ -288,11 +288,29 @@ export function agencyWording(line: string): string {
   return line;
 }
 
+const COMPANY_SUFFIX = /^(?:inc|llc|ltd|corp|co|llp|plc|gmbh|n\.?a)\.?(?=\s*(?:\(|$))/i;
+
+/**
+ * Where the company starts in "Title, Company": after the last comma outside parentheses, so
+ * "Director, UX, Acme" keeps the title "Director, UX" (#1267). A suffix ("Globex, Inc.") stays with its company.
+ */
+function companyComma(s: string): number {
+  const at: number[] = [];
+  let depth = 0;
+  for (let i = 0; i < s.length; i++) {
+    if (s[i] === "(") depth++;
+    else if (s[i] === ")") depth = Math.max(0, depth - 1);
+    else if (depth === 0 && s.startsWith(", ", i)) at.push(i);
+  }
+  while (at.length > 1 && COMPANY_SUFFIX.test(s.slice(at[at.length - 1] + 2))) at.pop();
+  return at.length ? at[at.length - 1] : -1;
+}
+
 /** Title, company and city of a single role line ("Title, Company | City | dates"). */
 function roleOf(head: string) {
   const { text, right } = splitRole(head.replace(/^#{3,4}\s+/, "").trim());
   const [first, ...rest] = text.split(/\s+\|\s+/);
-  const k = first.indexOf(", ");
+  const k = companyComma(first);
   return { first, title: k > 0 ? first.slice(0, k) : first, company: k > 0 ? first.slice(k + 2) : "", city: rest.join(" | "), right };
 }
 
