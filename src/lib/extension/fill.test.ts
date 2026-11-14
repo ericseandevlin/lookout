@@ -150,6 +150,13 @@ describe("extension fill: choices", () => {
     expect(p.value("#s")).toBe("1");
   });
 
+  it("selects an option whose apostrophe is curly when the answer's is straight (#1255)", async () => {
+    const p = page(`<label for="s">Gender</label><select id="s"><option value="">Select</option><option value="m">Male</option><option value="d">I don’t wish to answer</option></select>`);
+    const [r] = await p.fill({ steps: [{ prompt: "Gender", kind: "choice", content: "I don't wish to answer", options: ["Male", "I don’t wish to answer"] }] });
+    expect(r).toMatchObject({ ok: true, how: "selected" });
+    expect(p.value("#s")).toBe("d");
+  });
+
   it("selects every line of the answer on a <select multiple> (#1132)", async () => {
     const p = page(`<label for="s">Which offices?</label><select id="s" multiple><option value="b">Boston</option><option value="d">Denver</option><option value="r">Remote</option></select>`);
     const [r] = await p.fill({ steps: [{ prompt: "Which offices?", kind: "choice", content: "Boston\nRemote" }] });
