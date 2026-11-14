@@ -46,7 +46,7 @@ export function SetupPanel({ answered, sources }: { answered: number; sources: n
               </div>
               {t.done ? <CheckIcon stroke={color.orange} /> : <div style={{ fontSize: 14, fontWeight: 600, color: "#A89F92" }}>{t.status}</div>}
             </div>
-            <div style={{ fontSize: 15.5, fontWeight: 600 }}>{t.title}</div>
+            <div style={{ fontSize: 16, fontWeight: 600 }}>{t.title}</div>
             <div style={{ fontSize: 14, lineHeight: 1.5, color: "#C9C1B5", textWrap: "pretty", flex: 1 }}>{t.body}</div>
             {t.href && (
               <Link href={t.href} style={{ alignSelf: "flex-start", height: 34, padding: "0 14px", borderRadius: 999, background: t.done ? "rgba(255,255,255,.1)" : color.orange, color: t.done ? "#fff" : color.ink, fontSize: 14, fontWeight: 600, marginTop: 4, display: "inline-flex", alignItems: "center", textDecoration: "none" }}>

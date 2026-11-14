@@ -10,7 +10,7 @@ export function ErrorFrame({ eyebrow, title, children, action }: { eyebrow: stri
       <div style={{ width: "100%", maxWidth: 460, background: "#fff", borderRadius: 16, padding: "28px 26px 30px", boxShadow: "0 24px 60px rgba(29,26,15,.08)", color: "#3B362C", fontSize: 15, lineHeight: 1.6 }}>
         <div className="wordmark" style={{ color: "#1D1A0F", marginBottom: 22 }}>Lookout</div>
         <div style={{ fontSize: 14, fontWeight: 700, letterSpacing: ".14em", textTransform: "uppercase", color: "#99220F" }}>{eyebrow}</div>
-        <h1 style={{ margin: "8px 0 8px", fontSize: 26, fontWeight: 700, letterSpacing: "-0.02em", color: "#1D1A0F" }}>{title}</h1>
+        <h1 style={{ margin: "8px 0 8px", fontSize: 27, fontWeight: 700, letterSpacing: "-0.02em", color: "#1D1A0F" }}>{title}</h1>
         {children}
         <div style={{ display: "flex", gap: 12, alignItems: "center", flexWrap: "wrap", marginTop: 22 }}>
           {action}

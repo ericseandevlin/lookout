@@ -351,7 +351,7 @@ function ExtensionSection() {
       {token ? (
         <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
           <div style={{ fontSize: 14, fontWeight: 600 }}>Paste this into the extension. It won&apos;t be shown again.</div>
-          <code style={{ fontSize: 12.5, wordBreak: "break-all", background: color.surface, borderRadius: 8, padding: "10px 12px" }}>{token}</code>
+          <code style={{ fontSize: 12, wordBreak: "break-all", background: color.surface, borderRadius: 8, padding: "10px 12px" }}>{token}</code>
           <div>
             <button onClick={copy} style={btn("solid")}>{copied ? "Copied" : "Copy token"}</button>
           </div>
@@ -361,7 +361,7 @@ function ExtensionSection() {
           <button onClick={make} style={btn(status?.connected ? "outline" : "solid")}>{status?.connected ? "Make a new token" : "Connect the extension"}</button>
           {status?.connected && (
             <>
-              <span style={{ fontSize: 13.5, color: color.t2 }}>Connected. {used}.</span>
+              <span style={{ fontSize: 14, color: color.t2 }}>Connected. {used}.</span>
               <button onClick={revoke} style={btn("text")}>Disconnect</button>
             </>
           )}

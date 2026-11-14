@@ -206,6 +206,9 @@ export function AdminPeople() {
   );
 }
 
+// Field labels above a short input, the same on every admin form (#1217).
+const fieldLabel: React.CSSProperties = { display: "flex", flexDirection: "column", gap: 6, fontSize: 14, fontWeight: 600, letterSpacing: ".06em", textTransform: "uppercase", color: color.t2 };
+
 function MoneyInput({ label, value, onSave }: { label: string; value: number; onSave: (v: number) => void }) {
   const [v, setV] = useState(String(value));
   const commit = () => {
@@ -214,7 +217,7 @@ function MoneyInput({ label, value, onSave }: { label: string; value: number; on
     else setV(String(value));
   };
   return (
-    <label style={{ display: "flex", flexDirection: "column", gap: 6, fontSize: 14, fontWeight: 600, letterSpacing: ".06em", textTransform: "uppercase", color: color.t2 }}>
+    <label style={fieldLabel}>
       {label}
       <input inputMode="decimal" value={v} onChange={(e) => setV(e.target.value)} onBlur={commit} onKeyDown={(e) => e.key === "Enter" && commit()} className="f-brick" style={{ ...input, width: 140, textTransform: "none", letterSpacing: 0, fontWeight: 500 }} />
     </label>
@@ -352,13 +355,13 @@ function GroupLinks() {
   return (
     <Row title="Group links" help="One link a whole class or meetup can use to make accounts, until it fills up, expires or you close it. Copy it and text it to the group.">
       <div style={{ display: "flex", flexDirection: "column", gap: 10, maxWidth: 620 }}>
-        <div style={{ display: "flex", gap: 6, flexWrap: "wrap", alignItems: "flex-end" }}>
+        <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "flex-end" }}>
           <input value={label} onChange={(e) => setLabel(e.target.value)} onKeyDown={(e) => e.key === "Enter" && create()} placeholder="Tuesday spin class" aria-label="Group link name" maxLength={80} className="f-brick" style={{ ...input, flex: 1, minWidth: 180, height: 38 }} />
-          <label style={{ display: "flex", flexDirection: "column", gap: 2, fontSize: 12, fontWeight: 600, color: color.t2 }}>
+          <label style={fieldLabel}>
             People
             <input inputMode="numeric" value={max} onChange={(e) => setMax(e.target.value)} aria-label="Most people" className="f-brick" style={small} />
           </label>
-          <label style={{ display: "flex", flexDirection: "column", gap: 2, fontSize: 12, fontWeight: 600, color: color.t2 }}>
+          <label style={fieldLabel}>
             Days
             <input inputMode="numeric" value={days} onChange={(e) => setDays(e.target.value)} aria-label="Days it lasts" className="f-brick" style={small} />
           </label>
@@ -370,7 +373,7 @@ function GroupLinks() {
             <input value={code} onChange={(e) => setCode(e.target.value)} placeholder="spin-tuesday" aria-label="Code in the link" maxLength={40} className="f-brick" style={{ ...input, width: 200, height: 34 }} />
           </label>
         ) : (
-          <button onClick={() => setMore(true)} style={{ ...btn("text"), alignSelf: "flex-start", height: 24, fontSize: 14 }}>Pick the code in the link</button>
+          <button onClick={() => setMore(true)} style={{ ...btn("text"), alignSelf: "flex-start", height: 24, padding: 0, fontSize: 14 }}>Pick the code in the link</button>
         )}
         <Msg text={err} />
         {groups && !groups.length && <span style={{ fontSize: 14, color: color.t2 }}>No group links yet.</span>}

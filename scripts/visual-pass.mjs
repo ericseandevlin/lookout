@@ -70,8 +70,8 @@ try {
       }
       await shot(name);
       if (name === "finds") {
-        // The drawer, opened from the first find.
-        const first = page.locator('[role="row"]').nth(1).getByRole("button", { name: / at / }).first();
+        // The drawer, opened from the first find: a table row on desktop, a card on a phone.
+        const first = page.getByRole("button", { name: / at / }).filter({ visible: true }).first();
         if (await first.count()) {
           await first.click();
           await page.getByRole("dialog").first().waitFor();
