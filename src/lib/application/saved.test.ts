@@ -99,3 +99,19 @@ describe("saved answers", () => {
     expect(match(old, "What is your ethnicity?")).toBeNull();
   });
 });
+
+describe("saved answers that depend on where the job is (#1227)", () => {
+  it("never keeps a sponsorship or work permit answer asked for the job's own country", () => {
+    expect(isCommon("Will you now or in the future require sponsorship to work in the country where this role is based?", "No")).toBe(false);
+    expect(isCommon("Are you legally authorized to work in the country where this job is located?", "Yes")).toBe(false);
+    expect(isCommon("Do you have the right to work in the position's country?", "Yes")).toBe(false);
+  });
+  it("never reuses one saved before the fix", () => {
+    const q = "Will you require sponsorship to work in the country where this role is based?";
+    expect(match(upsert([], q, "No"), q)).toBeNull();
+  });
+  it("still keeps the same question about where the person lives", () => {
+    expect(isCommon("Are you legally authorized to work in the country where you live?", "Yes")).toBe(true);
+    expect(isCommon("Will you now or in the future require visa sponsorship for this role?", "No")).toBe(true);
+  });
+});
