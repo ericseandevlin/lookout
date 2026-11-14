@@ -136,6 +136,14 @@ describe("discoverRfp (#272)", () => {
     expect((await board()).map((r) => r.opportunities.fingerprint)).toEqual(["sam:n1"]);
   });
 
+  it("counts a notice the model scores twice once, and not as already on the board (#1284)", async () => {
+    completeJSON.mockImplementationOnce(async () => ({ finds: [fit(0), fit(0, { score: 2 }), fit(1)] }));
+    const out = await discoverRfp(searchId, userId, "manual");
+    expect(out).toMatchObject({ found: 2, added: 2 });
+    expect((await board()).map((r) => r.user_opportunities.score).sort()).toEqual([4, 4]);
+    expect((await runs())[0].report?.tally.known ?? 0).toBe(0);
+  });
+
   it("leaves out a notice valued under the floor (#740)", async () => {
     await db.update(schema.searches).set({ answers: { naics: "561920", floor: "$500k" } }).where(eq(schema.searches.id, searchId));
     sam = () => Response.json({ totalRecords: 2, opportunitiesData: [notice("n1"), notice("n2", { award: { amount: "100000" } })] });
