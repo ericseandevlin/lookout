@@ -64,6 +64,15 @@ describe("dedupe keys", () => {
     expect(normUrl("https://jobs.lever.co/x/1?lever-source=LinkedIn&lever-origin=applied&ref=hn&src=feed&source=x")).toBe("jobs.lever.co/x/1");
     expect(normUrl("https://example.com/job/1?refId=a1&trackingId=b2&trk=c3")).toBe("example.com/job/1");
   });
+  it("drops ad and email click IDs, so a known job found through an ad stays known (#1193)", () => {
+    expect(normUrl("https://jobs.lever.co/acme/abc?fbclid=xyz")).toBe("jobs.lever.co/acme/abc");
+    expect(normUrl("https://boards.greenhouse.io/acme/jobs/123?gh_jid=123&gclid=abc")).toBe("boards.greenhouse.io/acme/jobs/123?gh_jid=123");
+    expect(normUrl("https://acme.com/careers/1?msclkid=1&mc_cid=2&mc_eid=3&_hsenc=a&_hsmi=b&mkt_tok=c&li_fat_id=d&igshid=e&_gl=1*f&gbraid=g&wbraid=h&dclid=i")).toBe("acme.com/careers/1");
+    expect(normUrl("https://acme.com/careers?jobId=9&GCLID=x")).toBe("acme.com/careers?jobid=9");
+    // A job ID that only starts like a click ID stays.
+    expect(normUrl("https://acme.com/careers?gclid_job=9")).toBe("acme.com/careers?gclid_job=9");
+  });
+
   it("leaves the rest of the query as written when it drops a tracking tag (#1166)", () => {
     expect(normUrl("https://careers.example.com/job?title=Senior%20Designer&utm_source=linkedin")).toBe(normUrl("https://careers.example.com/job?title=Senior%20Designer"));
     expect(normUrl("https://careers.example.com/job?loc=NY,US&ref=x")).toBe(normUrl("https://careers.example.com/job?loc=NY,US"));

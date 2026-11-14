@@ -66,8 +66,10 @@ export function fingerprint(company: string, title: string, location: string) {
     .digest("hex");
 }
 
-// Tracking params only, matched by exact name, so job IDs like referenceId or refnum stay in the key (#487).
-const TRACKING = /^(utm_.*|gh_src|source|src|ref|refid|ref_src|referrer|trk|trackingid|lever-source|lever-origin)$/i;
+// Tracking params only, matched by exact name, so job IDs like referenceId or refnum stay in the key (#487). Ad and email
+// click IDs too: Google, Meta, Microsoft, LinkedIn, Instagram, HubSpot, Mailchimp, Marketo and the Google linker (#1193).
+const TRACKING =
+  /^(utm_.*|gh_src|source|src|ref|refid|ref_src|referrer|trk|trackingid|lever-source|lever-origin|gclid|gbraid|wbraid|dclid|fbclid|msclkid|li_fat_id|igshid|_hsenc|_hsmi|mc_cid|mc_eid|mkt_tok|_gl)$/i;
 
 /** A query pair's name, decoded when it can be. */
 const pairName = (p: string) => {
