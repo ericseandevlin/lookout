@@ -24,9 +24,9 @@ const CLOSED = [
   // A colon starts one only after a status label: "Visa sponsorship: No longer available" is about the visa (#1007).
   /(?:^|[.!?\n]\s*|\b(?:text|status|job status|posting status|job|posting|position|role):\s*)(?:sorry[,!]?\s*)?no longer (available|active|posted)\b/im,
   // Not "open until the position has been filled" or "once the position has been filled, this posting will be removed" (#903).
-  /(?<!\b(?:until(?: such time as)?|once|when|after|if|before|unless|for|of|to|on|with|in|about) (?:the |this |a |our )?)(job|position|posting|role|requisition|opening) (is )?(no longer|has (?:already |now )?been) (available|filled|closed|removed)/i,
+  /(?<!\b(?:(?:until|till|til)(?: such time as)?|once|when|after|if|before|unless|for|of|to|on|with|in|about) (?:the |this |a |our )?)(job|position|posting|role|requisition|opening) (is )?(no longer|has (?:already |now )?been) (available|filled|closed|removed)/i,
   /(job|posting|position|page) (was )?not found/i,
-  /(?<!\b(?:until|once|when|after|if|before|unless) )this (job|position|posting|role)( ad)? (is |has )?(now )?(expired|closed|been filled)\b(?! to\b|[- ]?date\b|-)/i,
+  /(?<!\b(?:until|till|til|once|when|after|if|before|unless) )this (job|position|posting|role)( ad)? (is |has )?(now )?(expired|closed|been filled)\b(?! to\b|[- ]?date\b|-)/i,
   // More wordings careers sites use (#747).
   // Not a live page's "Job Posting Expired Date: 12/31" label (#1083).
   /\b(job|posting|position|listing|vacancy|opportunity|role)( ad)? (has )?expired\b(?![- ]?date\b)/i,
@@ -48,9 +48,10 @@ const CLOSED = [
 const NOT_A_VERDICT = [
   /(down|offline|closed|unavailable) (for|due to) (scheduled |planned )?maintenance|(under|undergoing) (scheduled )?maintenance|(scheduled|planned) maintenance|maintenance (mode|window|in progress|underway)/i, /temporarily unavailable/i, /access denied|forbidden|captcha|verify you are human|enable javascript/i];
 
+// "Till" and "'til" read the same as "until" (#1101).
 // "Until such time as this position has been filled", "as soon as the role is filled": a condition about the future (#980).
 // "Once the role is filled, the posting is closed" leads in a clause early, so these count anywhere in the sentence.
-const CONDITION = /\b(until|as soon as|once(?! again\b)|when|whenever|if|unless)\b/i;
+const CONDITION = /\b(until|till|til|as soon as|once(?! again\b)|when|whenever|if|unless)\b/i;
 // "After" and "before" are mostly prepositions ("After careful consideration, this position has been filled"), so they
 // count only in the clause right before the phrase (#1006).
 const NEAR_CONDITION = /\b(after|before)\b/i;
