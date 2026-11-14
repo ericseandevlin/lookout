@@ -191,8 +191,18 @@ export function newNumbers(master: string, draft: string): string[] {
     const s = norm(raw);
     return new Set((s.match(/\$?\d[\d,.]*(?:\s?(?:%|mm|k|m|b|x|\+)(?![a-z]))?/gi) ?? []).map((n) => n.toLowerCase().replace(/[,\s]/g, "").replace(/\.$/, "")));
   };
-  const have = nums(master);
-  return [...nums(draft)].filter((n) => n && !have.has(n) && !/^(19|20)\d\d$/.test(n));
+  // Round numbers in one spelling: "1,000,000" is "1m" and "250,000" is "250k", like "1M" and "250K" (#1148).
+  const short = (n: string) => {
+    const m = /^(\$?)(\d{4,})(\+?)$/.exec(n);
+    if (!m) return n;
+    const v = Number(m[2]);
+    for (const [u, k] of [[1e9, "b"], [1e6, "m"], [1e3, "k"]] as const) if (v >= u && Number.isInteger((v * 100) / u)) return m[1] + String(v / u) + k + m[3];
+    return n;
+  };
+  const isYear = (n: string) => /^(19|20)\d\d$/.test(n);
+  const have = new Set([...nums(master)].map(short));
+  // The master's "over 20" is "20+": a plain "20" in the draft says no more than that (#1148).
+  return [...nums(draft)].filter((n) => n && !isYear(n) && !have.has(short(n)) && !have.has(short(n) + "+"));
 }
 
 /** The resume's version note, as bullets: score, what was added where, each change, numbers to check. */
