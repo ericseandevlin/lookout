@@ -150,6 +150,27 @@ describe("extension fill: choices", () => {
     expect(p.value("#s")).toBe("1");
   });
 
+  it("selects every line of the answer on a <select multiple> (#1132)", async () => {
+    const p = page(`<label for="s">Which offices?</label><select id="s" multiple><option value="b">Boston</option><option value="d">Denver</option><option value="r">Remote</option></select>`);
+    const [r] = await p.fill({ steps: [{ prompt: "Which offices?", kind: "choice", content: "Boston\nRemote" }] });
+    expect(r).toMatchObject({ ok: true, how: "selected 2" });
+    expect([...p.doc.querySelectorAll<HTMLOptionElement>("#s option")].filter((o) => o.selected).map((o) => o.value)).toEqual(["b", "r"]);
+  });
+
+  it("takes the first line on a one-choice <select> and reports the rest not filled (#1132)", async () => {
+    const p = page(`<label for="s">Which office?</label><select id="s"><option value="">Select</option><option value="b">Boston</option><option value="r">Remote</option></select>`);
+    const [r] = await p.fill({ steps: [{ prompt: "Which office?", kind: "choice", content: "Boston\nRemote" }] });
+    expect(r).toMatchObject({ ok: false, how: "one choice only, not filled: Remote" });
+    expect(p.value("#s")).toBe("b");
+  });
+
+  it("reports a <select multiple> line that isn't an option and selects nothing (#1132)", async () => {
+    const p = page(`<label for="s">Which offices?</label><select id="s" multiple><option value="b">Boston</option><option value="r">Remote</option></select>`);
+    const [r] = await p.fill({ steps: [{ prompt: "Which offices?", kind: "choice", content: "Boston\nParis" }] });
+    expect(r).toMatchObject({ ok: false, how: "option not in the list: Paris" });
+    expect([...p.doc.querySelectorAll<HTMLOptionElement>("#s option")].some((o) => o.selected)).toBe(false);
+  });
+
   it("says so when the answer isn't one of the <select> options", async () => {
     const p = page(`<label for="s">Pronouns</label><select id="s"><option>She/her</option><option>He/him</option></select>`);
     const [r] = await p.fill({ steps: [{ prompt: "Pronouns", kind: "choice", content: "They/them" }] });

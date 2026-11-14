@@ -338,7 +338,27 @@
         return { ok: true, how: `checked ${picks.length}` };
       }
       if (el.tagName === "SELECT") {
-        const opt = el.options[pickOne(step.content, [...el.options].map((o) => o.textContent))];
+        const labels = [...el.options].map((o) => o.textContent);
+        // Several lines are several choices, as for custom dropdowns (#1126, #1132): every line on a <select multiple>,
+        // else the first and the rest reported not filled. Same as the worker.
+        const lines = (step.content || "").split(/\n+/).map((t) => t.trim()).filter(Boolean);
+        if (lines.length > 1) {
+          const picks = lines.map((l) => pickOne(l, labels));
+          if (!el.multiple) {
+            const first = el.options[picks[0]];
+            if (!first) return { ok: false, how: "option not in the list" };
+            el.value = first.value;
+            el.dispatchEvent(new Event("change", { bubbles: true }));
+            return { ok: false, how: `one choice only, not filled: ${lines.slice(1).join(", ").slice(0, 60)}` };
+          }
+          const miss = lines.find((_, n) => picks[n] < 0);
+          if (miss) return { ok: false, how: `option not in the list: ${miss.slice(0, 60)}` };
+          [...el.options].forEach((o, n) => (o.selected = picks.includes(n)));
+          el.dispatchEvent(new Event("input", { bubbles: true }));
+          el.dispatchEvent(new Event("change", { bubbles: true }));
+          return { ok: true, how: `selected ${new Set(picks).size}` };
+        }
+        const opt = el.options[pickOne(step.content, labels)];
         if (!opt) return { ok: false, how: "option not in the list" };
         el.value = opt.value;
         el.dispatchEvent(new Event("change", { bubbles: true }));

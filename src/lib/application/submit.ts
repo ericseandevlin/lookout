@@ -281,6 +281,22 @@ async function fillOne(page: Page, s: FillStep): Promise<{ ok: boolean; how: str
     if (tag.startsWith("select")) {
       // The option the answer means, not only its exact text: "Yes, I am authorized" is the "Yes" option (#695).
       const labels = (await field.locator("option").allTextContents()).map((t) => t.replace(/\s+/g, " ").trim());
+      // Several lines are several choices, as for custom dropdowns (#1126, #1132): every line on a <select multiple>,
+      // else the first and the rest reported not filled. Same as the extension.
+      const lines = s.content.split(/\n+/).map((t) => t.trim()).filter(Boolean);
+      if (lines.length > 1) {
+        const picks = lines.map((l) => pickOne(l, labels));
+        if ((await field.evaluate((e) => String(e.getAttribute("multiple") !== null))) !== "true") {
+          if (picks[0] < 0) return { ok: false, how: "option not in the list" };
+          await field.selectOption({ label: labels[picks[0]] });
+          return { ok: false, how: `one choice only, not filled: ${lines.slice(1).join(", ").slice(0, 60)}` };
+        }
+        const miss = lines.find((_, n) => picks[n] < 0);
+        if (miss) return { ok: false, how: `option not in the list: ${miss.slice(0, 60)}` };
+        const chosen = [...new Set(picks)];
+        await field.selectOption(chosen.map((n) => ({ label: labels[n] })));
+        return { ok: true, how: `selected ${chosen.length}` };
+      }
       const i = pickOne(s.content, labels);
       if (i < 0) return { ok: false, how: "option not in the list" };
       await field.selectOption({ label: labels[i] });
