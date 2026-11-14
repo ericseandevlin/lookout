@@ -318,4 +318,13 @@ describe("findPay", () => {
     // A label far up the page or a pay schedule is not the unit.
     expect(t("Paid monthly.\n\nRange: $45 - $55")).toBeNull();
   });
+  it("reads a range in pounds or euros from the page text (#1186)", () => {
+    const t = (text: string) => findPay("", text);
+    expect(t("Salary: £60,000 - £70,000 per annum")).toEqual({ min: 60000, max: 70000, currency: "GBP", source: "text" });
+    expect(t("€50k – €60k plus bonus")).toMatchObject({ min: 50000, max: 60000, currency: "EUR" });
+    expect(t("between £55,000 and £65,000")).toMatchObject({ min: 55000, max: 65000, currency: "GBP" });
+    expect(findPay("<p>Pay: &pound;60,000 &ndash; &pound;70,000</p>")).toMatchObject({ min: 60000, max: 70000, currency: "GBP" });
+    // A dollar range still reads as dollars.
+    expect(t("$150,000 - $180,000")).toMatchObject({ currency: "USD" });
+  });
 });
