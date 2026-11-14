@@ -183,11 +183,17 @@ function label(text: string, at: number) {
 // $30,000", or "$25,000 - $50,000 signing bonus". Above $20k these pass as a year's pay and came first on the page (#1238).
 const EXTRA = /\b(?:bonus(?:es)?|sign(?:ing|-on)|relocation|equity|stock|rsus?|stipends?|allowances?)\b/i;
 const BASE = /\b(?:base|salary|salaries|pay range|wages?)\b/i;
-const EXTRA_AFTER = /^[\s,.;:()-]*(?:(?:usd|eur|gbp|cad)\b\s*)?(?:(?:annual|yearly|target|performance|one-time)\s+)?(?:bonus|sign(?:ing|-on)|relocation|equity|stock|rsus?|stipend|allowance)\b/i;
-/** Only the words since the last number count: "Bonus $5,000 - $8,000. Salary " names the salary, not the bonus. */
+// The word after the range names it only when nothing but spaces comes between: "$25,000 - $50,000 signing bonus". After a
+// comma or bracket it lists extras on top of the salary: "$150,000 - $180,000, bonus eligible", "(equity included)" (#1247).
+const EXTRA_AFTER = /^\s*(?:(?:usd|eur|gbp|cad)\b\s*)?(?:(?:annual|yearly|target|performance|one-time)\s+)?(?:bonus|sign(?:ing|-on)|relocation|equity|stock|rsus?|stipend|allowance)\b/i;
+/**
+ * Only the words of the range's own clause count: since the last number, sentence end or comma. "Bonus $5,000 - $8,000.
+ * Salary " names the salary, and "In addition to equity, the annual range is " names the range, not the equity (#1247).
+ */
 const namesExtra = (before: string, tail: string) => {
-  const words = before.split(/\d/).pop() ?? "";
-  return (EXTRA.test(words) && !BASE.test(words)) || EXTRA_AFTER.test(tail);
+  const words = before.split(/\d|[.!?;](?:\s|$)|,\s/).pop() ?? "";
+  if (BASE.test(words)) return false;
+  return EXTRA.test(words) || EXTRA_AFTER.test(tail);
 };
 
 function fromText(text: string): Pay | null {

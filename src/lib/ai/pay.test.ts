@@ -275,6 +275,23 @@ describe("findPay", () => {
     expect(findPay("", "Annual bonus target $30,000 - $45,000")).toBeNull();
   });
 
+  it.each([
+    "Salary: $150,000 - $180,000, equity and full benefits",
+    "$150,000 - $180,000 (bonus eligible)",
+    "$150,000 - $180,000, bonus eligible",
+    "Base salary: $150,000 - $180,000, equity, 401k",
+    "$150,000 - $180,000 (Stock options included)",
+    "This role is eligible for bonus and equity. The expected range is $150,000 - $180,000.",
+    "In addition to equity, the annual range for this role is $150,000 - $180,000.",
+  ])("keeps the salary in %s when extras are listed around it (#1247)", (text) => {
+    expect(findPay("", text)).toMatchObject({ min: 150000, max: 180000, currency: "USD" });
+  });
+
+  it("still skips a range named by the word right after it (#1247)", () => {
+    expect(findPay("", "$25,000 - $50,000 signing bonus")).toBeNull();
+    expect(findPay("", "$30,000 - $45,000 annual bonus")).toBeNull();
+  });
+
   it("still reads a code right after the range (#811)", () => {
     expect(findPay("", "$150,000 - $200,000 CAD per year")).toMatchObject({ currency: "CAD" });
     expect(findPay("", "$150,000 - $200,000 a year (AUD), plus super")).toMatchObject({ currency: "AUD" });
