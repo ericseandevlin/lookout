@@ -66,12 +66,15 @@
   /**
    * The control labeled with the question: the exact label first, then a label that holds the question, same as the worker
    * (#698). A shorter label the question only starts with is another field: "Location" is not "Location: can you work
-   * onsite?" (#888). Long labels (80+ characters) match on their first 80, as in pickOne.
+   * onsite?" (#888). Long labels (80+ characters) match on their first 80, as in pickOne. A "(required)" or "(optional)"
+   * mark is not part of the label, and a label holds the question only as whole words: "City" is not in "Ethnicity" (#1253).
    */
   function labeledBy(all, prompt) {
     const q = norm(prompt);
+    const own = (el) => labelOf(el).replace(/\s*\((?:required|optional)\)$/, "");
+    const word = new RegExp(`(?:^|[^\\p{L}\\p{N}])${q.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}(?![\\p{L}\\p{N}])`, "u");
     const long = (el) => Math.min(labelOf(el).length, q.length) >= 80 && sameText(labelOf(el), prompt);
-    return all.find((el) => labelOf(el) === q) || all.find((el) => labelOf(el).includes(q)) || all.find(long) || null;
+    return all.find((el) => own(el) === q) || all.find((el) => word.test(labelOf(el))) || all.find(long) || null;
   }
 
   function controlFor(prompt) {

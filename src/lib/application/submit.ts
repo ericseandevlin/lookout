@@ -172,14 +172,19 @@ async function phoneCountry(page: Page): Promise<{ ok: boolean; how: string } | 
   }
 }
 
-/** A label that is this text, any case, with or without a required marker: "*", Lever's "✱" or "(required)" (#1150). */
+/**
+ * A label that is this text, any case, with or without a marker: "*", Lever's "✱", "(required)" (#1150) or "(optional)"
+ * (#1253).
+ */
 const pattern = (text: string) => text.trim().replace(/[.*+?^${}()|[\]\\]/g, "\\$&").replace(/\s+/g, "\\s+");
-const labelIs = (text: string) => new RegExp(`^\\s*${pattern(text)}\\s*(\\*|✱|\\(required\\))?\\s*$`, "i");
+const labelIs = (text: string) => new RegExp(`^\\s*${pattern(text)}\\s*(\\*|✱|\\((required|optional)\\))?\\s*$`, "i");
+/** A label that holds this text as whole words: "City" is in "Current City", not in "Ethnicity" (#1253). */
+const labelHas = (text: string) => new RegExp(`(?:^|[^\\p{L}\\p{N}])${pattern(text)}(?![\\p{L}\\p{N}])`, "iu");
 
 /** The text box labeled with a cover letter prompt, or null: a textarea or a plain text input, never an upload. */
 async function letterBox(page: Page, prompt: string) {
   const exact = page.getByLabel(labelIs(prompt)).first();
-  const field = (await exact.count()) ? exact : page.getByLabel(prompt, { exact: false }).first();
+  const field = (await exact.count()) ? exact : page.getByLabel(labelHas(prompt)).first();
   if (!(await field.count())) return null;
   const tag = await field.evaluate((e) => `${e.tagName.toLowerCase()}:${e.getAttribute("type") ?? ""}`);
   return /^textarea:|^input:(text)?$/.test(tag) ? field : null;
@@ -248,7 +253,7 @@ async function fillOne(page: Page, s: FillStep): Promise<{ ok: boolean; how: str
     // is not "If other, how did you hear about us?" (#952).
     const hasExact = (await exact.count()) > 0;
     const groupFirst = !hasExact && s.kind === "choice" && (await named.count()) > 0;
-    const field = hasExact ? exact : page.getByLabel(s.prompt, { exact: false }).first();
+    const field = hasExact ? exact : page.getByLabel(labelHas(s.prompt)).first();
     const tag = !groupFirst && (await field.count()) ? await field.evaluate((e) => `${e.tagName.toLowerCase()}:${e.getAttribute("type") ?? ""}:${e.getAttribute("role") ?? ""}`) : "";
     // A [role=radiogroup] named by aria-labelledby is the labeled control itself.
     const labeledGroup = /:(radio)?group$/.test(tag);
