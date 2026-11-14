@@ -289,3 +289,21 @@ describe("more closed wordings (#1251)", () => {
     expect(classifyPage(200, `TITLE: Product Designer\nTEXT: ${text}`).state).toBe("open");
   });
 });
+
+describe("a job that was removed (#1271)", () => {
+  it.each([
+    "Sorry, this job was removed at 3:14 a.m. (CST) on Friday, November 7, 2026.",
+    "This position was filled.",
+    "This posting was closed by the employer.",
+  ])("reads %s as closed", (text) => {
+    expect(classifyPage(200, `TITLE: Product Designer\nTEXT: ${text}`).state).toBe("gone");
+  });
+  it.each([
+    "This role was created to lead our design system. Apply now.",
+    "This position was available to remote candidates last year; it is now hybrid. Apply now.",
+    "The person in this role was filled in on our roadmap. Apply now.",
+    "We will review applications until the position was filled. Apply now.",
+  ])("keeps %s open", (text) => {
+    expect(classifyPage(200, `TITLE: Product Designer\nTEXT: ${text}`).state).toBe("open");
+  });
+});
