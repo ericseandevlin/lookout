@@ -390,6 +390,11 @@ describe("words about hours or contract length are not the pay period (#1002)", 
     ["Expected semimonthly pay", null],
     ["Weekly pay for a role of 40 hours per week", "week"],
     ["Desired monthly salary for a contract that runs for a year", "month"],
+    // #1156
+    ["What is your desired hourly rate, based on 2,080 hours per year?", "hour"],
+    ["Desired hourly rate (full time is 2,080 hours a year)", "hour"],
+    ["Hourly rate (2080 hrs/yr)", "hour"],
+    ["Expected salary for a full-time role (2,080 hours per year)", null],
   ])("%s asks per %s", (q, per) => {
     expect(askPer(q)).toBe(per);
   });
