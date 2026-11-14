@@ -52,8 +52,9 @@ export function classify(prompt: string): EeoCategory | null {
   if (/disabilit/.test(p)) return "disability";
   if (/\brace\b|racial|ethnic/.test(p)) return "race";
   if (/hispanic|latin[oax]/.test(p)) return "hispanic";
-  // "Sex" alone asks gender; "sexual orientation" was caught above (#816).
-  if (/gender|^\W*sex\b/.test(p)) return "gender";
+  // "Sex" alone asks gender; "sexual orientation" was caught above (#816). So do "What is your sex?" and "Please select
+  // your legal sex", but not "convicted of a sex offense" (#1275).
+  if (/gender|^\W*sex\b|\byour (\w+ )?sex\b(?! offen)/.test(p)) return "gender";
   return null;
 }
 
