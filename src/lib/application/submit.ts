@@ -170,9 +170,9 @@ async function phoneCountry(page: Page): Promise<{ ok: boolean; how: string } | 
   }
 }
 
-/** A label that is this text, any case, with or without the required "*". */
+/** A label that is this text, any case, with or without a required marker: "*", Lever's "✱" or "(required)" (#1150). */
 const pattern = (text: string) => text.trim().replace(/[.*+?^${}()|[\]\\]/g, "\\$&").replace(/\s+/g, "\\s+");
-const labelIs = (text: string) => new RegExp(`^\\s*${pattern(text)}\\s*\\*?\\s*$`, "i");
+const labelIs = (text: string) => new RegExp(`^\\s*${pattern(text)}\\s*(\\*|✱|\\(required\\))?\\s*$`, "i");
 
 /** The text box labeled with a cover letter prompt, or null: a textarea or a plain text input, never an upload. */
 async function letterBox(page: Page, prompt: string) {

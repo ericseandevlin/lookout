@@ -396,6 +396,19 @@ describe("runFill controls (#567)", () => {
     expect(page.did.some((d) => d.startsWith("fill If other"))).toBe(false);
   });
 
+  for (const heading of ["How did you hear about us? (required)", "How did you hear about us?✱"])
+    it(`answers the radio group headed "${heading}", not the "If other" box (#1150)`, async () => {
+      const id = await seed("approved", [{ kind: "field", prompt: "How did you hear about us?", content: "LinkedIn", options: ["LinkedIn", "Other"] }]);
+      page = fakePage([
+        { kind: "group", type: "radio", role: "group", label: heading, options: ["LinkedIn", "Other"] },
+        { kind: "control", label: "If other, how did you hear about us?" },
+      ]);
+      const r = await runFill(id, "test");
+      expect(r.log[0]).toMatchObject({ ok: true, how: "checked 1" });
+      expect(page.did).toContain("check LinkedIn");
+      expect(page.did.some((d) => d.startsWith("fill If other"))).toBe(false);
+    });
+
   it("checks the radio the answer means when the radio itself is labeled with the question (#720)", async () => {
     const q = "Can you work onsite?";
     const id = await seed("approved", [{ kind: "field", prompt: q, content: "No", options: ["Yes", "No"] }]);

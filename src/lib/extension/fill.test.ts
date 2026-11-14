@@ -760,4 +760,15 @@ describe("extension probe and submit watch", () => {
     expect(p.value("#y")).toBe("");
     expect(log[0]).toMatchObject({ ok: false, how: "number field, answer has no number" });
   });
+
+  for (const legend of ["How did you hear about us? (required)", "How did you hear about us?✱"])
+    it(`radio group "${legend}" beats the "If other" text box (#1150)`, async () => {
+      const p = page(`<fieldset><legend>${legend}</legend>
+          <label><input type="radio" name="src" id="li"> LinkedIn</label><label><input type="radio" name="src" id="ot"> Other</label></fieldset>
+          <label for="o">If other, how did you hear about us?</label><input id="o">`);
+      const log = await p.fill({ steps: [{ prompt: "How did you hear about us?", kind: "choice", content: "LinkedIn", options: ["LinkedIn", "Other"], required: true }] });
+      expect(log[0]).toMatchObject({ ok: true, how: "checked 1" });
+      expect((p.doc.getElementById("li") as HTMLInputElement).checked).toBe(true);
+      expect(p.value("#o")).toBe("");
+    });
 });
