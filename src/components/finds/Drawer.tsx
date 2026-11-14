@@ -246,7 +246,7 @@ export function Drawer({ f, currentComp, close, toggle, setStage, enter, nav }: 
           </div>
         )}
         {asking && !f.archived && (
-          <div style={{ padding: "14px 26px 0", borderTop: `1px solid ${color.border}`, display: "flex", flexDirection: "column", gap: 8 }}>
+          <div className={nav.index >= 0 && nav.total > 1 ? "drawer-foot" : undefined} style={{ padding: "14px 26px 0", borderTop: `1px solid ${color.border}`, display: "flex", flexDirection: "column", gap: 8 }}>
             <div style={{ fontSize: 14, fontWeight: 600 }}>What&apos;s off about it? Lookout uses this on your next searches.</div>
             <div role="group" aria-label="Why it's not a fit" style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
               {NOT_A_FIT.map((r) => (
@@ -255,7 +255,7 @@ export function Drawer({ f, currentComp, close, toggle, setStage, enter, nav }: 
             </div>
           </div>
         )}
-        <div style={{ padding: "16px 26px", borderTop: asking && !f.archived ? 0 : `1px solid ${color.border}`, display: "flex", gap: 8 }}>
+        <div className={nav.index >= 0 && nav.total > 1 ? "drawer-foot" : undefined} style={{ padding: "16px 26px", borderTop: asking && !f.archived ? 0 : `1px solid ${color.border}`, display: "flex", gap: 8 }}>
           <button
             onClick={() => (f.archived ? patchFind(f.id, { archived: false, feedback: null }) : setAsking((v) => !v))}
             aria-expanded={f.archived ? undefined : asking}

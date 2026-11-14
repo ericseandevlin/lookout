@@ -8,6 +8,8 @@ on:
   pull_request:
     paths:
       - scripts/visual-pass.mjs
+      - src/components/**
+      - src/app/globals.css
       - scripts/demo-data.ts
       - .github/workflows/visual-pass.yml
 
