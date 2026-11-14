@@ -172,7 +172,7 @@ export async function processApplication(id: string) {
       );
       await tx.update(schema.applications).set({ ats: scan.ats, route: scan.route }).where(eq(schema.applications.id, id));
     });
-    Object.assign(report, { source: scan.source, applyUrl: scan.applyUrl, hasEeo: scan.hasEeo, howToApply: (scan as { howToApply?: string }).howToApply || undefined, scannedAt: new Date().toISOString() });
+    Object.assign(report, { source: scan.source, letterAdded: !scan.items.some((i) => i.kind === "cover_letter"), applyUrl: scan.applyUrl, hasEeo: scan.hasEeo, howToApply: (scan as { howToApply?: string }).howToApply || undefined, scannedAt: new Date().toISOString() });
     await setStatus(id, "drafting", report);
 
     await assertBudget(app.userId);

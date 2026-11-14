@@ -192,7 +192,7 @@ describe("processApplication (#378)", () => {
     const done = await getApp(app.id);
     expect(done.status).toBe("needs_review");
     expect(done).toMatchObject({ ats: "greenhouse", route: expect.any(String) });
-    expect(done.report).toMatchObject({ source: "form", applyUrl: GH_URL, scannedAt: expect.any(String), draftedAt: expect.any(String) });
+    expect(done.report).toMatchObject({ source: "form", letterAdded: true, applyUrl: GH_URL, scannedAt: expect.any(String), draftedAt: expect.any(String) });
     expect(done.report.error).toBeUndefined();
     expect(done.report.keywordPlan).toBeDefined();
     // keywords + answers, a cent each.
