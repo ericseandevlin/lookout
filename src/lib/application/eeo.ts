@@ -93,8 +93,9 @@ export function matchOption(choice: string, options: string[]): string | null {
   const exact = options.find((o) => o.trim().toLowerCase() === choice.toLowerCase());
   if (exact) return exact;
   const re = SYNONYMS[choice];
-  // "Not a veteran" must not match "I am a veteran", and the reverse: test the negative form first.
-  if (choice === "Veteran") return options.find((o) => !SYNONYMS["Not a veteran"].test(o) && re.test(o)) ?? null;
+  // "Not a veteran" must not match "I am a veteran", and the reverse: test the negative form first. "I decline to
+  // self-identify as a protected veteran" is not a veteran's answer either (#1142).
+  if (choice === "Veteran") return options.find((o) => !DECLINES.test(o) && !SYNONYMS["Not a veteran"].test(o) && re.test(o)) ?? null;
   // Workday race lists say "White (Not Hispanic or Latino)": a Hispanic person must not get one of those (#662).
   const negated = (o: string) =>
     (choice === "Hispanic or Latino" && /\bnot\s+(hispanic|latin)/i.test(o)) ||
