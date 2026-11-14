@@ -43,10 +43,11 @@ const startsWord = (a: string, b: string) => !!a && b.startsWith(a) && (b.length
 
 /**
  * An option or answer as compared: a required mark ("Yes*") is not part of it (#1061), and curly quotes match straight
- * ones, so "I don't wish to answer" lands on "I don’t wish to answer" (#1255). fill.js carries the same rule.
+ * ones, so "I don't wish to answer" lands on "I don’t wish to answer" (#1255). An en or em dash, spaced or not, is a
+ * hyphen: "Yes - I am authorized" lands on "Yes – I am authorized" or "Yes—I am authorized" (#1277). fill.js carries the same rule.
  */
 const normChoice = (t: string) =>
-  t.replace(/\*/g, "").replace(/[‘’]/g, "'").replace(/[“”]/g, '"').replace(/\s+/g, " ").trim().toLowerCase();
+  t.replace(/\*/g, "").replace(/[‘’]/g, "'").replace(/[“”]/g, '"').replace(/\s*[‐‑‒–—―-]\s*/g, " - ").replace(/\s+/g, " ").trim().toLowerCase();
 
 /**
  * Which option labels to tick on a "select any that apply" question (#165). One answer per line.

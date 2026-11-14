@@ -116,6 +116,15 @@ describe("blank options (#722)", () => {
   });
 });
 
+describe("dashes (#1277)", () => {
+  it("an en or em dash in an option matches a hyphen in the answer, and the reverse", () => {
+    const race = ["White – A person having origins in any of the original peoples of Europe", "Hispanic or Latino – A person of Cuban, Mexican or other Spanish culture"];
+    expect(pickOne("Hispanic or Latino - A person of Cuban, Mexican or other Spanish culture", race)).toBe(1);
+    expect(pickOne("Yes - I am authorized to work in the US", ["Yes—I am authorized to work in the US", "No—I am not authorized"])).toBe(0);
+    expect(pickOptions("Full-time – onsite", ["Full-time - onsite", "Part-time - remote"])).toEqual(["Full-time - onsite"]);
+  });
+});
+
 describe("pickOne (#695)", () => {
   const long = "I acknowledge that I have read and understood the privacy notice for job applicants in the United States";
   it("takes exact text, then a word-boundary prefix either way, then a long label by its first 80 characters", () => {
