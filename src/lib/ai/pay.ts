@@ -8,6 +8,7 @@ import { decodeEntities } from "./entities";
 export type Pay = { min: number; max: number; currency: string; source: string };
 
 const HOURS_PER_YEAR = 2080;
+const DAYS_PER_YEAR = 260;
 const plausible = (n: number) => n >= 20_000 && n <= 2_000_000;
 
 /** "$224,000", "224000", "$224K", "224.5k" -> 224000 */
@@ -18,7 +19,8 @@ export function money(s: string): number | null {
 }
 
 function annual(min: number, max: number, unit: string, currency: string, source: string): Pay | null {
-  const k = /hour/i.test(unit) ? HOURS_PER_YEAR : /semimonth/i.test(unit) ? 24 : /month/i.test(unit) ? 12 : /biweek/i.test(unit) ? 26 : /week/i.test(unit) ? 52 : 1;
+  // A day rate is 260 working days, the same as the pay floor reads it (#982, #1187).
+  const k = /hour/i.test(unit) ? HOURS_PER_YEAR : /day/i.test(unit) ? DAYS_PER_YEAR : /semimonth/i.test(unit) ? 24 : /month/i.test(unit) ? 12 : /biweek/i.test(unit) ? 26 : /week/i.test(unit) ? 52 : 1;
   const lo = Math.round(Math.min(min, max) * k), hi = Math.round(Math.max(min, max) * k);
   return plausible(lo) && plausible(hi) && hi <= lo * 4 ? { min: lo, max: hi, currency, source } : null;
 }
@@ -83,7 +85,7 @@ function fromGreenhouse(html: string): Pay | null {
 // A dollar amount: $224,000 / $224K / $224000 / $55.50 (hourly). The second end of a range may drop the "$" ("$224,000 - 308,000").
 const AMT = String.raw`\d{1,3}(?:,\d{3})+(?:\.\d+)?|\d+(?:\.\d+)?\s?[kK]\b|\d{4,7}(?:\.\d+)?|\d{2,3}(?:\.\d{2})?`;
 // A unit right after the first end, as in "$95/hr - $110/hr" or "$95 an hour - $110 an hour" (#682).
-const FIRST_UNIT = String.raw`\s?(?:\/\s?|(?:per|an?)\s)(?:hours?|hr|h|years?|yr|months?|mo|weeks?|wk)\b`;
+const FIRST_UNIT = String.raw`\s?(?:\/\s?|(?:per|an?)\s)(?:hours?|hr|h|days?|years?|yr|months?|mo|weeks?|wk)\b`;
 // Either end may carry a currency: "US$120,000 - US$150,000", "CA$...", "$120,000 USD - $150,000 USD" (#686),
 // "CAD $120,000 - $150,000" (#709). Only a three-letter code may have a space, so "a $120,000" stays a word.
 // "S$", "SG$", "NZ$" and "HK$" name their dollar too (#883), and so do "AU$", "MX$", "NT$" and "SGD $120,000" (#905).
@@ -121,6 +123,8 @@ const UNITS: [string, RegExp][] = [
   // "per hr", "an hr", "per mo", "per wk" and "per yr" read like the full words (#752).
   ["YEAR", /\/\s?y(?:ea)?r\b|\b(?:per|a|an|each) year\b|\bper (?:yr|annum)\b|\bannual(?:ly)?\b|\byearly\b/i],
   ["HOUR", /\/\s?h(?:ou)?r\b|\/\s?h\b|\b(?:per|a|an|each) hour\b|\b(?:per|an) hr\b|\bhourly\b/i],
+  // "$600 - $800 per day", "a day rate of" after the numbers (#1187).
+  ["DAY", /\/\s?day\b|\b(?:per|a|an|each) day\b|\bdaily\b|\bday rate\b/i],
   // "bi-weekly" is named before "weekly" inside it, so it wins as the unit named first (#708).
   ["BIWEEK", /\bbi-?weekly\b|\bevery (?:two|2) weeks\b/i],
   ["WEEK", /\/\s?w(?:ee)?k\b|\b(?:per|a|each) week\b|\bper wk\b|\bweekly\b/i],
@@ -130,8 +134,8 @@ const UNITS: [string, RegExp][] = [
 ];
 // "Paid bi-weekly" or "benefits paid monthly" says how often a paycheck comes, not what the range is per (#716).
 const SCHEDULE = /\bpaid\s+(?:on\s+an?\s+)?(?:bi-?weekly|weekly|semi-?monthly|monthly|every (?:two|2) weeks|twice (?:a|per|each) month)\b/gi;
-// "3 days a week" or "40 hours per week" is how much you work, not what the range is per (#732).
-const WORKLOAD = /\b(?:\d+(?:\.\d+)?|one|two|three|four|five)(?:\s?(?:-|to)\s?\d+)?\s+(?:days?|hours?|hrs?)\s*(?:a|per|each|\/)\s*week\b/gi;
+// "3 days a week" or "40 hours per week" is how much you work, not what the range is per (#732), and so is "8 hours a day" (#1187).
+const WORKLOAD = /\b(?:\d+(?:\.\d+)?|one|two|three|four|five)(?:\s?(?:-|to)\s?\d+)?\s+(?:days?|hours?|hrs?)\s*(?:a|per|each|\/)\s*(?:week|day)\b/gi;
 // Only punctuation and a currency code between the numbers and the unit: "/mo", " USD per month", "(monthly)". A "+" or
 // "&" joins something else to the pay.
 const RIGHT_AFTER = /^[\s,.;:()[\]\/-]*(?:(?:usd|cad|aud|eur|gbp|sgd|nzd|hkd|chf|jpy|inr|mxn)\b[\s,.;:()[\]\/-]*)?$/i;

@@ -327,4 +327,16 @@ describe("findPay", () => {
     // A dollar range still reads as dollars.
     expect(t("$150,000 - $180,000")).toMatchObject({ currency: "USD" });
   });
+
+  it("reads a day rate as 260 working days (#1187)", () => {
+    const t = (text: string) => findPay("", text);
+    expect(t("Pay: $600 - $800 per day")).toEqual({ min: 156000, max: 208000, currency: "USD", source: "text" });
+    expect(t("$650/day - $750/day, 6 month contract")).toMatchObject({ min: 169000, max: 195000 });
+    expect(t("Day rate: $500 - $700")).toMatchObject({ min: 130000, max: 182000 });
+    // Hours worked a day are not the unit.
+    expect(t("$70 - $90 per hour, 8 hours a day")).toMatchObject({ min: 145600, max: 187200 });
+    expect(t("$150,000 - $180,000, in the office one day a week")).toMatchObject({ min: 150000, max: 180000 });
+    const ld = { "@type": "JobPosting", baseSalary: { "@type": "MonetaryAmount", currency: "USD", value: { minValue: 600, maxValue: 800, unitText: "DAY" } } };
+    expect(findPay(`<script type="application/ld+json">${JSON.stringify(ld)}</script>`)).toMatchObject({ min: 156000, max: 208000, source: "structured data" });
+  });
 });
