@@ -6,7 +6,7 @@ import { btn, Row, Section, Seg } from "../Settings";
 import { api } from "../store";
 import { when, input, Tabs, Msg } from "./shared";
 import type { Config } from "./shared";
-import { color } from "@/lib/tokens";
+import { color, font } from "@/lib/tokens";
 
 // --- AI settings --------------------------------------------------------------------
 
@@ -152,7 +152,7 @@ export function AdminAi() {
       </Row>
       {ai.provider === "agent" && (
         <Row title="Claude agent" help="Searches, link adds and resume reads are queued here. A poller on your Mac checks the queue every 2 minutes and has Claude Code do the work on your Claude plan, then sends results back. Nothing runs while your Mac is asleep.">
-          <div style={{ display: "flex", flexDirection: "column", gap: 6, fontSize: 14 }}>
+          <div style={{ display: "flex", flexDirection: "column", gap: 6, fontSize: font.base }}>
             <span style={{ fontWeight: 600, color: cfg.agent.tokenSet ? color.greenText : color.brick }}>{cfg.agent.tokenSet ? "Agent token is set on the server" : "No AGENT_TOKEN on the server yet"}</span>
             <span style={{ color: color.t2 }}>{cfg.agent.lastSeen ? `Agent last checked in ${when(cfg.agent.lastSeen)}` : "The agent hasn't checked in yet"}</span>
           </div>
@@ -165,7 +165,7 @@ export function AdminAi() {
               {[...PRESETS, null].map((p) => {
                 const on = p ? preset === p : !preset;
                 return (
-                  <button key={p?.label ?? "custom"} onClick={() => choosePreset(p)} style={{ height: 30, padding: "0 11px", borderRadius: 999, border: `1.5px solid ${on ? color.ink : color.border}`, background: on ? color.ink : "#fff", color: on ? "#fff" : color.ink, fontSize: 14, fontWeight: 600, cursor: "pointer" }}>{p?.label ?? "Custom"}</button>
+                  <button key={p?.label ?? "custom"} onClick={() => choosePreset(p)} style={{ height: 30, padding: "0 11px", borderRadius: 999, border: `1.5px solid ${on ? color.ink : color.border}`, background: on ? color.ink : "#fff", color: on ? "#fff" : color.ink, fontSize: font.base, fontWeight: 600, cursor: "pointer" }}>{p?.label ?? "Custom"}</button>
                 );
               })}
             </div>
@@ -211,7 +211,7 @@ export function AdminAi() {
       </Row>
       {catalog === "openrouter" ? (
         <Row title="Price" help="Dollars per million tokens, from OpenRouter's list. Used for the spend totals and the daily caps.">
-          <span style={{ fontSize: 14, fontVariantNumeric: "tabular-nums" }}>{ai.model ? `$${ai.priceIn} in · $${ai.priceOut} out` : "Set when you pick a model"}</span>
+          <span style={{ fontSize: font.base, fontVariantNumeric: "tabular-nums" }}>{ai.model ? `$${ai.priceIn} in · $${ai.priceOut} out` : "Set when you pick a model"}</span>
         </Row>
       ) : (
         <Row
@@ -235,7 +235,7 @@ export function AdminAi() {
       )}
       {ai.provider === "openai" && (catalog === "openrouter" ? (
         <Row title="Structured output" help="Set from what OpenRouter says the model supports.">
-          <span style={{ fontSize: 14 }}>{!ai.model ? "Set when you pick a model" : ai.jsonMode === "schema" ? "Strict schema" : "Plain JSON"}</span>
+          <span style={{ fontSize: font.base }}>{!ai.model ? "Set when you pick a model" : ai.jsonMode === "schema" ? "Strict schema" : "Plain JSON"}</span>
         </Row>
       ) : (
         <Row title="Structured output" help="Strict schema works on most providers. If tests fail with a format error, switch to plain JSON.">
@@ -332,7 +332,7 @@ function SecretField({ label, hint, value, onChange, action }: { label: string; 
 function NumberField({ label, value, onChange }: { label: string; value: number; onChange: (v: number) => void }) {
   const [v, setV] = useState(String(value));
   return (
-    <label style={{ display: "flex", flexDirection: "column", gap: 6, fontSize: 14, fontWeight: 600, letterSpacing: ".06em", textTransform: "uppercase", color: color.t2 }}>
+    <label style={{ display: "flex", flexDirection: "column", gap: 6, fontSize: font.base, fontWeight: 600, letterSpacing: ".06em", textTransform: "uppercase", color: color.t2 }}>
       {label}
       <input
         inputMode="decimal"
@@ -370,34 +370,34 @@ function ModelPicker({ source, current, onPick }: { source: Catalog; current: st
   const price = (n: number | null) => (n === null ? "" : n === 0 ? "free" : `$${n < 1 ? n.toFixed(2) : n.toFixed(n < 10 ? 2 : 0)}`);
   return (
     <div style={{ maxWidth: 520 }}>
-      <button onClick={toggle} style={{ ...btn("outline"), height: 34, padding: "0 12px", fontSize: 14 }}>{open ? `Hide ${CATALOG_NAME[source]} models` : current ? "Change model" : `Browse ${CATALOG_NAME[source]} models`}</button>
+      <button onClick={toggle} style={{ ...btn("outline"), height: 34, padding: "0 12px", fontSize: font.base }}>{open ? `Hide ${CATALOG_NAME[source]} models` : current ? "Change model" : `Browse ${CATALOG_NAME[source]} models`}</button>
       {open && (
         <div style={{ marginTop: 8, background: "#fff", border: `1.5px solid ${color.border}`, borderRadius: 12, overflow: "hidden" }}>
           <div style={{ display: "flex", gap: 10, alignItems: "center", padding: 10, borderBottom: `1px solid ${color.border}`, flexWrap: "wrap" }}>
             <input autoFocus value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search, e.g. qwen, deepseek, llama" aria-label="Search models" className="f-brick" style={{ ...input, height: 36, flex: 1, minWidth: 180 }} />
             {priced && (
-              <label style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 14, color: color.t2 }}>
+              <label style={{ display: "flex", alignItems: "center", gap: 6, fontSize: font.base, color: color.t2 }}>
                 <input type="checkbox" checked={onlyStructured} onChange={(e) => setOnlyStructured(e.target.checked)} />
                 Structured output only
               </label>
             )}
           </div>
           {err && <div style={{ padding: 12 }}><Msg text={err} /></div>}
-          {!models && !err && <div role="status" style={{ padding: 12, fontSize: 14, color: color.t2 }}>Loading models…</div>}
+          {!models && !err && <div role="status" style={{ padding: 12, fontSize: font.base, color: color.t2 }}>Loading models…</div>}
           {models && (
             <div style={{ maxHeight: 320, overflowY: "auto" }}>
-              <div style={{ display: "grid", gridTemplateColumns: "minmax(0,1fr) 70px 70px", gap: 8, padding: "8px 12px", fontSize: 12, fontWeight: 600, letterSpacing: ".06em", textTransform: "uppercase", color: color.t2, position: "sticky", top: 0, background: "#fff", borderBottom: `1px solid ${color.border}` }}>
+              <div style={{ display: "grid", gridTemplateColumns: "minmax(0,1fr) 70px 70px", gap: 8, padding: "8px 12px", fontSize: font.xs, fontWeight: 600, letterSpacing: ".06em", textTransform: "uppercase", color: color.t2, position: "sticky", top: 0, background: "#fff", borderBottom: `1px solid ${color.border}` }}>
                 <span>{priced ? "Model · cheapest first" : "Model"}</span><span style={{ textAlign: "right" }}>{priced && "In /1M"}</span><span style={{ textAlign: "right" }}>{priced && "Out /1M"}</span>
               </div>
-              {list.length === 0 && <div style={{ padding: 12, fontSize: 14, color: color.t2 }}>No models match.</div>}
+              {list.length === 0 && <div style={{ padding: 12, fontSize: font.base, color: color.t2 }}>No models match.</div>}
               {list.map((m) => (
                 <button key={m.id} className="h-menu" onClick={() => { onPick(m); setOpen(false); }} style={{ display: "grid", gridTemplateColumns: "minmax(0,1fr) 70px 70px", gap: 8, width: "100%", padding: "9px 12px", border: 0, borderBottom: `1px solid ${color.surface}`, background: m.id === current ? color.surface : "#fff", cursor: "pointer", textAlign: "left", alignItems: "center" }}>
                   <span style={{ minWidth: 0 }}>
-                    <span style={{ display: "block", fontSize: 14, fontWeight: 600, color: color.ink, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{m.name}</span>
-                    <span style={{ display: "block", fontSize: 14, color: color.t2, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{m.context ? `${m.id} · ${Math.round(m.context / 1000)}K context` : m.id}</span>
+                    <span style={{ display: "block", fontSize: font.base, fontWeight: 600, color: color.ink, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{m.name}</span>
+                    <span style={{ display: "block", fontSize: font.base, color: color.t2, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{m.context ? `${m.id} · ${Math.round(m.context / 1000)}K context` : m.id}</span>
                   </span>
-                  <span style={{ fontSize: 14, textAlign: "right", fontVariantNumeric: "tabular-nums" }}>{price(m.priceIn)}</span>
-                  <span style={{ fontSize: 14, textAlign: "right", fontVariantNumeric: "tabular-nums" }}>{price(m.priceOut)}</span>
+                  <span style={{ fontSize: font.base, textAlign: "right", fontVariantNumeric: "tabular-nums" }}>{price(m.priceIn)}</span>
+                  <span style={{ fontSize: font.base, textAlign: "right", fontVariantNumeric: "tabular-nums" }}>{price(m.priceOut)}</span>
                 </button>
               ))}
             </div>

@@ -12,10 +12,10 @@ import { api, useStore } from "../store";
 import { SubmitModeNote } from "../SubmitModeNote";
 import { trackClient } from "../track";
 import { useFocusTrap } from "../useFocusTrap";
-import { color } from "@/lib/tokens";
+import { color, font } from "@/lib/tokens";
 
 const Label = ({ children, style }: { children: React.ReactNode; style?: React.CSSProperties }) => (
-  <div style={{ fontSize: 14, letterSpacing: ".1em", textTransform: "uppercase", color: color.ink, fontWeight: 700, ...style }}>{children}</div>
+  <div style={{ fontSize: font.base, letterSpacing: ".1em", textTransform: "uppercase", color: color.ink, fontWeight: 700, ...style }}>{children}</div>
 );
 
 const NOTES_IDLE_MS = 6000;
@@ -142,19 +142,19 @@ export function Drawer({ f, currentComp, close, toggle, setStage, enter, nav }: 
         )}
         <div style={{ background: color.ink, color: "#fff", padding: "24px 26px 22px" }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12 }}>
-            <div style={{ fontSize: 14, color: color.orange, fontWeight: 600 }}>{f.company}</div>
+            <div style={{ fontSize: font.base, color: color.orange, fontWeight: 600 }}>{f.company}</div>
             <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-              <button ref={closeBtn} onClick={animatedClose} aria-label="Close" style={{ border: 0, background: "rgba(255,255,255,.1)", color: "#fff", width: 30, height: 30, borderRadius: "50%", cursor: "pointer", fontSize: 16, lineHeight: 1 }}>×</button>
+              <button ref={closeBtn} onClick={animatedClose} aria-label="Close" style={{ border: 0, background: "rgba(255,255,255,.1)", color: "#fff", width: 30, height: 30, borderRadius: "50%", cursor: "pointer", fontSize: font.lg, lineHeight: 1 }}>×</button>
             </div>
           </div>
-          <div style={{ fontSize: 23, fontWeight: 700, letterSpacing: "-0.01em", marginTop: 6, textWrap: "pretty" }}>{f.role}</div>
+          <div style={{ fontSize: font["2xl"], fontWeight: 700, letterSpacing: "-0.01em", marginTop: 6, textWrap: "pretty" }}>{f.role}</div>
           <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 14, flexWrap: "wrap" }}>
-            <span style={{ padding: "4px 10px", borderRadius: 6, fontSize: 14, fontWeight: 600, background: color.orange, color: color.ink }}>Match {f.score}/5</span>
+            <span style={{ padding: "4px 10px", borderRadius: 6, fontSize: font.base, fontWeight: 600, background: color.orange, color: color.ink }}>Match {f.score}/5</span>
             <div style={{ marginLeft: "auto", display: "flex", gap: 6, alignItems: "center" }}>
               <button onClick={() => toggle(f, "pinned")} data-tip={f.pinned ? "Unpin" : "Pin"} aria-label={f.pinned ? "Unpin" : "Pin"} style={{ width: 30, height: 30, border: 0, borderRadius: "50%", background: f.pinned ? color.orange : "rgba(255,255,255,.1)", color: f.pinned ? color.ink : "#fff", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", padding: 0 }}>
                 <PinIcon size={14} sw={2} />
               </button>
-              <button onClick={copy} style={{ height: 30, padding: "0 12px", border: 0, borderRadius: 999, background: "rgba(255,255,255,.1)", color: "#fff", fontSize: 14, fontWeight: 600, cursor: "pointer", display: "flex", alignItems: "center", gap: 6 }}>
+              <button onClick={copy} style={{ height: 30, padding: "0 12px", border: 0, borderRadius: 999, background: "rgba(255,255,255,.1)", color: "#fff", fontSize: font.base, fontWeight: 600, cursor: "pointer", display: "flex", alignItems: "center", gap: 6 }}>
                 <LinkIcon />
                 {copied ? "Copied" : "Copy link"}
               </button>
@@ -163,9 +163,9 @@ export function Drawer({ f, currentComp, close, toggle, setStage, enter, nav }: 
         </div>
         <div style={{ padding: "22px 26px", display: "flex", flexDirection: "column", gap: 22, overflowY: "auto", flex: 1 }}>
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "14px 18px" }}>
-            <div><Label>{cells[0].label}</Label><div style={{ fontSize: 14.5, marginTop: 4, fontWeight: 600, color: cells[0].quiet ? color.t2 : color.brick }}>{cells[0].text}</div>{cfg.board.columns[2].key === "comp" && <CompCompare f={f} current={currentComp} style={{ marginTop: 2 }} />}</div>
-            <div><Label>{cells[1].label}</Label><div style={{ fontSize: 14.5, marginTop: 4 }}>{cells[1].text}</div></div>
-            <div style={{ gridColumn: "1 / -1" }}><Label>{cells[2].label}</Label><div style={{ fontSize: 14.5, marginTop: 4 }}>{cells[2].text || "Not stated"}</div></div>
+            <div><Label>{cells[0].label}</Label><div style={{ fontSize: font.base, marginTop: 4, fontWeight: 600, color: cells[0].quiet ? color.t2 : color.brick }}>{cells[0].text}</div>{cfg.board.columns[2].key === "comp" && <CompCompare f={f} current={currentComp} style={{ marginTop: 2 }} />}</div>
+            <div><Label>{cells[1].label}</Label><div style={{ fontSize: font.base, marginTop: 4 }}>{cells[1].text}</div></div>
+            <div style={{ gridColumn: "1 / -1" }}><Label>{cells[2].label}</Label><div style={{ fontSize: font.base, marginTop: 4 }}>{cells[2].text || "Not stated"}</div></div>
           </div>
           <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
             {f.reasonsMatch.length > 0 && (
@@ -173,7 +173,7 @@ export function Drawer({ f, currentComp, close, toggle, setStage, enter, nav }: 
                 <Label style={{ marginBottom: 8 }}>Why it’s a match</Label>
                 <div style={{ display: "flex", flexDirection: "column", gap: 7 }}>
                   {f.reasonsMatch.map((m) => (
-                    <div key={m} style={{ display: "flex", gap: 10, alignItems: "flex-start", fontSize: 14, lineHeight: 1.45 }}>
+                    <div key={m} style={{ display: "flex", gap: 10, alignItems: "flex-start", fontSize: font.base, lineHeight: 1.45 }}>
                       <CheckIcon size={14} stroke="#427D33" style={{ flex: "none", marginTop: 3 }} />
                       <span style={{ textWrap: "pretty" }}>{m}</span>
                     </div>
@@ -186,7 +186,7 @@ export function Drawer({ f, currentComp, close, toggle, setStage, enter, nav }: 
                 <Label style={{ marginBottom: 8 }}>Not a match</Label>
                 <div style={{ display: "flex", flexDirection: "column", gap: 7 }}>
                   {f.reasonsGap.map((m) => (
-                    <div key={m} style={{ display: "flex", gap: 10, alignItems: "flex-start", fontSize: 14, lineHeight: 1.45 }}>
+                    <div key={m} style={{ display: "flex", gap: 10, alignItems: "flex-start", fontSize: font.base, lineHeight: 1.45 }}>
                       <XIcon stroke={color.brick} style={{ flex: "none", marginTop: 3 }} />
                       <span style={{ textWrap: "pretty" }}>{m}</span>
                     </div>
@@ -201,7 +201,7 @@ export function Drawer({ f, currentComp, close, toggle, setStage, enter, nav }: 
               {cfg.stages.map((s) => {
                 const on = f.stage === s, ss = stageStyle(s);
                 return (
-                  <button key={s} onClick={() => setStage(f, s)} aria-pressed={on} data-tip={cfg.endedStages.includes(s) ? "Archives it" : undefined} style={{ height: 36, borderRadius: 9, border: `1.5px solid ${on ? ss.bg : color.border}`, background: on ? ss.bg : "#fff", color: on ? ss.ink : color.t2, fontSize: 14, fontWeight: 600, cursor: "pointer", padding: "0 4px" }}>
+                  <button key={s} onClick={() => setStage(f, s)} aria-pressed={on} data-tip={cfg.endedStages.includes(s) ? "Archives it" : undefined} style={{ height: 36, borderRadius: 9, border: `1.5px solid ${on ? ss.bg : color.border}`, background: on ? ss.bg : "#fff", color: on ? ss.ink : color.t2, fontSize: font.base, fontWeight: 600, cursor: "pointer", padding: "0 4px" }}>
                     {s}
                   </button>
                 );
@@ -211,11 +211,11 @@ export function Drawer({ f, currentComp, close, toggle, setStage, enter, nav }: 
           <div style={{ display: "flex", flexDirection: "column", flex: 1 }}>
             <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 10, marginBottom: 8 }}>
               <Label>Notes</Label>
-              <div style={{ fontSize: 14, color: color.t2 }}>{readOnly ? "View only" : "Saves when you pause or close"}</div>
+              <div style={{ fontSize: font.base, color: color.t2 }}>{readOnly ? "View only" : "Saves when you pause or close"}</div>
             </div>
             <div style={{ position: "relative", flex: 1, display: "flex" }}>
-              <textarea value={notes} readOnly={readOnly} onChange={(e) => onNotes(e.target.value)} onBlur={flushNotes} placeholder="Contacts, follow-ups, or what is off about this role. Lookout reads your notes before its next search." aria-label="Notes" className="f-brick" style={{ flex: 1, minHeight: 160, resize: "vertical", border: `1.5px solid ${color.border}`, borderRadius: 10, padding: "12px 14px 34px", fontSize: 14, lineHeight: 1.5, outline: "none", color: color.ink, cursor: noteState === "saving" ? "progress" : undefined }} />
-              <div aria-live="polite" style={{ position: "absolute", right: 10, bottom: 10, padding: "3px 10px", borderRadius: 999, fontSize: 14, fontWeight: 600, background: noteState === "saved" ? "#E8F1E6" : color.surface, color: noteState === "saved" ? "#2F5A2A" : "#3B362C", opacity: noteState === "idle" ? 0 : 1, transition: "opacity .25s", pointerEvents: "none" }}>
+              <textarea value={notes} readOnly={readOnly} onChange={(e) => onNotes(e.target.value)} onBlur={flushNotes} placeholder="Contacts, follow-ups, or what is off about this role. Lookout reads your notes before its next search." aria-label="Notes" className="f-brick" style={{ flex: 1, minHeight: 160, resize: "vertical", border: `1.5px solid ${color.border}`, borderRadius: 10, padding: "12px 14px 34px", fontSize: font.base, lineHeight: 1.5, outline: "none", color: color.ink, cursor: noteState === "saving" ? "progress" : undefined }} />
+              <div aria-live="polite" style={{ position: "absolute", right: 10, bottom: 10, padding: "3px 10px", borderRadius: 999, fontSize: font.base, fontWeight: 600, background: noteState === "saved" ? "#E8F1E6" : color.surface, color: noteState === "saved" ? "#2F5A2A" : "#3B362C", opacity: noteState === "idle" ? 0 : 1, transition: "opacity .25s", pointerEvents: "none" }}>
                 {noteState === "saving" ? "Saving…" : noteState === "saved" ? "Saved" : ""}
               </div>
             </div>
@@ -228,18 +228,18 @@ export function Drawer({ f, currentComp, close, toggle, setStage, enter, nav }: 
                 const st = applicationLabel(f.application.status, f.application.queuedBy);
                 return (
                   <>
-                    <span style={{ padding: "5px 11px", borderRadius: 999, fontSize: 14, fontWeight: 600, background: st.bg, color: st.ink }}>{st.label}</span>
-                    <Link href={`/apply#app-${f.application.id}`} style={{ fontSize: 14, fontWeight: 600 }}>View application →</Link>
+                    <span style={{ padding: "5px 11px", borderRadius: 999, fontSize: font.base, fontWeight: 600, background: st.bg, color: st.ink }}>{st.label}</span>
+                    <Link href={`/apply#app-${f.application.id}`} style={{ fontSize: font.base, fontWeight: 600 }}>View application →</Link>
                     {f.application.status !== "submitted" && f.application.status !== "canceled" && <SubmitModeNote submit={f.submit} compact />}
                   </>
                 );
               })()
             ) : (
               <>
-                <button onClick={applyWithLookout} disabled={applyMsg === "Queuing…"} style={{ height: 38, padding: "0 14px", borderRadius: 10, border: "1.5px solid #1D1A0F", background: "#fff", fontSize: 14, fontWeight: 600, color: color.ink, cursor: "pointer" }}>
+                <button onClick={applyWithLookout} disabled={applyMsg === "Queuing…"} style={{ height: 38, padding: "0 14px", borderRadius: 10, border: "1.5px solid #1D1A0F", background: "#fff", fontSize: font.base, fontWeight: 600, color: color.ink, cursor: "pointer" }}>
                   {applyMsg === "Queuing…" ? "Queuing…" : "Apply with Lookout"}
                 </button>
-                <span style={{ fontSize: 14, color: applyMsg ? color.brick : color.t2 }}>{applyMsg ?? "Beta. Drafts everything for your review first."}</span>
+                <span style={{ fontSize: font.base, color: applyMsg ? color.brick : color.t2 }}>{applyMsg ?? "Beta. Drafts everything for your review first."}</span>
                 {!applyMsg && <SubmitModeNote submit={f.submit} />}
               </>
             )}
@@ -247,10 +247,10 @@ export function Drawer({ f, currentComp, close, toggle, setStage, enter, nav }: 
         )}
         {asking && !f.archived && (
           <div className={nav.index >= 0 && nav.total > 1 ? "drawer-foot" : undefined} style={{ padding: "14px 26px 0", borderTop: `1px solid ${color.border}`, display: "flex", flexDirection: "column", gap: 8 }}>
-            <div style={{ fontSize: 14, fontWeight: 600 }}>What&apos;s off about it? Lookout uses this on your next searches.</div>
+            <div style={{ fontSize: font.base, fontWeight: 600 }}>What&apos;s off about it? Lookout uses this on your next searches.</div>
             <div role="group" aria-label="Why it's not a fit" style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
               {NOT_A_FIT.map((r) => (
-                <button key={r} onClick={() => { patchFind(f.id, { archived: true, feedback: r === "Just not interested" ? null : r }); setAsking(false); }} style={{ height: 32, padding: "0 12px", borderRadius: 999, border: `1.5px solid ${color.border}`, background: "#fff", color: color.ink, fontSize: 14, fontWeight: 600, cursor: "pointer" }}>{r}</button>
+                <button key={r} onClick={() => { patchFind(f.id, { archived: true, feedback: r === "Just not interested" ? null : r }); setAsking(false); }} style={{ height: 32, padding: "0 12px", borderRadius: 999, border: `1.5px solid ${color.border}`, background: "#fff", color: color.ink, fontSize: font.base, fontWeight: 600, cursor: "pointer" }}>{r}</button>
               ))}
             </div>
           </div>
@@ -259,11 +259,11 @@ export function Drawer({ f, currentComp, close, toggle, setStage, enter, nav }: 
           <button
             onClick={() => (f.archived ? patchFind(f.id, { archived: false, feedback: null }) : setAsking((v) => !v))}
             aria-expanded={f.archived ? undefined : asking}
-            style={{ flex: 1, height: 42, borderRadius: 10, border: "1.5px solid #1D1A0F", background: asking ? color.surface : "#fff", fontSize: 14, fontWeight: 600, color: color.ink, cursor: "pointer" }}
+            style={{ flex: 1, height: 42, borderRadius: 10, border: "1.5px solid #1D1A0F", background: asking ? color.surface : "#fff", fontSize: font.base, fontWeight: 600, color: color.ink, cursor: "pointer" }}
           >
             {f.archived ? (f.feedback ? `Restore · was “${f.feedback}”` : "Restore") : asking ? "Cancel" : "Not a fit"}
           </button>
-          <a href={posting} target="_blank" rel="noopener noreferrer" onClick={() => trackClient("posting_clicked", f.id)} style={{ flex: 1, height: 42, borderRadius: 10, background: color.brick, fontSize: 14, fontWeight: 600, color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", gap: 7, textDecoration: "none" }}>
+          <a href={posting} target="_blank" rel="noopener noreferrer" onClick={() => trackClient("posting_clicked", f.id)} style={{ flex: 1, height: 42, borderRadius: 10, background: color.brick, fontSize: font.base, fontWeight: 600, color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", gap: 7, textDecoration: "none" }}>
             View posting
             <ArrowUpRight />
           </a>

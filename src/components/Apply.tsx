@@ -12,7 +12,7 @@ import { api } from "./store";
 import { SubmitModeNote } from "./SubmitModeNote";
 import { ATS_NAME, type SubmitMode } from "@/lib/application/submitMode";
 import { useFocusTrap } from "./useFocusTrap";
-import { color } from "@/lib/tokens";
+import { color, font } from "@/lib/tokens";
 
 type App = {
   id: string;
@@ -126,21 +126,21 @@ export function ApplyPage() {
         <div style={{ display: "flex", alignItems: "center", gap: 14, minHeight: 64, padding: "10px 12px 10px 18px", borderRadius: 14, background: "#fff", border: `1.5px solid ${color.border}` }}>
           <span aria-hidden style={{ width: 10, height: 10, borderRadius: "50%", flex: "none", background: on ? "#427D33" : "#CFC6B9" }} />
           <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column" }}>
-            <span style={{ fontSize: 15, fontWeight: 700 }}>Auto-apply {on ? "on" : "off"}</span>
-            <span style={{ fontSize: 14, color: color.t2, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{summary}</span>
+            <span style={{ fontSize: font.md, fontWeight: 700 }}>Auto-apply {on ? "on" : "off"}</span>
+            <span style={{ fontSize: font.base, color: color.t2, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{summary}</span>
           </div>
           <button onClick={() => setPanel(true)} style={{ ...btn("outline"), height: 38, flex: "none" }}>Settings</button>
           <Switch on={on} onToggle={() => save({ enabled: !on })} />
         </div>
       )}
 
-      {err && <div role="alert" style={{ fontSize: 14, color: color.brick }}>{err}</div>}
-      {!apps && !err && <div role="status" style={{ fontSize: 14, color: color.t2 }}>Loading…</div>}
+      {err && <div role="alert" style={{ fontSize: font.base, color: color.brick }}>{err}</div>}
+      {!apps && !err && <div role="status" style={{ fontSize: font.base, color: color.t2 }}>Loading…</div>}
 
       {apps && apps.length === 0 && (
         <div style={{ padding: 22, borderRadius: 14, background: "#fff", border: `1.5px solid ${color.border}`, display: "flex", flexDirection: "column", gap: 12 }}>
-          <div style={{ fontSize: 18, fontWeight: 700 }}>Nothing queued yet</div>
-          <p style={{ margin: 0, fontSize: 14, lineHeight: 1.55, color: "#3B362C" }}>
+          <div style={{ fontSize: font.xl, fontWeight: 700 }}>Nothing queued yet</div>
+          <p style={{ margin: 0, fontSize: font.base, lineHeight: 1.55, color: "#3B362C" }}>
             Open a role on <Link href="/finds">your board</Link> and choose <b>Apply with Lookout</b>, or turn auto-apply on to queue strong matches as they come in. Lookout reads the application, drafts everything, and waits for your approval before anything is sent.
           </p>
           <button onClick={() => setPanel(true)} style={{ ...btn("text"), alignSelf: "flex-start", height: 32, padding: 0 }}>How it works</button>
@@ -154,10 +154,10 @@ export function ApplyPage() {
           return (
             <section key={g.title} aria-labelledby={`grp-${g.title}`} style={{ display: "flex", flexDirection: "column", gap: 8 }}>
               <div style={{ display: "flex", alignItems: "baseline", gap: 10, marginTop: 6 }}>
-                <h2 id={`grp-${g.title}`} style={{ margin: 0, fontSize: 16, fontWeight: 700 }}>
+                <h2 id={`grp-${g.title}`} style={{ margin: 0, fontSize: font.lg, fontWeight: 700 }}>
                   {g.title} <span style={{ color: color.t2, fontWeight: 600 }}>{list.length}</span>
                 </h2>
-                <span style={{ fontSize: 14, color: color.t2 }}>{g.help}</span>
+                <span style={{ fontSize: font.base, color: color.t2 }}>{g.help}</span>
               </div>
               <ul style={{ listStyle: "none", margin: 0, padding: 0, display: "flex", flexDirection: "column", gap: 8 }}>
                 {list.map((a) => {
@@ -169,7 +169,7 @@ export function ApplyPage() {
                       style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap", padding: "12px 14px", borderRadius: 12, background: focusId === a.id ? "#FDF3E8" : "#fff", border: `1.5px solid ${focusId === a.id ? color.orange : color.border}`, transition: "background-color .4s ease, border-color .4s ease", scrollMarginTop: 120 }}
                     >
                       <div style={{ flex: "1 1 260px", minWidth: 0 }}>
-                        <div style={{ fontSize: 15, fontWeight: 600, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                        <div style={{ fontSize: font.md, fontWeight: 600, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                           {a.items > 0 ? (
                             <Link href={`/apply/${a.id}`} style={{ color: color.ink }}>
                               {a.role}
@@ -178,13 +178,13 @@ export function ApplyPage() {
                             a.role
                           )}
                         </div>
-                        <div style={{ fontSize: 14, color: color.t2 }}>
+                        <div style={{ fontSize: font.base, color: color.t2 }}>
                           {a.company}
                           {a.score ? ` · match ${a.score}/5` : ""}
                           {a.items > 0 ? ` · ${a.items} things to fill${a.ats ? ` on ${ATS_NAME[a.ats] ?? a.ats}` : ""}` : ""}
                         </div>
                         {a.error && (
-                          <div role="alert" style={{ fontSize: 14, color: color.brick, marginTop: 4 }}>
+                          <div role="alert" style={{ fontSize: font.base, color: color.brick, marginTop: 4 }}>
                             {a.error}
                           </div>
                         )}
@@ -194,17 +194,17 @@ export function ApplyPage() {
                           </div>
                         )}
                       </div>
-                      <span style={{ padding: "5px 11px", borderRadius: 999, fontSize: 14, fontWeight: 600, background: st.bg, color: st.ink }}>{st.label}</span>
+                      <span style={{ padding: "5px 11px", borderRadius: 999, fontSize: font.base, fontWeight: 600, background: st.bg, color: st.ink }}>{st.label}</span>
                       {(a.status === "needs_review" || a.status === "manual" || a.status === "approved" || a.status === "submitted") && (
-                        <Link href={`/apply/${a.id}`} style={{ ...btn(a.status === "submitted" ? "outline" : "solid"), height: 34, fontSize: 14, display: "inline-flex", alignItems: "center", textDecoration: "none" }}>
+                        <Link href={`/apply/${a.id}`} style={{ ...btn(a.status === "submitted" ? "outline" : "solid"), height: 34, fontSize: font.base, display: "inline-flex", alignItems: "center", textDecoration: "none" }}>
                           {a.status === "submitted" ? "See what was sent" : a.status === "manual" || a.status === "approved" ? "Send it" : "Review"}
                         </Link>
                       )}
                       {a.status === "failed" && (
-                        <button onClick={() => retry(a)} style={{ ...btn("outline"), height: 34, fontSize: 14 }}>Try again</button>
+                        <button onClick={() => retry(a)} style={{ ...btn("outline"), height: 34, fontSize: font.base }}>Try again</button>
                       )}
                       {a.status !== "submitted" && a.status !== "submitting" && (
-                        <button onClick={() => cancel(a)} style={{ ...btn("text"), height: 34, fontSize: 14 }}>Cancel</button>
+                        <button onClick={() => cancel(a)} style={{ ...btn("text"), height: 34, fontSize: font.base }}>Cancel</button>
                       )}
                     </li>
                   );
@@ -215,9 +215,9 @@ export function ApplyPage() {
         })}
 
       {apps && apps.length > 0 && (
-        <p style={{ margin: "4px 0 0", fontSize: 14, color: color.t2 }}>
+        <p style={{ margin: "4px 0 0", fontSize: font.base, color: color.t2 }}>
           To send, open the job in Firefox with the Lookout extension: it fills the form and you press Submit. No extension? Each application has a two-minute checklist.{" "}
-          <button onClick={() => setPanel(true)} style={{ ...btn("text"), height: "auto", padding: 0, fontSize: 14 }}>How it works</button>
+          <button onClick={() => setPanel(true)} style={{ ...btn("text"), height: "auto", padding: 0, fontSize: font.base }}>How it works</button>
         </p>
       )}
 
@@ -257,7 +257,7 @@ function SettingsPanel({ settings, save, close }: { settings: AutoApplySettings;
       <div onClick={close} style={{ position: "fixed", inset: 0, zIndex: 40, background: "rgba(29,26,15,.35)" }} />
       <aside ref={box} role="dialog" aria-modal="true" aria-labelledby="aa-panel-title" style={{ position: "fixed", top: 0, right: 0, bottom: 0, zIndex: 41, width: "min(440px, 100vw)", background: "#fff", boxShadow: "-12px 0 40px rgba(29,26,15,.18)", display: "flex", flexDirection: "column" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "20px 22px", borderBottom: `1px solid ${color.border}` }}>
-          <h2 id="aa-panel-title" style={{ margin: 0, flex: 1, fontSize: 20, fontWeight: 700 }}>Auto-apply settings</h2>
+          <h2 id="aa-panel-title" style={{ margin: 0, flex: 1, fontSize: font["2xl"], fontWeight: 700 }}>Auto-apply settings</h2>
           <button ref={closeRef} onClick={close} aria-label="Close" style={{ width: 36, height: 36, borderRadius: "50%", border: 0, background: color.surface, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>
             <XIcon />
           </button>
@@ -265,32 +265,32 @@ function SettingsPanel({ settings, save, close }: { settings: AutoApplySettings;
         <div style={{ flex: 1, overflowY: "auto", padding: "18px 22px 28px", display: "flex", flexDirection: "column", gap: 22 }}>
           <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
             <div style={{ flex: 1 }}>
-              <div style={{ fontSize: 15, fontWeight: 700 }}>Queue strong matches automatically</div>
-              <div style={{ fontSize: 14, lineHeight: 1.5, color: color.t2 }}>You can always queue any role yourself from its detail panel. Nothing is sent until you approve it.</div>
+              <div style={{ fontSize: font.md, fontWeight: 700 }}>Queue strong matches automatically</div>
+              <div style={{ fontSize: font.base, lineHeight: 1.5, color: color.t2 }}>You can always queue any role yourself from its detail panel. Nothing is sent until you approve it.</div>
             </div>
             <Switch on={on} onToggle={() => save({ enabled: !on })} />
           </div>
           <fieldset disabled={!on} style={{ border: 0, padding: 0, margin: 0, display: "flex", flexDirection: "column", gap: 18, opacity: on ? 1 : 0.5 }}>
             <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-              <div style={{ fontSize: 15, fontWeight: 600 }}>Which matches</div>
+              <div style={{ fontSize: font.md, fontWeight: 600 }}>Which matches</div>
               <Seg opts={[["Level 5 only", 5], ["Levels 4 and 5", 4]]} cur={settings.threshold} pick={(v) => save({ threshold: v as 4 | 5 })} />
             </div>
             <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-              <div style={{ fontSize: 15, fontWeight: 600 }}>How many a day</div>
+              <div style={{ fontSize: font.md, fontWeight: 600 }}>How many a day</div>
               <Seg opts={[["1", 1], ["3", 3], ["5", 5]]} cur={settings.dailyCap} pick={(v) => save({ dailyCap: v })} />
-              <div style={{ fontSize: 14, color: color.t2 }}>A cap so review never piles up.</div>
+              <div style={{ fontSize: font.base, color: color.t2 }}>A cap so review never piles up.</div>
             </div>
           </fieldset>
           <ExtensionSection />
           <div style={{ borderTop: `1px solid ${color.border}`, paddingTop: 18 }}>
-            <h3 style={{ margin: "0 0 12px", fontSize: 16, fontWeight: 700 }}>How it works</h3>
+            <h3 style={{ margin: "0 0 12px", fontSize: font.lg, fontWeight: 700 }}>How it works</h3>
             <ol style={{ listStyle: "none", margin: 0, padding: 0, display: "flex", flexDirection: "column", gap: 12 }}>
               {STEPS.map(([title, body], i) => (
                 <li key={title} style={{ display: "grid", gridTemplateColumns: "28px minmax(0,1fr)", gap: 8 }}>
-                  <span style={{ fontSize: 16, fontWeight: 700, color: color.brick }}>{i + 1}</span>
+                  <span style={{ fontSize: font.lg, fontWeight: 700, color: color.brick }}>{i + 1}</span>
                   <span style={{ display: "flex", flexDirection: "column", gap: 2 }}>
-                    <span style={{ fontSize: 15, fontWeight: 600 }}>{title}</span>
-                    <span style={{ fontSize: 14, lineHeight: 1.5, color: color.t2 }}>{body}</span>
+                    <span style={{ fontSize: font.md, fontWeight: 600 }}>{title}</span>
+                    <span style={{ fontSize: font.base, lineHeight: 1.5, color: color.t2 }}>{body}</span>
                   </span>
                 </li>
               ))}
@@ -343,15 +343,15 @@ function ExtensionSection() {
   const used = status?.lastUsedAt ? `Last used ${new Date(status.lastUsedAt).toLocaleString()}` : "Not used yet";
   return (
     <div style={{ borderTop: `1px solid ${color.border}`, paddingTop: 18, display: "flex", flexDirection: "column", gap: 10 }}>
-      <h3 style={{ margin: 0, fontSize: 16, fontWeight: 700 }}>Firefox extension</h3>
-      <div style={{ fontSize: 14, lineHeight: 1.5, color: color.t2 }}>
+      <h3 style={{ margin: 0, fontSize: font.lg, fontWeight: 700 }}>Firefox extension</h3>
+      <div style={{ fontSize: font.base, lineHeight: 1.5, color: color.t2 }}>
         Fills an approved application on the job&apos;s own page in your Firefox. You check it and press Submit. When the thank-you page shows, Lookout marks it Applied.{" "}
         <a href="/ext/lookout-autofill.xpi" style={{ color: color.brick }}>Install the extension</a>
       </div>
       {token ? (
         <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-          <div style={{ fontSize: 14, fontWeight: 600 }}>Paste this into the extension. It won&apos;t be shown again.</div>
-          <code style={{ fontSize: 12, wordBreak: "break-all", background: color.surface, borderRadius: 8, padding: "10px 12px" }}>{token}</code>
+          <div style={{ fontSize: font.base, fontWeight: 600 }}>Paste this into the extension. It won&apos;t be shown again.</div>
+          <code style={{ fontSize: font.xs, wordBreak: "break-all", background: color.surface, borderRadius: 8, padding: "10px 12px" }}>{token}</code>
           <div>
             <button onClick={copy} style={btn("solid")}>{copied ? "Copied" : "Copy token"}</button>
           </div>
@@ -361,13 +361,13 @@ function ExtensionSection() {
           <button onClick={make} style={btn(status?.connected ? "outline" : "solid")}>{status?.connected ? "Make a new token" : "Connect the extension"}</button>
           {status?.connected && (
             <>
-              <span style={{ fontSize: 14, color: color.t2 }}>Connected. {used}.</span>
+              <span style={{ fontSize: font.base, color: color.t2 }}>Connected. {used}.</span>
               <button onClick={revoke} style={btn("text")}>Disconnect</button>
             </>
           )}
         </div>
       )}
-      {err && <div role="alert" style={{ fontSize: 14, color: color.brick }}>{err}</div>}
+      {err && <div role="alert" style={{ fontSize: font.base, color: color.brick }}>{err}</div>}
     </div>
   );
 }

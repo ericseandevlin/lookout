@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { ConsentCheck } from "./ConsentCheck";
 import { AuthCard, Eyebrow, h1, p, primary } from "./Login";
-import { color } from "@/lib/tokens";
+import { color, font } from "@/lib/tokens";
 
 /** Asked once of accounts from before #21, and again whenever the Terms or Privacy version changes. */
 export function Consent({ updated }: { updated: boolean }) {
@@ -33,7 +33,7 @@ export function Consent({ updated }: { updated: boolean }) {
       <form onSubmit={submit} style={{ display: "flex", flexDirection: "column", gap: 22, marginTop: 24 }}>
         <ConsentCheck checked={agree} onChange={setAgree} />
         <button type="submit" disabled={busy || !agree} style={{ ...primary, opacity: agree ? 1 : 0.6 }}>{busy ? "Saving…" : "Continue"}</button>
-        {err && <div role="alert" style={{ fontSize: 14, color: color.brick }}>{err}</div>}
+        {err && <div role="alert" style={{ fontSize: font.base, color: color.brick }}>{err}</div>}
       </form>
     </AuthCard>
   );

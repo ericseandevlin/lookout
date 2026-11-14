@@ -1,4 +1,7 @@
 :root {
+  /* Type scale (#1232), in step with `font` in src/lib/tokens.ts */
+  --text-2xs: 10px; --text-xs: 12px; --text-sm: 13px; --text-base: 14px; --text-md: 15px;
+  --text-lg: 16px; --text-xl: 18px; --text-2xl: 21px; --text-3xl: 24px; --text-4xl: 28px;
   --ink: #1d1a0f;
   --page: #efeeec;
   --brick: #99220f;
@@ -41,7 +44,7 @@ button:focus-visible, a:focus-visible, label:has(> input:is([type="checkbox"], [
 div.board-search:has(input:focus-visible), .focus-box:has(input:focus-visible) { outline: 2px solid var(--brick); outline-offset: 2px; }
 ::placeholder { color: var(--muted); }
 
-.wordmark { font-family: var(--wordmark); font-weight: 700; font-size: 19px; letter-spacing: -0.01em; line-height: 1; }
+.wordmark { font-family: var(--wordmark); font-weight: 700; font-size: var(--text-xl); letter-spacing: -0.01em; line-height: 1; }
 
 /* Hover states the inline styles can't express */
 .h-rail:hover { background: rgba(255, 255, 255, 0.09) !important; color: #fff !important; }
@@ -104,7 +107,7 @@ a[style*="border-radius"]:active { box-shadow: inset 0 0 0 999px rgb(128 120 108
 .board-body { padding: 24px 32px 40px; display: flex; flex-direction: column; gap: 20px; }
 .board-sec { border-radius: 16px; margin: 0; }
 .setup { padding: 24px; gap: 20px; }
-.setup-title { font-size: 21px; }
+.setup-title { font-size: var(--text-2xl); }
 .setup-grid { gap: 12px; }
 .setup-tile { padding: 18px; border-radius: 12px; background: rgba(255, 255, 255, 0.06); border-top: 0; }
 .setup-tile.now { box-shadow: inset 0 0 0 1px rgba(248, 168, 101, 0.7); }
@@ -122,7 +125,7 @@ a[style*="border-radius"]:active { box-shadow: inset 0 0 0 999px rgb(128 120 108
   .board-body { padding: 0 12px 24px; gap: 14px; }
   .board-sec { border-radius: 0; margin: 0 -12px; }
   .setup { padding: 20px 16px 8px; gap: 4px; }
-  .setup-title { font-size: 19px; }
+  .setup-title { font-size: var(--text-xl); }
   .setup-grid { gap: 0; }
   .setup-tile { padding: 16px 0; border-radius: 0; background: transparent; border-top: 1px solid rgba(255, 255, 255, 0.12); }
   .setup-tile.now { padding: 16px 14px; margin: 8px -14px; border-radius: 12px; border-top-color: transparent; }
@@ -170,9 +173,9 @@ a[style*="border-radius"]:active { box-shadow: inset 0 0 0 999px rgb(128 120 108
 /* Previous/next sit just outside the drawer's left edge, centered, so the header stays calm. On phones the drawer
    is full width, so they become a row just above the footer buttons (a floating bar covered "Not a fit", #1217). */
 .drawer-nav { position: absolute; left: -60px; top: 50%; transform: translateY(-50%); display: flex; flex-direction: column; align-items: center; gap: 8px; }
-.drawer-nav-btn { width: 44px; height: 44px; border-radius: 50%; border: 0; background: #fff; color: var(--ink); font-size: 24px; line-height: 1; padding: 0 0 3px; cursor: pointer; box-shadow: 0 4px 16px rgba(29, 26, 15, 0.22); }
+.drawer-nav-btn { width: 44px; height: 44px; border-radius: 50%; border: 0; background: #fff; color: var(--ink); font-size: var(--text-3xl); line-height: 1; padding: 0 0 3px; cursor: pointer; box-shadow: 0 4px 16px rgba(29, 26, 15, 0.22); }
 .drawer-nav-btn:disabled { opacity: 0.4; cursor: default; }
-.drawer-nav-count { font-size: 14px; font-weight: 600; color: #fff; text-shadow: 0 1px 4px rgba(29, 26, 15, 0.5); font-variant-numeric: tabular-nums; }
+.drawer-nav-count { font-size: var(--text-base); font-weight: 600; color: #fff; text-shadow: 0 1px 4px rgba(29, 26, 15, 0.5); font-variant-numeric: tabular-nums; }
 @media (max-width: 759.98px) {
   .drawer-nav { position: static; order: 1; transform: none; flex-direction: row; justify-content: center; gap: 16px; padding: 8px 0 0; border-top: 1px solid var(--border); }
   .drawer-foot { order: 2; border-top: 0 !important; }

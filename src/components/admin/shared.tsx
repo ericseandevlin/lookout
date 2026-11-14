@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { color } from "@/lib/tokens";
+import { color, font } from "@/lib/tokens";
 
 /** Shared by the admin pages: response types, small formatters and styles, the tab bar and the message line. */
 export type Overview = {
@@ -34,10 +34,10 @@ export const when = (iso: string | null) =>
   iso ? new Date(iso).toLocaleString("en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" }) : "Never";
 /** Date only ("Oct 15"), for table cells; put `when` in the title for the full time (#1234). */
 export const day = (iso: string | null) => (iso ? new Date(iso).toLocaleDateString("en-US", { month: "short", day: "numeric" }) : "Never");
-export const input: React.CSSProperties = { width: "100%", maxWidth: 420, height: 42, border: `1.5px solid ${color.border}`, background: "#fff", borderRadius: 10, padding: "0 13px", fontSize: 14, outline: "none", color: color.ink };
+export const input: React.CSSProperties = { width: "100%", maxWidth: 420, height: 42, border: `1.5px solid ${color.border}`, background: "#fff", borderRadius: 10, padding: "0 13px", fontSize: font.base, outline: "none", color: color.ink };
 export const card: React.CSSProperties = { background: "#fff", borderRadius: 16, padding: "16px 18px" };
-export const th: React.CSSProperties = { fontSize: 12, fontWeight: 600, letterSpacing: ".06em", textTransform: "uppercase", color: color.t2, textAlign: "left", padding: "12px 14px", borderBottom: `1px solid ${color.border}`, whiteSpace: "nowrap" };
-export const td: React.CSSProperties = { fontSize: 14, padding: "12px 14px", borderBottom: `1px solid ${color.surface}`, verticalAlign: "top" };
+export const th: React.CSSProperties = { fontSize: font.xs, fontWeight: 600, letterSpacing: ".06em", textTransform: "uppercase", color: color.t2, textAlign: "left", padding: "12px 14px", borderBottom: `1px solid ${color.border}`, whiteSpace: "nowrap" };
+export const td: React.CSSProperties = { fontSize: font.base, padding: "12px 14px", borderBottom: `1px solid ${color.surface}`, verticalAlign: "top" };
 
 export function Tabs() {
   const path = usePathname();
@@ -47,7 +47,7 @@ export function Tabs() {
       {tabs.map(([href, label]) => {
         const on = path === href;
         return (
-          <Link key={href} href={href} aria-current={on ? "page" : undefined} style={{ display: "flex", alignItems: "center", height: 34, padding: "0 16px", whiteSpace: "nowrap", borderRadius: 999, border: `1.5px solid ${on ? color.brick : color.border}`, background: on ? color.brick : "#fff", color: on ? "#fff" : color.ink, fontSize: 14, fontWeight: 600, textDecoration: "none" }}>
+          <Link key={href} href={href} aria-current={on ? "page" : undefined} style={{ display: "flex", alignItems: "center", height: 34, padding: "0 16px", whiteSpace: "nowrap", borderRadius: 999, border: `1.5px solid ${on ? color.brick : color.border}`, background: on ? color.brick : "#fff", color: on ? "#fff" : color.ink, fontSize: font.base, fontWeight: 600, textDecoration: "none" }}>
             {label}
           </Link>
         );
@@ -88,5 +88,5 @@ export function TableBox({ children }: { children: React.ReactNode }) {
 
 export function Msg({ text, ok }: { text: string | null; ok?: boolean }) {
   if (!text) return null;
-  return <div aria-live="polite" style={{ fontSize: 14, color: ok ? color.greenText : color.brick, lineHeight: 1.45 }}>{text}</div>;
+  return <div aria-live="polite" style={{ fontSize: font.base, color: ok ? color.greenText : color.brick, lineHeight: 1.45 }}>{text}</div>;
 }

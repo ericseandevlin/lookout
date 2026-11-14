@@ -21,7 +21,7 @@ import { SearchNowButton } from "./finds/SearchNowButton";
 import { AddLink } from "./finds/AddLink";
 import { FilterSheet } from "./finds/FilterSheet";
 import { Drawer } from "./finds/Drawer";
-import { color } from "@/lib/tokens";
+import { color, font } from "@/lib/tokens";
 
 export { Switch } from "./finds/Controls";
 
@@ -198,11 +198,11 @@ export function Finds() {
       <div className="board-hdr">
         <div style={{ display: "flex", alignItems: "center", gap: 20, flexWrap: "wrap" }}>
           <div style={{ flex: 1, minWidth: 260 }}>
-            <h1 style={{ margin: 0, fontSize: 27, fontWeight: 700, letterSpacing: "-0.02em", lineHeight: "32px" }}>Finds</h1>
+            <h1 style={{ margin: 0, fontSize: font["4xl"], fontWeight: 700, letterSpacing: "-0.02em", lineHeight: "32px" }}>Finds</h1>
             <div style={{ display: "flex", alignItems: "baseline", gap: 8, flexWrap: "wrap", marginTop: 4 }}>
-              <span className={state.running ? "pulse" : undefined} style={{ fontSize: 14, color: color.t2 }}>{sub}</span>
+              <span className={state.running ? "pulse" : undefined} style={{ fontSize: font.base, color: color.t2 }}>{sub}</span>
               {!state.running && state.lastReport && (
-                <button onClick={() => { if (!showReport) trackClient("report_opened"); setShowReport(!showReport); }} aria-expanded={showReport} style={{ border: 0, background: "transparent", padding: 0, fontSize: 14, fontWeight: 600, color: color.brick, cursor: "pointer", textDecoration: "underline", textUnderlineOffset: 3 }}>
+                <button onClick={() => { if (!showReport) trackClient("report_opened"); setShowReport(!showReport); }} aria-expanded={showReport} style={{ border: 0, background: "transparent", padding: 0, fontSize: font.base, fontWeight: 600, color: color.brick, cursor: "pointer", textDecoration: "underline", textUnderlineOffset: 3 }}>
                   {showReport ? "Hide search report" : "See search report"}
                 </button>
               )}
@@ -216,7 +216,7 @@ export function Finds() {
                 onChange={(e) => setQ(e.target.value)}
                 placeholder="Search company, role, notes..."
                 aria-label="Search finds"
-                style={{ flex: 1, minWidth: 0, background: "transparent", border: 0, outline: "none", color: color.ink, fontSize: 14 }}
+                style={{ flex: 1, minWidth: 0, background: "transparent", border: 0, outline: "none", color: color.ink, fontSize: font.base }}
               />
             </div>
             {!store.readOnly && (cfg.discovery || state.canSearch) && <SearchNowButton />}
@@ -237,7 +237,7 @@ export function Finds() {
             {(["all", "new", "archived"] as Filter[]).map((k) => {
               const c = chip(filter === k);
               return (
-                <button key={k} onClick={() => { setFilter(k); setFitMenu(false); }} style={{ display: "flex", alignItems: "center", gap: 7, height: 34, padding: "0 15px", borderRadius: 999, border: `1.5px solid ${c.border}`, background: c.bg, color: c.ink, fontSize: 14, fontWeight: 600, cursor: "pointer" }}>
+                <button key={k} onClick={() => { setFilter(k); setFitMenu(false); }} style={{ display: "flex", alignItems: "center", gap: 7, height: 34, padding: "0 15px", borderRadius: 999, border: `1.5px solid ${c.border}`, background: c.bg, color: c.ink, fontSize: font.base, fontWeight: 600, cursor: "pointer" }}>
                   {k === "all" ? "All" : k === "new" ? "New" : "Archived"}
                   <span style={{ opacity: 0.65, fontWeight: 500 }}>{tally[k]}</span>
                 </button>
@@ -248,7 +248,7 @@ export function Finds() {
               {(() => {
                 const c = chip(!!fit);
                 return (
-                  <button onClick={() => { setFitMenu((v) => !v); setStageMenu(null); }} aria-expanded={fitMenu} style={{ display: "flex", alignItems: "center", gap: 7, height: 34, padding: "0 15px", borderRadius: 999, border: `1.5px solid ${c.border}`, background: c.bg, color: c.ink, fontSize: 14, fontWeight: 600, cursor: "pointer" }}>
+                  <button onClick={() => { setFitMenu((v) => !v); setStageMenu(null); }} aria-expanded={fitMenu} style={{ display: "flex", alignItems: "center", gap: 7, height: 34, padding: "0 15px", borderRadius: 999, border: `1.5px solid ${c.border}`, background: c.bg, color: c.ink, fontSize: font.base, fontWeight: 600, cursor: "pointer" }}>
                     {fit ? `Match · ${fit === 5 ? "5" : fit + "+"}` : "Match · Any"}
                     <ChevronDown />
                   </button>
@@ -257,7 +257,7 @@ export function Finds() {
               {fitMenu && (
                 <Menu style={{ top: 40, left: 0, minWidth: 150 }}>
                   {([["Any match", 0], ["5 only", 5], ["4 and up", 4], ["3 and up", 3]] as const).map(([label, k]) => (
-                    <button key={k} className="h-menu" onClick={() => { setFit(k); setFitMenu(false); }} style={{ display: "flex", justifyContent: "space-between", padding: "9px 12px", border: 0, borderRadius: 8, background: fit === k ? color.surface : "transparent", fontSize: 14, fontWeight: 500, color: color.ink, cursor: "pointer", textAlign: "left" }}>
+                    <button key={k} className="h-menu" onClick={() => { setFit(k); setFitMenu(false); }} style={{ display: "flex", justifyContent: "space-between", padding: "9px 12px", border: 0, borderRadius: 8, background: fit === k ? color.surface : "transparent", fontSize: font.base, fontWeight: 500, color: color.ink, cursor: "pointer", textAlign: "left" }}>
                       {label}
                       <span style={{ color: color.t2 }}>{fitCount(k)}</span>
                     </button>
@@ -265,7 +265,7 @@ export function Finds() {
                 </Menu>
               )}
             </div>
-            <div className="wide-only" style={{ marginLeft: "auto", fontSize: 14, color: color.t2 }}>Click a row for details · click a stage to change it</div>
+            <div className="wide-only" style={{ marginLeft: "auto", fontSize: font.base, color: color.t2 }}>Click a row for details · click a stage to change it</div>
           </div>
 
           {/* Mobile toolbar */}
@@ -275,7 +275,7 @@ export function Finds() {
                 {(["all", "new", "archived"] as Filter[]).map((k) => {
                   const s = seg(filter === k);
                   return (
-                    <button key={k} onClick={() => setFilter(k)} style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 6, height: 36, border: 0, borderRadius: 9, background: s.bg, color: s.ink, boxShadow: s.shadow, fontSize: 14, fontWeight: 600, cursor: "pointer" }}>
+                    <button key={k} onClick={() => setFilter(k)} style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 6, height: 36, border: 0, borderRadius: 9, background: s.bg, color: s.ink, boxShadow: s.shadow, fontSize: font.base, fontWeight: 600, cursor: "pointer" }}>
                       {k === "all" ? "All" : k === "new" ? "New" : "Archived"}
                       <span style={{ opacity: 0.6, fontWeight: 500 }}>{tally[k]}</span>
                     </button>
@@ -283,14 +283,14 @@ export function Finds() {
                 })}
               </div>
               <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                <div style={{ flex: 1, minWidth: 0, fontSize: 14, color: color.t2, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                <div style={{ flex: 1, minWidth: 0, fontSize: font.base, color: color.t2, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
                   {rows.length} shown · Sorted by {sortLabel} {arrow}
                 </div>
-                <button onClick={() => setSheetOpen(true)} style={{ display: "flex", alignItems: "center", gap: 8, height: 40, padding: "0 14px", borderRadius: 999, border: `1.5px solid ${filterCount ? color.ink : color.border}`, background: filterCount ? color.surface : "#fff", color: color.ink, fontSize: 14, fontWeight: 600, cursor: "pointer", flex: "none" }}>
+                <button onClick={() => setSheetOpen(true)} style={{ display: "flex", alignItems: "center", gap: 8, height: 40, padding: "0 14px", borderRadius: 999, border: `1.5px solid ${filterCount ? color.ink : color.border}`, background: filterCount ? color.surface : "#fff", color: color.ink, fontSize: font.base, fontWeight: 600, cursor: "pointer", flex: "none" }}>
                   <SlidersIcon />
                   Filter &amp; sort
                   {filterCount > 0 && (
-                    <span style={{ minWidth: 20, height: 20, padding: "0 6px", borderRadius: 999, background: color.brick, color: "#fff", fontSize: 14, fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center" }}>{filterCount}</span>
+                    <span style={{ minWidth: 20, height: 20, padding: "0 6px", borderRadius: 999, background: color.brick, color: "#fff", fontSize: font.base, fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center" }}>{filterCount}</span>
                   )}
                 </button>
               </div>
@@ -309,7 +309,7 @@ export function Finds() {
                       <button
                         className="no-tint"
                         onClick={() => key && (setSortDir(sortKey === key && sortDir === "desc" ? "asc" : "desc"), setSortKey(key))}
-                        style={{ display: "flex", alignItems: "center", gap: 5, border: 0, background: "transparent", padding: 0, fontSize: 12, fontWeight: 600, letterSpacing: ".06em", textTransform: "uppercase", color: on ? color.ink : color.t2, cursor: key ? "pointer" : "default", textAlign: "left" }}
+                        style={{ display: "flex", alignItems: "center", gap: 5, border: 0, background: "transparent", padding: 0, fontSize: font.xs, fontWeight: 600, letterSpacing: ".06em", textTransform: "uppercase", color: on ? color.ink : color.t2, cursor: key ? "pointer" : "default", textAlign: "left" }}
                       >
                         {label}
                         <span style={{ color: on ? color.brick : "#CFC6B9", marginRight: 16 }}>{key ? (on ? arrow : "↕") : ""}</span>
@@ -342,29 +342,29 @@ export function Finds() {
                       </IconBtn>
                     </div>
                     <div role="cell" style={{ paddingLeft: 13, width: 60 }}>
-                      <div style={{ width: 30, height: 30, borderRadius: "50%", background: sc.bg, color: sc.ink, border: `1.5px solid ${sc.border}`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 14, fontWeight: 700 }}>{f.score}</div>
+                      <div style={{ width: 30, height: 30, borderRadius: "50%", background: sc.bg, color: sc.ink, border: `1.5px solid ${sc.border}`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: font.base, fontWeight: 700 }}>{f.score}</div>
                     </div>
                     {cfg.board.columns.map((c, ci) =>
                       ci === 0 ? (
-                        <div role="rowheader" key={c.key} style={{ fontSize: 14.5, fontWeight: 600, paddingRight: 16 }}>
+                        <div role="rowheader" key={c.key} style={{ fontSize: font.base, fontWeight: 600, paddingRight: 16 }}>
                           {/* The keyboard and screen reader way into a find (#211); the row's click stays for pointers. */}
                           <button className="cell-link no-tint" onClick={(e) => { e.stopPropagation(); open(f.id); }} aria-label={`${f.role} at ${f.company}`}>
                             {cellText(f, c.key)}
                           </button>
                         </div>
                       ) : (
-                        <div role="cell" key={c.key} style={{ fontSize: 14, fontWeight: c.key === "comp" || c.key === "value" ? 600 : 400, color: cellQuiet(f, c.key) ? color.t2 : c.key === "comp" || c.key === "value" ? color.brick : color.ink, fontVariantNumeric: "tabular-nums", paddingRight: 16, textWrap: "pretty" }}>
+                        <div role="cell" key={c.key} style={{ fontSize: font.base, fontWeight: c.key === "comp" || c.key === "value" ? 600 : 400, color: cellQuiet(f, c.key) ? color.t2 : c.key === "comp" || c.key === "value" ? color.brick : color.ink, fontVariantNumeric: "tabular-nums", paddingRight: 16, textWrap: "pretty" }}>
                           {cellText(f, c.key)}
                           {c.key === "comp" && <CompCompare f={f} current={currentComp} style={{ marginTop: 2 }} />}
                         </div>
                       ),
                     )}
-                    <div role="cell" style={{ fontSize: 14, color: color.t2, fontStyle: cellQuiet(f, cfg.board.preStage.key) ? "italic" : "normal" }}>{cellText(f, cfg.board.preStage.key)}</div>
+                    <div role="cell" style={{ fontSize: font.base, color: color.t2, fontStyle: cellQuiet(f, cfg.board.preStage.key) ? "italic" : "normal" }}>{cellText(f, cfg.board.preStage.key)}</div>
                     <div role="cell" style={{ position: "relative", paddingRight: 16 }}>
                       <button
                         data-tip="Change stage"
                         onClick={(e) => toggleStageMenu(e, f.id, "left")}
-                        style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "4px 10px", borderRadius: 999, fontSize: 14, fontWeight: 600, border: "1.5px solid rgba(29,26,15,.14)", background: st.bg, color: st.ink, cursor: "pointer", whiteSpace: "nowrap" }}
+                        style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "4px 10px", borderRadius: 999, fontSize: font.base, fontWeight: 600, border: "1.5px solid rgba(29,26,15,.14)", background: st.bg, color: st.ink, cursor: "pointer", whiteSpace: "nowrap" }}
                       >
                         {f.stage}
                         <ChevronDown />
@@ -373,7 +373,7 @@ export function Finds() {
                         <StageMenu stages={kindOf(f.type).stages} ended={kindOf(f.type).endedStages} current={f.stage} style={{ ...menuAt, minWidth: 150 }} onPick={(s) => { setStage(f, s); setStageMenu(null); }} />
                       )}
                     </div>
-                    <div role="cell" style={{ fontSize: 14, color: color.t2, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} data-tip={cellText(f, cfg.board.tail.key)}>{cellText(f, cfg.board.tail.key)}</div>
+                    <div role="cell" style={{ fontSize: font.base, color: color.t2, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} data-tip={cellText(f, cfg.board.tail.key)}>{cellText(f, cfg.board.tail.key)}</div>
                   </div>
                 );
               })}
@@ -390,25 +390,25 @@ export function Finds() {
               return (
                 <div key={f.id} className="lk-in" onClick={() => open(f.id)} style={{ animationDelay: `${Math.min(i, 14) * 28}ms`, position: "relative", zIndex: stageMenu === f.id ? 6 : undefined, display: "flex", gap: 12, alignItems: "flex-start", padding: "12px 12px 12px 20px", borderBottom: `1px solid ${color.surface}`, background: f.pinned ? "#FFFBF6" : "#fff", cursor: "pointer" }}>
                   {isNew(f) && <span aria-label="New" style={{ position: "absolute", left: 7, top: 22, width: 8, height: 8, borderRadius: "50%", background: "#427D33" }} />}
-                  <div style={{ width: 28, height: 28, borderRadius: "50%", background: sc.bg, color: sc.ink, border: `1.5px solid ${sc.border}`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 14, fontWeight: 700, flex: "none", marginTop: 1 }}>{f.score}</div>
+                  <div style={{ width: 28, height: 28, borderRadius: "50%", background: sc.bg, color: sc.ink, border: `1.5px solid ${sc.border}`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: font.base, fontWeight: 700, flex: "none", marginTop: 1 }}>{f.score}</div>
                   <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: 3 }}>
                     <div style={{ display: "flex", alignItems: "flex-start", gap: 8 }}>
                       <div style={{ flex: 1, minWidth: 0 }}>
-                        <div style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 14.5, fontWeight: 600, lineHeight: 1.3 }}>
+                        <div style={{ display: "flex", alignItems: "center", gap: 5, fontSize: font.base, fontWeight: 600, lineHeight: 1.3 }}>
                           <button className="cell-link no-tint" onClick={(e) => { e.stopPropagation(); open(f.id); }} aria-label={`${f.role} at ${f.company}`} style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{f.company}</button>
                           {f.pinned && <PinIcon size={13} stroke={color.brick} sw={2} style={{ flex: "none" }} />}
                         </div>
-                        <div style={{ fontSize: 14, lineHeight: 1.35, color: "#3A3428", marginTop: 1, display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>{f.role}</div>
+                        <div style={{ fontSize: font.base, lineHeight: 1.35, color: "#3A3428", marginTop: 1, display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>{f.role}</div>
                       </div>
-                      <span style={{ flex: "none", fontSize: 14, color: color.t2, fontStyle: cellQuiet(f, cfg.board.preStage.key) ? "italic" : "normal", whiteSpace: "nowrap", marginTop: 2 }}>{cellText(f, cfg.board.preStage.key)}</span>
+                      <span style={{ flex: "none", fontSize: font.base, color: color.t2, fontStyle: cellQuiet(f, cfg.board.preStage.key) ? "italic" : "normal", whiteSpace: "nowrap", marginTop: 2 }}>{cellText(f, cfg.board.preStage.key)}</span>
                     </div>
                     <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, marginTop: 2 }}>
                       <div style={{ minWidth: 0 }}>
-                        <div style={{ fontSize: 14, fontWeight: 600, color: color.brick, fontVariantNumeric: "tabular-nums", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{cellText(f, cfg.board.columns[2].key)}</div>
+                        <div style={{ fontSize: font.base, fontWeight: 600, color: color.brick, fontVariantNumeric: "tabular-nums", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{cellText(f, cfg.board.columns[2].key)}</div>
                         {cfg.board.columns[2].key === "comp" && <CompCompare f={f} current={currentComp} />}
                       </div>
                       <div style={{ position: "relative", flex: "none" }}>
-                        <button onClick={(e) => toggleStageMenu(e, f.id, "right")} style={{ display: "inline-flex", alignItems: "center", gap: 4, height: 26, padding: "0 8px 0 10px", borderRadius: 999, fontSize: 14, fontWeight: 600, border: "1.5px solid rgba(29,26,15,.14)", background: st.bg, color: st.ink, cursor: "pointer", whiteSpace: "nowrap" }}>
+                        <button onClick={(e) => toggleStageMenu(e, f.id, "right")} style={{ display: "inline-flex", alignItems: "center", gap: 4, height: 26, padding: "0 8px 0 10px", borderRadius: 999, fontSize: font.base, fontWeight: 600, border: "1.5px solid rgba(29,26,15,.14)", background: st.bg, color: st.ink, cursor: "pointer", whiteSpace: "nowrap" }}>
                           {f.stage}
                           <ChevronDown size={11} />
                         </button>
@@ -461,7 +461,7 @@ export function Finds() {
 
 function Empty({ hasAny, running }: { hasAny: boolean; running: boolean }) {
   return (
-    <div style={{ padding: "48px 22px", textAlign: "center", color: color.t2, fontSize: 14 }}>
+    <div style={{ padding: "48px 22px", textAlign: "center", color: color.t2, fontSize: font.base }}>
       {hasAny ? "No roles match this view." : running ? "Searching now. New finds will show up here." : (
         <div style={{ maxWidth: 560, margin: "0 auto", textAlign: "left" }}><NextStep here="finds" /></div>
       )}

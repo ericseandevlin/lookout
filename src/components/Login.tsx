@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { LegalLinks } from "./LegalLinks";
 import { WAITLIST_NOTICE } from "@/lib/legal";
 import { NEXT_MOVES } from "@/lib/onboarding";
-import { color } from "@/lib/tokens";
+import { color, font } from "@/lib/tokens";
 
 export function Login({ emailEnabled, inviteOnly, turnstileSiteKey = "", kinds = false, signedOut = false, channel = null, start }: { emailEnabled: boolean; inviteOnly: boolean; turnstileSiteKey?: string; kinds?: boolean; signedOut?: boolean; channel?: string | null; start?: "signin" | "request" }) {
   const [mode, setMode] = useState<"signin" | "request">(start ?? (inviteOnly && !emailEnabled ? "request" : "signin"));
@@ -19,8 +19,8 @@ export function Login({ emailEnabled, inviteOnly, turnstileSiteKey = "", kinds =
   );
 }
 
-const field: React.CSSProperties = { height: 46, border: `1.5px solid ${color.border}`, background: "#fff", borderRadius: 10, padding: "0 14px", fontSize: 15, outline: "none", color: color.ink };
-const label: React.CSSProperties = { fontSize: 14, fontWeight: 600, letterSpacing: ".06em", textTransform: "uppercase", color: color.t2 };
+const field: React.CSSProperties = { height: 46, border: `1.5px solid ${color.border}`, background: "#fff", borderRadius: 10, padding: "0 14px", fontSize: font.md, outline: "none", color: color.ink };
+const label: React.CSSProperties = { fontSize: font.base, fontWeight: 600, letterSpacing: ".06em", textTransform: "uppercase", color: color.t2 };
 const linkBtn: React.CSSProperties = { border: 0, background: "transparent", padding: 0, color: color.brick, fontWeight: 600, fontSize: "inherit", cursor: "pointer", textDecoration: "underline", textUnderlineOffset: 3 };
 
 function SignIn({ emailEnabled, inviteOnly, signedOut, onRequest }: { emailEnabled: boolean; inviteOnly: boolean; signedOut: boolean; onRequest: () => void }) {
@@ -54,7 +54,7 @@ function SignIn({ emailEnabled, inviteOnly, signedOut, onRequest }: { emailEnabl
     <>
       {/* A plain sign-in page for people who already have an account (#517). Lookout has no passwords: the emailed link is the sign-in. */}
       {signedOut && (
-        <div role="status" style={{ marginBottom: 16, padding: "8px 12px", borderRadius: 10, background: "#F3F7F1", border: "1px solid #CFE3C6", fontSize: 14, color: color.greenText }}>
+        <div role="status" style={{ marginBottom: 16, padding: "8px 12px", borderRadius: 10, background: "#F3F7F1", border: "1px solid #CFE3C6", fontSize: font.base, color: color.greenText }}>
           You&apos;re signed out.
         </div>
       )}
@@ -66,12 +66,12 @@ function SignIn({ emailEnabled, inviteOnly, signedOut, onRequest }: { emailEnabl
           <label htmlFor="email" style={label}>Email</label>
           <input id="email" type="email" required autoComplete="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@example.com" className="f-brick" style={field} />
           <button type="submit" disabled={state === "sending"} style={primary}>{state === "sending" ? "Sending…" : "Email me a sign-in link"}</button>
-          {state === "error" && <div role="alert" style={{ fontSize: 14, color: color.brick }}>{msg}</div>}
+          {state === "error" && <div role="alert" style={{ fontSize: font.base, color: color.brick }}>{msg}</div>}
         </form>
       ) : (
-        <p style={{ ...p, marginTop: 20, fontSize: 14 }}>Sign-in emails aren&apos;t on yet. If you were invited, open the sign-in link you were sent.</p>
+        <p style={{ ...p, marginTop: 20, fontSize: font.base }}>Sign-in emails aren&apos;t on yet. If you were invited, open the sign-in link you were sent.</p>
       )}
-      <div style={{ fontSize: 14, color: color.t2, lineHeight: 1.5, marginTop: 22, paddingTop: 16, borderTop: `1px solid ${color.border}` }}>
+      <div style={{ fontSize: font.base, color: color.t2, lineHeight: 1.5, marginTop: 22, paddingTop: 16, borderTop: `1px solid ${color.border}` }}>
         <strong style={{ color: color.ink }}>New here?</strong> Lookout finds roles that actually fit. Each week it searches job boards and company sites, scores every role against your
         profile, and puts the matches on your board.{" "}
         {inviteOnly ? (
@@ -145,12 +145,12 @@ function RequestAccess({ emailEnabled, turnstileSiteKey, kinds, channel, onSignI
                 key={key}
                 aria-pressed={on}
                 onClick={() => setKind(key)}
-                style={{ display: "flex", alignItems: "center", gap: 12, minHeight: 48, padding: "12px 16px", borderRadius: 10, border: `1.5px solid ${on ? color.ink : color.border}`, background: on ? color.ink : "#fff", color: on ? "#fff" : color.ink, fontSize: 14, fontWeight: 500, cursor: "pointer", textAlign: "left" }}
+                style={{ display: "flex", alignItems: "center", gap: 12, minHeight: 48, padding: "12px 16px", borderRadius: 10, border: `1.5px solid ${on ? color.ink : color.border}`, background: on ? color.ink : "#fff", color: on ? "#fff" : color.ink, fontSize: font.base, fontWeight: 500, cursor: "pointer", textAlign: "left" }}
               >
                 <span style={{ width: 14, height: 14, borderRadius: "50%", border: `1.5px solid ${on ? color.orange : "#CFC6B9"}`, background: on ? color.orange : "transparent", flex: "none" }} />
                 <span>
                   {lab}
-                  <span style={{ display: "block", fontSize: 14, fontWeight: 400, lineHeight: 1.45, opacity: 0.75, marginTop: 3 }}>{note}</span>
+                  <span style={{ display: "block", fontSize: font.base, fontWeight: 400, lineHeight: 1.45, opacity: 0.75, marginTop: 3 }}>{note}</span>
                 </span>
               </button>
             );
@@ -168,7 +168,7 @@ function RequestAccess({ emailEnabled, turnstileSiteKey, kinds, channel, onSignI
                 key={m.key}
                 aria-pressed={on}
                 onClick={() => setMove(on ? null : m.key)}
-                style={{ display: "flex", alignItems: "center", gap: 12, minHeight: 48, padding: "12px 16px", borderRadius: 10, border: `1.5px solid ${on ? color.ink : color.border}`, background: on ? color.ink : "#fff", color: on ? "#fff" : color.ink, fontSize: 14, fontWeight: 500, cursor: "pointer", textAlign: "left" }}
+                style={{ display: "flex", alignItems: "center", gap: 12, minHeight: 48, padding: "12px 16px", borderRadius: 10, border: `1.5px solid ${on ? color.ink : color.border}`, background: on ? color.ink : "#fff", color: on ? "#fff" : color.ink, fontSize: font.base, fontWeight: 500, cursor: "pointer", textAlign: "left" }}
               >
                 <span style={{ width: 14, height: 14, borderRadius: "50%", border: `1.5px solid ${on ? color.orange : "#CFC6B9"}`, background: on ? color.orange : "transparent", flex: "none" }} />
                 {m.label}
@@ -178,11 +178,11 @@ function RequestAccess({ emailEnabled, turnstileSiteKey, kinds, channel, onSignI
         </fieldset>
         )}
         {turnstileSiteKey && <Turnstile siteKey={turnstileSiteKey} resetKey={resetKey} onToken={setToken} />}
-        <p style={{ fontSize: 14, lineHeight: 1.5, color: color.t2, margin: 0 }}>{WAITLIST_NOTICE}</p>
+        <p style={{ fontSize: font.base, lineHeight: 1.5, color: color.t2, margin: 0 }}>{WAITLIST_NOTICE}</p>
         <button type="submit" disabled={state === "sending" || (!!turnstileSiteKey && !token)} style={primary}>{state === "sending" ? "Sending…" : "Request access"}</button>
-        {state === "error" && <div role="alert" style={{ fontSize: 14, color: color.brick }}>{msg}</div>}
+        {state === "error" && <div role="alert" style={{ fontSize: font.base, color: color.brick }}>{msg}</div>}
       </form>
-      <div style={{ fontSize: 14, color: color.t2, marginTop: 18 }}>
+      <div style={{ fontSize: font.base, color: color.t2, marginTop: 18 }}>
         Already have an account? <button onClick={onSignIn} style={linkBtn}>Sign in</button>
       </div>
     </>
@@ -246,7 +246,7 @@ function Turnstile({ siteKey, resetKey, onToken }: { siteKey: string; resetKey: 
   return (
     <>
       <div ref={box} style={{ minHeight: 65, marginTop: 4 }} />
-      {failed && <div role="alert" style={{ fontSize: 14, color: color.brick }}>The bot check didn&apos;t load. Check your connection and reload the page.</div>}
+      {failed && <div role="alert" style={{ fontSize: font.base, color: color.brick }}>The bot check didn&apos;t load. Check your connection and reload the page.</div>}
     </>
   );
 }
@@ -266,9 +266,9 @@ export function AuthCard({ children }: { children: React.ReactNode }) {
 }
 
 export const Eyebrow = ({ children }: { children: React.ReactNode }) => (
-  <div style={{ fontSize: 14, fontWeight: 700, letterSpacing: ".14em", textTransform: "uppercase", color: color.brick }}>{children}</div>
+  <div style={{ fontSize: font.base, fontWeight: 700, letterSpacing: ".14em", textTransform: "uppercase", color: color.brick }}>{children}</div>
 );
-export const h1: React.CSSProperties = { margin: "8px 0 0", fontSize: 27, fontWeight: 700, letterSpacing: "-0.02em", lineHeight: 1.15 };
-export const p: React.CSSProperties = { margin: "10px 0 0", fontSize: 14.5, lineHeight: 1.5, color: color.t2, textWrap: "pretty" };
-export const primary: React.CSSProperties = { height: 46, borderRadius: 12, border: 0, background: color.brick, color: "#fff", fontSize: 14.5, fontWeight: 600, cursor: "pointer" };
-const ghost: React.CSSProperties = { height: 40, padding: "0 16px", borderRadius: 10, border: "1.5px solid #1D1A0F", background: "#fff", color: color.ink, fontSize: 14, fontWeight: 600, cursor: "pointer" };
+export const h1: React.CSSProperties = { margin: "8px 0 0", fontSize: font["4xl"], fontWeight: 700, letterSpacing: "-0.02em", lineHeight: 1.15 };
+export const p: React.CSSProperties = { margin: "10px 0 0", fontSize: font.base, lineHeight: 1.5, color: color.t2, textWrap: "pretty" };
+export const primary: React.CSSProperties = { height: 46, borderRadius: 12, border: 0, background: color.brick, color: "#fff", fontSize: font.base, fontWeight: 600, cursor: "pointer" };
+const ghost: React.CSSProperties = { height: 40, padding: "0 16px", borderRadius: 10, border: "1.5px solid #1D1A0F", background: "#fff", color: color.ink, fontSize: font.base, fontWeight: 600, cursor: "pointer" };

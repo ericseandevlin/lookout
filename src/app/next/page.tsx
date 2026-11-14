@@ -2,7 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { featureOn } from "@/lib/features";
 import { LegalLinks } from "@/components/LegalLinks";
-import { color } from "@/lib/tokens";
+import { color, font } from "@/lib/tokens";
 
 export const dynamic = "force-dynamic";
 export const metadata = { title: "What's next · Lookout", robots: { index: false, follow: false } };
@@ -25,25 +25,25 @@ export default function NextPage() {
   return (
     <main style={{ minHeight: "100vh", background: color.page, color: color.ink, padding: "40px 16px 48px" }}>
       <div style={{ maxWidth: 980, margin: "0 auto" }}>
-        <Link href="/" className="wordmark" style={{ fontSize: 24, color: color.ink, textDecoration: "none" }}>Lookout</Link>
-        <div style={{ fontSize: 13, fontWeight: 700, letterSpacing: ".14em", textTransform: "uppercase", color: color.brick, marginTop: 48 }}>What&apos;s next</div>
+        <Link href="/" className="wordmark" style={{ fontSize: font["3xl"], color: color.ink, textDecoration: "none" }}>Lookout</Link>
+        <div style={{ fontSize: font.sm, fontWeight: 700, letterSpacing: ".14em", textTransform: "uppercase", color: color.brick, marginTop: 48 }}>What&apos;s next</div>
         <h1 style={{ fontFamily: "var(--wordmark)", fontSize: "clamp(38px, 5.4vw, 64px)", lineHeight: 1, letterSpacing: "-0.03em", margin: "12px 0 0", maxWidth: "13em" }}>
           The same lookout, pointed at more things.
         </h1>
-        <p style={{ fontSize: 18, lineHeight: 1.55, color: "#4A4339", maxWidth: "36em", marginTop: 18 }}>
+        <p style={{ fontSize: font.xl, lineHeight: 1.55, color: "#4A4339", maxWidth: "36em", marginTop: 18 }}>
           Jobs came first because a friend needed one. Underneath, Lookout is a search that reads, scores and explains. Here&apos;s where it goes next. Some of it
           works today on the test site, some of it is a sketch.
         </p>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: 18, marginTop: 40 }}>
           {ITEMS.map((it) => (
             <section key={it.title} style={{ background: "#fff", border: `1px solid ${color.border}`, borderRadius: 16, padding: 22 }}>
-              <span style={{ fontSize: 12, fontWeight: 700, letterSpacing: ".1em", textTransform: "uppercase", color: tone[it.status][0], background: tone[it.status][1], borderRadius: 999, padding: "3px 10px" }}>{it.status}</span>
-              <h2 style={{ fontSize: 21, fontWeight: 700, letterSpacing: "-0.01em", margin: "14px 0 0" }}>{it.title}</h2>
-              <p style={{ fontSize: 15.5, lineHeight: 1.5, color: "#4A4339", margin: "8px 0 0" }}>{it.body}</p>
+              <span style={{ fontSize: font.xs, fontWeight: 700, letterSpacing: ".1em", textTransform: "uppercase", color: tone[it.status][0], background: tone[it.status][1], borderRadius: 999, padding: "3px 10px" }}>{it.status}</span>
+              <h2 style={{ fontSize: font["2xl"], fontWeight: 700, letterSpacing: "-0.01em", margin: "14px 0 0" }}>{it.title}</h2>
+              <p style={{ fontSize: font.lg, lineHeight: 1.5, color: "#4A4339", margin: "8px 0 0" }}>{it.body}</p>
             </section>
           ))}
         </div>
-        <div style={{ fontSize: 16, lineHeight: 1.6, color: "#4A4339", marginTop: 40 }}>
+        <div style={{ fontSize: font.lg, lineHeight: 1.6, color: "#4A4339", marginTop: 40 }}>
           <p style={{ margin: 0 }}>
             Want one of these first? <a href="mailto:ericdevlin@me.com?subject=Lookout" style={link}>Tell Eric.</a>
           </p>

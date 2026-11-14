@@ -2,7 +2,7 @@
 
 import { createPortal } from "react-dom";
 import { ENDED_STAGES, STAGES, stageStyle } from "@/lib/board";
-import { color } from "@/lib/tokens";
+import { color, font } from "@/lib/tokens";
 
 export function Menu({ style, children, onClick }: { style: React.CSSProperties; children: React.ReactNode; onClick?: (e: React.MouseEvent) => void }) {
   return (
@@ -24,7 +24,7 @@ export function StageMenu({ current, onPick, style, mobile, stages = STAGES, end
             className="h-menu"
             data-tip={ended.includes(s) ? "Archives it" : undefined}
             onClick={(e) => { e.stopPropagation(); onPick(s); }}
-            style={{ display: "flex", alignItems: "center", gap: 9, padding: mobile ? "0 10px" : "8px 10px", minHeight: mobile ? 40 : undefined, border: 0, borderRadius: 8, background: s === current ? color.surface : "transparent", fontSize: mobile ? 14 : 13, fontWeight: 500, color: color.ink, cursor: "pointer", textAlign: "left", whiteSpace: "nowrap" }}
+            style={{ display: "flex", alignItems: "center", gap: 9, padding: mobile ? "0 10px" : "8px 10px", minHeight: mobile ? 40 : undefined, border: 0, borderRadius: 8, background: s === current ? color.surface : "transparent", fontSize: mobile ? font.base : font.sm, fontWeight: 500, color: color.ink, cursor: "pointer", textAlign: "left", whiteSpace: "nowrap" }}
           >
             <span style={{ width: 10, height: 10, borderRadius: "50%", background: stageStyle(s).bg, border: `1.5px solid ${stageStyle(s).bg}`, flex: "none" }} />
             {s}
