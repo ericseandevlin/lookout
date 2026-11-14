@@ -101,6 +101,10 @@ export function workdayApi(rawUrl: string): string | null {
   const [site, job, ...rest] = parts;
   // A share link reads /<site>/details/<Title>_<ID>; the JSON takes the same rest under /job/ (#1071).
   if (!site || (job !== "job" && job !== "details") || !rest.length) return null;
+  // The apply steps (.../R123/apply, .../R123/apply/applyManually) are not part of the job's address; jobKey drops them
+  // too. A title that starts with "Apply" ("Apply-Engineer_R5") is the job (#1206).
+  const step = rest.findIndex((p, i) => i > 0 && p.toLowerCase() === "apply");
+  if (step > 0) rest.length = step;
   return `https://${u.hostname}/wday/cxs/${tenant}/${site}/job/${rest.join("/")}`;
 }
 
