@@ -855,6 +855,8 @@ describe("extension probe and submit watch", () => {
     ["December 1, 2026", "2026-12-01"],
     ["1 Dec 2026", "2026-12-01"],
     ["2026-12-01", "2026-12-01"],
+    ["2026/12/01", "2026-12-01"],
+    ["12/15/26", "2026-12-15"],
   ])
     it(`a date field gets "${content}" as yyyy-mm-dd (#1242)`, async () => {
       const p = page(`<label for="d">Earliest start date</label><input id="d" type="date">`);
@@ -862,6 +864,13 @@ describe("extension probe and submit watch", () => {
       expect(p.value("#d")).toBe(want);
       expect(log[0]).toMatchObject({ ok: true, how: "typed" });
     });
+
+  it("a date field with an impossible day is not filled (#1295)", async () => {
+    const p = page(`<label for="d">Earliest start date</label><input id="d" type="date">`);
+    const log = await p.fill({ steps: [{ prompt: "Earliest start date", kind: "text", content: "2026-02-30", required: true }] });
+    expect(p.value("#d")).toBe("");
+    expect(log[0]).toMatchObject({ ok: false, how: "date field, answer is not a date" });
+  });
 
   it("a date field with no date in the answer is not filled (#1242)", async () => {
     const p = page(`<label for="d">Earliest start date</label><input id="d" type="date">`);
