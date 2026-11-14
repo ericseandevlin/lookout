@@ -346,7 +346,13 @@ async function fillOne(page: Page, s: FillStep): Promise<{ ok: boolean; how: str
 }
 
 /** The first number in an answer, for a number field: "$165,000" is "165000". Same as the extension (#1140). */
-export const numberAnswer = (t: string) => t.match(/\d[\d,]*(\.\d+)?/)?.[0].replace(/,/g, "") ?? "";
+/** The answer's first number for a number field. A k or M right after it counts: "$165k" is 165000, not 165 (#1168). */
+export const numberAnswer = (t: string) => {
+  const m = t.match(/(\d[\d,]*(?:\.\d+)?)([km]\b)?/i);
+  if (!m) return "";
+  const n = m[1].replace(/,/g, "");
+  return m[2] ? String(Math.round(Number(n) * (m[2].toLowerCase() === "k" ? 1e3 : 1e6))) : n;
+};
 
 /**
  * Run a test fill or a real submit in the background and record the result on the application.
