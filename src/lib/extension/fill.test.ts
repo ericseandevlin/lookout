@@ -698,6 +698,19 @@ describe("extension fill: uploads", () => {
     expect(log.map((r) => r.how)).toEqual(["uploaded .docx", "upload field not found"]);
   });
 
+  it("types a cover letter into a text box when the form has no letter upload (#1292)", async () => {
+    const p = page(`<div><label for="cv">Resume</label><input type="file" id="cv"></div><div><label for="t">Cover Letter</label><textarea id="t"></textarea></div>`);
+    const log = await p.fill({
+      steps: [
+        { prompt: "Resume", kind: "file", itemKind: "resume", file: docx("Resume.docx") },
+        { prompt: "Cover Letter", kind: "file", itemKind: "cover_letter", content: "Dear team,\nI build design systems.", file: docx("Letter.docx") },
+      ],
+    });
+    expect(log.map((r) => r.how)).toEqual(["uploaded .docx", "typed the letter"]);
+    expect((p.doc.getElementById("t") as HTMLTextAreaElement).value).toBe("Dear team,\nI build design systems.");
+    expect(fileName(p, "cv")).toBe("Resume.docx");
+  });
+
   it("reports a missing file or a page with no upload field", async () => {
     const none = page(`<p>No uploads here</p>`);
     const [a] = await none.fill({ steps: [{ prompt: "Resume", kind: "file", itemKind: "resume", file: docx("r.docx") }] });

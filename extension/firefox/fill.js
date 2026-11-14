@@ -313,6 +313,14 @@
 
   async function fillFile(step) {
     const input = fileInputFor(step.prompt, step.itemKind);
+    if (!input && step.itemKind === "cover_letter" && (step.content || "").trim()) {
+      // A cover letter asked for as text, not a file: type it into the box labeled with the prompt, same as the worker (#860, #1292).
+      const box = controlFor(step.prompt);
+      if (box && (box.tagName === "TEXTAREA" || (box.tagName === "INPUT" && /^(text)?$/.test(box.getAttribute("type") || "")))) {
+        setValue(box, step.content);
+        return { ok: true, how: "typed the letter" };
+      }
+    }
     if (!input || !step.file) return { ok: false, how: step.file ? "upload field not found" : "no file" };
     const bytes = Uint8Array.from(atob(step.file.base64), (c) => c.charCodeAt(0));
     const file = new File([bytes], step.file.name, { type: "application/vnd.openxmlformats-officedocument.wordprocessingml.document" });
