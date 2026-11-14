@@ -78,12 +78,22 @@ async function dueSearches() {
       continue;
     }
     if (!isRunDay(settings, now.day) || now.hour < RUN_HOUR) continue;
-    const since = new Date(Date.now() - 20 * 3600_000);
+    // Today's run is one started on today's local date. "The last 20 hours" let a run at 10pm block the next morning's,
+    // and the Daily search drifted to the evening (#1222). The 30-hour bound only keeps the query on the index.
+    const since = new Date(Date.now() - 30 * 3600_000);
     // A failed or interrupted run isn't today's run: after the backoff it tries again, or a weekly search waits a week (#790).
     const [{ n: recent }] = await db
       .select({ n: sql<number>`count(*)::int` })
       .from(schema.runs)
-      .where(and(eq(schema.runs.searchId, search.id), eq(schema.runs.trigger, "scheduled"), ne(schema.runs.status, "failed"), gte(schema.runs.startedAt, since)));
+      .where(
+        and(
+          eq(schema.runs.searchId, search.id),
+          eq(schema.runs.trigger, "scheduled"),
+          ne(schema.runs.status, "failed"),
+          gte(schema.runs.startedAt, since),
+          sql`(${schema.runs.startedAt} at time zone ${env.timezone})::date = ${now.date}::date`,
+        ),
+      );
     if (recent === 0) due.push({ userId: user.id, searchId: search.id });
   }
   return due;
