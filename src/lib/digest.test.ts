@@ -114,6 +114,14 @@ describe("sendDigest", () => {
     expect(m.text).toContain("Nowhere role, Acme <Labs> No comp posted");
   });
 
+  it("escapes the comp line in the HTML (#1130)", async () => {
+    await find("Odd currency", { compMin: 60000, compMax: 80000, currency: "<i>X</i>" });
+    await sendDigest(userId);
+    const [m] = sent();
+    expect(m.html).toContain("60,000 – 80,000 &lt;i&gt;X&lt;/i&gt;");
+    expect(m.html).not.toContain("<i>X</i>");
+  });
+
   it("shows a posted floor and a non-USD range instead of No comp posted (#492)", async () => {
     await find("Floor only", { compMin: 150000 });
     await find("London role", { compMin: 60000, compMax: 80000, currency: "GBP" });

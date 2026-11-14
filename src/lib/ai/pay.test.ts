@@ -32,6 +32,24 @@ describe("findPay", () => {
   });
 
   it.each([
+    ["usd", "USD"],
+    [" US$ ", "USD"],
+    ["$", "USD"],
+    ["eur", "EUR"],
+    ["£", "GBP"],
+    ["<b>GBP</b>", "USD"],
+    [42, "USD"],
+  ])("reads a structured-data currency %j as %s (#1130)", (currency, want) => {
+    const ld = { "@type": "JobPosting", baseSalary: { currency, value: { minValue: 150000, maxValue: 180000, unitText: "YEAR" } } };
+    expect(findPay(`<script type="application/ld+json">${JSON.stringify(ld)}</script>`)?.currency).toBe(want);
+  });
+
+  it("reads salaryCurrency on the posting when baseSalary has none (#1130)", () => {
+    const ld = { "@type": "JobPosting", salaryCurrency: "cad", baseSalary: { value: { minValue: 150000, maxValue: 180000, unitText: "YEAR" } } };
+    expect(findPay(`<script type="application/ld+json">${JSON.stringify(ld)}</script>`)?.currency).toBe("CAD");
+  });
+
+  it.each([
     ["a plain number value", { value: 150000, unitText: "YEAR" }, 150000, 150000],
     ["min and max on the MonetaryAmount", { minValue: 140000, maxValue: 170000 }, 140000, 170000],
     ["formatted strings", { value: { minValue: "120,000", maxValue: "$150,000", unitText: "YEAR" } }, 120000, 150000],
