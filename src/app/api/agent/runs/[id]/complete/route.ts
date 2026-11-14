@@ -4,6 +4,7 @@ import { body, HttpError, json } from "@/lib/api";
 import { agentRoute } from "@/lib/agentAuth";
 import { db, schema } from "@/lib/db";
 import { loadContext, makeReport, save, saveAddedLink, ScoredList } from "@/lib/agent/discover";
+import { closeGonePostings } from "@/lib/agent/linkCheck";
 import { doneStep } from "@/lib/agent/runOutcome";
 import { autoQueue } from "@/lib/apply";
 import { applyResumeResult, Fills } from "@/lib/agent/resume";
@@ -63,6 +64,10 @@ export const POST = agentRoute<Ctx>(async (req, { params }) => {
   }
   const { newFinds, ...tally } = await save(ctx, finds, "agent");
   await autoQueue(run.userId, newFinds).catch((e) => console.error("[auto-apply] queue failed", e));
+  // The same check as the in-process search, before the report and the email: the agent only finds, so without it
+  // gone postings were never closed (#1119).
+  await progress(id, 98, "Checking that your open finds are still posted");
+  tally.closed = await closeGonePostings(run.userId).catch((e) => (console.error("[links] check failed", e), 0));
   const { added, postings: found } = tally;
   await progress(id, 100, doneStep(tally));
   const report = makeReport(ctx, { queries: p.queries ?? [], results: p.results ?? finds.length, picked: p.read ?? finds.length, read: p.read ?? finds.length, tally });

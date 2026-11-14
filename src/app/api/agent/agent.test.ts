@@ -18,12 +18,14 @@ let auth = `Bearer ${TOKEN}`;
 vi.mock("next/headers", () => ({ headers: async () => new Headers({ authorization: auth }) }));
 vi.mock("@/lib/apply", () => ({ autoQueue: vi.fn(async () => {}) }));
 vi.mock("@/lib/digest", () => ({ sendDigest: vi.fn(async () => {}) }));
+vi.mock("@/lib/agent/linkCheck", () => ({ closeGonePostings: vi.fn(async () => 2) }));
 
 const queue = (await import("./queue/route")).GET;
 const complete = (await import("./runs/[id]/complete/route")).POST;
 const step = (await import("./runs/[id]/progress/route")).POST;
 const { autoQueue } = await import("@/lib/apply");
 const { sendDigest } = await import("@/lib/digest");
+const { closeGonePostings } = await import("@/lib/agent/linkCheck");
 
 let userId = "";
 let searchId = "";
@@ -115,6 +117,15 @@ describe("POST /api/agent/runs/[id]/complete", () => {
     expect((await reload(r.id)).status).toBe("done");
     const saved = await db.select().from(schema.userOpportunities).where(eq(schema.userOpportunities.userId, userId));
     expect(saved.map((s) => s.searchId)).toEqual([searchId]);
+  });
+
+  it("checks the person's open finds are still posted and counts the closed ones in the report (#1119)", async () => {
+    vi.mocked(closeGonePostings).mockClear();
+    const r = await run({ status: "running" });
+    expect((await post(r.id, { finds: [find] })).status).toBe(200);
+    expect(closeGonePostings).toHaveBeenCalledWith(userId);
+    const after = await reload(r.id);
+    expect((after.report as { tally?: { closed?: number } } | null)?.tally?.closed).toBe(2);
   });
 
   it("falls back to the active search for an account-level run", async () => {
