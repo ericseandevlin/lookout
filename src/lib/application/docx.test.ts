@@ -94,3 +94,13 @@ describe("draftToDocx", () => {
     expect(xml).toMatch(/w:right="1080"/);
   });
 });
+
+describe("control characters (#1144)", () => {
+  it("the Word file stays valid XML when the text holds one", async () => {
+    const buf = await draftToDocx("# Sam Rivera\n## Experience\n### Designer, Acme | 2021 – Present\n- Ran the design\u000bsystem.\u0007", "Resume\u0001", { letterHeader: { name: "Sam\u000cRivera", contact: "sam@example.com" } });
+    const zip = await JSZip.loadAsync(buf);
+    const xml = await zip.file("word/document.xml")!.async("string");
+    expect(xml).not.toMatch(/[\u0000-\u0008\u000b\u000c\u000e-\u001f]/);
+    expect(xml).toContain("design system.");
+  });
+});
