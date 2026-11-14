@@ -66,6 +66,8 @@ describe("dedupe keys", () => {
   });
   it("drops ad and email click IDs, so a known job found through an ad stays known (#1193)", () => {
     expect(normUrl("https://jobs.lever.co/acme/abc?fbclid=xyz")).toBe("jobs.lever.co/acme/abc");
+    // #1252
+    expect(normUrl("https://jobs.jobvite.com/acme/job/oAbC1fwX?__jvst=Job%20Board&__jvsd=LinkedIn")).toBe(normUrl("https://jobs.jobvite.com/acme/job/oAbC1fwX"));
     expect(normUrl("https://boards.greenhouse.io/acme/jobs/123?gh_jid=123&gclid=abc")).toBe("boards.greenhouse.io/acme/jobs/123?gh_jid=123");
     expect(normUrl("https://acme.com/careers/1?msclkid=1&mc_cid=2&mc_eid=3&_hsenc=a&_hsmi=b&mkt_tok=c&li_fat_id=d&igshid=e&_gl=1*f&gbraid=g&wbraid=h&dclid=i")).toBe("acme.com/careers/1");
     expect(normUrl("https://acme.com/careers?jobId=9&GCLID=x")).toBe("acme.com/careers?jobid=9");
