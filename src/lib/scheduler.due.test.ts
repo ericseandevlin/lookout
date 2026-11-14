@@ -146,16 +146,23 @@ describe("which searches a pass runs (#377)", () => {
     expect(ran()).toEqual([s.searchId]);
   });
 
-  it("after the first run, runs again on the run day once per 20 hours", async () => {
+  it("after the first run, runs once per run day (#1222)", async () => {
     const s = await seed({ runDay: "Mon" });
     const last = await addRun(s, { status: "done", hoursAgo: 7 * 24 });
     await tick();
     expect(ran()).toEqual([s.searchId]);
 
+    // A run earlier today (9am Monday) is today's run.
+    discover.mockClear();
+    await db.update(schema.runs).set({ startedAt: ago(3) }).where(eq(schema.runs.id, last.id));
+    await tick();
+    expect(ran()).toEqual([]);
+
+    // A run yesterday evening (5pm Sunday, 19 hours ago) is not.
     discover.mockClear();
     await db.update(schema.runs).set({ startedAt: ago(19) }).where(eq(schema.runs.id, last.id));
     await tick();
-    expect(ran()).toEqual([]);
+    expect(ran()).toEqual([s.searchId]);
   });
 
   it("waits until 7am local time on the run day", async () => {
@@ -332,5 +339,16 @@ describe("running due searches side by side (#988)", () => {
     release();
     await pass;
     expect(sendDigest).toHaveBeenCalledTimes(5);
+  });
+});
+
+describe("probe: yesterday's late run is not today's run", () => {
+  it("runs a Daily search at 7am even though yesterday's scheduled run started late in the evening (#1222)", async () => {
+    const s = await seed({ freq: "Daily" });
+    // Sunday 2026-11-08 10pm in New York: yesterday's run (the first one, after setup was finished that night).
+    await db.insert(schema.runs).values({ userId: s.userId, searchId: s.searchId, trigger: "scheduled", status: "done", startedAt: new Date("2026-11-09T03:00:00Z") });
+    vi.setSystemTime(new Date("2026-11-09T12:10:00Z")); // Monday 7:10am in New York
+    await tick();
+    expect(ran()).toEqual([s.searchId]);
   });
 });
