@@ -84,6 +84,15 @@ describe("closeGonePostings", () => {
     expect(f.linkCheck?.goneSince).toBe(T0.toISOString());
   });
 
+  it("dates the closed note in the app's zone, not UTC (#1223)", async () => {
+    const id = await addFind("https://jobs.test/1");
+    pages.set("https://jobs.test/1", "This job is no longer available.");
+    const evening = new Date("2026-11-13T01:30:00Z"); // 8:30pm Nov 12 in New York (the default APP_TZ)
+    await closeGonePostings(userId, evening);
+    expect(await closeGonePostings(userId, new Date(evening.getTime() + 20 * 3600_000))).toBe(1);
+    expect((await find(id)).notes).toBe("Closed: the posting was gone (page says it's closed) as of 2026-11-12. Lookout archived it.");
+  });
+
   it("cancels a queued application for a posting it closes, and leaves one further along (#827)", async () => {
     const queued = await addFind("https://jobs.test/1", { stage: "Auto-applying" });
     const drafted = await addFind("https://jobs.test/2", { stage: "Auto-applying" });

@@ -4,6 +4,8 @@ import { db, schema } from "@/lib/db";
 import { fetchPage, FetchError, pageToText } from "@/lib/ai/fetchPage";
 import { ashbyOrgFromHtml, boardFromHtml, boardGuesses, detectAts } from "@/lib/application/scan";
 import { classifyPage, closedNote, type LinkState } from "./linkState";
+import { env } from "@/lib/env";
+import { dayKey } from "@/lib/spend";
 
 /** Stored on opportunities.attributes so every person's board shares one check per posting. */
 type LinkCheck = { checkedAt: string; state: LinkState; reason: string; goneSince?: string };
@@ -137,7 +139,8 @@ export async function closeGonePostings(userId: string, now = new Date()): Promi
         .returning({ id: schema.opportunities.id });
       if (!wrote.length) continue;
       if (lc.state === "gone" && lc.goneSince && now.getTime() - Date.parse(lc.goneSince) >= CONFIRM_MS) {
-        const day = lc.goneSince.slice(0, 10);
+        // The day in the app's zone: the UTC date ran a day late for a check after 7 or 8pm in New York (#1223).
+        const day = dayKey(new Date(lc.goneSince), env.timezone);
         const line = closedNote(lc.reason, day);
         // The stage may have moved since the read (they applied mid-run); count only a find this actually closed (#614).
         // The line goes onto each row's notes as they are now, so a note typed during the run survives (#656).
