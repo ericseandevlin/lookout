@@ -73,6 +73,21 @@ Design Systems Lead
     expect(recruiterChecks("resume", skillsHeavy).some((x) => /bullets carry a number/.test(x.what))).toBe(false);
   });
 
+  it("treats only the first title at the current employer as the latest role (#1282)", () => {
+    const grouped = `# Maya Ortiz
+Design Systems Lead
+
+## Experience
+### Acme | New York, NY | 2015 – Present
+#### Senior Designer | 2020 – Present
+- Led 12 designers.
+- Ran design reviews for the platform group.
+#### Designer | 2015 – 2020
+- Made mockups for the team.
+- Ran usability sessions.`;
+    expect(recruiterChecks("resume", grouped).filter((x) => x.dim === "impact" && x.line).map((x) => x.line)).toEqual(["Ran design reviews for the platform group."]);
+  });
+
   it("counts doubled, halved and other multipliers as a number (#776)", () => {
     const lines = ["Doubled sign-ups by rebuilding onboarding.", "Halved support tickets with a new help center.", "Tripled the team's release rate.", "Cut page weight twofold."];
     const g = recruiterChecks("resume", resume.replace("- Built the design system site used across the firm.", lines.map((l) => `- ${l}`).join("\n")));
