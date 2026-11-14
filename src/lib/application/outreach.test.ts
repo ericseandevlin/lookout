@@ -26,6 +26,14 @@ describe("finishOutreach", () => {
     expect(item.draft.question).toBeNull();
   });
 
+  it("checks names in any script against the source (#1172)", () => {
+    const madeUp = { ...person("王伟", "Recruiter"), message: person("Wei", "Recruiter").message };
+    expect(finishOutreach({ people: [madeUp] }, [source("Jane Smith", "Recruiter")], "Acme")).toEqual([]);
+    expect(finishOutreach({ people: [madeUp] }, [source("王伟", "Recruiter")], "Acme").map((i) => i.prompt)).toEqual(["王伟 · Recruiter"]);
+    expect(finishOutreach({ people: [person("José Ortiz", "Recruiter")] }, [source("Jose Ortiz", "Recruiter")], "Acme")).toHaveLength(1);
+    expect(finishOutreach({ people: [person("Maya Ortiz", "Recruiter")] }, [source("Maya Ortiz", "Recruiter")], "—")).toEqual([]);
+  });
+
   it("caps the list at two people", () => {
     const people = [person("Maya Ortiz", "Design Director", 1), person("Lee Chen", "Recruiter", 2), person("Sam Jones", "Product Lead", 3)];
     const sources = [source("Maya Ortiz", "Design Director", 1), source("Lee Chen", "Recruiter", 2), source("Sam Jones", "Product Lead", 3)];
