@@ -15,7 +15,7 @@ import { traceAs } from "@/lib/ai/trace";
 import { startBudgetedRun, finishRun, progress, startRun } from "@/lib/ai/runs";
 import { webSearch, type SearchHit } from "@/lib/ai/search";
 import { getAiConfig } from "@/lib/config";
-import { applyRules, fingerprint, fullTitle, legacyFingerprint, normUrl } from "./rules";
+import { applyRules, fingerprint, fullTitle, legacyFingerprint, normUrl, placeId, placesDiffer } from "./rules";
 import { closeGonePostings } from "./linkCheck";
 import { findEventsIfDue } from "./networking";
 import { featureOn } from "@/lib/features";
@@ -350,13 +350,22 @@ async function baseKey(f: { company: string; title: string; location: string }) 
  * titles differ and both links name a different ATS job, the second gets a key of its own.
  */
 async function postingKey(f: { company: string; title: string; location: string; url: string }) {
-  const fp = await baseKey(f);
+  const stored = async (k: string) =>
+    (
+      await db
+        .select({ title: schema.opportunities.title, sourceUrl: schema.opportunities.sourceUrl, location: schema.opportunities.location })
+        .from(schema.opportunities)
+        .where(eq(schema.opportunities.fingerprint, k))
+    )[0];
+  const base = await baseKey(f);
+  const first = await stored(base);
+  // The fingerprint keeps only the city, so "Remote, US" and "Remote, Canada" share it. A posting in another state or
+  // country than the one stored under it gets its region added to the key, so neither overwrites the other (#1285). The
+  // first stays under the plain key, so every posting stored before is still matched.
+  const fp = first && placesDiffer(first.location, f.location) ? `${base}@${placeId(f.location)}` : base;
   const mine = atsKey(f.url);
   if (!mine) return fp;
-  const [hit] = await db
-    .select({ title: schema.opportunities.title, sourceUrl: schema.opportunities.sourceUrl })
-    .from(schema.opportunities)
-    .where(eq(schema.opportunities.fingerprint, fp));
+  const hit = fp === base ? first : await stored(fp);
   const theirs = hit?.sourceUrl ? atsKey(hit.sourceUrl) : null;
   if (!hit || !theirs || theirs === mine || fullTitle(hit.title) === fullTitle(f.title)) return fp;
   return `${fp}:${mine}`;

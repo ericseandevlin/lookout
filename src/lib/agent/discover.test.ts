@@ -317,6 +317,37 @@ describe("save", () => {
     expect(opps.map((o) => [o.fingerprint, o.sourceUrl])).toEqual([[old, "https://jobs.example.com/a"]]);
   });
 
+  it("keeps the same job in two countries or states as two finds (#1285)", async () => {
+    const pairs = [
+      ["Acme", "Remote, US", "Remote, Canada"],
+      ["Bolt", "Cambridge, MA", "Cambridge, United Kingdom"],
+      ["Cove", "Portland, OR", "Portland, ME"],
+    ];
+    for (const [company, a, b] of pairs) {
+      const at = (loc: string, n: string) => find({ company, url: `https://jobs.example.com/${company}/${n}`, location: loc });
+      await save(ctx(), [at(a, "a")], "agent");
+      await save(ctx(), [at(b, "b")], "agent");
+      // A later read of each lands on its own row.
+      await save(ctx(), [at(b, "b2")], "agent");
+      await save(ctx(), [at(a, "a2")], "agent");
+      const opps = await db.select().from(schema.opportunities).where(eq(schema.opportunities.company, company));
+      expect(opps.map((o) => [o.location, o.sourceUrl]).sort()).toEqual(
+        [
+          [a, `https://jobs.example.com/${company}/a`],
+          [b, `https://jobs.example.com/${company}/b`],
+        ].sort(),
+      );
+    }
+  });
+
+  it("still merges one city written two ways, and matches a posting stored before #1285", async () => {
+    await db.insert(schema.opportunities).values({ company: "Acme", title: "Director of Design", location: "New York, NY", sourceUrl: "https://jobs.example.com/a", fingerprint: fingerprint("Acme", "Director of Design", "New York, NY") });
+    await save(ctx(), [find({ url: "https://jobs.example.com/b", location: "New York, New York" })], "agent");
+    await save(ctx(), [find({ url: "https://jobs.example.com/c", location: "New York" })], "agent");
+    const opps = await db.select().from(schema.opportunities);
+    expect(opps.map((o) => o.sourceUrl)).toEqual(["https://jobs.example.com/a"]);
+  });
+
   it("fills a shared posting's link and summary when it has none", async () => {
     await db.insert(schema.opportunities).values({ company: "Acme", title: "Director of Design", fingerprint: fingerprint("Acme", "Director of Design", "New York, NY (hybrid)") });
     await save(ctx(), [find()], "agent");
