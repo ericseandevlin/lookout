@@ -123,21 +123,29 @@ export async function runFill(appId: string, mode: "test" | "submit"): Promise<F
     const confirmation = page.getByText(CONFIRMATION).nth(seen);
     await submit.click();
     report.clicked = true;
-    const outcome = await Promise.race([
-      confirmation.waitFor({ timeout: 25000 }).then(() => "done" as const),
-      page.locator("iframe[src*='recaptcha'][title*='challenge'], iframe[src*='hcaptcha'], iframe[title*='captcha' i]").first().waitFor({ state: "visible", timeout: 25000 }).then(() => "captcha" as const),
-    ]).catch(() => "unknown" as const);
-    await page.screenshot({ path: path.join(dir, "after-submit.png"), fullPage: true });
-    report.finalUrl = page.url();
-    if (outcome === "captcha") {
-      report.stopped = CAPTCHA_STOP;
-      report.captcha = true;
+    // From here the form may have gone out: an error now (the page navigating away under the screenshot) must keep
+    // "clicked", or Submit for me is offered again on an application that may be sent (#1117, #865).
+    try {
+      const outcome = await Promise.race([
+        confirmation.waitFor({ timeout: 25000 }).then(() => "done" as const),
+        page.locator("iframe[src*='recaptcha'][title*='challenge'], iframe[src*='hcaptcha'], iframe[title*='captcha' i]").first().waitFor({ state: "visible", timeout: 25000 }).then(() => "captcha" as const),
+      ]).catch(() => "unknown" as const);
+      await page.screenshot({ path: path.join(dir, "after-submit.png"), fullPage: true });
+      report.finalUrl = page.url();
+      if (outcome === "captcha") {
+        report.stopped = CAPTCHA_STOP;
+        report.captcha = true;
+      }
+      else if (outcome === "unknown") report.stopped = "Lookout clicked Submit but didn't see a confirmation. Check the screenshot and your email before sending again.";
+      else report.confirmation = (await confirmation.innerText().catch(() => "")).slice(0, 300);
+    } catch (e) {
+      const why = e instanceof Error ? e.message.split("\n")[0] : "an error";
+      report.stopped = `Lookout clicked Submit, then hit an error (${why}). Check your email before sending again.`;
     }
-    else if (outcome === "unknown") report.stopped = "Lookout clicked Submit but didn't see a confirmation. Check the screenshot and your email before sending again.";
-    else report.confirmation = (await confirmation.innerText().catch(() => "")).slice(0, 300);
     return report;
   } finally {
-    await browser.close();
+    // A close that fails must not lose a report that says Submit was clicked (#1117).
+    await browser.close().catch(() => {});
   }
 }
 
