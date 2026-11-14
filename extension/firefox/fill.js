@@ -340,10 +340,12 @@
         if (!picks.length) return { ok: false, how: "answer matches no option" };
         for (const label of picks) {
           // Exact label first: the loose match alone puts "None of the above" on the "No" box (#632).
-          // A box labeled with the question and its option ("Are you 18 or older? Yes") is that option (#1091).
+          // A box labeled with the question and its option ("Are you 18 or older? Yes") is that option (#1091). What
+          // follows the question, past a "(required)" mark, is the option, as for radios (#1160, #1179).
+          const q = norm(step.prompt);
           const box =
             boxes.find((b) => labelOf(b) === norm(label)) ||
-            boxes.find((b) => labelOf(b) === norm(step.prompt) + " " + norm(label)) ||
+            boxes.find((b) => labelOf(b).startsWith(q) && labelOf(b).slice(q.length).replace(/^\s*\(required\)/, "").trim() === norm(label)) ||
             boxes.find((b) => sameText(labelOf(b), label));
           if (!box) return { ok: false, how: `option not found: ${label.slice(0, 60)}` };
           if (!box.checked) box.click();

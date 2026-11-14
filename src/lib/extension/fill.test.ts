@@ -502,6 +502,13 @@ describe("extension fill: choices", () => {
     expect(ticked(p, 2)).toEqual([false, true]);
   });
 
+  it("checks a question + option box when the question is marked (required) (#1179)", async () => {
+    const p = page(asked("Are you 18 or older? (required)", ["No", "Yes"]));
+    const [r] = await p.fill({ steps: [{ prompt: "Are you 18 or older?", kind: "choice", content: "Yes", options: ["No", "Yes"], required: true }] });
+    expect(r).toMatchObject({ ok: true, how: "checked 1" });
+    expect(ticked(p, 2)).toEqual([false, true]);
+  });
+
   it("does not untick a lone checkbox that is already ticked", async () => {
     const p = page(`<label><input type="checkbox" id="t" checked> I agree to the terms</label>`);
     const [r] = await p.fill({ steps: [{ prompt: "I agree to the terms", kind: "text", content: "Yes" }] });
