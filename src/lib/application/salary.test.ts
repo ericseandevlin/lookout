@@ -287,6 +287,35 @@ describe("isSalaryQuestion (#1069)", () => {
   });
 });
 
+describe("isSalaryQuestion (#1192)", () => {
+  it.each([
+    "How much do you expect to be paid?",
+    "How much do you expect to get paid in this role?",
+    "What would you need to be paid to accept an offer?",
+    "What pay are you looking for?",
+    "What hourly rate would you accept?",
+    "What rate are you seeking for this contract?",
+  ])("reads %s as a salary ask", (q) => {
+    expect(isSalaryQuestion(q)).toBe(true);
+  });
+
+  it.each([
+    "Do you expect to be paid for the take-home assignment?",
+    "Are you comfortable being paid on a biweekly schedule?",
+    "What do you think about pay transparency laws?",
+    "What rate of growth have you driven in past roles?",
+    "We are looking for someone who can pay close attention to detail. Describe your process.",
+    "Would you expect to be paid weekly or monthly?",
+  ])("leaves %s alone", (q) => {
+    expect(isSalaryQuestion(q)).toBe(false);
+  });
+
+  it("reads the period from the new wordings", () => {
+    expect(askPer("What hourly rate would you accept?")).toBe("hour");
+    expect(askPer("How much do you expect to be paid per month?")).toBe("month");
+  });
+});
+
 describe("isSalaryQuestion (#718)", () => {
   it("leaves out yes/no range checks that mention expectations", () => {
     for (const q of ["Does the salary range of $120k-$150k meet your expectations?", "Is your salary expectation within the posted range?", "Do your compensation expectations align with the range above?"])

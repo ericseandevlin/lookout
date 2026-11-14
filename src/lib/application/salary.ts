@@ -69,10 +69,18 @@ export const asksMinimum = (prompt: string) => /\bminimum\b|\bat least\b|\blowes
 // something: "What impact do you hope to make?", "looking to make a hire".
 const HOPE_TO_EARN = /\b(hop\w*|want\w*|like|looking|aim\w*|need) to (earn\b|make\b(?!\s+(an?|the|this|that|it|sure|time|decisions?)\b))/i;
 const MAKES_SOMETHING = /\b(impact|difference|change|contribution|progress|mark|decisions?|friends|connections?)\b/i;
+// "How much do you expect to be paid?", "What would you need to be paid to accept?" (#1192). Only after "how much" or
+// "what", so "Do you expect to be paid for the take-home task?" stays a yes/no question.
+const TO_BE_PAID = /\b(how much|what)\b[^.?!]{0,40}?\b(expect\w*|need|want|like|hop\w*|looking) to (be|get) paid\b/i;
+// "What pay are you looking for?", "What hourly rate would you accept?" (#1192). Plain "pay" and "rate" are too common
+// to count alone, so only as the thing "what" asks for, followed by what they seek or expect.
+const WHAT_PAY_SOUGHT = /\bwhat (\w+ ){0,2}(pay|rate)\b[^.?!]{0,30}?\b(looking for|seek\w*|expect\w*|want\w*|hop\w*|need|accept)\b/i;
 // Rate wording ("Desired hourly rate", "Expected rate per hour") is an ask too (#953). Not "day rate": askPer has no day period.
 const SALARY_ASK = {
   test: (s: string) =>
     /salary|compensation|wages?\b|pay (expectation|requirement)|expected (base|annual|pay)|desired (base|pay)|expect to (earn|make)\b|\b(hourly|pay|bill) rate\b|\brate (expectation|requirement)|\b(desired|expected) rate\b/i.test(s) ||
+    TO_BE_PAID.test(s) ||
+    WHAT_PAY_SOUGHT.test(s) ||
     (HOPE_TO_EARN.test(s) && !MAKES_SOMETHING.test(s)),
 };
 const PAST_PAY =
@@ -104,6 +112,8 @@ const ABOUT_WORK = /\b(experience|tools?|systems?|software|platforms?|programs?|
 const PLAIN_ASK = /\b(expectations?|requirements?|desired|expected|how much|expect\w*|anticipat\w*|minimum|lowest)\b/i;
 const asksForNumber = (s: string) =>
   PLAIN_ASK.test(s) ||
+  TO_BE_PAID.test(s) ||
+  WHAT_PAY_SOUGHT.test(s) ||
   SEEK_PAY.test(s) ||
   (HOPE_TO_EARN.test(s) && !MAKES_SOMETHING.test(s)) ||
   // A short label ("Desired salary"), not a list in brackets after the question ("(team, compensation, growth)", #1069).
