@@ -268,3 +268,24 @@ describe("a perk that is no longer available is not the job (#1007)", () => {
     },
   );
 });
+
+describe("more closed wordings (#1251)", () => {
+  it.each([
+    "This vacancy has been filled.",
+    "This opportunity has been filled.",
+    "This listing has been removed.",
+    "This listing has been filled.",
+    "This job ad has been removed.",
+    "The job you are trying to apply for is no longer available.",
+    "The position you are attempting to view is no longer available.",
+  ])("reads %s as closed", (text) => {
+    expect(classifyPage(200, `TITLE: Product Designer\nTEXT: ${text}`).state).toBe("gone");
+  });
+  it.each([
+    "We will accept applications until the vacancy has been filled. Apply now.",
+    "Once this opportunity has been filled, the listing will come down. Apply now.",
+    "The opportunity to work from anywhere is no longer available. Apply now.",
+  ])("keeps %s open", (text) => {
+    expect(classifyPage(200, `TITLE: Product Designer\nTEXT: ${text}`).state).toBe("open");
+  });
+});
