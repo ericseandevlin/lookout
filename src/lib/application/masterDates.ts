@@ -3,9 +3,10 @@ const dashes = (s: string) => s.replace(/\s*[–—-]\s*/g, "-").toLowerCase();
 const MONTHS = ["jan", "feb", "mar", "apr", "may", "jun", "jul", "aug", "sep", "oct", "nov", "dec"];
 type When = { y: number; m: number | null } | "now";
 // "March 2019", "Mar. 2019", "03/2019", "3/2019", "2019" or "Present", in the order they appear.
-const WHEN = /\b(?:(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*\.?,?\s+|(0?[1-9]|1[0-2])\/)?((?:19|20)\d{2})\b|\b(present|current|now|today)\b/gi;
+// Only real month spellings: "Marketing 2019" or "Marriott 2019" is a year, not March (#1177).
+const WHEN = /\b(?:(jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|june?|july?|aug(?:ust)?|sept?(?:ember)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)\b\.?,?\s+|(0?[1-9]|1[0-2])\/)?((?:19|20)\d{2})\b|\b(present|current|now|today)\b/gi;
 const whens = (s: string): When[] =>
-  [...s.matchAll(WHEN)].map((x) => (x[4] ? "now" : { y: +x[3], m: x[1] ? MONTHS.indexOf(x[1].toLowerCase()) + 1 : x[2] ? +x[2] : null }));
+  [...s.matchAll(WHEN)].map((x) => (x[4] ? "now" : { y: +x[3], m: x[1] ? MONTHS.indexOf(x[1].slice(0, 3).toLowerCase()) + 1 : x[2] ? +x[2] : null }));
 // A year-only side matches any month in that year.
 const same = (a: When, b: When) => (a === "now" || b === "now" ? a === b : a.y === b.y && (a.m === null || b.m === null || a.m === b.m));
 /** The line holds the same start and end, in order, however each side is written (#907). */
