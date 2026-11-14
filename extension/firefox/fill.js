@@ -349,7 +349,10 @@
             boxes.find((b) => labelOf(b) === norm(label)) ||
             // Past a "(required)" mark too, as for radios outside a group (#1179).
             boxes.find((b) => labelOf(b).startsWith(norm(step.prompt)) && optionAfter(labelOf(b), step.prompt) === norm(label)) ||
-            boxes.find((b) => sameText(labelOf(b), label));
+            // A loose match needs a whole-word prefix: "No" is "No (I am not a veteran)", never "None of the above" (#1181).
+            // Past 80 characters a label may hold a cut-off answer, so the plain prefix still counts there.
+            boxes.find((b) => startsWord(norm(label), labelOf(b)) || startsWord(labelOf(b), norm(label))) ||
+            boxes.find((b) => Math.min(labelOf(b).length, norm(label).length) >= 80 && sameText(labelOf(b), label));
           if (!box) return { ok: false, how: `option not found: ${label.slice(0, 60)}` };
           if (!box.checked) box.click();
         }
