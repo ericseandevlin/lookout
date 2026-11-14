@@ -80,6 +80,23 @@ describe("classifyPage", () => {
     expect(classifyPage(200, text).state).toBe("gone");
   });
   it.each([
+    "Applications for this vacancy are now closed.",
+    "Applications for this posting have closed.",
+    "Applications for this opportunity are closed.",
+    "Applications are no longer being accepted for this position.",
+    "Applications are no longer being considered.",
+  ])("reads %s as closed (#1158)", (text) => {
+    expect(classifyPage(200, `TITLE: Product Designer\nTEXT: ${text}`).state).toBe("gone");
+  });
+  it.each([
+    "Applications for this vacancy are closed to agencies. Apply now.",
+    "Applications are no longer being accepted from third-party agencies. Apply now.",
+    "Applications are no longer being accepted via email. Please apply through this page.",
+    "Applications are no longer being accepted by email; use the form below.",
+  ])("keeps %s open (#1158)", (text) => {
+    expect(classifyPage(200, `TITLE: Product Designer\nTEXT: ${text}`).state).toBe("open");
+  });
+  it.each([
     "TITLE: Senior Designer\nPosition Closed Date 11/30/2026. Apply now.",
     "TITLE: Director of UX\nOpportunity Closed Date: 12/31/2026",
     "TITLE: Design Lead\nJob Posting Closed-Date: December 15, 2026",
