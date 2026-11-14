@@ -284,7 +284,9 @@ export async function reviseItem(userId: string, appId: string, itemId: string, 
   // A choice answer must be one of the form's options, same check as the first draft (#1054).
   const fit = it.options?.length ? checkAnswer({ index: 0, kind: it.kind, prompt: it.prompt, required: it.required, options: it.options, multi: it.fieldType === "multiselect" }, { index: 0, content: r.content, note: r.note, question: r.question, sources: [] }) : null;
   if (fit && !fit.content) return { status: a.status, question: fit.question ?? `Pick one of: ${it.options!.join(", ")}` };
-  const invented = newNumbers(master, r.content).filter((n) => !newNumbers(master, cur?.content ?? "").includes(n) && !(cur?.content ?? "").includes(n));
+  // Numbers already in the current version aren't new. Compared as numbers, not text: "20" inside "03/2019" is no cover (#1219).
+  const prior = newNumbers(master, cur?.content ?? "");
+  const invented = newNumbers(master, r.content).filter((n) => !prior.includes(n));
   const shaped = it.kind === "resume" ? shapeResume(humanize(r.content.trim())) : { md: fit ? fit.content : humanize(r.content.trim()), fixed: [] };
   const note = bullets([`You asked: "${instruction.slice(0, 160)}"`, r.note.trim(), ...shaped.fixed, invented.length > 0 && `Check these numbers, they aren't in your master resume: ${invented.join(", ")}`]);
   await insertVersion(itemId, { content: shaped.md, note, author: "ai", sources: ["your instruction", ...(cur ? [`version ${cur.version}`] : [])] }, appId);

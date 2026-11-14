@@ -254,6 +254,14 @@ describe("reviseItem", () => {
     expect((await versions(ids[0].item)).at(-1)!.content).toBe("No");
   });
 
+  it("flags a number the revision invents even when its digits sit inside a date in the current text (#1219)", async () => {
+    await db.insert(schema.materials).values({ userId, kind: "resume", extracted: { text: "Design Lead, Initech | 03/2019 – Present\n- Led a team of 5 designers" } });
+    const { appId, ids } = await seed("needs_review", [{ kind: "answer", prompt: "Tell us about your leadership", content: "At Initech since 03/2019 I have led a team of 5 designers." }]);
+    completeJSON.mockResolvedValue({ content: "At Initech since 03/2019 I have led a team of 20 designers.", note: "Made it bolder.", question: "" });
+    await reviseItem(userId, appId, ids[0].item, "make it bolder");
+    expect((await versions(ids[0].item)).at(-1)!.note).toContain("Check these numbers, they aren't in your master resume: 20");
+  });
+
   it("drops the revision when Submit for me claimed the application during the model call (#871)", async () => {
     const { appId, ids } = await seed("approved", [{ kind: "answer", prompt: "Why us?", approved: true }], "browser");
     completeJSON.mockImplementation(async () => {
