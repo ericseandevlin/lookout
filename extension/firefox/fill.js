@@ -4,7 +4,10 @@
   window.__lookoutFill = true;
 
   const THANKS = /(?<!\b(?:once|after|when|if|before|until|upon)\b[^.!?\n]{0,40})(?:thank(?:s| you) for (?:applying|your application|submitting|your submission)|(?:application|submission|candidacy) (?:has been |was )?(?:successfully )?(?:received|submitted|sent)\b|application for [^.!?\n]{1,80}? (?:has been|was) (?:successfully )?(?:received|submitted|sent)\b|we(?:'ve|’ve| have)? (?:successfully )?(?:received|got) your (?:application|submission)|(?<!(?:\bnot|\bnever|n't|n’t)\s+(?:(?:be|been|yet)\s+)?)\bsuccessfully (?:applied|submitted)\b)/i;
-  const norm = (t) => (t || "").replace(/\*/g, "").replace(/\s+/g, " ").trim().toLowerCase();
+  // Lever marks required questions with "✱", others with "*": neither is part of the question (#1150).
+  const norm = (t) => (t || "").replace(/[*✱]/g, "").replace(/\s+/g, " ").trim().toLowerCase();
+  /** A heading without a trailing "(required)": "How did you hear about us? (required)" is that question (#1150). */
+  const bare = (t) => t.replace(/\s*\(required\)$/, "");
   const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
   const visible = (el) => !!el && el.getClientRects().length > 0 && getComputedStyle(el).visibility !== "hidden";
   /** Does a sibling branch at any level between `descendant` and `container` have the key text? (#913) */
@@ -296,7 +299,7 @@
       // A choice whose group is named by the question beats a box whose label only holds it: "How did you hear about us?"
       // is not "If other, how did you hear about us?" (#952). Same as the worker.
       const named = found && step.kind === "choice" && labelOf(found) !== norm(step.prompt) ? groupFor(step.prompt) : null;
-      const el = named && groupName(named) === norm(step.prompt) ? null : found;
+      const el = named && bare(groupName(named)) === norm(step.prompt) ? null : found;
       // A lone box labeled with the question is the answer's field for any kind, before the group and radio lookup,
       // same as the worker: a Yes/No question can be one "I consent" box (#940).
       const box = el ? null : checkboxFor(step.prompt);
