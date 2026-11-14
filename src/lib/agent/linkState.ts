@@ -72,8 +72,8 @@ function saysClosed(r: RegExp, text: string) {
 
 export function classifyPage(status: number, text: string, finalUrl = ""): { state: LinkState; reason: string } {
   if (status === 404 || status === 410) return { state: "gone", reason: `page answered ${status}` };
-  // Greenhouse sends a closed job to the company's board with ?error=true.
-  if (/[?&]error=true\b/.test(finalUrl)) return { state: "gone", reason: "the job board says it's closed" };
+  // Greenhouse sends a closed job to the company's board with ?error=true, Workable with ?not_found=true (#1099).
+  if (/[?&](error|not_found)=true\b/.test(finalUrl)) return { state: "gone", reason: "the job board says it's closed" };
   if (status !== 200) return { state: "unknown", reason: `page answered ${status}` };
   const head = text.slice(0, 2500);
   // Closed wording wins: real "job not available" pages often mention maintenance or sign-in somewhere too.

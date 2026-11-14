@@ -16,6 +16,11 @@ describe("classifyPage", () => {
     expect(classifyPage(404, "").state).toBe("gone");
     expect(classifyPage(410, "").state).toBe("gone");
   });
+  it("treats Workable's ?not_found=true redirect as gone (#1099)", () => {
+    expect(classifyPage(200, "Workable", "https://apply.workable.com/acme/?not_found=true")).toEqual({ state: "gone", reason: "the job board says it's closed" });
+    expect(classifyPage(200, "Workable", "https://apply.workable.com/acme/j/ABC123/").state).toBe("open");
+  });
+
   it("treats Greenhouse's ?error=true redirect as gone", () => {
     expect(classifyPage(200, "Open roles at Acme", "https://job-boards.greenhouse.io/acme?error=true").state).toBe("gone");
   });
