@@ -5,7 +5,7 @@ import { parseNote } from "@/lib/application/notes";
 import { btn } from "../Settings";
 import { Modal } from "./Modal";
 import { muted, type Version } from "./shared";
-import { color } from "@/lib/tokens";
+import { color, font } from "@/lib/tokens";
 
 /**
  * What changed in a version and where its facts came from (#738): a link beside the version picker
@@ -20,7 +20,7 @@ export function VersionNotes({ v, label }: { v: Version; label?: boolean }) {
   return (
     <>
       {label && <span style={muted}>{head}</span>}
-      <button type="button" onClick={() => setOpen(true)} style={{ ...btn("text"), height: 32, fontSize: 14, fontWeight: 500, color: color.t2 }}>
+      <button type="button" onClick={() => setOpen(true)} style={{ ...btn("text"), height: 32, fontSize: font.base, fontWeight: 500, color: color.t2 }}>
         What changed and why
       </button>
       {open && (

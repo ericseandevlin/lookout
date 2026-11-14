@@ -5,7 +5,7 @@ import { useState, useSyncExternalStore } from "react";
 import { inFirstWeek, scheduleLabel } from "@/lib/firstWeek";
 import { useStore } from "../store";
 import { trackClient } from "../track";
-import { color } from "@/lib/tokens";
+import { color, font } from "@/lib/tokens";
 
 const KEY = "lookout.firstWeekTips";
 const readHidden = () => {
@@ -63,20 +63,20 @@ export function FirstWeek({ ready }: { ready: boolean }) {
     <section aria-labelledby="fw-title" className="board-sec lk-in" style={{ background: "#fff", padding: "18px 22px 20px", display: "flex", flexDirection: "column", gap: 14 }}>
       <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 12 }}>
         <div>
-          <div style={{ fontSize: 14, fontWeight: 700, letterSpacing: ".14em", textTransform: "uppercase", color: color.brick }}>Your first week</div>
-          <div id="fw-title" style={{ fontSize: 17, fontWeight: 700, marginTop: 4 }}>Things you can change</div>
+          <div style={{ fontSize: font.base, fontWeight: 700, letterSpacing: ".14em", textTransform: "uppercase", color: color.brick }}>Your first week</div>
+          <div id="fw-title" style={{ fontSize: font.xl, fontWeight: 700, marginTop: 4 }}>Things you can change</div>
         </div>
-        <button onClick={hide} style={{ height: 34, padding: "0 14px", borderRadius: 999, border: `1.5px solid ${color.border}`, background: "#fff", color: color.ink, fontSize: 14, fontWeight: 600, cursor: "pointer", flex: "none" }}>
+        <button onClick={hide} style={{ height: 34, padding: "0 14px", borderRadius: 999, border: `1.5px solid ${color.border}`, background: "#fff", color: color.ink, fontSize: font.base, fontWeight: 600, cursor: "pointer", flex: "none" }}>
           Got it
         </button>
       </div>
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(200px,1fr))", gap: 16 }}>
         {tips.map((t) => (
           <div key={t.id} style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-            <div style={{ fontSize: 14.5, fontWeight: 600 }}>{t.title}</div>
-            <div style={{ fontSize: 14, lineHeight: 1.45, color: color.t2, textWrap: "pretty" }}>{t.body}</div>
+            <div style={{ fontSize: font.base, fontWeight: 600 }}>{t.title}</div>
+            <div style={{ fontSize: font.base, lineHeight: 1.45, color: color.t2, textWrap: "pretty" }}>{t.body}</div>
             {t.href && (
-              <Link href={t.href} onClick={() => trackClient("tip_clicked", `first-week:${t.id}`)} style={{ fontSize: 14, fontWeight: 600, color: color.brick, alignSelf: "flex-start" }}>
+              <Link href={t.href} onClick={() => trackClient("tip_clicked", `first-week:${t.id}`)} style={{ fontSize: font.base, fontWeight: 600, color: color.brick, alignSelf: "flex-start" }}>
                 {t.cta}
               </Link>
             )}

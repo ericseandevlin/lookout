@@ -16,7 +16,7 @@ import { KeywordReport } from "./review/KeywordReport";
 import { PostingText } from "./review/PostingText";
 import { QuestionRow } from "./review/QuestionRow";
 import { SendForMe } from "./review/SendForMe";
-import { color } from "@/lib/tokens";
+import { color, font } from "@/lib/tokens";
 
 export { DocPreview } from "./review/DocPreview";
 
@@ -128,21 +128,21 @@ export function ApplicationReview({ id }: { id: string }) {
   return (
     <div className="page-pad lk-page" style={{ display: "flex", flexDirection: "column", gap: 16, maxWidth: 1180 }}>
       <style>{`.lk-review{display:grid;grid-template-columns:minmax(0,1fr);gap:18px;align-items:start}@media(min-width:1000px){.lk-review{grid-template-columns:minmax(0,1fr) 360px}.lk-review aside{position:sticky;top:16px;max-height:calc(100vh - 32px);overflow:auto}}`}</style>
-      <Link href="/apply" style={{ fontSize: 14, color: color.ink }}>← All applications</Link>
+      <Link href="/apply" style={{ fontSize: font.base, color: color.ink }}>← All applications</Link>
       <div style={{ display: "flex", alignItems: "flex-start", gap: 12, flexWrap: "wrap" }}>
         <div style={{ flex: "1 1 320px", minWidth: 0 }}>
-          <h1 style={{ margin: 0, fontSize: 28, fontWeight: 700, letterSpacing: "-0.02em" }}>{d.role}</h1>
+          <h1 style={{ margin: 0, fontSize: font["4xl"], fontWeight: 700, letterSpacing: "-0.02em" }}>{d.role}</h1>
           <div style={{ ...muted, marginTop: 4 }}>
             {d.company}
             {d.ats ? ` · ${d.ats === "other" ? "company site" : d.ats}` : ""}
             {d.report.usd ? ` · AI cost $${d.report.usd.toFixed(3)}` : ""}
           </div>
         </div>
-        <span style={{ padding: "6px 12px", borderRadius: 999, fontSize: 14, fontWeight: 600, background: st.bg, color: st.ink }}>{st.label}</span>
+        <span style={{ padding: "6px 12px", borderRadius: 999, fontSize: font.base, fontWeight: 600, background: st.bg, color: st.ink }}>{st.label}</span>
       </div>
 
       <div aria-live="polite" style={{ ...muted, minHeight: 20 }}>{said}</div>
-      {err && <div role="alert" style={{ fontSize: 14, color: color.brick }}>{err}</div>}
+      {err && <div role="alert" style={{ fontSize: font.base, color: color.brick }}>{err}</div>}
 
       {working && <div style={card}>Lookout is {d.status === "drafting" ? "drafting your application" : "reading the application"}. This takes a minute or two; the page updates on its own.</div>}
       {d.status === "failed" && <div role="alert" style={{ ...card, borderColor: "#E8B4AA", color: color.brick }}>{d.report.error ?? "This one didn't work."} Go back to the list to try again.</div>}
@@ -153,7 +153,7 @@ export function ApplicationReview({ id }: { id: string }) {
             {!locked && (
               <div style={{ ...card, display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
                 <div style={{ flex: 1, minWidth: 200 }}>
-                  <div style={{ fontSize: 15, fontWeight: 700 }}>
+                  <div style={{ fontSize: font.md, fontWeight: 700 }}>
                     {approved} of {required.length} required items approved
                   </div>
                   <div style={muted}>{d.status === "manual" ? "Ready. Use the checklist at the bottom to send it." : d.status === "approved" ? "Ready. Lookout can send it for you, or use the checklist." : "Approve the exact version of each one you want sent. Editing makes a new version."}</div>
@@ -166,7 +166,7 @@ export function ApplicationReview({ id }: { id: string }) {
 
             {open.length > 0 && !locked && (
               <section aria-labelledby="qs" style={{ ...card, borderColor: color.orange, background: "#FFF9F3" }}>
-                <h2 id="qs" style={{ margin: "0 0 4px", fontSize: 17, fontWeight: 700 }}>Lookout needs you for {open.length === 1 ? "one thing" : `${open.length} things`}</h2>
+                <h2 id="qs" style={{ margin: "0 0 4px", fontSize: font.xl, fontWeight: 700 }}>Lookout needs you for {open.length === 1 ? "one thing" : `${open.length} things`}</h2>
                 <p style={{ ...muted, margin: "0 0 12px" }}>It won&apos;t guess facts. Answer here and it becomes a version you can approve.</p>
                 <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
                   {open.map((i) => (
@@ -178,11 +178,11 @@ export function ApplicationReview({ id }: { id: string }) {
 
             {!!d.report.traps?.length && !locked && (
               <section aria-labelledby="traps" style={{ ...card, borderColor: "#E8B4AA", background: "#FFF6F4" }}>
-                <h2 id="traps" style={{ margin: "0 0 4px", fontSize: 17, fontWeight: 700 }}>This posting tries to catch automated applications</h2>
+                <h2 id="traps" style={{ margin: "0 0 4px", fontSize: font.xl, fontWeight: 700 }}>This posting tries to catch automated applications</h2>
                 <p style={{ ...muted, margin: "0 0 10px" }}>
                   Lookout found {d.report.traps.length === 1 ? "an instruction" : `${d.report.traps.length} instructions`} planted for applicants or AI tools and did not follow {d.report.traps.length === 1 ? "it" : "them"}. Hidden ones are invisible to people, so following them gives you away. Visible ones may be an attention check for careful readers; if you want to follow one, add it yourself.
                 </p>
-                <ul style={{ margin: 0, paddingLeft: 18, display: "flex", flexDirection: "column", gap: 6, fontSize: 14 }}>
+                <ul style={{ margin: 0, paddingLeft: 18, display: "flex", flexDirection: "column", gap: 6, fontSize: font.base }}>
                   {d.report.traps.map((t, i) => (
                     <li key={i}>
                       <span style={{ fontWeight: 600 }}>{t.hidden ? "Hidden from readers: " : "Visible: "}</span>“{t.text}”
@@ -198,7 +198,7 @@ export function ApplicationReview({ id }: { id: string }) {
               if (!list.length) return null;
               return (
                 <section key={s.title} aria-labelledby={`sec-${s.title}`} style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-                  <h2 id={`sec-${s.title}`} style={{ margin: "6px 0 0", fontSize: 18, fontWeight: 700 }}>{s.title}</h2>
+                  <h2 id={`sec-${s.title}`} style={{ margin: "6px 0 0", fontSize: font.xl, fontWeight: 700 }}>{s.title}</h2>
                   {s.help && !locked && <div style={{ ...muted, marginTop: -4 }}>{s.help}</div>}
                   {s.title === "Resume" && d.keywordRows && <KeywordReport d={d} rows={d.keywordRows} reload={load} locked={locked} />}
                   {list.map((i) => (
@@ -213,9 +213,9 @@ export function ApplicationReview({ id }: { id: string }) {
           </div>
 
           <aside aria-label="The posting" style={{ ...card, display: "flex", flexDirection: "column", gap: 10 }}>
-            <h2 style={{ margin: 0, fontSize: 16, fontWeight: 700 }}>The posting</h2>
+            <h2 style={{ margin: 0, fontSize: font.lg, fontWeight: 700 }}>The posting</h2>
             {d.url && (
-              <a href={d.url} target="_blank" rel="noreferrer" style={{ fontSize: 14, color: color.ink }}>
+              <a href={d.url} target="_blank" rel="noreferrer" style={{ fontSize: font.base, color: color.ink }}>
                 Open the original ↗
               </a>
             )}

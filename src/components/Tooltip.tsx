@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { color } from "@/lib/tokens";
+import { color, font } from "@/lib/tokens";
 
 type Tip = { text: string; x: number; y: number; tf: string; dark: boolean };
 
@@ -54,7 +54,7 @@ export function TooltipLayer() {
       style={{
         position: "fixed", left: tip.x, top: tip.y, transform: tip.tf, zIndex: 50, pointerEvents: "none",
         background: tip.dark ? "#fff" : color.ink, color: tip.dark ? color.ink : "#fff",
-        fontSize: 14, fontWeight: 600, lineHeight: 1.35, padding: "7px 11px", borderRadius: 8, maxWidth: 260,
+        fontSize: font.base, fontWeight: 600, lineHeight: 1.35, padding: "7px 11px", borderRadius: 8, maxWidth: 260,
         boxShadow: "0 6px 18px rgba(29,26,15,.22)", textWrap: "pretty",
       }}
     >

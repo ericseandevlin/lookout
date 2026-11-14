@@ -14,7 +14,7 @@ import { SurveyDialog } from "./SurveyDialog";
 import { SearchSwitcher } from "./SearchSwitcher";
 import { trackClient } from "./track";
 import { HEARTBEAT_SECONDS } from "@/lib/events";
-import { color } from "@/lib/tokens";
+import { color, font } from "@/lib/tokens";
 
 export function useCounts(s: AppState) {
   const cfg = kindOf(s.profile.kind);
@@ -102,13 +102,13 @@ export function Shell({ children }: { children: React.ReactNode }) {
                 style={{
                   display: "flex", alignItems: "center", justifyContent: closed ? "center" : "flex-start", gap: 10, padding: "10px 12px",
                   borderRadius: 10, background: active ? "rgba(255,255,255,.09)" : "transparent", color: active ? "#fff" : "#C9C1B5",
-                  fontSize: 14.5, fontWeight: 600, textDecoration: "none", whiteSpace: "nowrap",
+                  fontSize: font.base, fontWeight: 600, textDecoration: "none", whiteSpace: "nowrap",
                 }}
               >
                 <span style={{ position: "relative", width: 18, height: 18, flex: "none", display: "flex", alignItems: "center", justifyContent: "center" }}>
                   {isProfile && closed && profileTodo && <TodoDot />}
                   {isBoard && closed && newCount > 0 && (
-                    <span style={{ position: "absolute", top: -7, right: -10, minWidth: 16, height: 16, padding: "0 4px", borderRadius: 999, background: "#427D33", color: "#fff", fontSize: 14, fontWeight: 700, lineHeight: 1, display: "flex", alignItems: "center", justifyContent: "center", boxShadow: "0 0 0 2px #1D1A0F" }}>
+                    <span style={{ position: "absolute", top: -7, right: -10, minWidth: 16, height: 16, padding: "0 4px", borderRadius: 999, background: "#427D33", color: "#fff", fontSize: font.base, fontWeight: 700, lineHeight: 1, display: "flex", alignItems: "center", justifyContent: "center", boxShadow: "0 0 0 2px #1D1A0F" }}>
                       {newCount}
                     </span>
                   )}
@@ -118,7 +118,7 @@ export function Shell({ children }: { children: React.ReactNode }) {
                   <>
                     <span style={{ flex: 1 }}>{label}</span>
                     {isBoard && newCount > 0 && (
-                      <span style={{ minWidth: 18, height: 18, padding: "0 5px", borderRadius: 999, background: "#427D33", color: "#fff", fontSize: 14, fontWeight: 700, lineHeight: 1, display: "flex", alignItems: "center", justifyContent: "center", fontVariantNumeric: "tabular-nums" }}>
+                      <span style={{ minWidth: 18, height: 18, padding: "0 5px", borderRadius: 999, background: "#427D33", color: "#fff", fontSize: font.base, fontWeight: 700, lineHeight: 1, display: "flex", alignItems: "center", justifyContent: "center", fontVariantNumeric: "tabular-nums" }}>
                         {newCount}
                       </span>
                     )}
@@ -134,7 +134,7 @@ export function Shell({ children }: { children: React.ReactNode }) {
                       role="listitem"
                       aria-current={p.on ? "page" : undefined}
                       aria-label={p.done === undefined ? p.label : `${p.label}, ${p.done ? "done" : "to do"}`}
-                      style={{ display: "flex", alignItems: "center", gap: 10, padding: "7px 8px 7px 12px", borderRadius: 10, color: p.on ? "#fff" : "#A89F92", fontSize: 14, fontWeight: 600, textDecoration: "none", lineHeight: 1.3 }}
+                      style={{ display: "flex", alignItems: "center", gap: 10, padding: "7px 8px 7px 12px", borderRadius: 10, color: p.on ? "#fff" : "#A89F92", fontSize: font.base, fontWeight: 600, textDecoration: "none", lineHeight: 1.3 }}
                     >
                       <span aria-hidden style={{ width: 18, flex: "none", display: "flex", justifyContent: "center" }}>
                         {p.done === undefined ? <EyeIcon size={14} /> : p.done ? <CheckIcon size={13} stroke="#8FBF7F" /> : <span style={{ width: 9, height: 9, borderRadius: "50%", border: "1.5px solid #F8A865" }} />}
@@ -155,7 +155,7 @@ export function Shell({ children }: { children: React.ReactNode }) {
               style={{
                 display: "flex", alignItems: "center", justifyContent: closed ? "center" : "flex-start", gap: 10, padding: "10px 12px", marginTop: 14,
                 borderRadius: 10, background: path.startsWith("/admin") ? "rgba(255,255,255,.09)" : "transparent", color: path.startsWith("/admin") ? "#fff" : "#C9C1B5",
-                fontSize: 14.5, fontWeight: 600, textDecoration: "none", whiteSpace: "nowrap",
+                fontSize: font.base, fontWeight: 600, textDecoration: "none", whiteSpace: "nowrap",
               }}
             >
               <span style={{ width: 18, height: 18, flex: "none", display: "flex", alignItems: "center", justifyContent: "center" }}><ShieldIcon size={17} /></span>
@@ -176,7 +176,7 @@ export function Shell({ children }: { children: React.ReactNode }) {
           >
             <Avatar initials={initials} />
             {!closed && (
-              <div style={{ minWidth: 0, flex: 1, whiteSpace: "nowrap", fontSize: 14, fontWeight: 600, overflow: "hidden", textOverflow: "ellipsis" }}>
+              <div style={{ minWidth: 0, flex: 1, whiteSpace: "nowrap", fontSize: font.base, fontWeight: 600, overflow: "hidden", textOverflow: "ellipsis" }}>
                 {name || "Add your name"}
               </div>
             )}
@@ -208,12 +208,12 @@ export function Shell({ children }: { children: React.ReactNode }) {
               <Link
                 key={href}
                 href={href}
-                style={{ position: "relative", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 4, minHeight: 52, borderRadius: 10, color: active ? color.orange : "#A89F92", fontSize: 14, fontWeight: 600, textDecoration: "none" }}
+                style={{ position: "relative", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 4, minHeight: 52, borderRadius: 10, color: active ? color.orange : "#A89F92", fontSize: font.base, fontWeight: 600, textDecoration: "none" }}
               >
                 <span style={{ position: "relative", width: 22, height: 22, display: "flex", alignItems: "center", justifyContent: "center" }}>
                   {href === "/profile" && profileTodo && <TodoDot />}
                   {href === "/finds" && newCount > 0 && (
-                    <span style={{ position: "absolute", top: -6, right: -11, minWidth: 17, height: 17, padding: "0 4px", borderRadius: 999, background: "#427D33", color: "#fff", fontSize: 14, fontWeight: 700, lineHeight: 1, display: "flex", alignItems: "center", justifyContent: "center", boxShadow: "0 0 0 2px #1D1A0F" }}>
+                    <span style={{ position: "absolute", top: -6, right: -11, minWidth: 17, height: 17, padding: "0 4px", borderRadius: 999, background: "#427D33", color: "#fff", fontSize: font.base, fontWeight: 700, lineHeight: 1, display: "flex", alignItems: "center", justifyContent: "center", boxShadow: "0 0 0 2px #1D1A0F" }}>
                       {newCount}
                     </span>
                   )}
@@ -227,7 +227,7 @@ export function Shell({ children }: { children: React.ReactNode }) {
       </nav>
 
       {error && (
-        <div role="alert" style={{ position: "fixed", left: "50%", bottom: 92, transform: "translateX(-50%)", zIndex: 60, background: color.ink, color: "#fff", fontSize: 14, fontWeight: 600, padding: "11px 16px", borderRadius: 12, boxShadow: "0 8px 28px rgba(29,26,15,.25)", maxWidth: "calc(100vw - 32px)" }}>
+        <div role="alert" style={{ position: "fixed", left: "50%", bottom: 92, transform: "translateX(-50%)", zIndex: 60, background: color.ink, color: "#fff", fontSize: font.base, fontWeight: 600, padding: "11px 16px", borderRadius: 12, boxShadow: "0 8px 28px rgba(29,26,15,.25)", maxWidth: "calc(100vw - 32px)" }}>
           {error}
         </div>
       )}
@@ -243,7 +243,7 @@ export function Avatar({ initials, ring }: { initials: string; ring?: boolean })
     <span
       style={{
         width: 34, height: 34, borderRadius: "50%", background: color.brick, color: "#fff", display: "flex", alignItems: "center", justifyContent: "center",
-        fontSize: 14, fontWeight: 600, flex: "none", boxShadow: ring ? "0 0 0 2px #1D1A0F, 0 0 0 4px #F8A865" : "none",
+        fontSize: font.base, fontWeight: 600, flex: "none", boxShadow: ring ? "0 0 0 2px #1D1A0F, 0 0 0 4px #F8A865" : "none",
       }}
     >
       {initials}

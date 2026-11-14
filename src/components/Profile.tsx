@@ -11,10 +11,10 @@ import { togglePhrase } from "@/lib/phrases";
 import { CurrentCompField } from "./CurrentComp";
 import { useCounts } from "./Shell";
 import { useStore } from "./store";
-import { color } from "@/lib/tokens";
+import { color, font } from "@/lib/tokens";
 
 const inputBase: React.CSSProperties = {
-  border: `1.5px solid ${color.border}`, background: "#fff", borderRadius: 10, fontSize: 14, outline: "none", color: color.ink,
+  border: `1.5px solid ${color.border}`, background: "#fff", borderRadius: 10, fontSize: font.base, outline: "none", color: color.ink,
 };
 
 /** Tabs across the Profile pages: what you want, what you've done, and what searches use. */
@@ -41,7 +41,7 @@ export function ProfileTabs() {
       {tabs.map(([href, label]) => {
         const on = path === href;
         return (
-          <Link key={href} href={href} role="tab" className="lk-tab" aria-selected={on} tabIndex={on || (!anyOn && href === tabs[0][0]) ? 0 : -1} style={{ display: "flex", alignItems: "center", flex: "none", height: 42, padding: "0 2px", borderBottom: `2.5px solid ${on ? color.brick : "transparent"}`, color: on ? color.ink : color.t2, fontSize: 15, fontWeight: on ? 700 : 600, whiteSpace: "nowrap", textDecoration: "none" }}>
+          <Link key={href} href={href} role="tab" className="lk-tab" aria-selected={on} tabIndex={on || (!anyOn && href === tabs[0][0]) ? 0 : -1} style={{ display: "flex", alignItems: "center", flex: "none", height: 42, padding: "0 2px", borderBottom: `2.5px solid ${on ? color.brick : "transparent"}`, color: on ? color.ink : color.t2, fontSize: font.md, fontWeight: on ? 700 : 600, whiteSpace: "nowrap", textDecoration: "none" }}>
             {label}
           </Link>
         );
@@ -90,9 +90,9 @@ export function NextStep({ here }: { here: "materials" | "finds" }) {
   if (!text) return null;
   return (
     <div role="status" style={{ display: "flex", alignItems: "center", gap: 14, flexWrap: "wrap", padding: "14px 16px", borderRadius: 12, background: "#FFF4F1", border: "1.5px solid #F0C9BF" }}>
-      <div style={{ flex: "1 1 240px", fontSize: 14.5, lineHeight: 1.45, color: "#3B362C" }}>{text}</div>
+      <div style={{ flex: "1 1 240px", fontSize: font.base, lineHeight: 1.45, color: "#3B362C" }}>{text}</div>
       {action && (
-        <button onClick={go(action.run)} disabled={busy} style={{ height: 42, padding: "0 20px", borderRadius: 10, border: 0, background: color.brick, color: "#fff", fontSize: 14.5, fontWeight: 600, cursor: busy ? "default" : "pointer", opacity: busy ? 0.6 : 1 }}>
+        <button onClick={go(action.run)} disabled={busy} style={{ height: 42, padding: "0 20px", borderRadius: 10, border: 0, background: color.brick, color: "#fff", fontSize: font.base, fontWeight: 600, cursor: busy ? "default" : "pointer", opacity: busy ? 0.6 : 1 }}>
           {busy ? "One moment…" : `${action.label} →`}
         </button>
       )}
@@ -103,9 +103,9 @@ export function NextStep({ here }: { here: "materials" | "finds" }) {
 export function PageHead({ eyebrow, title, intro, children }: { eyebrow: string; title: string; intro?: string; children?: React.ReactNode }) {
   return (
     <div style={{ padding: "8px 0" }}>
-      <div style={{ fontSize: 14, fontWeight: 700, letterSpacing: ".14em", textTransform: "uppercase", color: color.brick }}>{eyebrow}</div>
-      <h1 style={{ margin: "8px 0 0", fontSize: 30, fontWeight: 700, letterSpacing: "-0.02em" }}>{title}</h1>
-      {intro && <p style={{ margin: "8px 0 0", fontSize: 14.5, lineHeight: 1.5, color: color.t2, maxWidth: 560, textWrap: "pretty" }}>{intro}</p>}
+      <div style={{ fontSize: font.base, fontWeight: 700, letterSpacing: ".14em", textTransform: "uppercase", color: color.brick }}>{eyebrow}</div>
+      <h1 style={{ margin: "8px 0 0", fontSize: font["4xl"], fontWeight: 700, letterSpacing: "-0.02em" }}>{title}</h1>
+      {intro && <p style={{ margin: "8px 0 0", fontSize: font.base, lineHeight: 1.5, color: color.t2, maxWidth: 560, textWrap: "pretty" }}>{intro}</p>}
       {children}
     </div>
   );
@@ -113,7 +113,7 @@ export function PageHead({ eyebrow, title, intro, children }: { eyebrow: string;
 
 const AutoTag = ({ src }: { src?: string }) =>
   src ? (
-    <span style={{ fontSize: 14, fontWeight: 600, padding: "3px 8px", borderRadius: 6, background: "#FDE7D3", color: "#7A3A10" }}>Filled from {src}</span>
+    <span style={{ fontSize: font.base, fontWeight: 600, padding: "3px 8px", borderRadius: 6, background: "#FDE7D3", color: "#7A3A10" }}>Filled from {src}</span>
   ) : null;
 
 const splitList = (v: string) => v.split(/\s*[,;\n]\s*/).map((x) => x.trim()).filter(Boolean);
@@ -132,7 +132,7 @@ function BlankSentence({ chunks, fills, onFill, onDone }: { chunks: Chunk[]; fil
       onKeyDown={(e) => { if (e.key === "Enter" || e.key === "Escape") { e.preventDefault(); onDone(); } }}
       style={{ display: "flex", alignItems: "center", gap: "6px 10px", flexWrap: "wrap", padding: "10px 12px", borderRadius: 10, background: color.surface, border: `1.5px dashed ${color.border}` }}
     >
-      <div style={{ display: "flex", alignItems: "baseline", flexWrap: "wrap", gap: "6px 0", fontSize: 14.5, lineHeight: 1.5, flex: "1 1 auto" }}>
+      <div style={{ display: "flex", alignItems: "baseline", flexWrap: "wrap", gap: "6px 0", fontSize: font.base, lineHeight: 1.5, flex: "1 1 auto" }}>
         {chunks.flatMap((ch, c) =>
           ch.parts.map((p, j) =>
             "blank" in p ? (
@@ -153,7 +153,7 @@ function BlankSentence({ chunks, fills, onFill, onDone }: { chunks: Chunk[]; fil
           ),
         )}
       </div>
-      <button type="button" onClick={onDone} style={{ height: 30, padding: "0 12px", borderRadius: 999, border: "1.5px solid #1D1A0F", background: color.ink, color: "#fff", fontSize: 14, fontWeight: 600, cursor: "pointer" }}>Done</button>
+      <button type="button" onClick={onDone} style={{ height: 30, padding: "0 12px", borderRadius: 999, border: "1.5px solid #1D1A0F", background: color.ink, color: "#fff", fontSize: font.base, fontWeight: 600, cursor: "pointer" }}>Done</button>
     </div>
   );
 }
@@ -189,7 +189,7 @@ function Starters({ mode, options, value, onChange }: { mode: "insert" | "toggle
               type="button"
               onClick={() => pick(o.text)}
               aria-pressed={mode !== "insert" ? on : undefined}
-              style={{ height: 32, padding: "0 12px", borderRadius: 999, border: `1.5px solid ${on ? color.ink : color.border}`, background: on ? color.ink : "#fff", color: on ? "#fff" : color.ink, fontSize: 14, fontWeight: 600, cursor: "pointer" }}
+              style={{ height: 32, padding: "0 12px", borderRadius: 999, border: `1.5px solid ${on ? color.ink : color.border}`, background: on ? color.ink : "#fff", color: on ? "#fff" : color.ink, fontSize: font.base, fontWeight: 600, cursor: "pointer" }}
             >
               {mode === "insert" ? `+ ${o.label}` : on ? `✓ ${o.label}` : o.label}
             </button>
@@ -268,8 +268,8 @@ export function Profile() {
         <ProfileTabs />
         {showNote && (
           <div role="note" style={{ display: "flex", alignItems: "center", gap: 12, padding: "12px 14px 12px 16px", borderRadius: 12, background: "#FFF4F1", border: "1.5px solid #F0C9BF" }}>
-            <div style={{ flex: 1, fontSize: 14.5, fontWeight: 600, color: "#3B362C" }}>First: answer these {total}. About 2 minutes.</div>
-            <button type="button" onClick={closeNote} aria-label="Dismiss" style={{ width: 32, height: 32, borderRadius: 8, border: 0, background: "transparent", color: color.t2, fontSize: 18, cursor: "pointer" }}>×</button>
+            <div style={{ flex: 1, fontSize: font.base, fontWeight: 600, color: "#3B362C" }}>First: answer these {total}. About 2 minutes.</div>
+            <button type="button" onClick={closeNote} aria-label="Dismiss" style={{ width: 32, height: 32, borderRadius: 8, border: 0, background: "transparent", color: color.t2, fontSize: font.xl, cursor: "pointer" }}>×</button>
           </div>
         )}
         <PageHead
@@ -283,20 +283,20 @@ export function Profile() {
             <div role="progressbar" aria-valuemin={0} aria-valuemax={total} aria-valuenow={answered} style={{ flex: 1, maxWidth: 320, height: 6, borderRadius: 999, background: color.border, overflow: "hidden" }}>
               <div style={{ height: "100%", width: `${(answered / total) * 100}%`, background: color.brick, borderRadius: 999, transition: "width .2s" }} />
             </div>
-            <div style={{ fontSize: 14, fontWeight: 600, color: color.t2 }}>{answered} of {total} answered</div>
+            <div style={{ fontSize: font.base, fontWeight: 600, color: color.t2 }}>{answered} of {total} answered</div>
           </div>
         </PageHead>
 
         {cfg.questions.map((q, i) => (
           <div key={q.key} style={{ padding: "18px 0", display: "grid", gridTemplateColumns: "44px minmax(0,1fr)", gap: "4px 12px" }}>
-            <div style={{ fontSize: 22, fontWeight: 700, color: color.brick }}>{String(i + 1).padStart(2, "0")}</div>
+            <div style={{ fontSize: font["2xl"], fontWeight: 700, color: color.brick }}>{String(i + 1).padStart(2, "0")}</div>
             <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
               <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
-                <label htmlFor={`q-${q.key}`} style={{ fontSize: 17, fontWeight: 600 }}>{q.prompt}</label>
+                <label htmlFor={`q-${q.key}`} style={{ fontSize: font.lg, fontWeight: 600 }}>{q.prompt}</label>
                 {q.kind === "text" && <AutoTag src={auto[q.key]} />}
                 {q.kind === "modes" && <AutoTag src={auto[q.areaKey] || auto[q.modesKey]} />}
               </div>
-              {q.kind !== "modes" && <div style={{ fontSize: 14, color: color.t2 }}>{q.helper}</div>}
+              {q.kind !== "modes" && <div style={{ fontSize: font.base, color: color.t2 }}>{q.helper}</div>}
 
               {q.kind === "text" && q.starters && (
                 <Starters
@@ -313,9 +313,9 @@ export function Profile() {
               {q.kind === "comp" && (
                 <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
                   {([[q.floorKey, "Floor", "$120,000"], [q.targetKey, "Would jump for", "$160,000"]] as const).map(([k, label, ph], j) => (
-                    <label key={k} style={{ flex: "1 1 180px", display: "flex", flexDirection: "column", gap: 6, fontSize: 14, fontWeight: 600, letterSpacing: ".06em", textTransform: "uppercase", color: color.t2 }}>
+                    <label key={k} style={{ flex: "1 1 180px", display: "flex", flexDirection: "column", gap: 6, fontSize: font.base, fontWeight: 600, letterSpacing: ".06em", textTransform: "uppercase", color: color.t2 }}>
                       {label}
-                      <input id={j === 0 ? `q-${q.key}` : undefined} className="f-brick" inputMode="numeric" value={str(k)} onChange={set(k)} placeholder={ph} maxLength={40} style={{ ...inputBase, height: 42, padding: "0 13px", fontSize: 14.5, textTransform: "none", letterSpacing: 0, fontWeight: 500 }} />
+                      <input id={j === 0 ? `q-${q.key}` : undefined} className="f-brick" inputMode="numeric" value={str(k)} onChange={set(k)} placeholder={ph} maxLength={40} style={{ ...inputBase, height: 42, padding: "0 13px", fontSize: font.md, textTransform: "none", letterSpacing: 0, fontWeight: 500 }} />
                     </label>
                   ))}
                 </div>
@@ -323,7 +323,7 @@ export function Profile() {
 
               {q.kind === "modes" && (
                 <>
-                  <div id={`q-${q.key}-modes`} style={{ fontSize: 14, fontWeight: 600, letterSpacing: ".06em", textTransform: "uppercase", color: color.t2 }}>{WORK_MODE_LABEL}</div>
+                  <div id={`q-${q.key}-modes`} style={{ fontSize: font.base, fontWeight: 600, letterSpacing: ".06em", textTransform: "uppercase", color: color.t2 }}>{WORK_MODE_LABEL}</div>
                   <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }} role="group" aria-labelledby={`q-${q.key}-modes`}>
                     {q.options.map((m) => {
                       const modes = arr(q.modesKey);
@@ -333,7 +333,7 @@ export function Profile() {
                           key={m}
                           aria-pressed={on}
                           onClick={() => editAnswers({ [q.modesKey]: on ? modes.filter((x) => x !== m) : [...modes, m] }, [q.modesKey, q.areaKey])}
-                          style={{ height: 34, padding: "0 15px", borderRadius: 999, border: `1.5px solid ${on ? color.ink : color.border}`, background: on ? color.ink : "#fff", color: on ? "#fff" : color.ink, fontSize: 14, fontWeight: 600, cursor: "pointer" }}
+                          style={{ height: 34, padding: "0 15px", borderRadius: 999, border: `1.5px solid ${on ? color.ink : color.border}`, background: on ? color.ink : "#fff", color: on ? "#fff" : color.ink, fontSize: font.base, fontWeight: 600, cursor: "pointer" }}
                         >
                           {m}
                         </button>
@@ -350,18 +350,18 @@ export function Profile() {
         <div style={{ padding: "18px 0", display: "grid", gridTemplateColumns: "44px minmax(0,1fr)", gap: "4px 12px" }}>
           <div />
           <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-            <label htmlFor={`q-${BONUS_KEY}`} style={{ fontSize: 17, fontWeight: 600 }}>Bonus context (optional)</label>
-            <div id={`q-${BONUS_KEY}-help`} style={{ fontSize: 14, color: color.t2 }}>Anything else Lookout should know.</div>
+            <label htmlFor={`q-${BONUS_KEY}`} style={{ fontSize: font.lg, fontWeight: 600 }}>Bonus context (optional)</label>
+            <div id={`q-${BONUS_KEY}-help`} style={{ fontSize: font.base, color: color.t2 }}>Anything else Lookout should know.</div>
             <textarea id={`q-${BONUS_KEY}`} aria-describedby={`q-${BONUS_KEY}-help`} className="f-brick" value={str(BONUS_KEY)} onChange={set(BONUS_KEY)} rows={3} maxLength={4000} style={{ ...inputBase, resize: "vertical", padding: "11px 13px", lineHeight: 1.5 }} />
           </div>
         </div>
 
         <div style={{ display: "flex", alignItems: "center", gap: 14, flexWrap: "wrap", paddingTop: 4 }}>
-          <button onClick={onSave} style={{ height: 46, padding: "0 28px", borderRadius: 12, border: 0, background: color.brick, color: "#fff", fontSize: 14.5, fontWeight: 600, cursor: "pointer" }}>Save profile</button>
-          <button onClick={onNext} disabled={!saved || busy} title={saved ? undefined : "Save your profile first"} style={{ height: 46, padding: "0 22px", borderRadius: 12, border: "1.5px solid #1D1A0F", background: "#fff", color: color.ink, fontSize: 14.5, fontWeight: 600, cursor: saved && !busy ? "pointer" : "default", opacity: saved && !busy ? 1 : 0.45 }}>
+          <button onClick={onSave} style={{ height: 46, padding: "0 28px", borderRadius: 12, border: 0, background: color.brick, color: "#fff", fontSize: font.base, fontWeight: 600, cursor: "pointer" }}>Save profile</button>
+          <button onClick={onNext} disabled={!saved || busy} title={saved ? undefined : "Save your profile first"} style={{ height: 46, padding: "0 22px", borderRadius: 12, border: "1.5px solid #1D1A0F", background: "#fff", color: color.ink, fontSize: font.base, fontWeight: 600, cursor: saved && !busy ? "pointer" : "default", opacity: saved && !busy ? 1 : 0.45 }}>
             {busy ? "One moment…" : `${next.label} →`}
           </button>
-          {savedAt && <div aria-live="polite" style={{ flexBasis: "100%", fontSize: 14, color: color.t2 }}>Saved at {savedAt}. The next discovery run will use it.</div>}
+          {savedAt && <div aria-live="polite" style={{ flexBasis: "100%", fontSize: font.base, color: color.t2 }}>Saved at {savedAt}. The next discovery run will use it.</div>}
         </div>
 
         {/* Current pay only means something next to posted pay ranges (#109). */}

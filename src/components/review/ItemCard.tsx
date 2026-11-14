@@ -10,7 +10,7 @@ import { RecruiterPanel } from "./RecruiterPanel";
 import { TemplatePicker } from "./TemplatePicker";
 import { VersionNotes } from "./VersionNotes";
 import { card, muted, OptionChecks, type Act, type Detail, type Item } from "./shared";
-import { color } from "@/lib/tokens";
+import { color, font } from "@/lib/tokens";
 import { LETTER_STRATEGIES, STRATEGY } from "@/lib/application/letterStrategy";
 import { DownloadIcon, EyeIcon, PencilIcon, RedoIcon } from "../icons";
 
@@ -54,22 +54,22 @@ export function ItemCard({ appId, item, locked, act, analysis, template, accent,
   return (
     <div style={{ ...card, display: "flex", flexDirection: "column", gap: 10, borderColor: isApproved ? "#9CC68E" : color.border }}>
       <div style={{ display: "flex", alignItems: "baseline", gap: 8, flexWrap: "wrap" }}>
-        <label htmlFor={`it-${item.id}`} style={{ flex: 1, minWidth: 0, fontSize: 15, fontWeight: 600 }}>
+        <label htmlFor={`it-${item.id}`} style={{ flex: 1, minWidth: 0, fontSize: font.md, fontWeight: 600 }}>
           {item.prompt}
           {item.required ? <span style={{ color: color.brick }}> *</span> : !outreach && <span style={{ ...muted, fontWeight: 400 }}> (optional)</span>}
         </label>
-        {isApproved && <span style={{ fontSize: 14, fontWeight: 600, color: color.greenText }}>{item.kind === "field" ? "✓ Will be filled" : `✓ Approved v${shown.version}`}</span>}
+        {isApproved && <span style={{ fontSize: font.base, fontWeight: 600, color: color.greenText }}>{item.kind === "field" ? "✓ Will be filled" : `✓ Approved v${shown.version}`}</span>}
       </div>
 
       {item.salary && item.salary.amount === null && !locked && (
-        <div style={{ padding: "8px 12px", borderRadius: 10, background: "#FBF4E6", border: "1px solid #E8D3A6", fontSize: 14, color: "#5C4613" }}>
+        <div style={{ padding: "8px 12px", borderRadius: 10, background: "#FBF4E6", border: "1px solid #E8D3A6", fontSize: font.base, color: "#5C4613" }}>
           <strong>No suggested ask.</strong> {item.salary.note}
         </div>
       )}
       {item.salary?.amount && !locked && (
         <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", padding: "8px 12px", borderRadius: 10, background: "#F3F7F1", border: "1px solid #CFE3C6" }}>
-          <span style={{ fontSize: 14, color: color.greenText }}>Suggested ask</span>
-          <span style={{ fontSize: 16, fontWeight: 700, color: color.ink }}>{item.salary.amount}</span>
+          <span style={{ fontSize: font.base, color: color.greenText }}>Suggested ask</span>
+          <span style={{ fontSize: font.lg, fontWeight: 700, color: color.ink }}>{item.salary.amount}</span>
           <InfoTip label="How this is calculated" text={item.salary.note} />
           {text.replace(/[^\d]/g, "") !== item.salary.amount.replace(/[^\d]/g, "") && (
             <button onClick={() => run("save", { action: "edit", content: item.salary!.amount!, note: "Used Lookout's suggested ask." }, "Saved the suggested ask as a new version.")} disabled={!!busy} style={{ ...btn("outline"), height: 32, marginLeft: "auto" }}>
@@ -88,7 +88,7 @@ export function ItemCard({ appId, item, locked, act, analysis, template, accent,
       ) : item.options?.length && item.fieldType === "multiselect" ? (
         <OptionChecks id={`it-${item.id}`} label={item.prompt} options={item.options} value={text} onChange={setText} disabled={locked} />
       ) : item.options?.length && !locked ? (
-        <select id={`it-${item.id}`} value={text} onChange={(e) => setText(e.target.value)} style={{ height: 40, borderRadius: 10, border: `1.5px solid ${color.border}`, padding: "0 10px", fontSize: 15, maxWidth: 420 }}>
+        <select id={`it-${item.id}`} value={text} onChange={(e) => setText(e.target.value)} style={{ height: 40, borderRadius: 10, border: `1.5px solid ${color.border}`, padding: "0 10px", fontSize: font.md, maxWidth: 420 }}>
           <option value="">Choose…</option>
           {item.options.map((o) => (
             <option key={o}>{o}</option>
@@ -101,7 +101,7 @@ export function ItemCard({ appId, item, locked, act, analysis, template, accent,
           readOnly={locked}
           onChange={(e) => setText(e.target.value)}
           rows={long ? (item.kind === "resume" ? 18 : 8) : 1}
-          style={{ borderRadius: 10, border: `1.5px solid ${color.border}`, padding: 10, fontSize: 15, lineHeight: 1.5, fontFamily: "inherit", resize: "vertical", background: locked ? "#FAF8F5" : "#fff" }}
+          style={{ borderRadius: 10, border: `1.5px solid ${color.border}`, padding: 10, fontSize: font.md, lineHeight: 1.5, fontFamily: "inherit", resize: "vertical", background: locked ? "#FAF8F5" : "#fff" }}
         />
       )}
 
@@ -154,7 +154,7 @@ export function ItemCard({ appId, item, locked, act, analysis, template, accent,
               </a>
             )}
             {item.versions.length > 1 && (
-              <select aria-label="Version" value={shown?.id} onChange={(e) => setPick(e.target.value)} style={{ height: 38, borderRadius: 10, border: `1.5px solid ${color.border}`, padding: "0 8px", fontSize: 14 }}>
+              <select aria-label="Version" value={shown?.id} onChange={(e) => setPick(e.target.value)} style={{ height: 38, borderRadius: 10, border: `1.5px solid ${color.border}`, padding: "0 8px", fontSize: font.base }}>
                 {item.versions.map((v) => (
                   <option key={v.id} value={v.id}>
                     v{v.version} · {v.author === "ai" ? "Lookout" : "you"}
@@ -195,7 +195,7 @@ export function ItemCard({ appId, item, locked, act, analysis, template, accent,
                 value={instr}
                 onChange={(e) => setInstr(e.target.value)}
                 placeholder={item.kind === "resume" ? "Ask Lookout: lead with the platform work, cut to one page…" : outreach ? "Ask Lookout: shorter, warmer, change the request…" : "Ask Lookout: shorter, more specific, mention…"}
-                style={{ flex: "1 1 260px", height: 38, borderRadius: 10, border: `1.5px solid ${color.border}`, padding: "0 12px", fontSize: 14 }}
+                style={{ flex: "1 1 260px", height: 38, borderRadius: 10, border: `1.5px solid ${color.border}`, padding: "0 12px", fontSize: font.base }}
               />
               <button type="submit" disabled={!instr.trim() || !!busy || dirty} data-tip={dirty ? "Save your edits first" : undefined} style={btn("outline")}>
                 {busy === "revise" ? "Revising…" : "Revise"}
@@ -215,7 +215,7 @@ function StrategyPicker({ letter, busy, onPick }: { letter: NonNullable<Detail["
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
       <div role="group" aria-label="Cover letter strategy" style={{ display: "flex", gap: 6, flexWrap: "wrap", alignItems: "center" }}>
-        <span style={{ fontSize: 14, fontWeight: 600, marginRight: 4 }}>Strategy</span>
+        <span style={{ fontSize: font.base, fontWeight: 600, marginRight: 4 }}>Strategy</span>
         {LETTER_STRATEGIES.map((s) => {
           const on = s === current;
           return (
@@ -225,7 +225,7 @@ function StrategyPicker({ letter, busy, onPick }: { letter: NonNullable<Detail["
               disabled={busy}
               aria-pressed={on}
               data-tip={STRATEGY[s].blurb}
-              style={{ height: 32, padding: "0 12px", borderRadius: 999, fontSize: 14, fontWeight: 600, cursor: on ? "default" : "pointer", border: `1.5px solid ${on ? color.ink : color.border}`, background: on ? color.ink : "#fff", color: on ? "#fff" : color.ink }}
+              style={{ height: 32, padding: "0 12px", borderRadius: 999, fontSize: font.base, fontWeight: 600, cursor: on ? "default" : "pointer", border: `1.5px solid ${on ? color.ink : color.border}`, background: on ? color.ink : "#fff", color: on ? "#fff" : color.ink }}
             >
               {STRATEGY[s].label}
               {s === letter.suggested && <span style={{ fontWeight: 400, opacity: 0.8 }}> · suggested</span>}

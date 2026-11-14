@@ -3,7 +3,7 @@
 import { createPortal } from "react-dom";
 import { useEffect, useRef, useState } from "react";
 import { useStore } from "./store";
-import { color } from "@/lib/tokens";
+import { color, font } from "@/lib/tokens";
 
 /** What a new search can hunt for (#8); same two options as the request-access kind picker. */
 const KIND_OPTIONS = [
@@ -105,12 +105,12 @@ export function SearchSwitcher({ variant }: { variant: "rail" | "bar" }) {
           style={{
             display: "flex", alignItems: "center", justifyContent: state.settings.railClosed ? "center" : "space-between", gap: 8,
             width: "100%", padding: state.settings.railClosed ? "9px 0" : "9px 12px", borderRadius: 10,
-            background: "rgba(255,255,255,.07)", color: "#fff", fontSize: 14, fontWeight: 600, cursor: "pointer", textAlign: "left",
+            background: "rgba(255,255,255,.07)", color: "#fff", fontSize: font.base, fontWeight: 600, cursor: "pointer", textAlign: "left",
             border: "1px solid rgba(255,255,255,.09)",
           }}
         >
           {label}
-          {!state.settings.railClosed && <span aria-hidden style={{ color: "#A89F92", fontSize: 11, flex: "none" }}>▼</span>}
+          {!state.settings.railClosed && <span aria-hidden style={{ color: "#A89F92", fontSize: font["2xs"], flex: "none" }}>▼</span>}
         </button>
       ) : (
         <button
@@ -121,11 +121,11 @@ export function SearchSwitcher({ variant }: { variant: "rail" | "bar" }) {
           className="h-rail"
           style={{
             display: "flex", alignItems: "center", gap: 6, padding: "5px 12px", borderRadius: 999, border: "1px solid rgba(255,255,255,.15)",
-            background: "transparent", color: "#C9C1B5", fontSize: 13, fontWeight: 600, cursor: "pointer", maxWidth: 200,
+            background: "transparent", color: "#C9C1B5", fontSize: font.sm, fontWeight: 600, cursor: "pointer", maxWidth: 200,
           }}
         >
           {label}
-          <span aria-hidden style={{ fontSize: 10, flex: "none" }}>▼</span>
+          <span aria-hidden style={{ fontSize: font["2xs"], flex: "none" }}>▼</span>
         </button>
       )}
       {pos &&
@@ -155,9 +155,9 @@ export function SearchSwitcher({ variant }: { variant: "rail" | "bar" }) {
                         defaultValue={s.name}
                         maxLength={80}
                         className="f-brick"
-                        style={{ flex: 1, minWidth: 0, background: color.ink, border: "1px solid rgba(255,255,255,.15)", borderRadius: 8, padding: "6px 8px", color: "#fff", fontSize: 14 }}
+                        style={{ flex: 1, minWidth: 0, background: color.ink, border: "1px solid rgba(255,255,255,.15)", borderRadius: 8, padding: "6px 8px", color: "#fff", fontSize: font.base }}
                       />
-                      <button type="submit" style={{ border: 0, background: "#427D33", color: "#fff", borderRadius: 8, padding: "6px 10px", fontSize: 13, fontWeight: 600, cursor: "pointer" }}>
+                      <button type="submit" style={{ border: 0, background: "#427D33", color: "#fff", borderRadius: 8, padding: "6px 10px", fontSize: font.sm, fontWeight: 600, cursor: "pointer" }}>
                         Save
                       </button>
                     </form>
@@ -169,11 +169,11 @@ export function SearchSwitcher({ variant }: { variant: "rail" | "bar" }) {
                         style={{
                           display: "flex", alignItems: "baseline", gap: 8, flex: 1, minWidth: 0, padding: "8px 10px", borderRadius: 8, border: 0,
                           background: s.id === state.searchId ? "rgba(255,255,255,.08)" : "transparent", color: s.id === state.searchId ? "#fff" : "#C9C1B5",
-                          fontSize: 14, fontWeight: 600, cursor: "pointer", textAlign: "left",
+                          fontSize: font.base, fontWeight: 600, cursor: "pointer", textAlign: "left",
                         }}
                       >
                         <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{s.name}</span>
-                        <span style={{ fontSize: 12, fontWeight: 500, opacity: 0.6, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", flex: "none" }}>
+                        <span style={{ fontSize: font.xs, fontWeight: 500, opacity: 0.6, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", flex: "none" }}>
                           {kindLabel(s.kind)}
                         </span>
                       </button>
@@ -182,7 +182,7 @@ export function SearchSwitcher({ variant }: { variant: "rail" | "bar" }) {
                           aria-label={`Rename ${s.name}`}
                           onClick={() => setRenaming(s.id)}
                           className="h-rail"
-                          style={{ border: 0, background: "transparent", color: "#A89F92", fontSize: 12, cursor: "pointer", padding: "6px", flex: "none" }}
+                          style={{ border: 0, background: "transparent", color: "#A89F92", fontSize: font.xs, cursor: "pointer", padding: "6px", flex: "none" }}
                         >
                           Rename
                         </button>
@@ -197,7 +197,7 @@ export function SearchSwitcher({ variant }: { variant: "rail" | "bar" }) {
                   onClick={() => setCreating(true)}
                   style={{
                     display: "flex", alignItems: "center", gap: 8, marginTop: 6, padding: "9px 10px", borderRadius: 8, border: 0,
-                    background: "transparent", color: color.orange, fontSize: 14, fontWeight: 600, cursor: "pointer", textAlign: "left",
+                    background: "transparent", color: color.orange, fontSize: font.base, fontWeight: 600, cursor: "pointer", textAlign: "left",
                   }}
                 >
                   + New search
@@ -210,7 +210,7 @@ export function SearchSwitcher({ variant }: { variant: "rail" | "bar" }) {
                   }}
                   style={{ display: "flex", flexDirection: "column", gap: 6, marginTop: 6, padding: "6px 4px 4px", borderTop: "1px solid rgba(255,255,255,.1)" }}
                 >
-                  <div style={{ fontSize: 13, fontWeight: 600 }}>New search</div>
+                  <div style={{ fontSize: font.sm, fontWeight: 600 }}>New search</div>
                   {KIND_OPTIONS.map((k) => {
                     const on = kind === k.id;
                     return (
@@ -222,13 +222,13 @@ export function SearchSwitcher({ variant }: { variant: "rail" | "bar" }) {
                         style={{
                           display: "flex", alignItems: "center", gap: 10, minHeight: 40, padding: "0 12px", borderRadius: 10,
                           border: `1.5px solid ${on ? color.orange : "rgba(255,255,255,.15)"}`, background: on ? "rgba(248,168,101,.15)" : "transparent",
-                          color: on ? "#fff" : "#C9C1B5", fontSize: 14, fontWeight: 500, cursor: "pointer", textAlign: "left",
+                          color: on ? "#fff" : "#C9C1B5", fontSize: font.base, fontWeight: 500, cursor: "pointer", textAlign: "left",
                         }}
                       >
                         <span style={{ width: 14, height: 14, borderRadius: "50%", border: `1.5px solid ${on ? color.orange : "#CFC6B9"}`, background: on ? color.orange : "transparent", flex: "none" }} />
                         <span>
                           {k.label}
-                          <span style={{ display: "block", fontSize: 13, fontWeight: 400, opacity: 0.65 }}>{k.note}</span>
+                          <span style={{ display: "block", fontSize: font.sm, fontWeight: 400, opacity: 0.65 }}>{k.note}</span>
                         </span>
                       </button>
                     );
@@ -240,17 +240,17 @@ export function SearchSwitcher({ variant }: { variant: "rail" | "bar" }) {
                     placeholder="Name (optional)"
                     maxLength={80}
                     className="f-brick"
-                    style={{ background: color.ink, border: "1px solid rgba(255,255,255,.15)", borderRadius: 8, padding: "8px 10px", color: "#fff", fontSize: 14 }}
+                    style={{ background: color.ink, border: "1px solid rgba(255,255,255,.15)", borderRadius: 8, padding: "8px 10px", color: "#fff", fontSize: font.base }}
                   />
                   <div style={{ display: "flex", gap: 8 }}>
                     <button
                       type="submit"
                       disabled={busy}
-                      style={{ flex: 1, border: 0, background: "#427D33", color: "#fff", borderRadius: 8, padding: "9px 0", fontSize: 14, fontWeight: 600, cursor: busy ? "wait" : "pointer" }}
+                      style={{ flex: 1, border: 0, background: "#427D33", color: "#fff", borderRadius: 8, padding: "9px 0", fontSize: font.base, fontWeight: 600, cursor: busy ? "wait" : "pointer" }}
                     >
                       {busy ? "Creating…" : "Create search"}
                     </button>
-                    <button type="button" onClick={() => setCreating(false)} style={{ border: 0, background: "transparent", color: "#A89F92", fontSize: 14, fontWeight: 600, cursor: "pointer", padding: "0 8px" }}>
+                    <button type="button" onClick={() => setCreating(false)} style={{ border: 0, background: "transparent", color: "#A89F92", fontSize: font.base, fontWeight: 600, cursor: "pointer", padding: "0 8px" }}>
                       Cancel
                     </button>
                   </div>

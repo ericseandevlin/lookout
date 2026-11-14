@@ -4,7 +4,7 @@ import { useState } from "react";
 import { toPlain as toPlainText } from "@/lib/application/resumeLayout";
 import { btn } from "../Settings";
 import { card, muted, type Detail } from "./shared";
-import { color } from "@/lib/tokens";
+import { color, font } from "@/lib/tokens";
 
 export function Checklist({ d, onDone }: { d: Detail; onDone: () => void }) {
   const [copied, setCopied] = useState<string | null>(null);
@@ -29,7 +29,7 @@ export function Checklist({ d, onDone }: { d: Detail; onDone: () => void }) {
   };
   return (
     <section aria-labelledby="send" style={{ ...card, borderColor: locked ? "#9CC68E" : color.ink, display: "flex", flexDirection: "column", gap: 12 }}>
-      <h2 id="send" style={{ margin: 0, fontSize: 18, fontWeight: 700 }}>{locked ? "What you sent" : "Send it"}</h2>
+      <h2 id="send" style={{ margin: 0, fontSize: font.xl, fontWeight: 700 }}>{locked ? "What you sent" : "Send it"}</h2>
       {locked ? (
         <p style={{ ...muted, margin: 0 }}>Applied {d.submittedAt ? new Date(d.submittedAt).toLocaleString() : ""}. This is the exact text you approved.</p>
       ) : (
@@ -44,7 +44,7 @@ export function Checklist({ d, onDone }: { d: Detail; onDone: () => void }) {
       )}
       <ol style={{ margin: 0, paddingLeft: 20, display: "flex", flexDirection: "column", gap: 8 }}>
         {rows.map((r) => (
-          <li key={r.key} style={{ fontSize: 14 }}>
+          <li key={r.key} style={{ fontSize: font.base }}>
             <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
               <span style={{ flex: "1 1 200px", fontWeight: 600 }}>{r.prompt}</span>
               <button onClick={() => copy(r.key, r.kind === "resume" || r.kind === "cover_letter" ? toPlainText(r.content) : r.content)} style={{ ...btn("outline"), height: 32 }}>
@@ -66,7 +66,7 @@ export function Checklist({ d, onDone }: { d: Detail; onDone: () => void }) {
         ))}
       </ol>
       {!locked && d.eeoConsent && d.items.some((i) => i.kind === "eeo" && i.eeoAnswer) && (
-        <div style={{ fontSize: 14 }}>
+        <div style={{ fontSize: font.base }}>
           <div style={{ fontWeight: 600, marginBottom: 4 }}>Voluntary EEO (pick these in the form)</div>
           <ul style={{ margin: 0, paddingLeft: 18, color: "#3B362C" }}>
             {d.items

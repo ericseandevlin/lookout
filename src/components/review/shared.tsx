@@ -6,7 +6,7 @@ import type { KeywordRow } from "@/lib/application/evidence";
 import type { LetterStrategy } from "@/lib/application/letterStrategy";
 import type { SubmitMode } from "@/lib/application/submitMode";
 import { toggleOption } from "@/lib/application/flowRules";
-import { color } from "@/lib/tokens";
+import { color, font } from "@/lib/tokens";
 
 /** Shared by the review page parts: the response types, the card styles and the resume lookup. */
 
@@ -56,7 +56,7 @@ export type Detail = {
 };
 
 export const card: React.CSSProperties = { padding: 18, borderRadius: 14, background: "#fff", border: `1.5px solid ${color.border}` };
-export const muted: React.CSSProperties = { fontSize: 14, color: color.t2 };
+export const muted: React.CSSProperties = { fontSize: font.base, color: color.t2 };
 
 /** A select-any question (#627): one checkbox per option; the answer is the ticked options, one per line. */
 export function OptionChecks({ id, label, options, value, onChange, disabled }: { id: string; label: string; options: string[]; value: string; onChange: (next: string) => void; disabled?: boolean }) {
@@ -64,7 +64,7 @@ export function OptionChecks({ id, label, options, value, onChange, disabled }: 
   return (
     <div id={id} role="group" aria-label={label} style={{ display: "flex", flexDirection: "column", gap: 6 }}>
       {options.map((o) => (
-        <label key={o} style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 15 }}>
+        <label key={o} style={{ display: "flex", alignItems: "center", gap: 8, fontSize: font.md }}>
           <input type="checkbox" checked={picked.has(o)} disabled={disabled} onChange={() => onChange(toggleOption(value, options, o))} />
           {o}
         </label>

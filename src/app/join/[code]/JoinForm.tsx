@@ -2,10 +2,10 @@
 
 import { useState } from "react";
 import { AuthCard, Eyebrow, h1, p, primary } from "@/components/Login";
-import { color } from "@/lib/tokens";
+import { color, font } from "@/lib/tokens";
 
-const field: React.CSSProperties = { height: 46, border: `1.5px solid ${color.border}`, background: "#fff", borderRadius: 10, padding: "0 14px", fontSize: 15, outline: "none", color: color.ink };
-const label: React.CSSProperties = { fontSize: 14, fontWeight: 600, letterSpacing: ".06em", textTransform: "uppercase", color: color.t2 };
+const field: React.CSSProperties = { height: 46, border: `1.5px solid ${color.border}`, background: "#fff", borderRadius: 10, padding: "0 14px", fontSize: font.md, outline: "none", color: color.ink };
+const label: React.CSSProperties = { fontSize: font.base, fontWeight: 600, letterSpacing: ".06em", textTransform: "uppercase", color: color.t2 };
 const CLOSED = { unknown: "This invite link doesn't work.", closed: "This invite link is closed.", expired: "This invite link has expired.", full: "Every spot on this invite is taken." } as const;
 
 export function JoinForm({ code, label: group, closed, emailEnabled }: { code: string; label: string; closed: keyof typeof CLOSED | null; emailEnabled: boolean }) {
@@ -58,12 +58,12 @@ export function JoinForm({ code, label: group, closed, emailEnabled }: { code: s
           <label htmlFor="join-email" style={label}>Email</label>
           <input id="join-email" type="email" required autoComplete="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@example.com" className="f-brick" style={field} />
           <button type="submit" disabled={state === "sending"} style={primary}>{state === "sending" ? "Sending…" : "Email me my link"}</button>
-          {state === "error" && <div role="alert" style={{ fontSize: 14, color: color.brick }}>{msg}</div>}
+          {state === "error" && <div role="alert" style={{ fontSize: font.base, color: color.brick }}>{msg}</div>}
         </form>
       ) : (
-        <p style={{ ...p, marginTop: 20, fontSize: 14 }}>Sign-in emails aren&apos;t on yet, so this link can&apos;t make accounts right now.</p>
+        <p style={{ ...p, marginTop: 20, fontSize: font.base }}>Sign-in emails aren&apos;t on yet, so this link can&apos;t make accounts right now.</p>
       )}
-      <p style={{ fontSize: 14, color: color.t2, marginTop: 20, paddingTop: 16, borderTop: `1px solid ${color.border}` }}>
+      <p style={{ fontSize: font.base, color: color.t2, marginTop: 20, paddingTop: 16, borderTop: `1px solid ${color.border}` }}>
         Already have an account? <a href="/signin" style={{ color: color.brick, fontWeight: 600 }}>Sign in</a>
       </p>
     </AuthCard>

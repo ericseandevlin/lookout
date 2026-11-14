@@ -6,7 +6,7 @@ import type { SearchProfile } from "@/lib/db/schema";
 import { PageHead, ProfileTabs } from "./Profile";
 import { btn } from "./Settings";
 import { api } from "./store";
-import { color } from "@/lib/tokens";
+import { color, font } from "@/lib/tokens";
 
 type Data = {
   profile: SearchProfile | null;
@@ -64,17 +64,17 @@ export function SearchProfileView() {
 
       {!data && !err && (
         <div style={{ ...card, display: "flex", flexDirection: "column", gap: 10 }}>
-          <div style={{ fontSize: 14, fontWeight: 600 }}>Reading your answers and materials…</div>
+          <div style={{ fontSize: font.base, fontWeight: 600 }}>Reading your answers and materials…</div>
           <div style={{ height: 4, borderRadius: 999, background: color.surface, overflow: "hidden" }}>
             <div className="scan-bar" style={{ height: "100%", width: "40%", background: color.orange, borderRadius: 999 }} />
           </div>
-          <div style={{ fontSize: 14, color: color.t2 }}>This takes a few seconds the first time, and after you change something.</div>
+          <div style={{ fontSize: font.base, color: color.t2 }}>This takes a few seconds the first time, and after you change something.</div>
         </div>
       )}
-      {err && <div role="alert" style={{ fontSize: 14, color: color.brick }}>{err}</div>}
+      {err && <div role="alert" style={{ fontSize: font.base, color: color.brick }}>{err}</div>}
 
       {data && !p && (
-        <div style={{ ...card, fontSize: 14, lineHeight: 1.5, color: "#3B362C" }}>
+        <div style={{ ...card, fontSize: font.base, lineHeight: 1.5, color: "#3B362C" }}>
           {data.sources.answers || data.sources.resume || data.sources.linkedin ? (
             data.canBuild ? "Lookout couldn't build your profile just now. Try Rebuild in a minute." : "Lookout builds this with its AI model, which isn't set up yet. Your answers and materials are still used on every search."
           ) : (
@@ -88,23 +88,23 @@ export function SearchProfileView() {
 
       {data && p && (
         <>
-          <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap", fontSize: 14, color: color.t2 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap", fontSize: font.base, color: color.t2 }}>
             <span>
               Built {when} from {sourceLine(data.sources)}.
               {data.stale && " Your changes since then will be picked up on the next search."}
               {data.error && ` ${data.error}.`}
             </span>
             {data.canBuild && (
-              <button onClick={rebuild} disabled={busy} style={{ ...btn("text"), height: 28, fontSize: 14 }}>{busy ? "Rebuilding…" : "Rebuild"}</button>
+              <button onClick={rebuild} disabled={busy} style={{ ...btn("text"), height: 28, fontSize: font.base }}>{busy ? "Rebuilding…" : "Rebuild"}</button>
             )}
           </div>
 
           <div style={{ ...card, display: "flex", flexDirection: "column", gap: 22 }}>
-            <p style={{ margin: 0, fontSize: 17, lineHeight: 1.5, fontWeight: 500, textWrap: "pretty" }}>{p.summary}</p>
+            <p style={{ margin: 0, fontSize: font.lg, lineHeight: 1.5, fontWeight: 500, textWrap: "pretty" }}>{p.summary}</p>
 
             <Part title="Searches for" edit={["/profile#q-q1", "Edit your next role"]}>
               <Chips items={p.targetTitles} strong />
-              <div style={{ fontSize: 14, color: color.t2, marginTop: 8 }}>Level: {p.seniority}</div>
+              <div style={{ fontSize: font.base, color: color.t2, marginTop: 8 }}>Level: {p.seniority}</div>
             </Part>
             {p.industries.length > 0 && (
               <Part title="Industries" edit={["/profile#q-q1", "Edit your next role"]}>
@@ -113,10 +113,10 @@ export function SearchProfileView() {
             )}
             <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 22 }}>
               <Part title="Where" edit={["/profile#q-where", "Edit"]}>
-                <div style={{ fontSize: 14.5 }}>{p.where}</div>
+                <div style={{ fontSize: font.base }}>{p.where}</div>
               </Part>
               <Part title="Pay" edit={["/profile#q-comp", "Edit"]}>
-                <div style={{ fontSize: 14.5 }}>{p.pay}</div>
+                <div style={{ fontSize: font.base }}>{p.pay}</div>
               </Part>
             </div>
             <Part title="What employers will see in you" edit={["/profile/materials", "Edit materials"]}>
@@ -153,9 +153,9 @@ function Part({ title, edit, children }: { title: string; edit?: [string, string
   return (
     <section style={{ display: "flex", flexDirection: "column", gap: 8 }}>
       <div style={{ display: "flex", alignItems: "baseline", gap: 10 }}>
-        <h2 style={{ margin: 0, fontSize: 14, fontWeight: 700, letterSpacing: ".12em", textTransform: "uppercase", color: color.t2 }}>{title}</h2>
+        <h2 style={{ margin: 0, fontSize: font.base, fontWeight: 700, letterSpacing: ".12em", textTransform: "uppercase", color: color.t2 }}>{title}</h2>
         {edit && (
-          <Link href={edit[0]} style={{ marginLeft: "auto", fontSize: 14, fontWeight: 600, color: color.brick, textDecoration: "none", whiteSpace: "nowrap" }}>{edit[1]} →</Link>
+          <Link href={edit[0]} style={{ marginLeft: "auto", fontSize: font.base, fontWeight: 600, color: color.brick, textDecoration: "none", whiteSpace: "nowrap" }}>{edit[1]} →</Link>
         )}
       </div>
       {children}
@@ -167,7 +167,7 @@ function Chips({ items, strong, muted }: { items: string[]; strong?: boolean; mu
   return (
     <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
       {items.map((t) => (
-        <span key={t} style={{ padding: "5px 11px", borderRadius: 999, fontSize: 14, fontWeight: strong ? 600 : 500, background: strong ? color.ink : muted ? color.surface : "#FDE7D3", color: strong ? "#fff" : muted ? "#3B362C" : "#7A3A10" }}>{t}</span>
+        <span key={t} style={{ padding: "5px 11px", borderRadius: 999, fontSize: font.base, fontWeight: strong ? 600 : 500, background: strong ? color.ink : muted ? color.surface : "#FDE7D3", color: strong ? "#fff" : muted ? "#3B362C" : "#7A3A10" }}>{t}</span>
       ))}
     </div>
   );
@@ -175,7 +175,7 @@ function Chips({ items, strong, muted }: { items: string[]; strong?: boolean; mu
 
 function List({ items }: { items: string[] }) {
   return (
-    <ul style={{ margin: 0, paddingLeft: 18, display: "flex", flexDirection: "column", gap: 5, fontSize: 14, lineHeight: 1.45 }}>
+    <ul style={{ margin: 0, paddingLeft: 18, display: "flex", flexDirection: "column", gap: 5, fontSize: font.base, lineHeight: 1.45 }}>
       {items.map((t) => <li key={t}>{t}</li>)}
     </ul>
   );

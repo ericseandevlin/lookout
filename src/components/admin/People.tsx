@@ -7,7 +7,7 @@ import { api } from "../store";
 import { useConfirm } from "../Confirm";
 import { usd, when, day, input, card, th, td, Tabs, Msg, TableBox } from "./shared";
 import type { Overview, Config } from "./shared";
-import { color } from "@/lib/tokens";
+import { color, font } from "@/lib/tokens";
 import { MAX_BULK, parseEmails } from "@/lib/emailList";
 
 // --- People ---------------------------------------------------------------------
@@ -77,8 +77,8 @@ export function AdminPeople() {
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(160px,1fr))", gap: 12, marginTop: 14 }}>
             {[["People", String(data.totals.users)], ["Spend, 24 hours", usd(data.totals.usdDay)], ["Spend, 7 days", usd(data.totals.usdWeek)], ["Spend, 30 days", usd(data.totals.usdMonth)]].map(([k, v]) => (
               <div key={k} style={card}>
-                <div style={{ fontSize: 14, fontWeight: 600, letterSpacing: ".06em", textTransform: "uppercase", color: color.t2 }}>{k}</div>
-                <div style={{ fontSize: 27, fontWeight: 700, letterSpacing: "-0.02em", marginTop: 6, fontVariantNumeric: "tabular-nums" }}>{v}</div>
+                <div style={{ fontSize: font.base, fontWeight: 600, letterSpacing: ".06em", textTransform: "uppercase", color: color.t2 }}>{k}</div>
+                <div style={{ fontSize: font["4xl"], fontWeight: 700, letterSpacing: "-0.02em", marginTop: 6, fontVariantNumeric: "tabular-nums" }}>{v}</div>
               </div>
             ))}
           </div>
@@ -103,15 +103,15 @@ export function AdminPeople() {
                 {data.invites.filter((i) => !i.accepted).map((i) => (
                   <div key={i.email} style={{ display: "flex", flexDirection: "column", gap: 8, background: "#fff", border: `1.5px solid ${color.border}`, borderRadius: 10, padding: "8px 8px 8px 12px" }}>
                     <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                      <span style={{ flex: 1, minWidth: 0, fontSize: 14, overflow: "hidden", textOverflow: "ellipsis" }}>{i.email}</span>
-                      <span style={{ fontSize: 14, color: color.t2 }}>{when(i.createdAt)}</span>
-                      <button onClick={() => resend(i.email)} style={{ ...btn("outline"), height: 30, padding: "0 10px", fontSize: 14 }}>{data.emailEnabled ? "Resend" : "New link"}</button>
-                      <button onClick={() => revoke(i.email)} className="h-danger" style={{ ...btn("danger"), height: 30, padding: "0 10px", fontSize: 14 }}>Revoke</button>
+                      <span style={{ flex: 1, minWidth: 0, fontSize: font.base, overflow: "hidden", textOverflow: "ellipsis" }}>{i.email}</span>
+                      <span style={{ fontSize: font.base, color: color.t2 }}>{when(i.createdAt)}</span>
+                      <button onClick={() => resend(i.email)} style={{ ...btn("outline"), height: 30, padding: "0 10px", fontSize: font.base }}>{data.emailEnabled ? "Resend" : "New link"}</button>
+                      <button onClick={() => revoke(i.email)} className="h-danger" style={{ ...btn("danger"), height: 30, padding: "0 10px", fontSize: font.base }}>Revoke</button>
                     </div>
                     {resent[i.email] && (
-                      <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap", fontSize: 14 }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap", fontSize: font.base }}>
                         <span style={{ color: color.greenText, fontWeight: 600 }}>{resent[i.email].emailed ? "Sent again with a fresh 7-day link." : "New link ready."}</span>
-                        <button onClick={() => copyResent(i.email)} style={{ ...btn("text"), height: 26, fontSize: 14 }}>{resent[i.email].copied ? "Copied" : "Copy link to send yourself"}</button>
+                        <button onClick={() => copyResent(i.email)} style={{ ...btn("text"), height: 26, fontSize: font.base }}>{resent[i.email].copied ? "Copied" : "Copy link to send yourself"}</button>
                       </div>
                     )}
                   </div>
@@ -124,7 +124,7 @@ export function AdminPeople() {
             <Row title="Inbox" help="Email sent to any address at lookout.ericdevlin.co. The inbox agent reads each one and drafts a reply; nothing is sent without you.">
               <div style={{ display: "flex", flexDirection: "column", gap: 6, maxWidth: 640 }}>
                 {data.inbox.map((m) => (
-                  <div key={m.id} style={{ display: "flex", flexDirection: "column", gap: 4, background: "#fff", border: `1.5px solid ${color.border}`, borderRadius: 10, padding: "8px 12px", fontSize: 14 }}>
+                  <div key={m.id} style={{ display: "flex", flexDirection: "column", gap: 4, background: "#fff", border: `1.5px solid ${color.border}`, borderRadius: 10, padding: "8px 12px", fontSize: font.base }}>
                     <div style={{ display: "flex", gap: 10 }}>
                       <span style={{ flex: 1, minWidth: 0, fontWeight: 600, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{m.subject || "(no subject)"}</span>
                       <span style={{ color: color.t2 }}>{when(m.receivedAt)}</span>
@@ -148,7 +148,7 @@ export function AdminPeople() {
                   <tr key={u.id}>
                     <td style={td}>
                       <div style={{ fontWeight: 600 }}>{u.name || "No name yet"}</div>
-                      <div style={{ color: color.t2, fontSize: 14 }}>{u.email}</div>
+                      <div style={{ color: color.t2, fontSize: font.base }}>{u.email}</div>
                     </td>
                     <td style={{ ...td, whiteSpace: "nowrap" }} title={when(u.createdAt)}>{day(u.createdAt)}</td>
                     <td style={{ ...td, whiteSpace: "nowrap" }} title={u.lastLoginAt ? when(u.lastLoginAt) : undefined}>{day(u.lastLoginAt)}</td>
@@ -156,16 +156,16 @@ export function AdminPeople() {
                     <td style={{ ...td, fontVariantNumeric: "tabular-nums" }}>{u.runs30}</td>
                     <td style={{ ...td, fontVariantNumeric: "tabular-nums" }}>{usd(u.usd30)}</td>
                     <td style={td}>
-                      <span style={{ fontSize: 14, fontWeight: 600, padding: "3px 8px", borderRadius: 6, background: u.disabled ? "#FBEDEA" : u.isAdmin ? "#FDE7D3" : color.surface, color: u.disabled ? color.brick : u.isAdmin ? "#7A3A10" : color.t2 }}>
+                      <span style={{ fontSize: font.base, fontWeight: 600, padding: "3px 8px", borderRadius: 6, background: u.disabled ? "#FBEDEA" : u.isAdmin ? "#FDE7D3" : color.surface, color: u.disabled ? color.brick : u.isAdmin ? "#7A3A10" : color.t2 }}>
                         {u.disabled ? "Disabled" : u.isAdmin ? "Admin" : "Member"}
                       </span>
                     </td>
                     <td style={td}>
                       {/* Buttons wrap inside the cell instead of pushing the table past the card (#1234). */}
                       <div style={{ display: "flex", flexWrap: "wrap", justifyContent: "flex-end", gap: 6 }}>
-                      <a href={`/view/${u.id}`} style={{ ...btn("outline"), height: 30, padding: "0 10px", fontSize: 14, whiteSpace: "nowrap", display: "inline-flex", alignItems: "center", textDecoration: "none" }}>View board</a>
-                      <button onClick={() => patchUser(u.id, { isAdmin: !u.isAdmin })} style={{ ...btn("outline"), height: 30, padding: "0 10px", fontSize: 14, whiteSpace: "nowrap" }}>{u.isAdmin ? "Remove admin" : "Make admin"}</button>
-                      <button onClick={async () => (u.disabled || (await ask({ eyebrow: "Disable account", title: `Disable ${u.email}?`, body: "They're signed out everywhere and can't sign back in until you enable them. Their board and data stay.", confirmLabel: "Disable", danger: true }))) && patchUser(u.id, { disabled: !u.disabled })} className="h-danger" style={{ ...btn("danger"), height: 30, padding: "0 10px", fontSize: 14, whiteSpace: "nowrap" }}>{u.disabled ? "Enable" : "Disable"}</button>
+                      <a href={`/view/${u.id}`} style={{ ...btn("outline"), height: 30, padding: "0 10px", fontSize: font.base, whiteSpace: "nowrap", display: "inline-flex", alignItems: "center", textDecoration: "none" }}>View board</a>
+                      <button onClick={() => patchUser(u.id, { isAdmin: !u.isAdmin })} style={{ ...btn("outline"), height: 30, padding: "0 10px", fontSize: font.base, whiteSpace: "nowrap" }}>{u.isAdmin ? "Remove admin" : "Make admin"}</button>
+                      <button onClick={async () => (u.disabled || (await ask({ eyebrow: "Disable account", title: `Disable ${u.email}?`, body: "They're signed out everywhere and can't sign back in until you enable them. Their board and data stay.", confirmLabel: "Disable", danger: true }))) && patchUser(u.id, { disabled: !u.disabled })} className="h-danger" style={{ ...btn("danger"), height: 30, padding: "0 10px", fontSize: font.base, whiteSpace: "nowrap" }}>{u.disabled ? "Enable" : "Disable"}</button>
                       </div>
                     </td>
                   </tr>
@@ -193,7 +193,7 @@ export function AdminPeople() {
                       <span data-tip={r.error ?? undefined} style={{ fontWeight: 600, color: r.status === "failed" ? color.brick : r.status === "running" ? "#7A3A10" : color.greenText }}>
                         {r.status === "failed" ? "Failed" : r.status === "running" ? "Running" : "Done"}
                       </span>
-                      {r.error && <div style={{ fontSize: 14, color: color.t2, maxWidth: 320, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{r.error}</div>}
+                      {r.error && <div style={{ fontSize: font.base, color: color.t2, maxWidth: 320, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{r.error}</div>}
                     </td>
                     <td style={{ ...td, fontVariantNumeric: "tabular-nums" }}>{r.found} / {r.added}</td>
                     <td style={{ ...td, fontVariantNumeric: "tabular-nums" }}>{r.searches}</td>
@@ -210,7 +210,7 @@ export function AdminPeople() {
 }
 
 // Field labels above a short input, the same on every admin form (#1217).
-const fieldLabel: React.CSSProperties = { display: "flex", flexDirection: "column", gap: 6, fontSize: 14, fontWeight: 600, letterSpacing: ".06em", textTransform: "uppercase", color: color.t2 };
+const fieldLabel: React.CSSProperties = { display: "flex", flexDirection: "column", gap: 6, fontSize: font.base, fontWeight: 600, letterSpacing: ".06em", textTransform: "uppercase", color: color.t2 };
 
 function MoneyInput({ label, value, onSave }: { label: string; value: number; onSave: (v: number) => void }) {
   const [v, setV] = useState(String(value));
@@ -265,7 +265,7 @@ function Invite({ emailEnabled, onDone }: { emailEnabled: boolean; onDone: () =>
           <button onClick={create} disabled={busy || !ok.length} style={{ ...btn("solid"), opacity: busy || !ok.length ? 0.6 : 1 }}>
             {busy ? "Inviting..." : ok.length > 1 ? `Invite ${ok.length} people` : "Invite"}
           </button>
-          <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 14, color: emailEnabled ? color.ink : "#A89F92" }}>
+          <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: font.base, color: emailEnabled ? color.ink : "#A89F92" }}>
             <input type="checkbox" checked={send && emailEnabled} disabled={!emailEnabled} onChange={(e) => setSend(e.target.checked)} />
             {emailEnabled ? "Also email them the link" : "Email isn't set up yet, so copy the links and send them yourself"}
           </label>
@@ -274,20 +274,20 @@ function Invite({ emailEnabled, onDone }: { emailEnabled: boolean; onDone: () =>
         {res && (
           <div style={{ display: "flex", flexDirection: "column", gap: 8, padding: 12, borderRadius: 10, background: "#fff", border: `1.5px solid ${color.border}` }}>
             {res.map((r) => (
-              <div key={r.email} style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap", fontSize: 14 }}>
+              <div key={r.email} style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap", fontSize: font.base }}>
                 <strong style={{ flex: 1, minWidth: 160, overflow: "hidden", textOverflow: "ellipsis" }}>{r.email}</strong>
                 {"error" in r ? (
                   <span style={{ color: color.brick }}>{r.error}</span>
                 ) : (
                   <>
                     <span style={{ color: color.greenText, fontWeight: 600 }}>{r.emailed ? "Emailed" : "Link ready"}</span>
-                    <button onClick={() => copy(r.email, r.link)} style={{ ...btn("outline"), height: 30, padding: "0 10px", fontSize: 14 }}>{copied === r.email ? "Copied" : "Copy link"}</button>
+                    <button onClick={() => copy(r.email, r.link)} style={{ ...btn("outline"), height: 30, padding: "0 10px", fontSize: font.base }}>{copied === r.email ? "Copied" : "Copy link"}</button>
                   </>
                 )}
               </div>
             ))}
             {links.length > 1 && (
-              <button onClick={() => copy("*", links.map((r) => `${r.email}: ${r.link}`).join("\n"))} style={{ ...btn("text"), alignSelf: "flex-start", height: 26, fontSize: 14 }}>{copied === "*" ? "Copied all" : "Copy all links"}</button>
+              <button onClick={() => copy("*", links.map((r) => `${r.email}: ${r.link}`).join("\n"))} style={{ ...btn("text"), alignSelf: "flex-start", height: 26, fontSize: font.base }}>{copied === "*" ? "Copied all" : "Copy all links"}</button>
             )}
           </div>
         )}
@@ -371,32 +371,32 @@ function GroupLinks() {
           <button onClick={create} disabled={busy} style={{ ...btn("solid"), height: 38, opacity: busy ? 0.6 : 1 }}>{busy ? "Making..." : "Make link"}</button>
         </div>
         {more ? (
-          <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 14, color: color.t2 }}>
+          <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: font.base, color: color.t2 }}>
             Code in the link (optional)
             <input value={code} onChange={(e) => setCode(e.target.value)} placeholder="spin-tuesday" aria-label="Code in the link" maxLength={40} className="f-brick" style={{ ...input, width: 200, height: 34 }} />
           </label>
         ) : (
-          <button onClick={() => setMore(true)} style={{ ...btn("text"), alignSelf: "flex-start", height: 24, padding: 0, fontSize: 14 }}>Pick the code in the link</button>
+          <button onClick={() => setMore(true)} style={{ ...btn("text"), alignSelf: "flex-start", height: 24, padding: 0, fontSize: font.base }}>Pick the code in the link</button>
         )}
         <Msg text={err} />
-        {groups && !groups.length && <span style={{ fontSize: 14, color: color.t2 }}>No group links yet.</span>}
+        {groups && !groups.length && <span style={{ fontSize: font.base, color: color.t2 }}>No group links yet.</span>}
         {shown.map((g) => (
           <div key={g.code} style={{ display: "flex", flexDirection: "column", gap: 6, background: "#fff", border: `1.5px solid ${made === g.code ? color.greenText : color.border}`, borderRadius: 10, padding: "10px 10px 10px 12px", opacity: g.state === "open" ? 1 : 0.7 }}>
             <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
-              <span style={{ flex: 1, minWidth: 140, fontSize: 14, fontWeight: 600, overflow: "hidden", textOverflow: "ellipsis" }}>{g.label}</span>
-              <span style={{ fontSize: 14, color: color.t2, fontVariantNumeric: "tabular-nums" }}>{g.used.length}/{g.max} joined</span>
-              <span style={{ fontSize: 14, color: g.state === "open" ? color.t2 : color.brick }}>{g.state === "open" ? `Until ${when(g.expiresAt)}` : stateLabel[g.state]}</span>
+              <span style={{ flex: 1, minWidth: 140, fontSize: font.base, fontWeight: 600, overflow: "hidden", textOverflow: "ellipsis" }}>{g.label}</span>
+              <span style={{ fontSize: font.base, color: color.t2, fontVariantNumeric: "tabular-nums" }}>{g.used.length}/{g.max} joined</span>
+              <span style={{ fontSize: font.base, color: g.state === "open" ? color.t2 : color.brick }}>{g.state === "open" ? `Until ${when(g.expiresAt)}` : stateLabel[g.state]}</span>
               {g.state === "open" && (
                 <>
-                  <button onClick={() => copy(g.code, g.link)} style={{ ...btn("outline"), height: 30, padding: "0 10px", fontSize: 14 }}>{copied === g.code ? "Copied" : "Copy link"}</button>
-                  <button onClick={() => close(g)} className="h-danger" style={{ ...btn("danger"), height: 30, padding: "0 10px", fontSize: 14 }}>Close</button>
+                  <button onClick={() => copy(g.code, g.link)} style={{ ...btn("outline"), height: 30, padding: "0 10px", fontSize: font.base }}>{copied === g.code ? "Copied" : "Copy link"}</button>
+                  <button onClick={() => close(g)} className="h-danger" style={{ ...btn("danger"), height: 30, padding: "0 10px", fontSize: font.base }}>Close</button>
                 </>
               )}
             </div>
-            <code style={{ fontSize: 13, color: color.t2, wordBreak: "break-all" }}>{g.link}</code>
-            {made === g.code && <span style={{ fontSize: 14, color: color.greenText, fontWeight: 600 }}>{copied === g.code ? "Made and copied." : "Made."}</span>}
+            <code style={{ fontSize: font.sm, color: color.t2, wordBreak: "break-all" }}>{g.link}</code>
+            {made === g.code && <span style={{ fontSize: font.base, color: color.greenText, fontWeight: 600 }}>{copied === g.code ? "Made and copied." : "Made."}</span>}
             {g.used.length > 0 && (
-              <details style={{ fontSize: 14, color: color.t2 }}>
+              <details style={{ fontSize: font.base, color: color.t2 }}>
                 <summary style={{ cursor: "pointer" }}>Who joined</summary>
                 <div style={{ marginTop: 4 }}>{g.used.join(", ")}</div>
               </details>
@@ -404,7 +404,7 @@ function GroupLinks() {
           </div>
         ))}
         {old.length > 0 && (
-          <button onClick={() => setShowAll((v) => !v)} style={{ ...btn("text"), alignSelf: "flex-start", height: 24, fontSize: 14 }}>
+          <button onClick={() => setShowAll((v) => !v)} style={{ ...btn("text"), alignSelf: "flex-start", height: 24, fontSize: font.base }}>
             {showAll ? "Hide closed and expired" : `Show closed and expired (${old.length})`}
           </button>
         )}
@@ -432,7 +432,7 @@ function Requests({ requests, emailEnabled, onDone }: { requests: Overview["requ
   if (!pending.length && !approved.length) {
     return (
       <Row title="Access requests" help="People who asked to join from the sign-in page.">
-        <span style={{ fontSize: 14, color: color.t2 }}>No requests waiting.</span>
+        <span style={{ fontSize: font.base, color: color.t2 }}>No requests waiting.</span>
       </Row>
     );
   }
@@ -442,11 +442,11 @@ function Requests({ requests, emailEnabled, onDone }: { requests: Overview["requ
         <Msg text={err} />
         {approved.map((email) => (
           <div key={email} style={{ display: "flex", flexDirection: "column", gap: 8, padding: 12, borderRadius: 10, background: "#fff", border: `1.5px solid ${color.border}` }}>
-            <span style={{ fontSize: 14, color: color.greenText, fontWeight: 600 }}>{links[email].emailed ? `Approved and emailed ${email}` : `Approved ${email}. Send them this link:`}</span>
+            <span style={{ fontSize: font.base, color: color.greenText, fontWeight: 600 }}>{links[email].emailed ? `Approved and emailed ${email}` : `Approved ${email}. Send them this link:`}</span>
             {!links[email].emailed && (
               <>
-                <code style={{ fontSize: 14, wordBreak: "break-all" }}>{links[email].link}</code>
-                <button onClick={() => navigator.clipboard?.writeText(links[email].link).then(() => setCopied(email)).catch(() => {})} style={{ ...btn("outline"), alignSelf: "flex-start", height: 32, fontSize: 14 }}>{copied === email ? "Copied" : "Copy link"}</button>
+                <code style={{ fontSize: font.base, wordBreak: "break-all" }}>{links[email].link}</code>
+                <button onClick={() => navigator.clipboard?.writeText(links[email].link).then(() => setCopied(email)).catch(() => {})} style={{ ...btn("outline"), alignSelf: "flex-start", height: 32, fontSize: font.base }}>{copied === email ? "Copied" : "Copy link"}</button>
               </>
             )}
           </div>
@@ -454,11 +454,11 @@ function Requests({ requests, emailEnabled, onDone }: { requests: Overview["requ
         {pending.map((r) => (
           <div key={r.email} style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 10px 10px 12px", borderRadius: 10, background: "#fff", border: `1.5px solid ${color.border}`, flexWrap: "wrap" }}>
             <div style={{ flex: 1, minWidth: 180 }}>
-              <div style={{ fontSize: 14, fontWeight: 600, overflow: "hidden", textOverflow: "ellipsis" }}>{r.email}</div>
-              <div style={{ fontSize: 14, color: color.t2 }}>{r.nextMove ?? "No answer"} · {when(r.createdAt)}</div>
+              <div style={{ fontSize: font.base, fontWeight: 600, overflow: "hidden", textOverflow: "ellipsis" }}>{r.email}</div>
+              <div style={{ fontSize: font.base, color: color.t2 }}>{r.nextMove ?? "No answer"} · {when(r.createdAt)}</div>
             </div>
-            <button onClick={() => decide(r.email, "decline")} className="h-danger" style={{ ...btn("danger"), height: 32, padding: "0 12px", fontSize: 14 }}>Decline</button>
-            <button onClick={() => decide(r.email, "approve")} style={{ ...btn("solid"), height: 32, padding: "0 12px", fontSize: 14 }}>Approve</button>
+            <button onClick={() => decide(r.email, "decline")} className="h-danger" style={{ ...btn("danger"), height: 32, padding: "0 12px", fontSize: font.base }}>Decline</button>
+            <button onClick={() => decide(r.email, "approve")} style={{ ...btn("solid"), height: 32, padding: "0 12px", fontSize: font.base }}>Approve</button>
           </div>
         ))}
       </div>

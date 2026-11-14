@@ -4,6 +4,7 @@ import { LegalLinks } from "@/components/LegalLinks";
 import { Clip, FiveQuestions, Playable, ProductVideo } from "./Motion";
 import s from "./landing.module.css";
 
+import { font } from "@/lib/tokens";
 /**
  * The one-page site at / (#600). Sign-in and request access live on their own pages (/signin, /request-access).
  * Every screen and clip is the real app on a demo account ("Maya Ortiz", made-up companies): no real user data.
@@ -15,7 +16,7 @@ export function Landing({ inviteOnly, channel }: { inviteOnly: boolean; channel:
     <div className={s.page}>
       <div className={s.wrap}>
         <header className={s.nav}>
-          <Link href="/" className="wordmark" style={{ fontSize: 24, color: "#1D1A0F", textDecoration: "none" }}>Lookout</Link>
+          <Link href="/" className="wordmark" style={{ fontSize: font["3xl"], color: "#1D1A0F", textDecoration: "none" }}>Lookout</Link>
           <nav className={s.navLinks} aria-label="Site">
             <a href="#how" className={s.hideSm}>How it works</a>
             <Link href="/signin">Sign in</Link>

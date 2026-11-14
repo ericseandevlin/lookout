@@ -7,15 +7,15 @@ import { ArchiveIcon, PinIcon, SearchIcon } from "../icons";
 import { IconBtn } from "../finds/Controls";
 import { chip, seg } from "../finds/shared";
 import { btn } from "../Settings";
-import { color } from "@/lib/tokens";
+import { color, font } from "@/lib/tokens";
 
-const muted: React.CSSProperties = { fontSize: 14, color: color.t2 };
+const muted: React.CSSProperties = { fontSize: font.base, color: color.t2 };
 const GRID = "34px 36px 130px minmax(220px,2fr) minmax(150px,1fr) 124px 74px minmax(80px,.6fr)";
 const pill = (on: boolean): React.CSSProperties => {
   const c = chip(on);
-  return { display: "flex", alignItems: "center", gap: 7, height: 34, padding: "0 15px", borderRadius: 999, border: `1.5px solid ${c.border}`, background: c.bg, color: c.ink, fontSize: 14, fontWeight: 600, cursor: "pointer" };
+  return { display: "flex", alignItems: "center", gap: 7, height: 34, padding: "0 15px", borderRadius: 999, border: `1.5px solid ${c.border}`, background: c.bg, color: c.ink, fontSize: font.base, fontWeight: 600, cursor: "pointer" };
 };
-const dateField: React.CSSProperties = { height: 34, border: `1.5px solid ${color.border}`, borderRadius: 10, padding: "0 10px", fontSize: 14, color: color.ink, background: "#fff" };
+const dateField: React.CSSProperties = { height: 34, border: `1.5px solid ${color.border}`, borderRadius: 10, padding: "0 10px", fontSize: font.base, color: color.ink, background: "#fff" };
 
 const day = (s: string) => new Date(`${s}T12:00:00Z`).toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric", timeZone: "UTC" });
 const when = (e: NetworkingEvent) => `${day(e.startsOn)}${e.endsOn && e.endsOn !== e.startsOn ? ` to ${day(e.endsOn)}` : ""}`;
@@ -71,7 +71,7 @@ export function EventsBoard({ events, searching, canSearch, onSearch, onPatch, o
           {([["any", "Any"], ["in-person", "In person"], ["online", "Online"]] as [EventWhere, string][]).map(([k, label]) => {
             const s = seg(f.where === k);
             return (
-              <button key={k} onClick={() => set({ where: k })} aria-pressed={f.where === k} style={{ height: 28, padding: "0 12px", border: 0, borderRadius: 9, background: s.bg, color: s.ink, boxShadow: s.shadow, fontSize: 14, fontWeight: 600, cursor: "pointer" }}>
+              <button key={k} onClick={() => set({ where: k })} aria-pressed={f.where === k} style={{ height: 28, padding: "0 12px", border: 0, borderRadius: 9, background: s.bg, color: s.ink, boxShadow: s.shadow, fontSize: font.base, fontWeight: 600, cursor: "pointer" }}>
                 {label}
               </button>
             );
@@ -85,7 +85,7 @@ export function EventsBoard({ events, searching, canSearch, onSearch, onPatch, o
         </label>
         <div style={{ display: "flex", alignItems: "center", gap: 6, height: 34, padding: "0 10px", border: `1.5px solid ${color.border}`, borderRadius: 10, flex: "1 1 180px", minWidth: 160 }}>
           <SearchIcon size={15} stroke={color.t2} />
-          <input value={f.q} onChange={(e) => set({ q: e.target.value })} placeholder="Search events" aria-label="Search events" style={{ flex: 1, minWidth: 0, border: 0, outline: "none", background: "transparent", fontSize: 14, color: color.ink }} />
+          <input value={f.q} onChange={(e) => set({ q: e.target.value })} placeholder="Search events" aria-label="Search events" style={{ flex: 1, minWidth: 0, border: 0, outline: "none", background: "transparent", fontSize: font.base, color: color.ink }} />
         </div>
         {canSearch && (
           <button onClick={onSearch} disabled={searching} style={btn("outline")}>
@@ -97,7 +97,7 @@ export function EventsBoard({ events, searching, canSearch, onSearch, onPatch, o
       <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 18px", borderBottom: `1px solid ${color.border}`, flexWrap: "wrap", minHeight: 52 }}>
         {pickedShown.length > 0 ? (
           <>
-            <span style={{ fontSize: 14, fontWeight: 600 }}>{pickedShown.length} selected</span>
+            <span style={{ fontSize: font.base, fontWeight: 600 }}>{pickedShown.length} selected</span>
             <button onClick={() => bulk({ pinned: true })} style={{ ...btn("outline"), height: 32 }}>Pin</button>
             <button onClick={() => bulk({ pinned: false })} style={{ ...btn("outline"), height: 32 }}>Unpin</button>
             {f.view === "archived" ? (
@@ -113,7 +113,7 @@ export function EventsBoard({ events, searching, canSearch, onSearch, onPatch, o
         <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 8 }}>
           {confirmClear ? (
             <>
-              <span style={{ fontSize: 14 }}>Archive {unpinned} unpinned {unpinned === 1 ? "event" : "events"}?</span>
+              <span style={{ fontSize: font.base }}>Archive {unpinned} unpinned {unpinned === 1 ? "event" : "events"}?</span>
               <button onClick={async () => { await onClear(); setConfirmClear(false); }} style={{ ...btn("danger"), height: 32 }}>Archive them</button>
               <button onClick={() => setConfirmClear(false)} style={{ ...btn("text"), height: 32 }}>Cancel</button>
             </>
@@ -134,11 +134,11 @@ export function EventsBoard({ events, searching, canSearch, onSearch, onPatch, o
               {([["Date", "date"], ["Event", null], ["Where", null], ["Distance", "distance"], ["Fit", "fit"], ["Cost", null]] as [string, EventSort | null][]).map(([label, k]) => (
                 <div key={label} role="columnheader" aria-sort={k && sort === k ? (dir === "asc" ? "ascending" : "descending") : undefined}>
                   {k ? (
-                    <button className="no-tint" onClick={() => sortBy(k)} style={{ display: "flex", gap: 5, border: 0, background: "transparent", padding: 0, fontSize: 12, fontWeight: 600, letterSpacing: ".06em", textTransform: "uppercase", color: sort === k ? color.ink : color.t2, cursor: "pointer" }}>
+                    <button className="no-tint" onClick={() => sortBy(k)} style={{ display: "flex", gap: 5, border: 0, background: "transparent", padding: 0, fontSize: font.xs, fontWeight: 600, letterSpacing: ".06em", textTransform: "uppercase", color: sort === k ? color.ink : color.t2, cursor: "pointer" }}>
                       {label} <span style={{ color: sort === k ? color.brick : "#CFC6B9" }}>{arrow(k)}</span>
                     </button>
                   ) : (
-                    <span style={{ fontSize: 12, fontWeight: 600, letterSpacing: ".06em", textTransform: "uppercase", color: color.t2 }}>{label}</span>
+                    <span style={{ fontSize: font.xs, fontWeight: 600, letterSpacing: ".06em", textTransform: "uppercase", color: color.t2 }}>{label}</span>
                   )}
                 </div>
               ))}
@@ -167,18 +167,18 @@ export function EventsBoard({ events, searching, canSearch, onSearch, onPatch, o
                         <PinIcon size={15} stroke={e.pinned ? color.brick : color.t2} />
                       </IconBtn>
                     </div>
-                    <div role="cell" style={{ fontSize: 14, fontWeight: 600, color: color.brick }}>{when(e)}</div>
-                    <div role="cell" style={{ fontSize: 14, fontWeight: 600, padding: "8px 12px 8px 0" }}>{e.title}{e.host && <div style={{ ...muted, fontWeight: 400 }}>{e.host}</div>}</div>
+                    <div role="cell" style={{ fontSize: font.base, fontWeight: 600, color: color.brick }}>{when(e)}</div>
+                    <div role="cell" style={{ fontSize: font.base, fontWeight: 600, padding: "8px 12px 8px 0" }}>{e.title}{e.host && <div style={{ ...muted, fontWeight: 400 }}>{e.host}</div>}</div>
                     <div role="cell" style={{ ...muted, paddingRight: 12 }}>{e.online ? "Online" : e.place || "–"}</div>
-                    <div role="cell" style={{ fontSize: 14, fontVariantNumeric: "tabular-nums" }}>{distance(e)}</div>
-                    <div role="cell" style={{ fontSize: 14, fontWeight: 700 }}>{e.fit ?? "–"}</div>
+                    <div role="cell" style={{ fontSize: font.base, fontVariantNumeric: "tabular-nums" }}>{distance(e)}</div>
+                    <div role="cell" style={{ fontSize: font.base, fontWeight: 700 }}>{e.fit ?? "–"}</div>
                     <div role="cell" style={muted}>{e.cost || "–"}</div>
                   </div>
                   {open && (
                     <div role="row" style={{ padding: "12px 18px 16px 88px", borderBottom: `1px solid ${color.surface}`, background: color.surface, display: "flex", flexDirection: "column", gap: 8 }}>
                       <div role="cell" style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                        <div style={{ fontSize: 14 }}>{[when(e), e.time].filter(Boolean).join(", ")} · {e.online ? "Online" : e.place} {e.cost && `· ${e.cost}`}</div>
-                        {e.why && <div style={{ fontSize: 14 }}>{e.why}</div>}
+                        <div style={{ fontSize: font.base }}>{[when(e), e.time].filter(Boolean).join(", ")} · {e.online ? "Online" : e.place} {e.cost && `· ${e.cost}`}</div>
+                        {e.why && <div style={{ fontSize: font.base }}>{e.why}</div>}
                         <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
                           <a href={e.url} target="_blank" rel="noopener noreferrer" style={{ ...btn("solid"), height: 34, display: "inline-flex", alignItems: "center", textDecoration: "none" }}>See the event</a>
                           <button onClick={() => void onPatch([e.id], { archived: !e.archived })} style={{ ...btn("outline"), height: 34, display: "inline-flex", alignItems: "center", gap: 6 }}>

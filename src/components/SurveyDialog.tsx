@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { MAX_TEXT, SCALE, type SurveyQuestion } from "@/lib/survey";
 import { api } from "./store";
-import { color } from "@/lib/tokens";
+import { color, font } from "@/lib/tokens";
 
 const FOCUSABLE = 'button:not([disabled]), input:not([disabled]), textarea:not([disabled]), [href], [tabindex]:not([tabindex="-1"])';
 
@@ -83,7 +83,7 @@ export function SurveyDialog({ preview, onClose }: { preview?: SurveyQuestion; o
 
   if (!q) return null;
   const choices = q.kind === "choice" ? q.options : q.kind === "scale" ? [...SCALE] : null;
-  const pill = (on: boolean): React.CSSProperties => ({ minWidth: 44, height: 44, padding: "0 14px", borderRadius: 10, border: `1.5px solid ${on ? color.ink : color.border}`, background: on ? color.ink : "#fff", color: on ? "#fff" : color.ink, fontSize: 15, fontWeight: 600, cursor: "pointer" });
+  const pill = (on: boolean): React.CSSProperties => ({ minWidth: 44, height: 44, padding: "0 14px", borderRadius: 10, border: `1.5px solid ${on ? color.ink : color.border}`, background: on ? color.ink : "#fff", color: on ? "#fff" : color.ink, fontSize: font.md, fontWeight: 600, cursor: "pointer" });
 
   return (
     <>
@@ -91,13 +91,13 @@ export function SurveyDialog({ preview, onClose }: { preview?: SurveyQuestion; o
       <div style={{ position: "fixed", inset: 0, zIndex: 51, display: "flex", alignItems: "center", justifyContent: "center", padding: 16, pointerEvents: "none" }}>
         <div ref={box} role="dialog" aria-modal="true" aria-labelledby="survey-from" aria-describedby="survey-q" className="lk-in" style={{ pointerEvents: "auto", width: 460, maxWidth: "100%", background: "#EFEEEC", borderRadius: 16, overflow: "hidden", boxShadow: "0 24px 60px rgba(29,26,15,.3)" }}>
           <div style={{ background: color.ink, color: "#fff", padding: "20px 24px 18px" }}>
-            <div id="survey-from" style={{ fontSize: 14, fontWeight: 700, letterSpacing: ".14em", textTransform: "uppercase", color: color.orange }}>
+            <div id="survey-from" style={{ fontSize: font.base, fontWeight: 700, letterSpacing: ".14em", textTransform: "uppercase", color: color.orange }}>
               Quick question from Eric{preview ? " · preview" : ""}
             </div>
-            <div id="survey-q" style={{ fontSize: 19, fontWeight: 700, marginTop: 6, lineHeight: 1.3, textWrap: "pretty" }}>{q.prompt}</div>
+            <div id="survey-q" style={{ fontSize: font["2xl"], fontWeight: 700, marginTop: 6, lineHeight: 1.3, textWrap: "pretty" }}>{q.prompt}</div>
           </div>
           {thanks ? (
-            <div role="status" style={{ padding: "22px 24px", fontSize: 15 }}>Thanks. That helps.</div>
+            <div role="status" style={{ padding: "22px 24px", fontSize: font.md }}>Thanks. That helps.</div>
           ) : (
             <form
               onSubmit={(e) => {
@@ -115,19 +115,19 @@ export function SurveyDialog({ preview, onClose }: { preview?: SurveyQuestion; o
                   ))}
                 </div>
               ) : (
-                <textarea aria-labelledby="survey-q" value={value} onChange={(e) => setValue(e.target.value)} maxLength={MAX_TEXT} rows={3} className="f-brick" style={{ borderRadius: 10, border: `1.5px solid ${color.border}`, padding: 10, fontSize: 15, fontFamily: "inherit", resize: "vertical" }} />
+                <textarea aria-labelledby="survey-q" value={value} onChange={(e) => setValue(e.target.value)} maxLength={MAX_TEXT} rows={3} className="f-brick" style={{ borderRadius: 10, border: `1.5px solid ${color.border}`, padding: 10, fontSize: font.md, fontFamily: "inherit", resize: "vertical" }} />
               )}
-              {q.kind === "scale" && <div style={{ fontSize: 14, color: color.t2, marginTop: -6 }}>1 is not at all, 5 is very.</div>}
+              {q.kind === "scale" && <div style={{ fontSize: font.base, color: color.t2, marginTop: -6 }}>1 is not at all, 5 is very.</div>}
               {err && (
-                <div role="alert" style={{ fontSize: 14, color: color.brick }}>
+                <div role="alert" style={{ fontSize: font.base, color: color.brick }}>
                   {err}
                 </div>
               )}
               <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
-                <button type="button" onClick={skip} disabled={busy} style={{ height: 42, padding: "0 18px", borderRadius: 10, border: "1.5px solid #1D1A0F", background: "#fff", fontSize: 14, fontWeight: 600, color: color.ink, cursor: "pointer" }}>
+                <button type="button" onClick={skip} disabled={busy} style={{ height: 42, padding: "0 18px", borderRadius: 10, border: "1.5px solid #1D1A0F", background: "#fff", fontSize: font.base, fontWeight: 600, color: color.ink, cursor: "pointer" }}>
                   Skip
                 </button>
-                <button type="submit" disabled={busy || !value.trim()} style={{ height: 42, padding: "0 18px", borderRadius: 10, border: 0, background: color.brick, fontSize: 14, fontWeight: 600, color: "#fff", cursor: "pointer", opacity: busy || !value.trim() ? 0.6 : 1 }}>
+                <button type="submit" disabled={busy || !value.trim()} style={{ height: 42, padding: "0 18px", borderRadius: 10, border: 0, background: color.brick, fontSize: font.base, fontWeight: 600, color: "#fff", cursor: "pointer", opacity: busy || !value.trim() ? 0.6 : 1 }}>
                   {busy ? "Sending…" : "Send"}
                 </button>
               </div>

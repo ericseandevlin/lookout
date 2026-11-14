@@ -6,7 +6,7 @@ import { Tabs } from "./Admin";
 import { PageHead } from "./Profile";
 import { Section } from "./Settings";
 import { api } from "./store";
-import { color } from "@/lib/tokens";
+import { color, font } from "@/lib/tokens";
 
 type Data = {
   weeks: { week: string; active: number }[];
@@ -16,9 +16,9 @@ type Data = {
 type Row = { type: string; target: string | null; at: string; minutes?: number };
 
 const card: React.CSSProperties = { background: "#fff", borderRadius: 16, overflowX: "auto", marginTop: 8 };
-const th: React.CSSProperties = { fontSize: 12, fontWeight: 600, color: color.t2, textAlign: "left", padding: "10px 14px", borderBottom: `1px solid ${color.border}`, whiteSpace: "nowrap" };
-const td: React.CSSProperties = { fontSize: 14, padding: "10px 14px", borderBottom: `1px solid ${color.surface}`, fontVariantNumeric: "tabular-nums" };
-const muted: React.CSSProperties = { fontSize: 14, color: color.t2 };
+const th: React.CSSProperties = { fontSize: font.xs, fontWeight: 600, color: color.t2, textAlign: "left", padding: "10px 14px", borderBottom: `1px solid ${color.border}`, whiteSpace: "nowrap" };
+const td: React.CSSProperties = { fontSize: font.base, padding: "10px 14px", borderBottom: `1px solid ${color.surface}`, fontVariantNumeric: "tabular-nums" };
+const muted: React.CSSProperties = { fontSize: font.base, color: color.t2 };
 const when = (iso: string) => new Date(iso).toLocaleString("en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" });
 const day = (iso: string) => new Date(iso).toLocaleDateString("en-US", { month: "short", day: "numeric" });
 
@@ -44,7 +44,7 @@ export function AdminActivity() {
       <PageHead eyebrow="Admin" title="Activity" intro="What people do in Lookout, recorded by Lookout itself: no third-party scripts. Events started on the day this shipped; the funnel uses data from before then too.">
         <Tabs />
       </PageHead>
-      {err && <div role="alert" style={{ fontSize: 14, color: color.brick }}>{err}</div>}
+      {err && <div role="alert" style={{ fontSize: font.base, color: color.brick }}>{err}</div>}
       {!d && !err && <div role="status" style={muted}>Loading…</div>}
       {d && (
         <>
@@ -105,7 +105,7 @@ export function AdminActivity() {
                   <button
                     onClick={() => pick(p.id)}
                     aria-pressed={who === p.id}
-                    style={{ width: "100%", textAlign: "left", border: 0, borderBottom: `1px solid ${color.surface}`, background: who === p.id ? color.surface : "#fff", padding: "10px 14px", cursor: "pointer", fontSize: 14 }}
+                    style={{ width: "100%", textAlign: "left", border: 0, borderBottom: `1px solid ${color.surface}`, background: who === p.id ? color.surface : "#fff", padding: "10px 14px", cursor: "pointer", fontSize: font.base }}
                   >
                     <div style={{ fontWeight: 600 }}>{p.who}</div>
                     <div style={muted}>{p.next ? `Next: ${p.next}` : "Done every step"}</div>
@@ -124,7 +124,7 @@ export function AdminActivity() {
               ) : (
                 <ol style={{ listStyle: "none", margin: 0, padding: 0, display: "flex", flexDirection: "column", gap: 6 }}>
                   {rows.map((r, i) => (
-                    <li key={i} style={{ fontSize: 14, display: "flex", gap: 10 }}>
+                    <li key={i} style={{ fontSize: font.base, display: "flex", gap: 10 }}>
                       <span style={{ ...muted, minWidth: 120, fontVariantNumeric: "tabular-nums" }}>{when(r.at)}</span>
                       <span>
                         {EVENT_LABEL[r.type as EventType] ?? r.type}
