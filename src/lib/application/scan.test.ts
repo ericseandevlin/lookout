@@ -41,6 +41,9 @@ describe("detectAts", () => {
     expect(ashbyOrgFromHtml(`<iframe src="https://jobs.ashbyhq.com/acme/ec0690d5-be5e-4e8b-be78-d832f166b242/embed">`)).toBe("acme");
     expect(ashbyOrgFromHtml(`fetch("https://jobs.ashbyhq.com/api/non-user-graphql")`)).toBeNull();
     expect(ashbyOrgFromHtml("<p>no board</p>")).toBeNull();
+    // #1162: a bad escape is kept as written, not thrown.
+    expect(detectAts("https://jobs.ashbyhq.com/acme%E9/ec0690d5-be5e-4e8b-be78-d832f166b242")).toMatchObject({ ats: "ashby", org: "acme%E9" });
+    expect(ashbyOrgFromHtml(`<iframe src="https://jobs.ashbyhq.com/acme%E9/embed">`)).toBe("acme%E9");
   });
 
   it("reads EU Greenhouse links like an embed, keeping the EU host (#634)", () => {

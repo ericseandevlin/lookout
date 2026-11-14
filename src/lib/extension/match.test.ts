@@ -106,3 +106,13 @@ describe("sameJob", () => {
     expect(jobKey("https://careers-acme.icims.com/jobs/search?ss=1")).toMatch(/^url:/);
   });
 });
+
+describe("a link with a bad % escape (#1162)", () => {
+  it("still gets a key, never a URIError", () => {
+    const wd = "https://acme.wd5.myworkdayjobs.com/en-US/External/job/Boston-MA/Sales-Rep--100%-Commission_R123/apply";
+    expect(jobKey(wd)).toBe("workday:acme.wd5.myworkdayjobs.com:sales-rep--100%-commission_r123");
+    expect(sameJob([wd], [wd])).toBe(true);
+    expect(() => jobKey("https://acme.wd1.myworkdayjobs.com/job/Paris/Caf%E9-Manager_R9")).not.toThrow();
+    expect(jobKey("https://acme.wd1.myworkdayjobs.com/job/New-York/Senior%20Designer_R1")).toBe("workday:acme.wd1.myworkdayjobs.com:senior designer_r1");
+  });
+});
