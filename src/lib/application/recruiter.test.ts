@@ -92,6 +92,17 @@ Design Systems Lead
     }
   });
 
+  it("reads cut in half and by a third as a number, like halved (#1273)", () => {
+    const bareOf = (line: string) =>
+      recruiterChecks("resume", resume.replace("Built the design system site used across the firm.", line)).some((x) => x.dim === "impact" && x.line === line);
+    for (const line of ["Cut onboarding time in half.", "Reduced build time by half.", "Lowered churn by a third.", "Shrank the bundle by a quarter."]) {
+      expect(bareOf(line), line).toBe(false);
+    }
+    for (const line of ["Spoke on behalf of the design team.", "Ran half-day workshops for product teams."]) {
+      expect(bareOf(line), line).toBe(true);
+    }
+  });
+
   it("flags vague skill phrases in the skills section", () => {
     expect(f.some((x) => x.what.includes('"Accessibility Concepts"'))).toBe(true);
   });
