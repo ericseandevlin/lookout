@@ -29,7 +29,7 @@ export function uploadLabels(steps: Pick<FillStep, "kind" | "itemKind" | "prompt
   return steps.map((s) => {
     if (s.kind !== "file") return null;
     const base =
-      s.itemKind === "cover_letter" ? "Cover Letter" : s.itemKind === "resume" ? "Resume" : s.prompt.replace(/[^\w .-]/g, " ").replace(/\s+/g, " ").trim().slice(0, 40).trim() || "Document";
+      s.itemKind === "cover_letter" ? "Cover Letter" : s.itemKind === "resume" ? "Resume" : s.prompt.replace(/[^\p{L}\p{N}\p{M}_ .-]/gu, " ").replace(/\s+/g, " ").trim().slice(0, 40).trim() || "Document";
     const n = (seen.get(base.toLowerCase()) ?? 0) + 1;
     seen.set(base.toLowerCase(), n);
     return n > 1 ? `${base} ${n}` : base;

@@ -9,6 +9,7 @@ import { answersBox, checksBox, CONFIRMATION, pickOne, pickOptions, planFill, up
 import { letterHeaderFrom, type Template } from "./resumeLayout";
 import { getAutoApplySettings } from "@/lib/apply";
 import { resolve } from "./eeo";
+import { fileSafe } from "./fileName";
 import { loadEeo } from "./eeoStore";
 import { autoSubmitOn, CAPTCHA_STOP } from "./submitMode";
 import { patchReport } from "./reportStore";
@@ -49,7 +50,7 @@ async function files(appId: string, steps: FillStep[], name: string, company: st
   for (const [i, s] of steps.entries()) {
     if (s.kind !== "file" || !s.content) continue;
     const label = labels[i]!;
-    const file = path.join(dir, `${`${name} - ${company} ${label}`.replace(/[^\w .-]/g, "").trim() || label}.docx`);
+    const file = path.join(dir, `${fileSafe(`${name} - ${company} ${label}`) || label}.docx`);
     const letterHeader = s.itemKind === "cover_letter" ? letterHeaderFrom(steps.find((x) => x.itemKind === "resume")?.content, name) : undefined;
     await writeFile(file, await draftToDocx(s.content, label, { letterHeader, template, accent }));
     s.file = file;

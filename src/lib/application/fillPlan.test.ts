@@ -208,6 +208,9 @@ describe("uploadLabels (#918)", () => {
   it("strips characters a file name can't carry and falls back when nothing is left", () => {
     expect(uploadLabels([f("answer", "Portfolio / work samples?"), f("answer", "***")])).toEqual(["Portfolio work samples", "Document"]);
   });
+  it("keeps accented letters in a label (#1198)", () => {
+    expect(uploadLabels([f("answer", "Carta de presentación"), f("answer", "Échantillon d'écriture")])).toEqual(["Carta de presentación", "Échantillon d écriture"]);
+  });
 });
 
 describe("options with a required mark (#1061)", () => {

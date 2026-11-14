@@ -2,6 +2,7 @@ import { and, desc, eq } from "drizzle-orm";
 import { authed, HttpError } from "@/lib/api";
 import { canUseAutoApply, getAutoApplySettings } from "@/lib/apply";
 import { draftToDocx } from "@/lib/application/docx";
+import { attachment } from "@/lib/application/fileName";
 import { ownApplication } from "@/lib/application/review";
 import { letterHeaderFrom } from "@/lib/application/resumeLayout";
 import { db, schema } from "@/lib/db";
@@ -36,7 +37,7 @@ export const GET = authed<Ctx>(async (_req, { user, params }) => {
   return new Response(new Uint8Array(buf), {
     headers: {
       "content-type": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-      "content-disposition": `attachment; filename="${name.replace(/[^\x20-\x7e]/g, "")}.docx"`,
+      "content-disposition": attachment(`${name}.docx`),
       "cache-control": "no-store",
     },
   });
