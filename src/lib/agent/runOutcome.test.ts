@@ -11,6 +11,8 @@ describe("doneStep (#862)", () => {
 
   it("says nothing matched when no postings were read", () => {
     expect(doneStep(tally({}))).toBe("No matching open roles this time");
+    // Every result already on the board, skipped before reading (#1125).
+    expect(doneStep(tally({ known: 2 }))).toBe("No new finds this time. Everything matching is already on your board");
   });
 
   it("says already on your board only when they all are", () => {
@@ -35,5 +37,11 @@ describe("noNewBody (#862)", () => {
 
   it("lists nothing for empty counts", () => {
     expect(whyNoneAdded(tally({}))).toEqual([]);
+  });
+});
+
+describe("noNewBody with nothing read (#1125)", () => {
+  it("says everything the search turned up is already on the board", () => {
+    expect(noNewBody(0, tally({ known: 3 }))).toBe("Everything the search turned up is already on your board. It'll look again on your schedule.");
   });
 });

@@ -136,7 +136,7 @@ function Finished({ run, onDismiss, onRetry, retrying, retryError }: { run: RunI
     ? run.error || "Something went wrong."
     : run.added
       ? "They're marked with a green dot. Open one to see why it matched."
-      : run.found
+      : run.found || run.report?.tally?.known
         ? noNewBody(run.found, run.report?.tally)
         : "Nothing new matched your profile. It'll look again on your schedule.";
   return (
