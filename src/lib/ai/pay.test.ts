@@ -86,6 +86,11 @@ describe("findPay", () => {
     expect(findPay("", "Pay: $55.50 - $70/hr")).toMatchObject({ min: 115440, max: 145600 });
   });
 
+  it("reads hourly pay written with one decimal place (#1283)", () => {
+    expect(findPay("", "$22.5 - $27.5/hr")).toMatchObject({ min: 46800, max: 57200 });
+    expect(findPay("", "Pay: $45.5 - $55.5 per hour")).toMatchObject({ min: 94640, max: 115440 });
+  });
+
   it.each([
     ["$40 - $55 an hour", 83200, 114400],
     ["$40 - $55 per hour", 83200, 114400],
