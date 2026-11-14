@@ -34,6 +34,13 @@ describe("jobKey (#169)", () => {
     expect(jobKey("https://acme.wd5.myworkdayjobs.com/en-US/External")).toBe("url:acme.wd5.myworkdayjobs.com/en-us/external");
   });
 
+  it("keys a Workday title that starts with Apply on the title, not the location (1107)", () => {
+    const post = "https://acme.wd5.myworkdayjobs.com/en-US/External/job/New-York-NY/Apply-Engineer_R5";
+    const key = "workday:acme.wd5.myworkdayjobs.com:apply-engineer_r5";
+    for (const u of [post, `${post}/`, `${post}/apply`, `${post}/apply/applyManually`]) expect(jobKey(u), u).toBe(key);
+    expect(jobKey("https://acme.wd5.myworkdayjobs.com/en-US/External/job/New-York-NY/Applied-Scientist_R6")).not.toBe(key);
+  });
+
   it("keys Workday jobs on myworkdaysite.com by tenant too (#666)", () => {
     const post = "https://wd3.myworkdaysite.com/en-US/recruiting/acme/Careers/job/Newark-NJ/Senior-Designer_R12345";
     const key = "workday:wd3.myworkdaysite.com/acme:senior-designer_r12345";
