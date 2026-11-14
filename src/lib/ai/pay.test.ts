@@ -222,6 +222,22 @@ describe("findPay", () => {
     expect(findPay("", text)).toMatchObject({ min: 150000, max: 200000, currency: "USD" });
   });
 
+  it.each([
+    ["Salary: $150,000 - $180,000 (£110,000 - £130,000 in London)"],
+    ["US: $150,000 - $180,000 | UK: £110,000 - £130,000"],
+    ["$150,000 - $180,000 / €120.000 - €140.000"],
+    ["$150,000 - $180,000 (or INR equivalent for India)"],
+    ["between $150,000 and $180,000 (Berlin pays in EUR)"],
+  ])("keeps %s in USD when a non-dollar currency follows a $ range (#1204)", (text) => {
+    expect(findPay("", text)).toMatchObject({ min: 150000, max: 180000, currency: "USD" });
+  });
+
+  it("still reads a dollar code or a pound range on its own (#1204)", () => {
+    expect(findPay("", "$150,000 - $180,000 CAD")).toMatchObject({ currency: "CAD" });
+    expect(findPay("", "$60,000 - $70,000 EUR per year")).toMatchObject({ currency: "EUR" });
+    expect(findPay("", "£110,000 - £130,000")).toMatchObject({ currency: "GBP" });
+  });
+
   it("still reads a code right after the range (#811)", () => {
     expect(findPay("", "$150,000 - $200,000 CAD per year")).toMatchObject({ currency: "CAD" });
     expect(findPay("", "$150,000 - $200,000 a year (AUD), plus super")).toMatchObject({ currency: "AUD" });
