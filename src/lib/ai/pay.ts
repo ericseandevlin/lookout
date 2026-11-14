@@ -94,9 +94,10 @@ const PRE = String.raw`(?:\b(US|CA|C|AU|A|SG|S|NZ|HK|MX|NT|(?:${DOLLARS}) ?)(?=\
 const CODE = String.raw`(?:\s?(${DOLLARS})\b)?`;
 // A code may stand in for the "$": "USD 150,000 - 200,000" (#753). A bare "120,000 - 150,000" still doesn't count.
 const CODE_LEAD = String.raw`\b(${DOLLARS})\s?(?=\d)`;
-// The second end may carry the same symbol as the first: "£60,000 - £70,000" (#1186).
+// The second end may carry the same symbol as the first: "£60,000 - £70,000" (#1186). The 40-character tail is read in a
+// lookahead, so a bonus range the reader throws out doesn't swallow the salary right after it (#1205).
 const range = (start: string, sep: string, lead = String.raw`${PRE}\$`, end = "") =>
-  new RegExp(String.raw`${start}${lead}\s?(${AMT})(${FIRST_UNIT})?${CODE}\s*${sep}\s*${PRE}[$£€]?\s?(${AMT})${end}([^\n]{0,40})`, "gi");
+  new RegExp(String.raw`${start}${lead}\s?(${AMT})(${FIRST_UNIT})?${CODE}\s*${sep}\s*${PRE}[$£€]?\s?(${AMT})${end}(?=([^\n]{0,40}))`, "gi");
 // A pound or euro sign leads a range the way "$" does: "£60,000 - £70,000", "€50k - €60k" (#1186). Before, only Greenhouse
 // and structured data read them, so a UK posting's pay reached the find as dollars and the USD floor cut it.
 const OTHER_SIGN = "([£€])";
@@ -121,8 +122,8 @@ const RANGES = [
 const EU_AMT = String.raw`\d{1,3}(?:[.\u00a0\u202f ]\d{3})+(?:,\d{1,2})?`;
 const EU_SEP = "(?:-|–|—|to|bis)";
 const EU_RANGES = [
-  new RegExp(String.raw`([€£])\s?(${EU_AMT})(${FIRST_UNIT})?(?:\s?(EUR|GBP)\b)?\s*${EU_SEP}\s*([€£])?\s?(${EU_AMT})([^\n]{0,40})`, "gi"),
-  new RegExp(String.raw`()(?<![\d.,$€£])(${EU_AMT})(${FIRST_UNIT})?(?:\s?([€£]|EUR\b|GBP\b))?\s*${EU_SEP}\s*()(${EU_AMT})(?=\s?(?:[€£]|EUR\b|GBP\b))([^\n]{0,40})`, "gi"),
+  new RegExp(String.raw`([€£])\s?(${EU_AMT})(${FIRST_UNIT})?(?:\s?(EUR|GBP)\b)?\s*${EU_SEP}\s*([€£])?\s?(${EU_AMT})(?=([^\n]{0,40}))`, "gi"),
+  new RegExp(String.raw`()(?<![\d.,$€£])(${EU_AMT})(${FIRST_UNIT})?(?:\s?([€£]|EUR\b|GBP\b))?\s*${EU_SEP}\s*()(${EU_AMT})(?=\s?(?:[€£]|EUR\b|GBP\b))(?=([^\n]{0,40}))`, "gi"),
 ];
 const EU_NUMBER = new RegExp(`^${EU_AMT}$`);
 /** "60.000" or "60 000,50" -> 60000 / 60000.5; anything else as money() reads it. */
