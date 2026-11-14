@@ -14,8 +14,11 @@ export function whyNoneAdded(t: Pick<RunTally, "known" | "dealbreaker" | "belowF
   ].filter((x): x is string => !!x);
 }
 
-/** True when every posting the search read is already on the board, so "already on your board" is the whole story. */
-const allKnown = (t: Pick<RunTally, "postings" | "known">) => t.known >= t.postings;
+/**
+ * True when nothing was cut, so "already on your board" is the whole story. Not known >= postings: known also counts
+ * board results skipped before reading, which postings doesn't, so that hid dealbreakers and under-floor cuts (#1138).
+ */
+const allKnown = (t: Pick<RunTally, "dealbreaker" | "belowFloor">) => !t.dealbreaker && !t.belowFloor;
 
 /** The last progress step of a finished search. */
 export function doneStep(t: Pick<RunTally, "postings" | "known" | "dealbreaker" | "belowFloor" | "added">): string {

@@ -45,3 +45,17 @@ describe("noNewBody with nothing read (#1125)", () => {
     expect(noNewBody(0, tally({ known: 3 }))).toBe("Everything the search turned up is already on your board. It'll look again on your schedule.");
   });
 });
+
+describe("board results skipped before reading don't hide cuts (#1138)", () => {
+  // 3 results already on the board were skipped, 2 pages read, both hit a dealbreaker.
+  const t = tally({ postings: 2, known: 3, dealbreaker: 2 });
+  it("doneStep names the dealbreakers", () => {
+    expect(doneStep(t)).toBe("No new finds this time: 3 already on your board, 2 hit a dealbreaker");
+  });
+  it("noNewBody names the dealbreakers", () => {
+    expect(noNewBody(2, t)).toBe("Lookout read 2 matching postings and added none: 3 already on your board, 2 hit a dealbreaker. It'll look again on your schedule.");
+  });
+  it("all known with nothing cut keeps the short line", () => {
+    expect(doneStep(tally({ postings: 2, known: 5 }))).toBe("No new finds this time. Everything matching is already on your board");
+  });
+});
