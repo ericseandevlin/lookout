@@ -52,8 +52,13 @@ const qualifier = (q: string) =>
     .join("|");
 
 /** Is this question one we should remember the answer to? */
+// Work authorization and sponsorship don't change with the role: "authorized to work in the United States for this
+// position?" is the same fact everywhere, so "this role" or "this position" doesn't rule it out. "This location" still does (#1123).
+const AUTH = /authori[sz]ed to work|work authori[sz]ation|legally (authorized|eligible)|sponsor|\bvisa\b/i;
+const neverKept = (question: string) => NEVER.test(AUTH.test(question) ? question.replace(/\bthis (role|position)\b/gi, " ") : question);
+
 export function isCommon(question: string, answer: string) {
-  return COMMON.test(question) && !NEVER.test(question) && !EEO.test(question) && answer.trim().length > 0 && answer.length <= 300 && !onlyThisOne(question, answer);
+  return COMMON.test(question) && !neverKept(question) && !EEO.test(question) && answer.trim().length > 0 && answer.length <= 300 && !onlyThisOne(question, answer);
 }
 
 export function upsert(list: SavedAnswer[], question: string, answer: string): SavedAnswer[] {
