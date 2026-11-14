@@ -7,17 +7,13 @@ import { NextStep, PageHead, ProfileTabs } from "./Profile";
 import { useStore } from "./store";
 import { useConfirm } from "./Confirm";
 import { DocPreview } from "./ApplicationReview";
-import { btn } from "./Settings";
+import { btn, Section } from "./Settings";
 import { api } from "./store";
 import type { Template } from "@/lib/application/resumeLayout";
 import { color } from "@/lib/tokens";
 
 // The same square icon button as the auto-apply review card.
 const squareBtn: React.CSSProperties = { ...btn("outline"), width: 38, padding: 0, display: "inline-flex", alignItems: "center", justifyContent: "center" };
-
-const SectionLabel = ({ children }: { children: React.ReactNode }) => (
-  <div style={{ fontSize: 14, fontWeight: 600, letterSpacing: ".08em", textTransform: "uppercase", color: color.t2 }}>{children}</div>
-);
 
 const FIELD_NAMES: Record<string, string> = { q1: "next role", area: "where you work", modes: "workplace type", q4: "lead win" };
 
@@ -139,9 +135,9 @@ export function Materials() {
         title="Resume, LinkedIn and links"
         intro="Lookout reads these to understand your background, so it can fill in your search profile and judge which roles fit. Changes save automatically."
       />
-      <div style={{ display: "flex", flexDirection: "column", gap: 26, paddingTop: 8 }}>
+      <div style={{ display: "flex", flexDirection: "column" }}>
         <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-          <SectionLabel>Resume</SectionLabel>
+          <Section ruled>Resume</Section>
           <p style={{ margin: "0 0 4px", fontSize: 14, lineHeight: 1.5, color: color.t2, textWrap: "pretty" }}>
             Lookout keeps the text of your resume with your account and uses it two ways. It fills any profile answers you left empty (next role,
             where you work, workplace type, your lead win); those get a &ldquo;Filled from resume&rdquo; tag and are yours to edit. And every search
@@ -205,12 +201,12 @@ export function Materials() {
         </div>
 
         <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-          <SectionLabel>LinkedIn</SectionLabel>
+          <Section ruled>LinkedIn</Section>
           <LinkedinPdf />
         </div>
 
         <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-          <SectionLabel>Other links</SectionLabel>
+          <Section ruled>Other links</Section>
           {links.map((lk) => {
             const auto = linkKind(lk.url);
             const kind = lk.kind || auto;
@@ -351,7 +347,7 @@ function MasterResumeSection() {
   const confirm = (md: string) => call("PUT", "Confirmed. Every new draft reads this version.", { md });
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-      <SectionLabel>How Lookout reads your resume</SectionLabel>
+      <Section ruled>How Lookout reads your resume</Section>
       <p style={{ margin: "0 0 4px", fontSize: 14, lineHeight: 1.5, color: color.t2, textWrap: "pretty" }}>
         Text pulled from a PDF loses its layout, so Lookout rebuilds your resume once: each job with its own bullets, in your exact words. Check that every bullet sits under the right job, fix anything, and confirm. Auto-apply drafts every tailored resume from the version you confirm.
       </p>
