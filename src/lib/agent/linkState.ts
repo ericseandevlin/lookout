@@ -35,7 +35,8 @@ const CLOSED = [
   /page you(['’]re| are) looking for (doesn['’]t|does not|no longer) exists?|(can(['’]|no)t|couldn['’]t|could not) find (that|this|the) page/i,
   // Careers sites usually render a curly apostrophe (#734).
   /(the )?(job|position) you(['’]re| are) looking for (is no longer|could not be|can(['’]|no)t be) (available|found)/i,
-  /applications (for this (job|role|position) )?(are|is|have) (now )?closed/i,
+  // Not "Applications for this role are closed to agencies" (#1103).
+  /applications (for this (job|role|position) )?(are|is|have) (now )?closed\b(?! to\b)/i,
   // "This job posting has closed", "This vacancy has now closed", "Job Closed", but not "closed to contractors" (#760),
   // a live page's "Position Closed Date: 11/30" label or "closed-loop" (#832).
   /\b(job|posting|position|role|vacancy|opportunity|listing)( posting| ad)? (is |has )?(now )?closed\b(?! to\b|[- ]?date\b|-)/i,
