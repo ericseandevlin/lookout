@@ -177,10 +177,22 @@ function label(text: string, at: number) {
   return (own.trim() ? own : (lines.pop() ?? "")).slice(-60);
 }
 
+// A range named as something other than base pay: "Annual bonus target $30,000 - $45,000", "Relocation of $20,000 -
+// $30,000", or "$25,000 - $50,000 signing bonus". Above $20k these pass as a year's pay and came first on the page (#1238).
+const EXTRA = /\b(?:bonus(?:es)?|sign(?:ing|-on)|relocation|equity|stock|rsus?|stipends?|allowances?)\b/i;
+const BASE = /\b(?:base|salary|salaries|pay range|wages?)\b/i;
+const EXTRA_AFTER = /^[\s,.;:()-]*(?:(?:usd|eur|gbp|cad)\b\s*)?(?:(?:annual|yearly|target|performance|one-time)\s+)?(?:bonus|sign(?:ing|-on)|relocation|equity|stock|rsus?|stipend|allowance)\b/i;
+/** Only the words since the last number count: "Bonus $5,000 - $8,000. Salary " names the salary, not the bonus. */
+const namesExtra = (before: string, tail: string) => {
+  const words = before.split(/\d/).pop() ?? "";
+  return (EXTRA.test(words) && !BASE.test(words)) || EXTRA_AFTER.test(tail);
+};
+
 function fromText(text: string): Pay | null {
   // In page order, so the first range on the page still wins.
   for (const m of [...RANGES, ...EU_RANGES].flatMap((re) => [...text.matchAll(re)]).sort((x, y) => x.index - y.index)) {
     const [, pre1, first, firstUnit, code, pre2, second, rest = ""] = m;
+    if (namesExtra(label(text, m.index), rest)) continue;
     // The unit is read only up to the next dollar amount: "$150,000 - $200,000 ($72-$96/hr)" stays yearly (#746).
     const tail = rest.split("$")[0];
     let a = amountOf(first);
