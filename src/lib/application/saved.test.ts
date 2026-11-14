@@ -36,6 +36,17 @@ describe("saved answers", () => {
     expect(isCommon("Were you referred by a current employee?", "No, I was not")).toBe(true);
   });
 
+  it("keeps a general answer to how they heard of the job, never a referral (#1097)", () => {
+    expect(isCommon("How did you hear about this job?", "LinkedIn")).toBe(true);
+    expect(isCommon("How did you hear about us?", "Company website")).toBe(true);
+    for (const a of ["Referred by Jane Doe (Design Manager)", "Employee Referral", "A friend who works there", "Recruiter reached out", "Former colleague on the team"])
+      expect(isCommon("How did you hear about this job?", a)).toBe(false);
+    // Saved before the fix: never reused or shown to the model.
+    const old = [{ key: answerKey("How did you hear about us?"), question: "How did you hear about us?", answer: "Employee Referral", updatedAt: "" }];
+    expect(match(old, "How did you hear about us?", ["LinkedIn", "Employee Referral"])).toBeNull();
+    expect(savedBlock(old)).toBe("");
+  });
+
   it("keeps a relative start date, never a calendar date (#1032)", () => {
     expect(isCommon("Earliest start date", "2 weeks after an offer")).toBe(true);
     for (const a of ["12/1", "2026-12-01", "Dec 1, 2026", "May 4"]) expect(isCommon("Earliest start date", a)).toBe(false);

@@ -25,9 +25,13 @@ const MONTH = /\b(jan(uary)?|feb(ruary)?|mar(ch)?|apr(il)?|june?|july?|aug(ust)?
 const DATE_FORMS = /\b\d{1,2}[/.-]\d{1,2}([/.-]\d{2,4})?\b|\b\d{4}-\d{2}-\d{2}\b|\bmay,?\s+(\d{1,2}|(19|20)\d{2})\b|\b\d{1,2}(st|nd|rd|th)?\s+(of\s+)?may\b|\b\d{1,2}(st|nd|rd|th)\b|\b(19|20)\d{2}\b/i;
 const DATE = { test: (a: string) => MONTH.test(a) || DATE_FORMS.test(a) };
 
+// "How did you hear about us?" answered with a referral, a friend or a recruiter is about that company; "LinkedIn" travels (#1097).
+const HEARD = /how did you (hear|learn|find out)|where did you (hear|learn|find)/i;
+const REFERRAL = /\breferr|\bemployee\b|\bfriend|\bcolleague|\bco-?worker|\brecruiter|\bhiring manager/i;
+
 /** An answer that fits only the application it was given on, so it must not travel to the next one (#1032). */
 export const onlyThisOne = (question: string, answer: string) =>
-  (ONE_EMPLOYER.test(question) && !/^no\b/i.test(answer.trim())) || (START.test(question) && DATE.test(answer));
+  (ONE_EMPLOYER.test(question) && !/^no\b/i.test(answer.trim())) || (START.test(question) && DATE.test(answer)) || (HEARD.test(question) && REFERRAL.test(answer));
 
 export const answerKey = (q: string) =>
   q
