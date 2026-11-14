@@ -43,6 +43,7 @@ import {
 import { ASHBY_QUERY, PAGE_SYSTEM, PageItems, applyUrlFor, ashbyOrgFromHtml, boardFromHtml, boardGuesses, detectAts, fromPage, parseAshby, parseGreenhouse, routeFor, withBasics, type ScanResult } from "./scan";
 import { addUsd, patchReport } from "./reportStore";
 import { autoApproveField } from "./flowRules";
+import { compLabel } from "@/lib/digestComp";
 
 /**
  * The auto-apply pipeline for one application: queued -> scanning -> (drafting) -> needs_review.
@@ -220,7 +221,8 @@ async function loadInputs(userId: string, opp: typeof schema.opportunities.$infe
   const cleaned = removeTraps(text, hidden);
   text = cleaned.text;
   // Facts the description often leaves to the page around it.
-  const pay = opp.compMin || opp.compMax ? `${[opp.compMin, opp.compMax].filter(Boolean).map((n) => `$${n!.toLocaleString("en-US")}`).join(" – ")} ${opp.currency}` : "";
+  // "$" only for US dollars: "60,000 – 70,000 GBP", not "$60,000 – $70,000 GBP" (#1095).
+  const pay = compLabel(opp.compMin, opp.compMax, opp.currency) ?? "";
   const facts = [`Role: ${opp.title}`, `Company: ${opp.company}`, opp.location && `Location: ${opp.location}`, opp.workMode && `Work mode: ${opp.workMode}`, pay && `Pay range on file: ${pay}`].filter(Boolean).join("\n");
   text = `${facts}\n\n${text}`;
   return {

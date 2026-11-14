@@ -145,6 +145,22 @@ describe("save", () => {
     expect(rows[0].gap[0]).toMatch(/below your floor/);
   });
 
+  it("stores pay in another currency with its currency, and leaves the USD floor out of it (#1095)", async () => {
+    const r = await save(ctx({ floor: 100000 }), [find({ comp_min: 60000, comp_max: 70000, currency: "GBP" })], "agent");
+    expect(r).toMatchObject({ added: 1, belowFloor: 0 });
+    const [o] = await db.select().from(schema.opportunities);
+    expect(o).toMatchObject({ compMin: 60000, compMax: 70000, currency: "GBP" });
+    const [row] = await board();
+    expect(row.score).toBe(5);
+    expect(row.gap).toEqual([]);
+  });
+
+  it("judges a shared posting by the currency of the pay already stored (#1095)", async () => {
+    await save(ctx(), [find({ comp_min: 60000, comp_max: 70000, currency: "GBP" })], "manual");
+    const r = await save(ctx({ floor: 100000, searchId: (await db.insert(schema.searches).values({ userId, name: "Second", answers: {} }).returning())[0].id }), [find({ url: "https://boards.example.org/acme-director", comp_min: 60000, comp_max: 70000 })], "agent");
+    expect(r).toMatchObject({ added: 1, belowFloor: 0 });
+  });
+
   it("stores bad dates and Unknown work mode as empty, and rounds pay", async () => {
     await save(ctx(), [find({ posted_at: "last week", work_mode: "Unknown", comp_min: 199999.6, comp_max: null })], "agent");
     const [o] = await db.select().from(schema.opportunities);
