@@ -71,6 +71,11 @@ describe("compText", () => {
     expect(compText(find({ comp: [150000, 210000] }))).toBe("$150,000 – $210,000");
     expect(compText(find())).toBe("No comp posted");
   });
+
+  it("shows another currency by its code and one figure for a single amount (#1164)", () => {
+    expect(compText(find({ comp: [50000, 60000], currency: "GBP" }))).toBe("50,000 – 60,000 GBP");
+    expect(compText(find({ comp: [150000, 150000], currency: "USD" }))).toBe("$150,000");
+  });
 });
 
 // Kind-driven cells (#8), tested in #405.

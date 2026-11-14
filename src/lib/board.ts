@@ -1,4 +1,5 @@
 import type { Find, Stage } from "@/lib/types";
+import { compLabel } from "@/lib/digestComp";
 import { color } from "@/lib/tokens";
 
 export const STAGES: Stage[] = ["Not applied", "Auto-applying", "Applied", "Interview", "Offer", "Closed", "Ghosted", "Not selected", "Nope"];
@@ -29,7 +30,8 @@ export const DAYS: Record<string, string> = {
 };
 
 const fmt = (n: number) => "$" + n.toLocaleString("en-US");
-export const compText = (f: Find) => (f.comp ? `${fmt(f.comp[0])} – ${fmt(f.comp[1])}` : "No comp posted");
+/** The same comp line as the finds email: "$" only for USD, the code otherwise, one figure when both ends match (#1164). */
+export const compText = (f: Find) => (f.comp && compLabel(f.comp[0], f.comp[1], f.currency)) || "No comp posted";
 
 // --- Kind-driven cells (#8) --------------------------------------------------------
 
