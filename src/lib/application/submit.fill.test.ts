@@ -422,6 +422,19 @@ describe("runFill controls (#567)", () => {
     expect(page.did.some((d) => d.includes(`${q} Yes`))).toBe(false);
   });
 
+  for (const mark of ["*", "✱", " (required)"])
+    it(`checks a question-labeled radio marked "${mark.trim()}" (#1160)`, async () => {
+      const q = "Can you work onsite?";
+      const id = await seed("approved", [{ kind: "field", prompt: q, content: "No", options: ["Yes", "No"] }]);
+      page = fakePage([
+        { kind: "control", type: "radio", role: "radio", label: `${q}${mark} Yes` },
+        { kind: "control", type: "radio", role: "radio", label: `${q}${mark} No` },
+      ]);
+      const r = await runFill(id, "test");
+      expect(r.log[0]).toMatchObject({ ok: true, how: "checked 1" });
+      expect(page.did).toContain(`check ${q}${mark} No`);
+    });
+
   it("reports a question-labeled radio as not found when no radio is the meant option (#720)", async () => {
     const q = "Can you work onsite?";
     const id = await seed("approved", [{ kind: "field", prompt: q, content: "No", options: ["Yes", "No"] }]);
