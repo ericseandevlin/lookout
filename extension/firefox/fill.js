@@ -98,19 +98,28 @@
   }
 
   /**
-   * The boxes that answer the question inside its group. A section fieldset ("Additional questions") can hold several radio
-   * questions, each a heading and radios with no fieldset of its own: take the radios right after the question, never the
-   * first "No" in the section, which belongs to an earlier question (#1044).
+   * The boxes that answer the question inside its group. A section fieldset ("Additional questions") can hold several
+   * questions, each a heading and boxes with no fieldset of its own: take the boxes right after the question, never the
+   * first "No" or "Other" in the section, which belongs to an earlier question (#1044, #1111).
    */
   function boxesFor(group, prompt) {
     const boxes = [...group.querySelectorAll("input[type=checkbox], input[type=radio]")];
-    const key = norm(prompt).slice(0, 60);
-    if (groupName(group).includes(key) || new Set(boxes.filter((b) => b.type === "radio").map((b) => b.name)).size < 2) return boxes;
-    let question = null;
-    for (const el of group.querySelectorAll("*")) if (norm(el.textContent).includes(key)) question = el;
+    const q = norm(prompt);
+    const key = q.slice(0, 60);
+    if (groupName(group).includes(key)) return boxes;
+    // The question's own text, not a box's wrapper: the heading that is the prompt, then one that starts with it, then
+    // the first that holds it. A later question that quotes it ("If you answered Yes to ...") is not it (#1111).
+    const texts = [...group.querySelectorAll("*")].filter((el) => !el.querySelector("input") && norm(el.textContent).includes(key));
+    const question = texts.find((el) => norm(el.textContent) === q) || texts.find((el) => norm(el.textContent).startsWith(q)) || texts[0];
     if (!question) return boxes;
-    const next = boxes.find((b) => b.type === "radio" && question.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING);
-    return next ? boxes.filter((b) => b.type === "radio" && b.name === next.name) : boxes;
+    const after = (b) => question.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING;
+    const next = boxes.find(after);
+    if (!next) return boxes;
+    if (next.type === "radio") return boxes.filter((b) => b.type === "radio" && b.name === next.name);
+    // Checkboxes: the ones after the question in the nearest block that holds them, so "Other" is this question's.
+    let scope = question.parentElement;
+    while (scope && scope !== group && !scope.contains(next)) scope = scope.parentElement;
+    return boxes.filter((b) => b.type === "checkbox" && after(b) && (!scope || scope.contains(b)));
   }
 
   /** Radios labeled with the question and their option ("Can you work onsite? No"), no group around them (#773). */

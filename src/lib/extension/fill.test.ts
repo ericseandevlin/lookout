@@ -236,6 +236,50 @@ describe("extension fill: choices", () => {
     expect([on("auth-y"), on("auth-n"), on("spon-y"), on("spon-n")]).toEqual([true, false, false, true]);
   });
 
+  it("answers the question itself, not a later one in the section that quotes it (#1111)", async () => {
+    const p = page(`<fieldset><legend>Additional questions</legend>
+      <div><p>Do you require sponsorship?</p>
+        <label><input type="radio" name="q1" id="q1-y"> Yes</label><label><input type="radio" name="q1" id="q1-n"> No</label></div>
+      <div><p>If you answered Yes to "Do you require sponsorship?", do you hold an H-1B today?</p>
+        <label><input type="radio" name="q2" id="q2-y"> Yes</label><label><input type="radio" name="q2" id="q2-n"> No</label></div>
+      </fieldset>`);
+    const [r] = await p.fill({ steps: [{ prompt: "Do you require sponsorship?", kind: "choice", content: "No", options: ["Yes", "No"] }] });
+    expect(r).toMatchObject({ ok: true, how: "checked 1" });
+    const on = (id: string) => (p.doc.querySelector(`#${id}`) as HTMLInputElement).checked;
+    expect([on("q1-y"), on("q1-n"), on("q2-y"), on("q2-n")]).toEqual([false, true, false, false]);
+  });
+
+  it("ticks the checkboxes after the question in a section that holds several checkbox questions (#1111)", async () => {
+    const p = page(`<fieldset><legend>Additional questions</legend>
+      <div><p>Which languages do you speak?</p>
+        <label><input type="checkbox" id="en"> English</label><label><input type="checkbox" id="lang-o"> Other</label></div>
+      <div><p>Where did you hear about us?</p>
+        <label><input type="checkbox" id="li"> LinkedIn</label><label><input type="checkbox" id="src-o"> Other</label></div>
+      </fieldset>`);
+    const log = await p.fill({
+      steps: [
+        { prompt: "Where did you hear about us?", kind: "choice", content: "Other", options: ["LinkedIn", "Other"] },
+        { prompt: "Which languages do you speak?", kind: "choice", content: "English", options: ["English", "Other"] },
+      ],
+    });
+    expect(log.map((r) => r.ok)).toEqual([true, true]);
+    const on = (id: string) => (p.doc.querySelector(`#${id}`) as HTMLInputElement).checked;
+    expect([on("en"), on("lang-o"), on("li"), on("src-o")]).toEqual([true, false, false, true]);
+  });
+
+  it("ticks the checkboxes after the question when the section has no block per question (#1111)", async () => {
+    const p = page(`<fieldset><legend>Additional questions</legend>
+      <p>Which languages do you speak?</p>
+        <label><input type="checkbox" id="en"> English</label><label><input type="checkbox" id="lang-o"> Other</label>
+      <p>Where did you hear about us?</p>
+        <label><input type="checkbox" id="li"> LinkedIn</label><label><input type="checkbox" id="src-o"> Other</label>
+      </fieldset>`);
+    const [r] = await p.fill({ steps: [{ prompt: "Where did you hear about us?", kind: "choice", content: "Other", options: ["LinkedIn", "Other"] }] });
+    expect(r.ok).toBe(true);
+    const on = (id: string) => (p.doc.querySelector(`#${id}`) as HTMLInputElement).checked;
+    expect([on("lang-o"), on("src-o")]).toEqual([false, true]);
+  });
+
   it("prefers the group whose legend starts with the question over a later one that quotes it (#1044)", async () => {
     const p = page(`<fieldset><legend>Do you require sponsorship? (required)</legend>
       <label><input type="radio" name="a" id="a-y"> Yes</label><label><input type="radio" name="a" id="a-n"> No</label></fieldset>
