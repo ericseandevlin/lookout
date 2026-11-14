@@ -96,6 +96,13 @@ Design Systems Lead
     expect(recruiterChecks("resume", resume.replace("Ran design reviews", "Ran double-blind design reviews")).some((x) => x.line?.startsWith("Ran double-blind"))).toBe(true);
   });
 
+  it("counts number words past ten, like twelve, twenty and twenty-five (#1299)", () => {
+    const bareOf = (line: string) =>
+      recruiterChecks("resume", resume.replace("Built the design system site used across the firm.", line)).some((x) => x.dim === "impact" && x.line === line);
+    for (const line of ["Managed a team of twelve designers.", "Launched the app in twenty markets.", "Hired fifteen engineers.", "Ran twenty-five usability studies."]) expect(bareOf(line), line).toBe(false);
+    expect(bareOf("Led the twentieth-anniversary site."), "twentieth").toBe(true);
+  });
+
   it("doesn't read names like B2B or HTML5, or one-click, as a number (#1265)", () => {
     const bareOf = (line: string) =>
       recruiterChecks("resume", resume.replace("Built the design system site used across the firm.", line)).some((x) => x.dim === "impact" && x.line === line);
