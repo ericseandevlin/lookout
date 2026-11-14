@@ -84,6 +84,15 @@ export function pickOne(answer: string, labels: string[]): number {
 export const CONFIRMATION = /(?<!\b(?:once|after|when|if|before|until|upon)\b[^.!?\n]{0,40})(?:thank(?:s| you) for (?:applying|your application|submitting|your submission)|(?:application|submission|candidacy) (?:has been |was )?(?:successfully )?(?:received|submitted|sent)\b|application for [^.!?\n]{1,80}? (?:has been|was) (?:successfully )?(?:received|submitted|sent)\b|we(?:'ve|’ve| have)? (?:successfully )?(?:received|got) your (?:application|submission)|(?<!(?:\bnot|\bnever|n't|n’t)\s+(?:(?:be|been|yet)\s+)?)successfully (?:applied|submitted)\b)/i;
 
 /**
+ * Whether an answer reads as one for a checkbox at all: a yes, a no or nothing. A text answer ("https://linkedin.com/in/...")
+ * whose own field is missing must not untick a box whose label only holds the question ("I don't have a LinkedIn profile", #1112).
+ */
+export function answersBox(answer: string): boolean {
+  const a = answer.replace(/\*/g, "").replace(/\s+/g, " ").trim().toLowerCase();
+  return !a || checksBox(a) || /^(no|false)\b/.test(a);
+}
+
+/**
  * Whether an answer to a lone checkbox ("I agree to the privacy policy") means tick it (#669).
  * Yes, true and the consent verbs, alone or leading the answer ("Yes, I agree", "I certify the above"),
  * past tense too ("Agreed"), and "I have read and agree", "I understand" (#681), "I have read and understand", "I've read and understood" (#796),

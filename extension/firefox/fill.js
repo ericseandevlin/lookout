@@ -178,6 +178,11 @@
   }
 
   /** Same rule as checksBox in src/lib/application/fillPlan.ts: yes, true or a consent verb (past tense too, #681), alone or leading the answer. */
+  function answersBox(answer) {
+    const a = norm(answer);
+    return !a || checksBox(a) || /^(no|false)\b/.test(a);
+  }
+
   function checksBox(answer) {
     return /^(yes|true|(i(( have|'ve|’ve)? read| understand) and |read and |i (hereby )?)?(agreed?|acknowledged?|confirm(ed)?|consent(ed)?|certif(y|ied)|accept(ed)?|authori[sz]e[ds]?|attest(ed)?|affirm(ed)?)|(i(( have|'ve|’ve)? read and)? |read and )?underst(and|ood))\b/.test(norm(answer));
   }
@@ -265,6 +270,9 @@
       const box = el ? null : checkboxFor(step.prompt);
       if (!el && (box || step.kind !== "choice")) {
         if (!box) return { ok: false, how: "field not found" };
+        // A box whose label only holds the question is a text answer's field only if the answer is a yes or a no:
+        // a LinkedIn URL must not untick "I don't have a LinkedIn profile" (#1112). Same rule as answersBox in fillPlan.ts.
+        if (step.kind !== "choice" && labelOf(box) !== norm(step.prompt) && !answersBox(step.content)) return { ok: false, how: "field not found" };
         if (!checksBox(step.content)) {
           if (step.required) return { ok: false, how: "answer is not a yes" };
           // A box the site ticked ahead ("Send me job alerts") goes out the way they answered (#788).

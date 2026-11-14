@@ -427,6 +427,24 @@ describe("runFill controls (#567)", () => {
     expect(r.missing).toEqual([terms]);
   });
 
+  it("never unticks a box whose label only holds a text answer's question (#1112)", async () => {
+    const box = "I don't have a LinkedIn profile";
+    const id = await seed("approved", [
+      { kind: "field", prompt: "LinkedIn Profile", content: "https://linkedin.com/in/someone", required: false },
+      { kind: "field", prompt: "Consent", content: "Yes", required: false },
+    ]);
+    page = fakePage([
+      { kind: "control", label: box, type: "checkbox" },
+      { kind: "control", label: "I give my Consent to be contacted", type: "checkbox" },
+    ]);
+    const r = await runFill(id, "test");
+    expect(r.log.map((l) => [l.ok, l.how])).toEqual([
+      [false, "field not found"],
+      [true, "checked"],
+    ]);
+    expect(page.did).not.toContain(`uncheck ${box}`);
+  });
+
   it("opens a custom dropdown, types the answer and clicks the exact option", async () => {
     const id = await seed("approved", [{ kind: "field", prompt: "Location", content: "New York, NY" }]);
     page = fakePage([
