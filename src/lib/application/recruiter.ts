@@ -78,6 +78,8 @@ function resumeChecks(md: string): Finding[] {
 
   let section = "";
   let roles = 0;
+  // Titles under the first employer: in a resume grouped by employer, only the first title is the latest role (#1282).
+  let titles = 0;
   // Under a role in a work section. A new section ends the role, so Skills bullets after it aren't its results (#704).
   let inRole = false;
   const latest: string[] = [];
@@ -88,7 +90,10 @@ function resumeChecks(md: string): Finding[] {
       inRole = false;
     } else if (b.t === "role" || b.t === "subrole") {
       inRole = !NOT_WORK.test(section);
-      if (inRole && b.t === "role") roles++;
+      if (inRole && b.t === "role") {
+        roles++;
+        titles = 0;
+      } else if (inRole) titles++;
     }
     else if (b.t === "text" && SUMMARY_HEADING.test(section)) {
       const n = words(b.text);
@@ -112,7 +117,7 @@ function resumeChecks(md: string): Finding[] {
         });
     } else if (b.t === "bullet" && inRole) {
       all.push(b.text);
-      if (roles === 1) latest.push(b.text);
+      if (roles === 1 && titles <= 1) latest.push(b.text);
     }
     if ((b.t === "bullet" || b.t === "text") && SKILLS.test(section) && VAGUE.test(b.text)) {
       const m = b.text.match(VAGUE)![0];
