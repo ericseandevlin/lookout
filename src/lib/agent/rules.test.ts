@@ -64,6 +64,12 @@ describe("dedupe keys", () => {
     expect(normUrl("https://jobs.lever.co/x/1?lever-source=LinkedIn&lever-origin=applied&ref=hn&src=feed&source=x")).toBe("jobs.lever.co/x/1");
     expect(normUrl("https://example.com/job/1?refId=a1&trackingId=b2&trk=c3")).toBe("example.com/job/1");
   });
+  it("leaves the rest of the query as written when it drops a tracking tag (#1166)", () => {
+    expect(normUrl("https://careers.example.com/job?title=Senior%20Designer&utm_source=linkedin")).toBe(normUrl("https://careers.example.com/job?title=Senior%20Designer"));
+    expect(normUrl("https://careers.example.com/job?loc=NY,US&ref=x")).toBe(normUrl("https://careers.example.com/job?loc=NY,US"));
+    expect(normUrl("https://careers.example.com/job?utm_source=a&id=7&path=a/b")).toBe("careers.example.com/job?id=7&path=a/b");
+    expect(normUrl("https://careers.example.com/job?bad=%E9&utm_medium=x")).toBe("careers.example.com/job?bad=%e9");
+  });
   it("keeps job IDs whose names start like a tracking param (#487)", () => {
     expect(normUrl("https://jobs.example.com/view?referenceId=111")).not.toBe(normUrl("https://jobs.example.com/view?referenceId=222"));
     expect(normUrl("https://x.icims.com/jobs/search?refnum=55&utm_medium=email")).toBe("x.icims.com/jobs/search?refnum=55");
