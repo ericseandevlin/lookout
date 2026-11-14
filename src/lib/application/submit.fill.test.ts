@@ -637,6 +637,22 @@ describe("startFill submit (#385)", () => {
     expect(await stage()).toBe("Applied");
   });
 
+  it("an error after Submit is clicked keeps the click on record, so it isn't offered again (#1117)", async () => {
+    const id = await seed("approved", ITEMS);
+    page = fakePage([...FORM, THANKS]);
+    const shot = page.screenshot;
+    page.screenshot = async (o: { path: string }) => {
+      if (o.path.endsWith("after-submit.png")) throw new Error("Target page, context or browser has been closed\nCall log: ...");
+      return shot(o);
+    };
+    await startFill(id, "submit");
+    const a = await settled(id);
+    expect(page.did).toContain("click Submit application");
+    expect(a.status).toBe("manual");
+    expect(a.report.fill?.clicked).toBe(true);
+    expect(a.report.fill?.stopped).toBe("Lookout clicked Submit, then hit an error (Target page, context or browser has been closed). Check your email before sending again.");
+  });
+
   it("a CAPTCHA after Submit ends in manual and says so", async () => {
     const id = await seed("approved", ITEMS);
     page = fakePage([...FORM, { kind: "captcha", label: "recaptcha challenge", after: true }]);
