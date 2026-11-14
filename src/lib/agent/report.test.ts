@@ -43,6 +43,16 @@ describe("buildTips", () => {
     expect(buildTips(run({ postings: 6, added: 5, known: 1 }), profile)).toEqual([]);
   });
 
+  it("doesn't say most were on the board when most were added (#1261)", () => {
+    // known also counts results skipped before reading (#1125), so it can't be compared with pages read alone.
+    expect(buildTips(run({ postings: 10, added: 10, known: 6 }), profile)).toEqual([]);
+  });
+
+  it("still says so when most of what matched was already on the board", () => {
+    const tips = buildTips(run({ postings: 3, added: 2, known: 7 }), profile);
+    expect(tips.map((t) => t.text).join(" ")).toMatch(/already on your board/);
+  });
+
   describe("on rfp searches (#300)", () => {
     const rfp = { answers: { q1: "PM", naics: "561920", floor: "$50K" }, hasResume: false, floor: "$50K", kind: "rfp" };
     const rfpHrefs = new Set(["/profile#q-q1", "/profile#q-naics", "/profile#q-comp", "/profile#q-geo"]);

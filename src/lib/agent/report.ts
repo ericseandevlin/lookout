@@ -59,7 +59,10 @@ export function buildTips(
   if (job && !p.hasResume) {
     tips.push({ text: "Add your resume. Lookout uses it to judge fit and to write better searches.", href: "/profile/materials", label: "Add resume" });
   }
-  if (t.known >= Math.max(2, t.postings / 2)) {
+  // known also counts results skipped unread because they're on the board (#1125), so "most" is out of
+  // everything the run matched, not just the pages it read (#1261).
+  const matched = t.known + t.added + t.dealbreaker + t.belowFloor;
+  if (t.known >= Math.max(2, matched / 2)) {
     tips.push({ text: `Most of what matched is already on your board. New ${kind.noun.many} show up as they're posted.` });
   }
   // Dedupe by destination so two tips never point at the same field.
