@@ -211,7 +211,7 @@ describe("isSalaryQuestion", () => {
   });
 
   it("reads current salary expectations or requirements as an ask, not past pay (#1297)", () => {
-    for (const q of ["What are your current salary expectations?", "What are your current compensation expectations for this role?", "Please share your current salary requirements."])
+    for (const q of ["What are your current salary expectations?", "What are your current compensation expectations for this role?", "Please share your current salary requirements.", "What are your current base salary expectations?"])
       expect(isSalaryQuestion(q), q).toBe(true);
     for (const q of ["What is your current salary?", "What is your current base salary? We also ask about expectations below."]) expect(isSalaryQuestion(q), q).toBe(false);
   });

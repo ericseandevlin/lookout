@@ -85,7 +85,7 @@ const SALARY_ASK = {
 };
 // "What are your current salary expectations?" asks what you want, not what you made (#1297).
 const PAST_PAY =
-  /\b(current|previous|prior|last|most recent|present)\b[^.?!]{0,20}\b(salary|compensation|pay|base|wages?)\b(?!\s+(expectations?|requirements?)\b)|\b(salary|compensation|pay|wage) history\b|\b(salary|compensation|pay|wages?)\b[^.?!]{0,25}\b(current|previous|prior|last) (job|role|position|employer)\b/i;
+  /\b(current|previous|prior|last|most recent|present)\b[^.?!]{0,20}\b(salary|compensation|pay|base|wages?)\b(?!(\s+(salary|compensation|pay))?\s+(expectations?|requirements?)\b)|\b(salary|compensation|pay|wage) history\b|\b(salary|compensation|pay|wages?)\b[^.?!]{0,25}\b(current|previous|prior|last) (job|role|position|employer)\b/i;
 // "Are you comfortable with the posted salary range?" wants yes or no, not a number (#687).
 // "Would you share your salary expectations?" is still an ask.
 const YES_NO = /^\W*(are|is|does|do|would|will|can)\b/i;
