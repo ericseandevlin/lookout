@@ -151,10 +151,27 @@ describe("discover (#379)", () => {
     const run = await runRow();
     expect(run).toMatchObject({ trigger: "manual", status: "done", found: 1, added: 1, error: null });
     expect(run.progress).toMatchObject({ pct: 100, step: "Added 1 new find" });
-    expect(run.report).toMatchObject({ queries: ["design systems lead", "design systems lead site:greenhouse.io"], results: 4, picked: 4, read: 2 });
-    expect(run.report?.tally).toMatchObject({ postings: 1, notPostings: 1, added: 1 });
+    // The result already on the board counts as a result and as known (#1125).
+    expect(run.report).toMatchObject({ queries: ["design systems lead", "design systems lead site:greenhouse.io"], results: 5, picked: 4, read: 2 });
+    expect(run.report?.tally).toMatchObject({ postings: 1, notPostings: 1, known: 1, added: 1 });
     // queries + one scoring batch
     expect(Number(run.costUsd)).toBeCloseTo(0.02);
+  });
+
+  it("a run that only finds postings already on the board says so, with no advice to widen the profile (#1125)", async () => {
+    const [old] = await db.insert(schema.opportunities).values({ company: "Old Co", title: "Lead", fingerprint: "old", sourceUrl: "https://jobs.example.com/old" }).returning();
+    await db.insert(schema.userOpportunities).values({ userId, searchId, opportunityId: old.id, score: 4, addedVia: "agent" });
+    results.set("design systems lead", [hit("https://jobs.example.com/old?utm_source=x")]);
+    results.set("design systems lead site:greenhouse.io", [hit("https://jobs.example.com/old")]);
+
+    await discover(searchId, "manual");
+
+    expect(fetchPage).not.toHaveBeenCalled();
+    const run = await runRow();
+    expect(run.progress).toMatchObject({ pct: 100, step: "No new finds this time. Everything matching is already on your board" });
+    expect(run.report).toMatchObject({ results: 1, read: 0 });
+    expect(run.report?.tally).toMatchObject({ postings: 0, known: 1, added: 0 });
+    expect(run.report?.tips.map((t) => t.text).join(" ")).not.toMatch(/came back empty/);
   });
 
   it("skips a known posting found under another URL for the same job, and reads one job once (#670)", async () => {

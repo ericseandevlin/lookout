@@ -144,6 +144,8 @@ async function gatherHits(ctx: Context, queries: string[], usage: Usage, report:
   const known = new Set([...ctx.knownUrls.map(normUrl), ...ctx.knownUrls.map(atsKey).filter((k): k is string => !!k)]);
   const seen = new Set<string>();
   const hits: SearchHit[] = [];
+  // Results already on the board, counted once each: a run that only finds those says so, not "nothing matched" (#1125).
+  const onBoard = new Set<string>();
   const results: PromiseSettledResult<SearchHit[]>[] = [];
   for (const [i, q] of queries.entries()) {
     await report(10 + (25 * i) / queries.length, `Searching “${q}”`);
@@ -153,7 +155,12 @@ async function gatherHits(ctx: Context, queries: string[], usage: Usage, report:
     if (r.status !== "fulfilled") continue;
     for (const h of r.value) {
       const keys = [normUrl(h.url), atsKey(h.url)].filter((k): k is string => !!k);
-      if (keys.some((k) => seen.has(k) || known.has(k)) || AGGREGATOR.test(h.url)) continue;
+      if (AGGREGATOR.test(h.url) || keys.some((k) => seen.has(k))) continue;
+      if (keys.some((k) => known.has(k))) {
+        for (const k of keys) seen.add(k);
+        onBoard.add(keys[0]);
+        continue;
+      }
       for (const k of keys) seen.add(k);
       hits.push(h);
     }
@@ -161,7 +168,7 @@ async function gatherHits(ctx: Context, queries: string[], usage: Usage, report:
   if (!hits.length && results.length && results.every((r) => r.status === "rejected")) {
     throw (results[0] as PromiseRejectedResult).reason;
   }
-  return hits.slice(0, 60);
+  return { hits: hits.slice(0, 60), onBoard: onBoard.size };
 }
 
 const Picks = z.object({ picks: z.array(z.number().int()).describe("Indexes of the most promising single job postings") });
@@ -501,7 +508,7 @@ export async function discover(searchId: string, trigger: "scheduled" | "manual"
     ctx.searchProfile = sp.profile;
     await report(6, "Planning searches");
     const queries = await makeQueries(ctx, usage);
-    const hits = await gatherHits(ctx, queries, usage, report);
+    const { hits, onBoard } = await gatherHits(ctx, queries, usage, report);
     await report(37, `Found ${hits.length} new results. Picking the most promising`);
     const picks = await pickHits(ctx, hits, usage);
     const pages = await fetchAll(picks.map((h) => h.url), report);
@@ -509,6 +516,7 @@ export async function discover(searchId: string, trigger: "scheduled" | "manual"
     const scored = await scorePages(ctx, pages, usage, report);
     await report(97, "Saving new finds");
     const { newFinds, ...tally } = await save(ctx, scored, "agent");
+    tally.known += onBoard;
     const { added, postings: found } = tally;
     await autoQueue(search.userId, newFinds).catch((e) => console.error("[auto-apply] queue failed", e));
     await report(98, "Checking that your open finds are still posted");
@@ -517,7 +525,7 @@ export async function discover(searchId: string, trigger: "scheduled" | "manual"
     const events = !featureOn("EVENTS") ? null : await findEventsIfDue(ctx, usage, (step) => report(99, step)).catch((e) => (console.error("[events] failed", e), null));
     const eventsNote = events ? `, plus ${events} ${events === 1 ? "event" : "events"}` : "";
     await progress(run.id, 100, doneStep(tally) + eventsNote);
-    const summary = makeReport(ctx, { queries, results: hits.length, picked: picks.length, read: pages.length, tally });
+    const summary = makeReport(ctx, { queries, results: hits.length + onBoard, picked: picks.length, read: pages.length, tally });
     await finishRun(run.id, usage, { found, added, report: summary });
     return { found, added, runId: run.id };
   } catch (e) {
