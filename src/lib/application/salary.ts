@@ -75,10 +75,10 @@ const TO_BE_PAID = /\b(how much|what)\b[^.?!]{0,40}?\b(expect\w*|need|want|like|
 // "What pay are you looking for?", "What hourly rate would you accept?" (#1192). Plain "pay" and "rate" are too common
 // to count alone, so only as the thing "what" asks for, followed by what they seek or expect.
 const WHAT_PAY_SOUGHT = /\bwhat (\w+ ){0,2}(pay|rate)\b[^.?!]{0,30}?\b(looking for|seek\w*|expect\w*|want\w*|hop\w*|need|accept)\b/i;
-// Rate wording ("Desired hourly rate", "Expected rate per hour") is an ask too (#953). Not "day rate": askPer has no day period.
+// Rate wording ("Desired hourly rate", "Expected rate per hour", "Desired day rate") is an ask too (#953, #1194).
 const SALARY_ASK = {
   test: (s: string) =>
-    /salary|compensation|wages?\b|pay (expectation|requirement)|expected (base|annual|pay)|desired (base|pay)|expect to (earn|make)\b|\b(hourly|pay|bill) rate\b|\brate (expectation|requirement)|\b(desired|expected) rate\b/i.test(s) ||
+    /salary|compensation|wages?\b|pay (expectation|requirement)|expected (base|annual|pay)|desired (base|pay)|expect to (earn|make)\b|\b(hourly|pay|bill|day|daily) rate\b|\brate (expectation|requirement)|\b(desired|expected) rate\b/i.test(s) ||
     TO_BE_PAID.test(s) ||
     WHAT_PAY_SOUGHT.test(s) ||
     (HOPE_TO_EARN.test(s) && !MAKES_SOMETHING.test(s)),
@@ -146,7 +146,7 @@ const PAY_TALK = /\b(pay|paid|rate|salary|compensation|wages?|earn\w*|figure|amo
  * The ask's own sentence decides first, then other sentences about pay, so "Rates are reviewed once a year" after an
  * hourly ask, or "We will get back to you in a week" after a salary ask, doesn't set the period (#1136).
  */
-export function askPer(prompt: string): "hour" | "week" | "month" | null {
+export function askPer(prompt: string): Per | null {
   const all = sentences(prompt);
   const asks = all.filter((s) => SALARY_ASK.test(s));
   if (!asks.length) return orYear(periodIn(prompt));
@@ -157,9 +157,11 @@ export function askPer(prompt: string): "hour" | "week" | "month" | null {
 
 const orYear = (p: ReturnType<typeof periodIn>) => (p === "year" ? null : p);
 
-function periodIn(prompt: string): "year" | "hour" | "week" | "month" | null {
+type Per = "hour" | "day" | "week" | "month";
+
+function periodIn(prompt: string): "year" | Per | null {
   // "This role is salaried, not hourly" and "(non-hourly)" rule a period out, not in (#974).
-  prompt = prompt.replace(/\b(not|non)[\s-]+(hourly|weekly|monthly|(per|an|a|each) (hour|hr|week|month))\b/gi, " ");
+  prompt = prompt.replace(/\b(not|non)[\s-]+(hourly|daily|weekly|monthly|(per|an|a|each) (hour|hr|day|week|month))\b/gi, " ");
   // Working hours ("40 hours per week", "37.5 hrs/week") and a contract's length ("expected to last a year") are not
   // the pay period (#1002), nor is "2,080 hours per year" (#1156).
   prompt = prompt.replace(/\b(hours?|hrs?|days?)\s*(per|a|each|\/)\s*(week|wk|month|day|year|yr)\b/gi, " ");
@@ -168,6 +170,8 @@ function periodIn(prompt: string): "year" | "hour" | "week" | "month" | null {
   // "/yr" after a space or "(" has no word boundary before the slash (#1121).
   if (/(\b(annual(ly)?|yearly|per (year|annum)|a year)|\/\s?y(ea)?r)\b(?!-)/i.test(prompt)) return "year";
   if (/\bhourly\b|\b(per|an|each) (hour|hr)\b|\/\s?h(ou)?r\b/i.test(prompt)) return "hour";
+  // A day rate (#1194). "Day-to-day" is not a period; "8 hours a day" and "5 days a week" were taken out above.
+  if (/\bdaily\b|\b(per|a|each) day\b(?!-)|\/\s?day\b|\bday rate\b/i.test(prompt)) return "day";
   if (/\bweekly\b|\b(per|a|each) week\b|\/\s?w(ee)?k\b/i.test(prompt) && !/\bbi-?weekly\b/i.test(prompt)) return "week";
   // Semi-monthly is paid twice a month: left yearly, like bi-weekly (#1002).
   if (/\bmonthly\b|\b(per|a|each) month\b|\/\s?mo(nth)?\b/i.test(prompt) && !/\bsemi-?monthly\b/i.test(prompt)) return "month";
@@ -181,8 +185,10 @@ function periodIn(prompt: string): "year" | "hour" | "week" | "month" | null {
 export const asksThousands = (prompt: string) =>
   /\bin (?:\$\s?|usd\s)?(?:thousands|k)\b|(?<![\d\w])\(\s*(?:in\s+)?(?:\$\s?)?(?:000s|000's|k|thousands)\s*\)|\bin 000s\b/i.test(prompt);
 
-const PER: Record<"hour" | "week" | "month", { n: number; how: string }> = {
+// 260 working days a year, the same rule discovery uses to read a day rate on a posting (#1187).
+const PER: Record<Per, { n: number; how: string }> = {
   hour: { n: 2080, how: "2,080 working hours" },
+  day: { n: 260, how: "260 working days" },
   week: { n: 52, how: "52 weeks" },
   month: { n: 12, how: "12 months" },
 };
@@ -191,7 +197,7 @@ const PER: Record<"hour" | "week" | "month", { n: number; how: string }> = {
  * The ask in the period the question uses. Every number above is a year's pay, so an hourly or monthly question gets
  * the yearly ask divided down, not "$165,000" in an hourly-rate field (#949).
  */
-export function suggestSalary(i: Parameters<typeof yearlyAsk>[0] & { per?: "hour" | "week" | "month" | null; thousands?: boolean }): { amount: string | null; note: string; question?: string } | null {
+export function suggestSalary(i: Parameters<typeof yearlyAsk>[0] & { per?: Per | null; thousands?: boolean }): { amount: string | null; note: string; question?: string } | null {
   const r = yearlyAsk(i);
   if (!r || !r.amount) return r;
   // A yearly ask "in thousands" gets 165, not $165,000 (#1188).
