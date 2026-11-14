@@ -92,8 +92,12 @@ const PRE = String.raw`(?:\b(US|CA|C|AU|A|SG|S|NZ|HK|MX|NT|(?:${DOLLARS}) ?)(?=\
 const CODE = String.raw`(?:\s?(${DOLLARS})\b)?`;
 // A code may stand in for the "$": "USD 150,000 - 200,000" (#753). A bare "120,000 - 150,000" still doesn't count.
 const CODE_LEAD = String.raw`\b(${DOLLARS})\s?(?=\d)`;
+// The second end may carry the same symbol as the first: "£60,000 - £70,000" (#1186).
 const range = (start: string, sep: string, lead = String.raw`${PRE}\$`, end = "") =>
-  new RegExp(String.raw`${start}${lead}\s?(${AMT})(${FIRST_UNIT})?${CODE}\s*${sep}\s*${PRE}\$?\s?(${AMT})${end}([^\n]{0,40})`, "gi");
+  new RegExp(String.raw`${start}${lead}\s?(${AMT})(${FIRST_UNIT})?${CODE}\s*${sep}\s*${PRE}[$£€]?\s?(${AMT})${end}([^\n]{0,40})`, "gi");
+// A pound or euro sign leads a range the way "$" does: "£60,000 - £70,000", "€50k - €60k" (#1186). Before, only Greenhouse
+// and structured data read them, so a UK posting's pay reached the find as dollars and the USD floor cut it.
+const OTHER_SIGN = "([£€])";
 // Or the code comes only after the numbers: "180,000 - 220,000 USD", "180K - 220K CAD" (#809). The empty group keeps
 // the match groups in line; the code stays in the tail, where the currency is read from.
 const NO_LEAD = String.raw`()(?<![\d.,$])`;
@@ -106,8 +110,10 @@ const RANGES = [
   range(String.raw`\bbetween\s+`, "and", CODE_LEAD),
   range("", "(?:-|–|—|to)", NO_LEAD, CODE_TRAIL),
   range(String.raw`\bbetween\s+`, "and", NO_LEAD, CODE_TRAIL),
+  range("", "(?:-|–|—|to)", OTHER_SIGN),
+  range(String.raw`\bbetween\s+`, "and", OTHER_SIGN),
 ];
-const PREFIX: Record<string, string> = { us: "USD", ca: "CAD", c: "CAD", a: "AUD", s: "SGD", sg: "SGD", nz: "NZD", hk: "HKD", au: "AUD", mx: "MXN", nt: "TWD", usd: "USD", cad: "CAD", aud: "AUD", sgd: "SGD", nzd: "NZD", hkd: "HKD", mxn: "MXN", twd: "TWD" };
+const PREFIX: Record<string, string> = { us: "USD", ca: "CAD", c: "CAD", a: "AUD", s: "SGD", sg: "SGD", nz: "NZD", hk: "HKD", au: "AUD", mx: "MXN", nt: "TWD", "£": "GBP", "€": "EUR", usd: "USD", cad: "CAD", aud: "AUD", sgd: "SGD", nzd: "NZD", hkd: "HKD", mxn: "MXN", twd: "TWD" };
 
 // What the range is per, from the words after it. The unit named first wins, so "per year, paid monthly" stays yearly (#484)
 // and "per hour, plus an annual bonus" stays hourly (#646).
