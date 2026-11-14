@@ -12,7 +12,16 @@ import { contactParts, parseDraft, roleParts, styleFor, type Template } from "./
 const RIGHT = 12240 - 2 * 1080;
 const pt = (n: number) => Math.round(n * 2);
 
+// Characters XML 1.0 forbids. Word calls a file holding one corrupt; text pasted from Word can carry \v (#1144).
+const xmlSafe = (t: string) => t.replace(/[\u000b\u000c]/g, " ").replace(/[\u0000-\u0008\u000e-\u001f]/g, "");
+
 export async function draftToDocx(md: string, title: string, opts: { letterHeader?: { name: string; contact: string; headline?: string }; template?: Template; accent?: string } = {}) {
+  md = xmlSafe(md);
+  title = xmlSafe(title);
+  if (opts.letterHeader) {
+    const h = opts.letterHeader;
+    opts = { ...opts, letterHeader: { name: xmlSafe(h.name), contact: xmlSafe(h.contact), ...(h.headline !== undefined ? { headline: xmlSafe(h.headline) } : {}) } };
+  }
   const T = styleFor(opts.template ?? "modern", opts.accent);
   const run = (text: string, o: { size?: number; bold?: boolean; italics?: boolean; color?: string; caps?: boolean; spacing?: number } = {}) =>
     new TextRun({ text, font: T.docxFont, size: pt(o.size ?? 10), bold: o.bold, italics: o.italics, color: o.color ?? T.ink, allCaps: o.caps, characterSpacing: o.spacing });
