@@ -11,7 +11,7 @@ type Ctx = { params: Promise<{ id: string; itemId: string }> };
 
 const Action = z.discriminatedUnion("action", [
   z.object({ action: z.literal("edit"), content: z.string().max(40_000), note: z.string().max(500).default("") }),
-  z.object({ action: z.literal("revise"), instruction: z.string().trim().min(2).max(2000) }),
+  z.object({ action: z.literal("revise"), instruction: z.string().trim().min(2).max(2000), versionId: z.string().uuid().optional() }),
   z.object({ action: z.literal("approve"), versionId: z.string().uuid().nullable() }),
   z.object({ action: z.literal("redraft"), strategy: z.enum(LETTER_STRATEGIES).optional() }),
   z.object({ action: z.literal("analyze"), versionId: z.string().uuid() }),
@@ -23,7 +23,7 @@ export const POST = authed<Ctx>(async (req, { user, params }) => {
   const { id, itemId } = await params;
   const a = await body(req, Action);
   if (a.action === "edit") return json({ status: await editItem(user.id, id, itemId, a.content, a.note) });
-  if (a.action === "revise") return json(await reviseItem(user.id, id, itemId, a.instruction));
+  if (a.action === "revise") return json(await reviseItem(user.id, id, itemId, a.instruction, a.versionId));
   if (a.action === "analyze") return json(await analyzeItem(user.id, id, itemId, a.versionId));
   if (a.action === "redraft") {
     const app = await ownApplication(user.id, id);

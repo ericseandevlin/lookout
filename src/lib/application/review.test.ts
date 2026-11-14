@@ -220,6 +220,22 @@ describe("reviseItem", () => {
     expect(msgs.map((m) => m.role).sort()).toEqual(["assistant", "user"]);
   });
 
+  it("revises the version on screen, not the newest (#1211)", async () => {
+    const { appId, ids } = await seed("needs_review", [{ kind: "answer", prompt: "Why us?", content: "First draft" }]);
+    await db.insert(schema.itemVersions).values({ itemId: ids[0].item, version: 2, content: "Second draft", author: "user" });
+    completeJSON.mockResolvedValue({ content: "Short first.", note: "Cut it.", question: "" });
+    await reviseItem(userId, appId, ids[0].item, "make it shorter", ids[0].version);
+    expect(completeJSON.mock.calls[0][0].user).toContain("<current>\nFirst draft\n</current>");
+    const vs = await versions(ids[0].item);
+    expect(vs[2]).toMatchObject({ version: 3, content: "Short first.", sources: ["your instruction", "version 1"] });
+  });
+
+  it("refuses a version from another item before calling the model (#1211)", async () => {
+    const { appId, ids } = await seed("needs_review", [{ kind: "answer", prompt: "Why us?" }, { kind: "answer", prompt: "Why you?" }]);
+    await expect(reviseItem(userId, appId, ids[0].item, "make it shorter", ids[1].version)).rejects.toMatchObject({ status: 404 });
+    expect(completeJSON).not.toHaveBeenCalled();
+  });
+
   it("asks instead of adding a version when the model needs a fact", async () => {
     completeJSON.mockResolvedValue({ content: "", note: "", question: "Which year did you start?" });
     const { appId, ids } = await seed("needs_review", [{ kind: "answer", prompt: "Why us?" }]);

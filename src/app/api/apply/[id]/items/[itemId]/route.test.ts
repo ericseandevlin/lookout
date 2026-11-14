@@ -146,6 +146,7 @@ describe("POST /api/apply/[id]/items/[itemId] gate (#553)", () => {
     { action: "edit" },
     { action: "edit", content: "x".repeat(40_001) },
     { action: "revise", instruction: " a " },
+    { action: "revise", instruction: "Shorter", versionId: "v1" },
     { action: "approve", versionId: "v1" },
     { action: "analyze" },
   ])("refuses %j", async (data) => {
@@ -190,7 +191,9 @@ describe("POST /api/apply/[id]/items/[itemId] actions (#553)", () => {
         await send(a, i, { action: "revise", instruction: "  Shorter  " })
       ).json(),
     ).toEqual({ status: "needs_review", versionId: "v2" });
-    expect(steps.reviseItem).toHaveBeenCalledWith(alice.id, a, i, "Shorter");
+    expect(steps.reviseItem).toHaveBeenCalledWith(alice.id, a, i, "Shorter", undefined);
+    await send(a, i, { action: "revise", instruction: "Shorter", versionId: v });
+    expect(steps.reviseItem).toHaveBeenLastCalledWith(alice.id, a, i, "Shorter", v);
 
     expect(
       await (await send(a, i, { action: "analyze", versionId: v })).json(),
