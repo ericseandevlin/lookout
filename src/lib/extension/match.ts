@@ -4,6 +4,15 @@
  * several URLs: redventures.com/...?gh_jid=8008090, job-boards.greenhouse.io/embed/job_app?token=8008090,
  * boards.greenhouse.io/redventures/jobs/8008090. All of them reduce to one key.
  */
+/** A URL part decoded, or as written when it holds a bad escape ("100%-Commission", "%E9"): never a URIError (#1162). */
+export const safeDecode = (s: string) => {
+  try {
+    return decodeURIComponent(s);
+  } catch {
+    return s;
+  }
+};
+
 export function jobKey(raw: string | null | undefined): string | null {
   if (!raw) return null;
   let u: URL;
@@ -26,7 +35,7 @@ export function jobKey(raw: string | null | undefined): string | null {
   // wdN.myworkdaysite.com/recruiting/<tenant>/... serves many employers, so the tenant joins the key (#666).
   const wdHost = /myworkdayjobs\.com$/.test(host) ? host : /myworkdaysite\.com$/.test(host) ? `${host}/${u.pathname.match(/\/recruiting\/([^/]+)/i)?.[1]?.toLowerCase() ?? ""}` : null;
   const wd = wdHost && u.pathname.match(/\/(?:job|details)\/(?:[^/]+\/)*?([^/]+)\/*(?:\/apply(?:\/.*)?)?$/i)?.[1];
-  if (wd) return `workday:${wdHost}:${decodeURIComponent(wd).toLowerCase()}`;
+  if (wd) return `workday:${wdHost}:${safeDecode(wd).toLowerCase()}`;
   // iCIMS (#852): careers-acme.icims.com/jobs/1234/<title>/job, then .../login and .../candidate on the way to the form.
   const icims = /(^|\.)icims\.com$/.test(host) && u.pathname.match(/^\/jobs\/(\d+)(?:\/|$)/i)?.[1];
   if (icims) return `icims:${host}:${icims}`;

@@ -1,5 +1,6 @@
 import { z } from "zod";
 import type { ApplicationItemKind } from "@/lib/db/schema";
+import { safeDecode } from "@/lib/extension/match";
 
 /**
  * Auto-apply step 2: read what an application asks for (#39).
@@ -69,7 +70,7 @@ export function detectAts(raw: string): AtsRef {
   const ashbyJid = u.searchParams.get("ashby_jid")?.match(UUID)?.[0];
   if (ashbyJid) return { ats: "ashby", org: "", id: ashbyJid };
   if ((host === "jobs.lever.co" || host === "jobs.eu.lever.co") && parts.length >= 2) return { ats: "lever", host, site: parts[0], id: parts[1] };
-  if (host === "jobs.ashbyhq.com" && parts.length >= 2) return { ats: "ashby", org: decodeURIComponent(parts[0]), id: parts[1] };
+  if (host === "jobs.ashbyhq.com" && parts.length >= 2) return { ats: "ashby", org: safeDecode(parts[0]), id: parts[1] };
   if (/myworkdayjobs\.com$|myworkday\.com$|myworkdaysite\.com$/.test(host)) return { ats: "workday" };
   if (/smartrecruiters\.com$/.test(host)) return { ats: "smartrecruiters" };
   return { ats: "other" };
@@ -87,7 +88,7 @@ export function applyUrlFor(ref: AtsRef, postingUrl: string) {
 /** The Ashby org a company page embeds, from its embed script or iframe (#676). */
 export function ashbyOrgFromHtml(html: string): string | null {
   const org = html.match(/jobs\.ashbyhq\.com\/([A-Za-z0-9._%-]+)\/(?:embed\b|[0-9a-f]{8}-)/i)?.[1];
-  return org && org !== "api" ? decodeURIComponent(org) : null;
+  return org && org !== "api" ? safeDecode(org) : null;
 }
 
 /** The Greenhouse board a company page embeds, from its embed script or API calls. */
