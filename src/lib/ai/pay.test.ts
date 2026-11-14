@@ -328,6 +328,23 @@ describe("findPay", () => {
     expect(t("$150,000 - $180,000")).toMatchObject({ currency: "USD" });
   });
 
+  it("reads euro and pound pay written the European way (#1199)", () => {
+    const t = (text: string) => findPay("", text);
+    expect(t("Gehalt: €60.000 - €70.000 brutto")).toEqual({ min: 60000, max: 70000, currency: "EUR", source: "text" });
+    expect(t("Salaire : 60 000 € - 70 000 € par an")).toEqual({ min: 60000, max: 70000, currency: "EUR", source: "text" });
+    expect(t("Salary: 60.000 € – 70.000 €")).toMatchObject({ min: 60000, max: 70000, currency: "EUR" });
+    expect(t("Salary: 60.000 - 70.000 EUR per year")).toMatchObject({ min: 60000, max: 70000, currency: "EUR" });
+    expect(t("€55.000,00 bis €65.000,00")).toMatchObject({ min: 55000, max: 65000, currency: "EUR" });
+    expect(t("Salary €60\u00a0000 – €70\u00a0000")).toMatchObject({ min: 60000, max: 70000, currency: "EUR" });
+    expect(t("Salary: £45.000 - £55.000")).toMatchObject({ min: 45000, max: 55000, currency: "GBP" });
+    expect(t("€4.000 - €5.000 per month")).toMatchObject({ min: 48000, max: 60000, currency: "EUR" });
+    // Dollars and cents and plain thousands marks read as before.
+    expect(t("$55.50 - $65.00 per hour")).toMatchObject({ min: 115440, max: 135200, currency: "USD" });
+    expect(t("€60,000 - €70,000")).toMatchObject({ min: 60000, max: 70000, currency: "EUR" });
+    // A bare range with no sign or code still doesn't count.
+    expect(t("Team of 60.000 - 70.000 people")).toBeNull();
+  });
+
   it("reads a day rate as 260 working days (#1187)", () => {
     const t = (text: string) => findPay("", text);
     expect(t("Pay: $600 - $800 per day")).toEqual({ min: 156000, max: 208000, currency: "USD", source: "text" });

@@ -115,7 +115,19 @@ const RANGES = [
   range("", "(?:-|–|—|to)", OTHER_SIGN),
   range(String.raw`\bbetween\s+`, "and", OTHER_SIGN),
 ];
-const PREFIX: Record<string, string> = { us: "USD", ca: "CAD", c: "CAD", a: "AUD", s: "SGD", sg: "SGD", nz: "NZD", hk: "HKD", au: "AUD", mx: "MXN", nt: "TWD", "£": "GBP", "€": "EUR", usd: "USD", cad: "CAD", aud: "AUD", sgd: "SGD", nzd: "NZD", hkd: "HKD", mxn: "MXN", twd: "TWD" };
+// Euro and pound amounts written the European way: a dot or space between thousands, a comma before cents ("€60.000",
+// "60 000 €", "€60.000,00"), and the sign before or after the number (#1199). At least one thousands group, so "€60.00" or
+// a year never reads as one.
+const EU_AMT = String.raw`\d{1,3}(?:[.\u00a0\u202f ]\d{3})+(?:,\d{1,2})?`;
+const EU_SEP = "(?:-|–|—|to|bis)";
+const EU_RANGES = [
+  new RegExp(String.raw`([€£])\s?(${EU_AMT})(${FIRST_UNIT})?(?:\s?(EUR|GBP)\b)?\s*${EU_SEP}\s*([€£])?\s?(${EU_AMT})([^\n]{0,40})`, "gi"),
+  new RegExp(String.raw`()(?<![\d.,$€£])(${EU_AMT})(${FIRST_UNIT})?(?:\s?([€£]|EUR\b|GBP\b))?\s*${EU_SEP}\s*()(${EU_AMT})(?=\s?(?:[€£]|EUR\b|GBP\b))([^\n]{0,40})`, "gi"),
+];
+const EU_NUMBER = new RegExp(`^${EU_AMT}$`);
+/** "60.000" or "60 000,50" -> 60000 / 60000.5; anything else as money() reads it. */
+const amountOf = (s: string) => (EU_NUMBER.test(s) ? Number(s.replace(/[.\u00a0\u202f ]/g, "").replace(",", ".")) : money(s));
+const PREFIX: Record<string, string> = { us: "USD", ca: "CAD", c: "CAD", a: "AUD", s: "SGD", sg: "SGD", nz: "NZD", hk: "HKD", au: "AUD", mx: "MXN", nt: "TWD", "£": "GBP", "€": "EUR", eur: "EUR", gbp: "GBP", usd: "USD", cad: "CAD", aud: "AUD", sgd: "SGD", nzd: "NZD", hkd: "HKD", mxn: "MXN", twd: "TWD" };
 
 // What the range is per, from the words after it. The unit named first wins, so "per year, paid monthly" stays yearly (#484)
 // and "per hour, plus an annual bonus" stays hourly (#646).
@@ -166,17 +178,17 @@ function label(text: string, at: number) {
 
 function fromText(text: string): Pay | null {
   // In page order, so the first range on the page still wins.
-  for (const m of RANGES.flatMap((re) => [...text.matchAll(re)]).sort((x, y) => x.index - y.index)) {
+  for (const m of [...RANGES, ...EU_RANGES].flatMap((re) => [...text.matchAll(re)]).sort((x, y) => x.index - y.index)) {
     const [, pre1, first, firstUnit, code, pre2, second, rest = ""] = m;
     // The unit is read only up to the next dollar amount: "$150,000 - $200,000 ($72-$96/hr)" stays yearly (#746).
     const tail = rest.split("$")[0];
-    let a = money(first);
-    const b = money(second);
+    let a = amountOf(first);
+    const b = amountOf(second);
     if (!a || !b) continue;
     // "$150-200K": the K on the second end covers a bare first end too (#682).
     if (a < 1000 && /k$/i.test(second) && !/k$/i.test(first)) a *= 1000;
     const said = `${firstUnit ?? ""} ${tail}`;
-    const named = PREFIX[(pre1 ?? pre2 ?? "").trim().toLowerCase()] ?? code?.toUpperCase();
+    const named = PREFIX[(pre1 ?? pre2 ?? "").trim().toLowerCase()] ?? (code ? (PREFIX[code.toLowerCase()] ?? code.toUpperCase()) : undefined);
     // The currency is read only up to the next number, so a Canada range after a US one doesn't make it CAD (#811).
     const own = tail.split(/\d/)[0];
     // Any common code there counts, so "SGD" or "NZD" after a range isn't read as US dollars (#883).
