@@ -210,6 +210,19 @@ describe("findPay", () => {
     expect(findPay("", text)).toMatchObject({ min, max, currency });
   });
 
+  it.each([
+    ["Salary: GBP 60,000 - 70,000", 60000, 70000, "GBP"],
+    ["60,000 - 70,000 GBP per annum", 60000, 70000, "GBP"],
+    ["EUR 60,000 - 70,000", 60000, 70000, "EUR"],
+    ["60,000 - 70,000 EUR", 60000, 70000, "EUR"],
+    ["CHF 120,000 - 140,000", 120000, 140000, "CHF"],
+    ["120,000 - 140,000 CHF", 120000, 140000, "CHF"],
+    ["Pay is between GBP 55k and 65k", 55000, 65000, "GBP"],
+    ["60,000 GBP - 70,000 GBP", 60000, 70000, "GBP"],
+  ])("reads %s, a pound, euro or franc code with commas (#1239)", (text, min, max, currency) => {
+    expect(findPay("", text)).toMatchObject({ min, max, currency });
+  });
+
   it("keeps the $ range first when a code-trailed range follows it (#809)", () => {
     expect(findPay("", "$150,000 - $200,000. Canada: 140,000 - 190,000 CAD")).toMatchObject({ min: 150000, max: 200000 });
   });
