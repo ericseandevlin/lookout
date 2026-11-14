@@ -789,6 +789,13 @@ describe("extension probe and submit watch", () => {
     expect(log[0]).toMatchObject({ ok: true, how: "typed" });
   });
 
+  it("a number field reads a range's k on its first end, like the worker (#1254)", async () => {
+    const p = page(`<label for="s">Desired salary</label><input id="s" type="number">`);
+    const log = await p.fill({ steps: [{ prompt: "Desired salary", kind: "text", content: "$120-150k", required: true }] });
+    expect(p.value("#s")).toBe("120000");
+    expect(log[0]).toMatchObject({ ok: true, how: "typed" });
+  });
+
   it("a number field reads a k after the number, like the worker (#1168)", async () => {
     const p = page(`<label for="s">Desired salary</label><input id="s" type="number">`);
     const log = await p.fill({ steps: [{ prompt: "Desired salary", kind: "text", content: "$165k", required: true }] });

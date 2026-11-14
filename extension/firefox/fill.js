@@ -209,12 +209,13 @@
     return labels.findIndex((l) => Math.min(a.length, norm(l).length) >= 80 && sameText(l, answer));
   }
 
-  /** The answer's first number, same as the worker: "$165k" is 165000 (#1168). */
+  /** The answer's first number, same as the worker: "$165k" is 165000 (#1168), "$120-150k" is 120000 (#1254). */
   function numberAnswer(t) {
-    const m = String(t || "").match(/(\d[\d,]*(?:\.\d+)?)([km]\b)?/i);
+    const m = String(t || "").match(/(\d[\d,]*(?:\.\d+)?)([km]\b)?(?:\s*(?:-|–|—|to)\s*\$?\d[\d,]*(?:\.\d+)?([km]\b))?/i);
     if (!m) return "";
     const n = m[1].replace(/,/g, "");
-    return m[2] ? String(Math.round(Number(n) * (m[2].toLowerCase() === "k" ? 1e3 : 1e6))) : n;
+    const unit = m[2] || (Number(n) < 1000 ? m[3] : undefined);
+    return unit ? String(Math.round(Number(n) * (unit.toLowerCase() === "k" ? 1e3 : 1e6))) : n;
   }
 
   /**

@@ -313,6 +313,10 @@ describe("runFill (#385)", () => {
     expect(["$2.3K", "$1.2M", "7.5 years", "165000", "5 months", "$165,000 base"].map(numberAnswer)).toEqual(["2300", "1200000", "7.5", "165000", "5", "165000"]);
   });
 
+  it("a range's k covers its bare first end (#1254)", () => {
+    expect(["$120-150k", "120 to 150K", "$120 – $150k", "$1-1.5M", "$120,000 - 150k", "5 - 10 years"].map(numberAnswer)).toEqual(["120000", "120000", "120000", "1000000", "120000", "5"]);
+  });
+
   it("a date field gets the answer as yyyy-mm-dd, not \"12/01/2026\" (#1242)", async () => {
     const id = await seed("approved", [{ kind: "answer", prompt: "Earliest start date", content: "12/01/2026" }]);
     page = fakePage([{ kind: "control", label: "Earliest start date", type: "date" }]);
