@@ -175,6 +175,9 @@ describe("CONFIRMATION (#692, #748, #762)", () => {
       "You have not successfully applied yet.",
       "You have never successfully applied for this role.",
       "Your application has not been successfully submitted.",
+      // #1115: "unsuccessfully" is a failed submit too.
+      "Your application was unsuccessfully submitted.",
+      "Application unsuccessfully submitted, please try again",
     ])
       expect(CONFIRMATION.test(t), t).toBe(false);
   });
