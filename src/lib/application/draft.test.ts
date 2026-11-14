@@ -182,3 +182,18 @@ describe("checkAnswer", () => {
   });
 });
 
+
+describe("newNumbers: the same number spelled another way (#1148)", () => {
+  it("a plain number the master states with \"over\" is not new", () => {
+    expect(newNumbers("Managed over 20 engineers.", "Managed 20 engineers.")).toEqual([]);
+  });
+  it("round numbers compare across spellings", () => {
+    expect(newNumbers("Grew to 1,000,000 users.", "Grew to 1M users.")).toEqual([]);
+    expect(newNumbers("Saved $250K a year.", "Saved $250,000 a year.")).toEqual([]);
+    expect(newNumbers("Raised $1,200,000.", "Raised $1.2 million.")).toEqual([]);
+  });
+  it("a bigger claim is still new", () => {
+    expect(newNumbers("Managed 20 engineers.", "Managed over 20 engineers.")).toEqual(["20+"]);
+    expect(newNumbers("Grew to 1,000,000 users.", "Grew to 2M users.")).toEqual(["2m"]);
+  });
+});
