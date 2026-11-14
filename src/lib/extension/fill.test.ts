@@ -2,7 +2,7 @@ import { readFileSync } from "node:fs";
 import path from "node:path";
 import { JSDOM } from "jsdom";
 import { describe, expect, it } from "vitest";
-import { checksBox, pickOne, pickOptions } from "@/lib/application/fillPlan";
+import { answersBox, checksBox, pickOne, pickOptions } from "@/lib/application/fillPlan";
 
 /**
  * The Firefox extension's form filler (#589): extension/firefox/fill.js, run in a real DOM and driven
@@ -352,6 +352,21 @@ describe("extension fill: choices", () => {
     expect(ticked).toEqual([true, true, true, false, false, false, true, true, true, true, true, true]);
     expect(ticked).toEqual(answers.map(checksBox));
     expect(log.map((l) => l.how)).toEqual(["checked", "checked", "checked", "left unchecked", "left unchecked", "left unchecked", "checked", "checked", "checked", "checked", "checked", "checked"]);
+  });
+
+  it("never unticks a box whose label only holds a text answer's question (#1112)", async () => {
+    const p = page(`<div><span>LinkedIn Profile</span><input name="li"></div>
+      <label><input type="checkbox" id="none" checked> I don't have a LinkedIn profile</label>`);
+    const [r] = await p.fill({ steps: [{ prompt: "LinkedIn Profile", kind: "text", content: "https://linkedin.com/in/someone", required: false }] });
+    expect(r).toMatchObject({ ok: false, how: "field not found" });
+    expect((p.doc.querySelector("#none") as HTMLInputElement).checked).toBe(true);
+  });
+
+  it("still answers a box whose label holds the question with a yes or a no (#1112)", async () => {
+    const p = page(`<label><input type="checkbox" id="c"> I give my consent to be contacted</label>`);
+    const [r] = await p.fill({ steps: [{ prompt: "consent to be contacted", kind: "text", content: "Yes", required: false }] });
+    expect(r).toMatchObject({ ok: true, how: "checked" });
+    expect(["Yes", "No", "", "false", "https://x.com", "N/A"].map(answersBox)).toEqual([true, true, true, true, false, false]);
   });
 
   it("unticks a box the site ticked ahead when the answer is no (#788)", async () => {

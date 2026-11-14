@@ -5,7 +5,7 @@ import { and, asc, eq, inArray } from "drizzle-orm";
 import { db, schema } from "@/lib/db";
 import { env } from "@/lib/env";
 import { draftToDocx } from "./docx";
-import { checksBox, CONFIRMATION, pickOne, pickOptions, planFill, uploadLabels, type FillStep } from "./fillPlan";
+import { answersBox, checksBox, CONFIRMATION, pickOne, pickOptions, planFill, uploadLabels, type FillStep } from "./fillPlan";
 import { letterHeaderFrom, type Template } from "./resumeLayout";
 import { getAutoApplySettings } from "@/lib/apply";
 import { resolve } from "./eeo";
@@ -255,6 +255,8 @@ async function fillOne(page: Page, s: FillStep): Promise<{ ok: boolean; how: str
       return { ok: true, how: "selected" };
     }
     if (tag.includes(":checkbox:")) {
+      // A box whose label only holds the question is a text answer's field only if the answer is a yes or a no (#1112).
+      if (!hasExact && s.kind !== "choice" && !answersBox(s.content)) return { ok: false, how: "field not found" };
       // A required box the answer doesn't tick is reported missing, not filled (#669).
       if (!checksBox(s.content)) {
         if (s.required) return { ok: false, how: "answer is not a yes" };
