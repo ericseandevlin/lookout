@@ -800,6 +800,15 @@ describe("extension probe and submit watch", () => {
     expect(p.sent[1]).toMatchObject({ type: "lookout-thanks", appId: "app-1", text: "application has been submitted" });
   });
 
+  it("a thank-you that replaces the page content is reported, even with posting text gone (#1290)", async () => {
+    const p = page(`<div id="root"><p>Your application was submitted to the hiring team weekly.</p><form><label for="fn">First Name</label><input id="fn"><button type="button" id="go">Submit application</button></form></div>`);
+    await p.fill({ steps: [text("First Name", "Pat")] });
+    (p.doc.getElementById("go") as HTMLButtonElement).click();
+    p.doc.getElementById("root")!.innerHTML = "<h1>Thank you for applying!</h1>";
+    await new Promise((r) => setTimeout(r, 20));
+    expect(p.sent[1]).toMatchObject({ type: "lookout-thanks", appId: "app-1", text: "Thank you for applying" });
+  });
+
   it("a dollar answer in a number field fills its number (#1140)", async () => {
     const p = page(`<label for="s">Desired salary</label><input id="s" type="number">`);
     const log = await p.fill({ steps: [{ prompt: "Desired salary", kind: "text", content: "$165,000", required: true }] });

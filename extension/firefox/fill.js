@@ -468,9 +468,14 @@
         browser.runtime.sendMessage({ type: "lookout-armed", appId });
         // Posting text on the page can already match, so only a thank-you past the ones there at the click counts (#784).
         const matches = () => document.body.innerText.match(new RegExp(THANKS.source, "gi")) || [];
-        const seen = matches().length;
+        // Counted by text, not position: a page that swaps its content drops the old match, so a new thank-you
+        // would sit at an index already seen and never be noticed (#1290).
+        const count = (list) => list.reduce((c, t) => c.set(t.toLowerCase(), (c.get(t.toLowerCase()) || 0) + 1), new Map());
+        const before = count(matches());
         const obs = new MutationObserver(() => {
-          const m = matches()[seen];
+          const now = matches();
+          const after = count(now);
+          const m = now.find((t) => after.get(t.toLowerCase()) > (before.get(t.toLowerCase()) || 0));
           if (m) {
             obs.disconnect();
             browser.runtime.sendMessage({ type: "lookout-thanks", appId, url: location.href, text: m });
