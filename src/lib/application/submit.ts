@@ -372,12 +372,16 @@ async function fillOne(page: Page, s: FillStep): Promise<{ ok: boolean; how: str
   }
 }
 
-/** The answer's first number for a number field. A k or M right after it counts: "$165k" is 165000, not 165 (#1168). */
+/**
+ * The answer's first number for a number field. A k or M right after it counts: "$165k" is 165000, not 165 (#1168). In a
+ * range the second end's k or M covers a bare first end below 1,000: "$120-150k" is 120000 (#1254).
+ */
 export const numberAnswer = (t: string) => {
-  const m = t.match(/(\d[\d,]*(?:\.\d+)?)([km]\b)?/i);
+  const m = t.match(/(\d[\d,]*(?:\.\d+)?)([km]\b)?(?:\s*(?:-|–|—|to)\s*\$?\d[\d,]*(?:\.\d+)?([km]\b))?/i);
   if (!m) return "";
   const n = m[1].replace(/,/g, "");
-  return m[2] ? String(Math.round(Number(n) * (m[2].toLowerCase() === "k" ? 1e3 : 1e6))) : n;
+  const unit = m[2] ?? (Number(n) < 1000 ? m[3] : undefined);
+  return unit ? String(Math.round(Number(n) * (unit.toLowerCase() === "k" ? 1e3 : 1e6))) : n;
 };
 
 const MONTHS = ["jan", "feb", "mar", "apr", "may", "jun", "jul", "aug", "sep", "oct", "nov", "dec"];
