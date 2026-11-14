@@ -55,7 +55,10 @@ const qualifier = (q: string) =>
 // Work authorization and sponsorship don't change with the role: "authorized to work in the United States for this
 // position?" is the same fact everywhere, so "this role" or "this position" doesn't rule it out. "This location" still does (#1123).
 const AUTH = /authori[sz]ed to work|work authori[sz]ation|legally (authorized|eligible)|sponsor|\bvisa\b/i;
-const neverKept = (question: string) => NEVER.test(AUTH.test(question) ? question.replace(/\bthis (role|position)\b/gi, " ") : question);
+// Where the job is, not where the person is: a US job's "No" to sponsorship "in the country where this role is based" is the
+// wrong answer for a London job. Checked before "this role" is removed; "the country where you live" is still kept (#1227).
+const JOB_PLACE = /\b(role|job|position|opportunity) (is|will be) (based|located)\b|\b(role|job|position)'?s (country|location)\b/i;
+const neverKept = (question: string) => JOB_PLACE.test(question) || NEVER.test(AUTH.test(question) ? question.replace(/\bthis (role|position)\b/gi, " ") : question);
 
 export function isCommon(question: string, answer: string) {
   return COMMON.test(question) && !neverKept(question) && !EEO.test(question) && answer.trim().length > 0 && answer.length <= 300 && !onlyThisOne(question, answer);
@@ -69,8 +72,8 @@ export function upsert(list: SavedAnswer[], question: string, answer: string): S
 
 /** A saved answer for the same question, if it fits the form's choices. */
 export function match(list: SavedAnswer[], question: string, options?: string[] | null): string | null {
-  // Answers saved before #1032 may still hold one employer's Yes: never reuse those.
-  const hit = list.find((s) => s.key === answerKey(question) && qualifier(s.question) === qualifier(question) && !onlyThisOne(s.question, s.answer) && !EEO.test(s.question));
+  // Answers saved before #1032 may still hold one employer's Yes, and before #1227 one job's country: never reuse those.
+  const hit = list.find((s) => s.key === answerKey(question) && qualifier(s.question) === qualifier(question) && !onlyThisOne(s.question, s.answer) && !EEO.test(s.question) && !JOB_PLACE.test(s.question));
   if (!hit) return null;
   if (!options?.length) return hit.answer;
   return options.find((o) => o.toLowerCase() === hit.answer.toLowerCase()) ?? null;
