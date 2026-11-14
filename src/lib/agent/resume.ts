@@ -4,6 +4,7 @@ import { eq } from "drizzle-orm";
 import { z } from "zod";
 import { db, schema } from "@/lib/db";
 import { readUserFile } from "@/lib/files";
+import { decodeEntities } from "@/lib/ai/entities";
 import { AiConfigError, completeJSON, emptyUsage } from "@/lib/ai/llm";
 import { traceAs } from "@/lib/ai/trace";
 import { startBudgetedRun, BudgetError, finishRun, progress, startRun } from "@/lib/ai/runs";
@@ -22,8 +23,30 @@ export async function extractResumeText(buf: Buffer, mime: string) {
     return text;
   }
   const mammoth = await import("mammoth");
-  const { value } = await mammoth.extractRawText({ buffer: buf });
-  return value;
+  const { value } = await mammoth.convertToHtml({ buffer: buf });
+  return docxHtmlToText(value);
+}
+
+/**
+ * Word text from mammoth's HTML, not its raw text: raw text drops list bullets, so the master rebuild
+ * couldn't tell a dropped bullet from a heading (#1263), and it runs line breaks together.
+ * Each paragraph is its own line, a list item starts with "• ", paragraphs are a blank line apart.
+ */
+export function docxHtmlToText(html: string): string {
+  const text = html
+    .replace(/<li[^>]*>/gi, "\n• ")
+    .replace(/<br\s*\/?>/gi, "\n")
+    .replace(/<\/(?:p|li|h\d|ul|ol|tr|table)>/gi, "\n")
+    .replace(/<\/t[dh]>/gi, " ")
+    .replace(/<[^>]+>/g, "");
+  return (
+    decodeEntities(text)
+      .split("\n")
+      .map((l) => l.replace(/[ \t ]+/g, " ").trim())
+      // A nested list opens an empty item for its parent level.
+      .filter((l) => l && l !== "•")
+      .join("\n\n") + "\n"
+  );
 }
 
 export const Fills = z.object({
