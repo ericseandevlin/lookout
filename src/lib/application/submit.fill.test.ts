@@ -296,6 +296,14 @@ describe("runFill (#385)", () => {
     expect(page.did).toContain("select Which offices?=Boston|Remote");
   });
 
+  it("a number field gets the answer's first number, not \"$165,000\" (#1140)", async () => {
+    const id = await seed("approved", [{ kind: "answer", prompt: "Desired salary", content: "$165,000" }]);
+    page = fakePage([{ kind: "control", label: "Desired salary", type: "number" }]);
+    const r = await runFill(id, "test");
+    expect(r.log[0]).toMatchObject({ ok: true, how: "typed" });
+    expect(page.did).toContain("fill Desired salary=165000");
+  });
+
   it("a one-choice <select> with several lines takes the first and reports the rest not filled (#1132)", async () => {
     const id = await seed("approved", [{ kind: "field", prompt: "Which office?", content: "Boston\nRemote" }]);
     page = fakePage([{ kind: "control", label: "Which office?", tag: "select", options: ["Boston", "Denver", "Remote"] }]);

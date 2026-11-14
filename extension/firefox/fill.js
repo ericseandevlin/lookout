@@ -200,6 +200,12 @@
     return labels.findIndex((l) => Math.min(a.length, norm(l).length) >= 80 && sameText(l, answer));
   }
 
+  /** The first number in an answer, for a number field: "$165,000" is "165000". Same as the worker (#1140). */
+  function numberAnswer(t) {
+    const m = String(t || "").match(/\d[\d,]*(\.\d+)?/);
+    return m ? m[0].replace(/,/g, "") : "";
+  }
+
   /** Set a value the way typing would, so React and friends notice. */
   function setValue(el, value) {
     const proto = el instanceof HTMLTextAreaElement ? HTMLTextAreaElement.prototype : HTMLInputElement.prototype;
@@ -365,6 +371,14 @@
         return { ok: true, how: "selected" };
       }
       if (el.getAttribute("role") === "combobox" || step.kind === "choice") return await pickFromCombobox(el, step.content);
+      // A number field drops "$165,000": fill the first number in the answer, and never call an empty field typed (#1140).
+      if (el instanceof HTMLInputElement && el.type === "number") {
+        const n = numberAnswer(step.content);
+        if (!n) return { ok: false, how: "number field, answer has no number" };
+        setValue(el, n);
+        if (el.value === "") return { ok: false, how: "field rejected the answer" };
+        return { ok: true, how: "typed" };
+      }
       setValue(el, step.content);
       return { ok: true, how: "typed" };
     } catch (e) {

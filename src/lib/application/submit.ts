@@ -331,12 +331,22 @@ async function fillOne(page: Page, s: FillStep): Promise<{ ok: boolean; how: str
       }
       return { ok: true, how: `picked ${lines.length} options` };
     }
+    // A number field takes only a number: Playwright throws on "$165,000", so fill its first number (#1140).
+    if (/^input:number:/.test(tag)) {
+      const n = numberAnswer(s.content);
+      if (!n) return { ok: false, how: "number field, answer has no number" };
+      await field.fill(n);
+      return { ok: true, how: "typed" };
+    }
     await field.fill(s.content);
     return { ok: true, how: "typed" };
   } catch (e) {
     return { ok: false, how: e instanceof Error ? e.message.split("\n")[0].slice(0, 120) : "error" };
   }
 }
+
+/** The first number in an answer, for a number field: "$165,000" is "165000". Same as the extension (#1140). */
+export const numberAnswer = (t: string) => t.match(/\d[\d,]*(\.\d+)?/)?.[0].replace(/,/g, "") ?? "";
 
 /**
  * Run a test fill or a real submit in the background and record the result on the application.
