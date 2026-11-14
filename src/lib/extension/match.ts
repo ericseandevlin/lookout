@@ -39,7 +39,8 @@ export function jobKey(raw: string | null | undefined): string | null {
   // iCIMS (#852): careers-acme.icims.com/jobs/1234/<title>/job, then .../login and .../candidate on the way to the form.
   const icims = /(^|\.)icims\.com$/.test(host) && u.pathname.match(/^\/jobs\/(\d+)(?:\/|$)/i)?.[1];
   if (icims) return `icims:${host}:${icims}`;
-  const path = u.pathname.replace(/\/(apply|application)\/?$/i, "").replace(/\/+$/, "");
+  // Recruitee's form is at /o/<job>/c/new and Teamtailor's at /jobs/<id>-<title>/applications/new: apply steps too (#1200).
+  const path = u.pathname.replace(/\/(apply|application|c\/new|applications\/new)\/?$/i, "").replace(/\/+$/, "");
   return `url:${host.replace(/^www\./, "")}${path.toLowerCase()}${idQuery(u.searchParams)}${hashRoute(u)}`;
 }
 

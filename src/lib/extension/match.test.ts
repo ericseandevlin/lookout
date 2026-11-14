@@ -107,6 +107,22 @@ describe("sameJob", () => {
   });
 });
 
+describe("Recruitee and Teamtailor apply steps (#1200)", () => {
+  it("matches the form page to its posting", () => {
+    const rc = "https://acme.recruitee.com/o/senior-product-designer";
+    expect(sameJob(["https://acme.recruitee.com/o/senior-product-designer/c/new"], [rc])).toBe(true);
+    expect(sameJob(["https://acme.recruitee.com/o/staff-designer/c/new"], [rc])).toBe(false);
+    const tt = "https://career.acme.com/jobs/4521337-senior-product-designer";
+    expect(sameJob(["https://career.acme.com/jobs/4521337-senior-product-designer/applications/new"], [tt])).toBe(true);
+    expect(sameJob(["https://acme.teamtailor.com/jobs/4521337-senior-product-designer/applications/new/"], ["https://acme.teamtailor.com/jobs/4521337-senior-product-designer"])).toBe(true);
+    expect(sameJob(["https://career.acme.com/jobs/9999999-staff-designer/applications/new"], [tt])).toBe(false);
+  });
+
+  it("keeps a path that only ends in new", () => {
+    expect(jobKey("https://acme.com/careers/new")).toBe("url:acme.com/careers/new");
+  });
+});
+
 describe("a link with a bad % escape (#1162)", () => {
   it("still gets a key, never a URIError", () => {
     const wd = "https://acme.wd5.myworkdayjobs.com/en-US/External/job/Boston-MA/Sales-Rep--100%-Commission_R123/apply";
