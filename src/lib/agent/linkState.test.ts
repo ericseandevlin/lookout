@@ -135,6 +135,15 @@ describe("classifyPage", () => {
   ])("keeps %s open: till and 'til read like until (#1101)", (text) => {
     expect(classifyPage(200, text).state).toBe("open");
   });
+  it.each([
+    "Our San Francisco office is no longer open; this role is fully remote.",
+    "The Austin store is no longer open, so this team works from Dallas.",
+  ])("keeps %s open: something else is no longer open, not the job (#1298)", (text) => {
+    expect(classifyPage(200, text).state).toBe("open");
+  });
+  it.each(["The job you are looking for is no longer open.", "No longer open", "Sorry, this posting is no longer open. See other roles."])("still reads %s as closed (#1298)", (text) => {
+    expect(classifyPage(200, text).state).toBe("gone");
+  });
   it.each(["Sorry, the position has been filled.", "This position has been filled. Thank you for your interest.", "This job is no longer open."])("still reads %s as closed (#903)", (text) => {
     expect(classifyPage(200, text).state).toBe("gone");
   });
