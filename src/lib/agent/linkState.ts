@@ -24,13 +24,14 @@ const CLOSED = [
   // A colon starts one only after a status label: "Visa sponsorship: No longer available" is about the visa (#1007).
   /(?:^|[.!?\n]\s*|\b(?:text|status|job status|posting status|job|posting|position|role):\s*)(?:sorry[,!]?\s*)?no longer (available|active|posted)\b/im,
   // Not "open until the position has been filled" or "once the position has been filled, this posting will be removed" (#903).
-  /(?<!\b(?:(?:until|till|til)(?: such time as)?|once|when|after|if|before|unless|for|of|to|on|with|in|about) (?:the |this |a |our )?)(job|position|posting|role|requisition|opening) (is )?(no longer|has (?:already |now )?been) (available|filled|closed|removed)/i,
+  /(?<!\b(?:(?:until|till|til)(?: such time as)?|once|when|after|if|before|unless|for|of|to|on|with|in|about) (?:the |this |a |our )?)(job|position|posting|role|requisition|opening|vacancy|opportunity|listing)( ad)? (is )?(no longer|has (?:already |now )?been) (available|filled|closed|removed)/i,
   /(job|posting|position|page) (was )?not found/i,
   /(?<!\b(?:until|till|til|once|when|after|if|before|unless) )this (job|position|posting|role)( ad)? (is |has )?(now )?(expired|closed|been filled)\b(?! to\b|[- ]?date\b|-)/i,
   // More wordings careers sites use (#747).
   // Not a live page's "Job Posting Expired Date: 12/31" label (#1083).
   /\b(job|posting|position|listing|vacancy|opportunity|role)( ad)? (has )?expired\b(?![- ]?date\b)/i,
-  /(job|position|posting|role|page) you(['’]re| are) (looking for|trying to (apply for|access|view|reach)) (has|is|was|might have|may have) (been )?(filled|removed|closed|deleted|expired)\b/i,
+  // "The job you are trying to apply for is no longer available", "attempting to view" too (#1251).
+  /(job|position|posting|role|page) you(['’]re| are) (looking for|(trying|attempting) to (apply for|access|view|reach|open)) ((has|is|was|might have|may have) (been )?(filled|removed|closed|deleted|expired)|is no longer (available|active|open))\b/i,
   /(job|position|posting|role|opening) is not available anymore/i,
   /page you(['’]re| are) looking for (doesn['’]t|does not|no longer) exists?|(can(['’]|no)t|couldn['’]t|could not) find (that|this|the) page/i,
   // Careers sites usually render a curly apostrophe (#734).
