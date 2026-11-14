@@ -3,7 +3,7 @@
   if (window.__lookoutFill) return;
   window.__lookoutFill = true;
 
-  const THANKS = /(?<!\b(?:once|after|when|if|before|until|upon)\b[^.!?\n]{0,40})(?:thank(?:s| you) for (?:applying|your application|submitting|your submission)|(?:application|submission|candidacy) (?:has been |was )?(?:successfully )?(?:received|submitted|sent)\b|application for [^.!?\n]{1,80}? (?:has been|was) (?:successfully )?(?:received|submitted|sent)\b|we(?:'ve|’ve| have)? (?:successfully )?(?:received|got) your (?:application|submission)|(?<!(?:\bnot|\bnever|n't|n’t)\s+(?:(?:be|been|yet)\s+)?)\bsuccessfully (?:applied|submitted)\b)/i;
+  const THANKS = /(?<!\b(?:once|after|when|if|before|until|upon)\b[^.!?\n]{0,40})(?:thank(?:s| you) for (?:applying|your application|submitting|your submission)|(?<!\bno\s+)(?:application|submission|candidacy) (?:has been |was )?(?:successfully )?(?:received|submitted|sent)\b|application (?:for|to|with) [^.!?\n]{1,80}? (?:has been|was) (?:successfully )?(?:received|submitted|sent)\b|we(?:'ve|’ve| have)? (?:successfully )?(?:received|got) your (?:application|submission)|(?<!(?:\bnot|\bnever|n't|n’t)\s+(?:(?:be|been|yet)\s+){0,2})\bsuccessfully (?:applied|submitted)\b)/i;
   // Lever marks required questions with "✱", others with "*": neither is part of the question (#1150).
   const norm = (t) => (t || "").replace(/[*✱]/g, "").replace(/\s+/g, " ").trim().toLowerCase();
   /** A heading without a trailing "(required)": "How did you hear about us? (required)" is that question (#1150). */

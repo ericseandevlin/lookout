@@ -146,6 +146,9 @@ describe("CONFIRMATION (#692, #748, #762)", () => {
       // #886: a negation earlier in the line doesn't hide a real confirmation.
       "Don't close this page yet. You have successfully applied.",
       "Not what you expected? You have successfully submitted your application.",
+      // #1154
+      "Your application to Acme has been submitted.",
+      "Your application with Acme has been received!",
     ])
       expect(CONFIRMATION.test(t), t).toBe(true);
   });
@@ -178,6 +181,11 @@ describe("CONFIRMATION (#692, #748, #762)", () => {
       // #1115: "unsuccessfully" is a failed submit too.
       "Your application was unsuccessfully submitted.",
       "Application unsuccessfully submitted, please try again",
+      // #1154
+      "Your application has not yet been successfully submitted.",
+      "Your application hasn't yet been successfully submitted.",
+      "No application has been submitted yet.",
+      "Once your application to Acme has been received, we will review it.",
     ])
       expect(CONFIRMATION.test(t), t).toBe(false);
   });
