@@ -413,6 +413,16 @@ describe("extension fill: choices", () => {
     expect(pickOptions("None", options)).toEqual(["None of the above"]);
   });
 
+  it("ticks the No box that says more than No, not None of the above (#1181)", async () => {
+    const labels = ["None of the above", "No (I am not a protected veteran)"];
+    const p = page(`<fieldset><legend>Veteran status</legend>
+      ${labels.map((o, i) => `<label><input type="radio" name="v" id="v${i}"> ${o}</label>`).join("")}</fieldset>`);
+    const [r] = await p.fill({ steps: [{ prompt: "Veteran status", kind: "choice", content: "No", options: ["None of the above", "No"] }] });
+    expect(r).toMatchObject({ ok: true, how: "checked 1" });
+    expect((p.doc.querySelector("#v0") as HTMLInputElement).checked).toBe(false);
+    expect((p.doc.querySelector("#v1") as HTMLInputElement).checked).toBe(true);
+  });
+
   it("ticks nothing when no line of the answer matches an option", async () => {
     const p = page(`<fieldset><legend>Preferred office</legend><label><input type="radio" name="o" id="o1"> Austin</label></fieldset>`);
     const [r] = await p.fill({ steps: [{ prompt: "Preferred office", kind: "choice", content: "Remote", options: ["Austin"] }] });

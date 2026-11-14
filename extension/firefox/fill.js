@@ -170,6 +170,16 @@
   const startsWord = (a, b) => !!a && b.startsWith(a) && (b.length === a.length || /\W/.test(b[a.length]) || /\W/.test(a[a.length - 1]));
 
   /**
+   * sameText at a word boundary: "No" is "No (I am not a protected veteran)" but not "None of the above" (#1181). Past 80
+   * characters the cut can fall mid-word, so long text keeps the plain prefix of its first 80.
+   */
+  function sameWords(a, b) {
+    const x = norm(a), y = norm(b);
+    const starts = (s, t) => (s.length > 80 ? t.startsWith(s.slice(0, 80)) : startsWord(s, t));
+    return !!x && !!y && (starts(x, y) || starts(y, x));
+  }
+
+  /**
    * Same rule as pickOptions in src/lib/application/fillPlan.ts: one answer per line, exact text first, then a prefix
    * either way, at a word boundary, closest length first.
    */
@@ -349,7 +359,7 @@
             boxes.find((b) => labelOf(b) === norm(label)) ||
             // Past a "(required)" mark too, as for radios outside a group (#1179).
             boxes.find((b) => labelOf(b).startsWith(norm(step.prompt)) && optionAfter(labelOf(b), step.prompt) === norm(label)) ||
-            boxes.find((b) => sameText(labelOf(b), label));
+            boxes.find((b) => sameWords(labelOf(b), label));
           if (!box) return { ok: false, how: `option not found: ${label.slice(0, 60)}` };
           if (!box.checked) box.click();
         }
