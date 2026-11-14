@@ -347,8 +347,13 @@ async function postingKey(f: { company: string; title: string; location: string;
   return `${fp}:${mine}`;
 }
 
+/** A link's URL text and, on a known ATS, its job key: both say "already on the board" (#670, #1146). */
+const keysOf = (u: string) => [normUrl(u), atsKey(u)].filter((k): k is string => !!k);
+
 export async function save(ctx: Context, finds: ScoredT[], via: "agent" | "manual"): Promise<RunTally & { newFinds: { id: string; score: number }[] }> {
-  const known = new Set(ctx.knownUrls.map(normUrl));
+  // Same check as gatherHits: in agent mode this is the only one, so a board job sent back at another link for the same
+  // ATS job (boards.greenhouse.io for job-boards, a company ?gh_jid= page) is known, not a second find (#1146).
+  const known = new Set(ctx.knownUrls.flatMap(keysOf));
   const t = emptyTally();
   const newFinds: { id: string; score: number }[] = [];
   for (const raw of finds) {
@@ -358,7 +363,7 @@ export async function save(ctx: Context, finds: ScoredT[], via: "agent" | "manua
       continue;
     }
     t.postings++;
-    if (via === "agent" && known.has(normUrl(f.url))) {
+    if (via === "agent" && keysOf(f.url).some((k) => known.has(k))) {
       t.known++;
       continue;
     }
@@ -417,7 +422,7 @@ export async function save(ctx: Context, finds: ScoredT[], via: "agent" | "manua
       if (mine) {
         await upsert();
         t.known++;
-        known.add(normUrl(f.url));
+        for (const k of keysOf(f.url)) known.add(k);
         continue;
       }
     }
@@ -466,7 +471,7 @@ export async function save(ctx: Context, finds: ScoredT[], via: "agent" | "manua
       newFinds.push({ id: opp.id, score: ruled.score });
     }
     else t.known++;
-    known.add(normUrl(f.url));
+    for (const k of keysOf(f.url)) known.add(k);
   }
   return { ...t, newFinds };
 }

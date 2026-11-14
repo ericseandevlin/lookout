@@ -346,3 +346,24 @@ describe("realDate (#1057)", () => {
     expect(realDate(null)).toBeNull();
   });
 });
+
+describe("save: a board job at another link for the same ATS job (#1146)", () => {
+  const saved = "https://job-boards.greenhouse.io/acme/jobs/4012345";
+  it("agent: the old Greenhouse host with a reworded title is known", async () => {
+    await save(ctx(), [find({ url: saved })], "agent");
+    const r = await save(ctx({ knownUrls: [saved] }), [find({ url: "https://boards.greenhouse.io/acme/jobs/4012345", title: "Design Director" })], "agent");
+    expect(r).toMatchObject({ postings: 1, known: 1, added: 0 });
+    expect(await board()).toHaveLength(1);
+  });
+  it("agent: the company page's ?gh_jid= link is known", async () => {
+    await save(ctx(), [find({ url: saved })], "agent");
+    const r = await save(ctx({ knownUrls: [saved] }), [find({ url: "https://acme.com/careers/job?gh_jid=4012345", title: "Director, Design", location: "New York City" })], "agent");
+    expect(r).toMatchObject({ known: 1, added: 0 });
+    expect(await board()).toHaveLength(1);
+  });
+  it("agent: the same ATS job twice in one run is added once", async () => {
+    const r = await save(ctx(), [find({ url: saved }), find({ url: "https://boards.greenhouse.io/acme/jobs/4012345", title: "Design Director" })], "agent");
+    expect(r).toMatchObject({ added: 1, known: 1 });
+    expect(await board()).toHaveLength(1);
+  });
+});
