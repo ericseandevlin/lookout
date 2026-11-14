@@ -1,11 +1,11 @@
 # Contributing to Lookout
 
-Thanks for looking. Lookout is a small side project, so the process is light, but it is a process.
+Thanks for looking. Lookout is a small side project with a short process, and this page is all of it.
 
 ## Before you start
 
 - Every change starts as a GitHub issue. If there isn't one, open one (bug or idea template) and say what you want to change and why.
-- Issues labeled `good first issue` are a good way in. `agent-ok` means the fix is clear enough to just do.
+- Start with an issue labeled `good first issue`. `agent-ok` means the fix is clear enough to just do.
 - Security problems: don't open an issue. See [SECURITY.md](SECURITY.md).
 - Lookout is licensed under [MIT](LICENSE). By opening a PR you agree your change is released under the same license.
 
@@ -34,7 +34,7 @@ More detail on branches, releases and deploys is in the README under [How we wor
 
 ## Writing
 
-User-facing copy is plain and short: no em dashes, no jargon, say what happened and what to do next.
+Copy people see in the app is plain and short. Say what happened and what to do next. No em dashes and no jargon.
 
 ## Conduct
 

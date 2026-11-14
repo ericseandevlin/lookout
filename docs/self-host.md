@@ -52,7 +52,7 @@ Or mint a link directly:
 docker compose exec app node scripts/login-link.mjs you@example.com
 ```
 
-Links work once and expire after an hour.
+Links work once. The one in the log expires after 15 minutes, a minted one after an hour.
 
 ## 5. First search
 
