@@ -335,6 +335,18 @@ describe("runFill (#385)", () => {
     ).toEqual(["2026-12-01", "2026-12-01", "2026-12-01", "2026-12-01", "2027-03-05", "", ""]);
   });
 
+  it("a date answered year first with slashes or with a two-digit year is read; an impossible day is not (#1295)", () => {
+    expect(["2026/12/01", "12/15/26", "12-15-26", "Available 3/5/27", "2026-02-30", "02/29/2027", "02/29/2028"].map(dateAnswer)).toEqual([
+      "2026-12-01",
+      "2026-12-15",
+      "2026-12-15",
+      "2027-03-05",
+      "",
+      "",
+      "2028-02-29",
+    ]);
+  });
+
   it("a one-choice <select> with several lines takes the first and reports the rest not filled (#1132)", async () => {
     const id = await seed("approved", [{ kind: "field", prompt: "Which office?", content: "Boston\nRemote" }]);
     page = fakePage([{ kind: "control", label: "Which office?", tag: "select", options: ["Boston", "Denver", "Remote"] }]);

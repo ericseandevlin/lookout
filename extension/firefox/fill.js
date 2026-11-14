@@ -229,12 +229,15 @@
   function dateAnswer(t) {
     const s = String(t || "");
     const months = ["jan", "feb", "mar", "apr", "may", "jun", "jul", "aug", "sep", "oct", "nov", "dec"];
-    const iso = (y, m, d) => (m >= 1 && m <= 12 && d >= 1 && d <= 31 ? `${y}-${String(m).padStart(2, "0")}-${String(d).padStart(2, "0")}` : "");
+    // A day the month doesn't have ("2026-02-30") is dropped by the field, so it reads as no date (#1295).
+    const iso = (y, m, d) =>
+      m >= 1 && m <= 12 && d >= 1 && d <= new Date(Date.UTC(y, m, 0)).getUTCDate() ? `${y}-${String(m).padStart(2, "0")}-${String(d).padStart(2, "0")}` : "";
     const mon = (w) => months.indexOf(w.slice(0, 3).toLowerCase()) + 1;
-    let m = s.match(/\b(\d{4})-(\d{1,2})-(\d{1,2})\b/);
+    // Year first with - or / ("2026/12/01"), and month first with a two-digit year ("12/15/26" is 2026) (#1295).
+    let m = s.match(/\b(\d{4})[/-](\d{1,2})[/-](\d{1,2})\b/);
     if (m) return iso(+m[1], +m[2], +m[3]);
-    m = s.match(/\b(\d{1,2})[/-](\d{1,2})[/-](\d{4})\b/);
-    if (m) return iso(+m[3], +m[1], +m[2]);
+    m = s.match(/\b(\d{1,2})[/-](\d{1,2})[/-](\d{4}|\d{2})\b/);
+    if (m) return iso(m[3].length === 2 ? 2000 + +m[3] : +m[3], +m[1], +m[2]);
     m = s.match(/\b(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*\.?\s+(\d{1,2})(?:st|nd|rd|th)?,?\s+(\d{4})\b/i);
     if (m) return iso(+m[3], mon(m[1]), +m[2]);
     m = s.match(/\b(\d{1,2})(?:st|nd|rd|th)?\s+(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*\.?,?\s+(\d{4})\b/i);

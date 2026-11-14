@@ -394,15 +394,19 @@ const MON = String.raw`(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*\.
 
 /**
  * The answer as yyyy-mm-dd for a date field: "12/01/2026" (month first, as US forms ask), "December 1, 2026" and
- * "1 Dec 2026" all read as "2026-12-01". "" when the answer holds no date. The extension does the same (#1242).
+ * "1 Dec 2026" all read as "2026-12-01", as do "2026/12/01" and "12/01/26" (#1295). "" when the answer holds no date
+ * or a day the month doesn't have. The extension does the same (#1242).
  */
 export const dateAnswer = (t: string) => {
-  const iso = (y: number, m: number, d: number) => (m >= 1 && m <= 12 && d >= 1 && d <= 31 ? `${y}-${String(m).padStart(2, "0")}-${String(d).padStart(2, "0")}` : "");
+  // A day the month doesn't have ("2026-02-30") is dropped by the field, so it reads as no date (#1295).
+  const iso = (y: number, m: number, d: number) =>
+    m >= 1 && m <= 12 && d >= 1 && d <= new Date(Date.UTC(y, m, 0)).getUTCDate() ? `${y}-${String(m).padStart(2, "0")}-${String(d).padStart(2, "0")}` : "";
   const mon = (w: string) => MONTHS.indexOf(w.slice(0, 3).toLowerCase()) + 1;
-  let m = t.match(/\b(\d{4})-(\d{1,2})-(\d{1,2})\b/);
+  // Year first with - or / ("2026/12/01"), and month first with a two-digit year ("12/15/26" is 2026) (#1295).
+  let m = t.match(/\b(\d{4})[/-](\d{1,2})[/-](\d{1,2})\b/);
   if (m) return iso(+m[1], +m[2], +m[3]);
-  m = t.match(/\b(\d{1,2})[/-](\d{1,2})[/-](\d{4})\b/);
-  if (m) return iso(+m[3], +m[1], +m[2]);
+  m = t.match(/\b(\d{1,2})[/-](\d{1,2})[/-](\d{4}|\d{2})\b/);
+  if (m) return iso(m[3].length === 2 ? 2000 + +m[3] : +m[3], +m[1], +m[2]);
   m = t.match(new RegExp(String.raw`\b${MON}\s+(\d{1,2})(?:st|nd|rd|th)?,?\s+(\d{4})\b`, "i"));
   if (m) return iso(+m[3], mon(m[1]), +m[2]);
   m = t.match(new RegExp(String.raw`\b(\d{1,2})(?:st|nd|rd|th)?\s+${MON},?\s+(\d{4})\b`, "i"));
