@@ -325,7 +325,9 @@
           if (!radios.length) return { ok: false, how: "field not found" };
           const i = step.options && step.options.length ? pickOne(step.content, step.options) : -1;
           if (i < 0) return { ok: false, how: "answer matches no option" };
-          const radio = radios.find((r) => labelOf(r) === norm(step.prompt) + " " + norm(step.options[i]));
+          // What follows the question, past a "(required)" mark ("*" and "✱" are already gone), is the option (#1160).
+          const q = norm(step.prompt);
+          const radio = radios.find((r) => labelOf(r).slice(q.length).replace(/^\s*\(required\)/, "").trim() === norm(step.options[i]));
           if (!radio) return { ok: false, how: `option not found: ${step.options[i].slice(0, 60)}` };
           if (!radio.checked) radio.click();
           return { ok: true, how: "checked 1" };

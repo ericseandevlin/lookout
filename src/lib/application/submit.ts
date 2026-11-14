@@ -271,9 +271,10 @@ async function fillOne(page: Page, s: FillStep): Promise<{ ok: boolean; how: str
     if (tag.startsWith("input:radio:")) {
       // A radio labeled with the question and its option ("Can you work onsite? No"): check the one the answer means.
       // Clicking the radio the label search landed on put "Yes" on a "No" answer (#720).
+      // A required mark between question and option may be "*", Lever's "✱" or "(required)" (#1160).
       const i = s.options?.length ? pickOne(s.content, s.options) : -1;
       if (i < 0) return { ok: false, how: "answer matches no option" };
-      const radio = page.getByRole("radio", { name: new RegExp(`^\\s*${pattern(s.prompt)}\\s*\\*?\\s+${pattern(s.options![i])}\\s*$`, "i") }).first();
+      const radio = page.getByRole("radio", { name: new RegExp(`^\\s*${pattern(s.prompt)}\\s*(?:\\*|✱|\\(required\\))?\\s+${pattern(s.options![i])}\\s*$`, "i") }).first();
       if (!(await radio.count())) return { ok: false, how: `option not found: ${s.options![i].slice(0, 60)}` };
       await radio.check();
       return { ok: true, how: "checked 1" };
