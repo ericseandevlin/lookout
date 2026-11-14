@@ -8,13 +8,13 @@ Lines marked **Guess** are best guesses waiting for Eric to confirm or change.
 
 Job sites ask for a title and a city. That's all they know about you, so that's all they match on. The person looking does the rest: twenty tabs, the same posting on four boards, roles that say Director and mean something else. Searching is a part-time job, and most of it is reading things that were never a fit.
 
-Volume doesn't fix it. In Huntr's Q1 2026 data, people who sent 100+ applications got an interview from 2.6% of them; people who sent 11 to 20 targeted ones got 9.3%. And referrals make up 30 to 50% of US hires (NY Fed and MIT). Fewer, better-matched applications plus the right people beat spraying.
+Volume doesn't fix it. In Huntr's Q1 2026 data, people who sent 100+ applications got an interview from 2.6% of them; people who sent 11 to 20 targeted ones got 9.3%. And referrals make up 30 to 50% of US hires (NY Fed and MIT). The numbers favor fewer applications, each one a real match, and more introductions.
 
 ## Who it's for
 
 People with a specific next step in mind and a career that doesn't fit in a title field. Senior and mid-career people, career changers, anyone whose "what I'm great at" takes a paragraph.
 
-It's also for people who aren't looking. Most people search every six months, feel behind, and give up. Lookout keeps looking when they don't, so good roles reach them first.
+It's also for people who aren't looking. Most people search every six months, feel behind, and give up. Lookout searches on their schedule whether they think about it or not, and new matches land on their board.
 
 Right now that's a handful of friends in a private beta. After the January 10 gate, friends of friends through a waitlist: people with a job who would move for the right one.
 
@@ -24,7 +24,7 @@ A search that knows you before it looks will find better matches than a search t
 
 Three parts to it:
 - **Context in.** Five questions, a resume, a LinkedIn PDF and links. Lookout writes a search profile you can see and fix.
-- **Judgment, not keywords.** It reads every posting in full and scores it 1 to 5 against you. A dealbreaker drops the role; under your floor or in the wrong place caps it at 3.
+- **Reading every posting.** It reads each one in full and scores it 1 to 5 against you. A dealbreaker drops the role; under your floor or in the wrong place caps it at 3.
 - **It learns from you.** "Not a fit" reasons and notes on finds go into the next search.
 
 The same engine should work for any kind of find. Jobs are the first. RFPs are the test of whether that's true.
@@ -57,7 +57,7 @@ The beta runs through January 10, 2027. Goals, measured in Admin > Metrics (#36)
 - People act on finds but don't come back: the digest and the schedule are the problem, not the matching.
 - People come back but don't act: the scoring is off, or the profile is missing something the questions don't ask.
 - Cost per person goes over $1 at five users: the cheap-model bet needs another look before more people join.
-- People don't trust what auto-apply writes: they rewrite most drafts, or never press Submit. Trust is the product, so that would mean slowing down auto-apply and fixing the drafts first.
+- People don't trust what auto-apply writes: they rewrite most drafts, or never press Submit. Auto-apply is only useful if people trust it, so that would mean slowing it down and fixing the drafts first.
 - **Guess:** stop building new features if, by January 10, fewer than 3 people are active weekly and nobody outside Eric has acted on a find in the last 4 weeks. Lookout then becomes a finished portfolio piece that Eric keeps running for his own search.
 
 ## Now / Next / Later

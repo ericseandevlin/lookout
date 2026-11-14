@@ -34,7 +34,7 @@ The calls that shaped Lookout, what each one costs, and where it lives in the co
 
 **Decision.** The model scores each find 1 to 5. Code then applies the rules: a dealbreaker drops the find, a top of range under the pay floor caps it at 3, and a wrong location caps it at 3. Rules can only lower a score.
 
-**Why.** A prompt is a request. A model can talk itself past it, and a small model often does. A rule in code holds every time and is easy to test.
+**Why.** A model can ignore a rule written in its prompt, and small models often do. A rule in code runs on every find and has a unit test.
 
 **Cost.** The rules are blunt. A great role just under the floor still shows as a 3, with the reason listed.
 
@@ -66,7 +66,7 @@ The calls that shaped Lookout, what each one costs, and where it lives in the co
 
 **Why.** Lookout is a portfolio project, so reach matters most: anyone can read, run, change and reuse it, including at work, with no license review. It matches Taste Engine, which is also MIT.
 
-**Cost.** Someone can run a changed Lookout as a closed hosted service without sharing their changes. AGPL would have prevented that; for a project meant to be shown and reused, that risk is acceptable.
+**Cost.** Someone can run a changed Lookout as a closed hosted service without sharing their changes. AGPL would have prevented that; Eric accepted that risk for a project meant to be shown and reused.
 
 **Where.** `LICENSE`, `license` in `package.json`, the License section of the README, `CONTRIBUTING.md`.
 
@@ -78,7 +78,7 @@ The calls that shaped Lookout, what each one costs, and where it lives in the co
 - a slow or failed prod request is traced to another tool on the box (memory, CPU or disk), twice in a month,
 - someone outside Eric's circle depends on it (a paying user, a group running its search on Lookout).
 
-**Why.** At 5 accounts (2026-11-13) a second server is cost and upkeep with no gain. The triggers are things the server already measures, so the move is a check, not a debate.
+**Why.** At 5 accounts (2026-11-13) a second server is cost and upkeep with no gain. Each trigger is something the server already measures, so the decision comes down to reading the numbers.
 
 **Cost.** Lookout competes with other tools for memory and disk until then. Each app container is capped at 1 GB, the uptime check opens a `capacity` issue when the disk passes 85% (#995), and the weekly cleanup removes only dangling images and old build cache.
 
