@@ -5,7 +5,7 @@ import { PageHead } from "../Profile";
 import { btn, Row, Section, Seg } from "../Settings";
 import { api } from "../store";
 import { useConfirm } from "../Confirm";
-import { usd, when, input, card, th, td, Tabs, Msg } from "./shared";
+import { usd, when, day, input, card, th, td, Tabs, Msg, TableBox } from "./shared";
 import type { Overview, Config } from "./shared";
 import { color } from "@/lib/tokens";
 import { MAX_BULK, parseEmails } from "@/lib/emailList";
@@ -138,10 +138,10 @@ export function AdminPeople() {
           )}
 
           <Section>People</Section>
-          <div style={{ ...card, padding: 0, overflowX: "auto", marginTop: 8 }}>
-            <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 860 }}>
+          <TableBox>
+            <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 720 }}>
               <thead>
-                <tr>{["Person", "Joined", "Last sign-in", "Finds", "Searches (30d)", "Spend (30d)", "Access", ""].map((h) => <th key={h} style={th}>{h}</th>)}</tr>
+                <tr>{["Person", "Joined", "Last sign-in", "Finds", "Searches (30d)", "Spend (30d)", "Access", "Actions"].map((h) => <th key={h} style={h === "Actions" ? { ...th, textAlign: "right" } : th}>{h}</th>)}</tr>
               </thead>
               <tbody>
                 {data.users.map((u) => (
@@ -150,8 +150,8 @@ export function AdminPeople() {
                       <div style={{ fontWeight: 600 }}>{u.name || "No name yet"}</div>
                       <div style={{ color: color.t2, fontSize: 14 }}>{u.email}</div>
                     </td>
-                    <td style={td}>{when(u.createdAt)}</td>
-                    <td style={td}>{when(u.lastLoginAt)}</td>
+                    <td style={{ ...td, whiteSpace: "nowrap" }} title={when(u.createdAt)}>{day(u.createdAt)}</td>
+                    <td style={{ ...td, whiteSpace: "nowrap" }} title={u.lastLoginAt ? when(u.lastLoginAt) : undefined}>{day(u.lastLoginAt)}</td>
                     <td style={{ ...td, fontVariantNumeric: "tabular-nums" }}>{u.finds}</td>
                     <td style={{ ...td, fontVariantNumeric: "tabular-nums" }}>{u.runs30}</td>
                     <td style={{ ...td, fontVariantNumeric: "tabular-nums" }}>{usd(u.usd30)}</td>
@@ -160,20 +160,23 @@ export function AdminPeople() {
                         {u.disabled ? "Disabled" : u.isAdmin ? "Admin" : "Member"}
                       </span>
                     </td>
-                    <td style={{ ...td, whiteSpace: "nowrap", textAlign: "right" }}>
-                      <a href={`/view/${u.id}`} style={{ ...btn("outline"), height: 30, padding: "0 10px", fontSize: 14, marginRight: 6, display: "inline-flex", alignItems: "center", textDecoration: "none" }}>View board</a>
-                      <button onClick={() => patchUser(u.id, { isAdmin: !u.isAdmin })} style={{ ...btn("outline"), height: 30, padding: "0 10px", fontSize: 14, marginRight: 6 }}>{u.isAdmin ? "Remove admin" : "Make admin"}</button>
-                      <button onClick={async () => (u.disabled || (await ask({ eyebrow: "Disable account", title: `Disable ${u.email}?`, body: "They're signed out everywhere and can't sign back in until you enable them. Their board and data stay.", confirmLabel: "Disable", danger: true }))) && patchUser(u.id, { disabled: !u.disabled })} className="h-danger" style={{ ...btn("danger"), height: 30, padding: "0 10px", fontSize: 14 }}>{u.disabled ? "Enable" : "Disable"}</button>
+                    <td style={td}>
+                      {/* Buttons wrap inside the cell instead of pushing the table past the card (#1234). */}
+                      <div style={{ display: "flex", flexWrap: "wrap", justifyContent: "flex-end", gap: 6 }}>
+                      <a href={`/view/${u.id}`} style={{ ...btn("outline"), height: 30, padding: "0 10px", fontSize: 14, whiteSpace: "nowrap", display: "inline-flex", alignItems: "center", textDecoration: "none" }}>View board</a>
+                      <button onClick={() => patchUser(u.id, { isAdmin: !u.isAdmin })} style={{ ...btn("outline"), height: 30, padding: "0 10px", fontSize: 14, whiteSpace: "nowrap" }}>{u.isAdmin ? "Remove admin" : "Make admin"}</button>
+                      <button onClick={async () => (u.disabled || (await ask({ eyebrow: "Disable account", title: `Disable ${u.email}?`, body: "They're signed out everywhere and can't sign back in until you enable them. Their board and data stay.", confirmLabel: "Disable", danger: true }))) && patchUser(u.id, { disabled: !u.disabled })} className="h-danger" style={{ ...btn("danger"), height: 30, padding: "0 10px", fontSize: 14, whiteSpace: "nowrap" }}>{u.disabled ? "Enable" : "Disable"}</button>
+                      </div>
                     </td>
                   </tr>
                 ))}
               </tbody>
             </table>
-          </div>
+          </TableBox>
 
           <Section>Recent searches</Section>
-          <div style={{ ...card, padding: 0, overflowX: "auto", marginTop: 8 }}>
-            <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 860 }}>
+          <TableBox>
+            <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 720 }}>
               <thead>
                 <tr>{["When", "Who", "Type", "Result", "Found / added", "Web searches", "Cost"].map((h) => <th key={h} style={th}>{h}</th>)}</tr>
               </thead>
@@ -199,7 +202,7 @@ export function AdminPeople() {
                 ))}
               </tbody>
             </table>
-          </div>
+          </TableBox>
         </>
       )}
     </div>
