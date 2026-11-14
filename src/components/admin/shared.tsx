@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { color } from "@/lib/tokens";
 
 /** Shared by the admin pages: response types, small formatters and styles, the tab bar and the message line. */
@@ -31,6 +32,8 @@ export type Config = {
 export const usd = (n: number) => (n < 0.01 && n > 0 ? "<$0.01" : `$${n.toFixed(2)}`);
 export const when = (iso: string | null) =>
   iso ? new Date(iso).toLocaleString("en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" }) : "Never";
+/** Date only ("Oct 15"), for table cells; put `when` in the title for the full time (#1234). */
+export const day = (iso: string | null) => (iso ? new Date(iso).toLocaleDateString("en-US", { month: "short", day: "numeric" }) : "Never");
 export const input: React.CSSProperties = { width: "100%", maxWidth: 420, height: 42, border: `1.5px solid ${color.border}`, background: "#fff", borderRadius: 10, padding: "0 13px", fontSize: 14, outline: "none", color: color.ink };
 export const card: React.CSSProperties = { background: "#fff", borderRadius: 16, padding: "16px 18px" };
 export const th: React.CSSProperties = { fontSize: 12, fontWeight: 600, letterSpacing: ".06em", textTransform: "uppercase", color: color.t2, textAlign: "left", padding: "12px 14px", borderBottom: `1px solid ${color.border}`, whiteSpace: "nowrap" };
@@ -49,6 +52,36 @@ export function Tabs() {
           </Link>
         );
       })}
+    </div>
+  );
+}
+
+/**
+ * A white card that scrolls its table sideways when the table is wider than the screen (#1234). While there is more
+ * to the right, a fade on the right edge says so, since phones hide scrollbars.
+ */
+export function TableBox({ children }: { children: React.ReactNode }) {
+  const ref = useRef<HTMLDivElement>(null);
+  const [more, setMore] = useState(false);
+  const check = useCallback(() => {
+    const el = ref.current;
+    if (el) setMore(el.scrollLeft + el.clientWidth < el.scrollWidth - 2);
+  }, []);
+  useEffect(() => {
+    check();
+    const el = ref.current;
+    if (!el || typeof ResizeObserver === "undefined") return;
+    const ro = new ResizeObserver(check);
+    ro.observe(el);
+    if (el.firstElementChild) ro.observe(el.firstElementChild);
+    return () => ro.disconnect();
+  }, [check]);
+  return (
+    <div style={{ position: "relative", marginTop: 8 }}>
+      <div ref={ref} onScroll={check} style={{ ...card, padding: 0, overflowX: "auto" }}>
+        {children}
+      </div>
+      <div aria-hidden style={{ position: "absolute", top: 0, right: 0, bottom: 0, width: 40, borderRadius: "0 16px 16px 0", pointerEvents: "none", background: "linear-gradient(to right, rgba(0,0,0,0), rgba(0,0,0,0.08))", opacity: more ? 1 : 0, transition: "opacity .15s" }} />
     </div>
   );
 }
