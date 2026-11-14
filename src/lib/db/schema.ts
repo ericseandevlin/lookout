@@ -384,6 +384,8 @@ export const applications = pgTable(
 export type ApplicationReport = {
   /** "form": the ATS's published form. "page": read from the apply page by the model. */
   source?: "form" | "page";
+  /** The scan listed no cover letter and Lookout added one for email or referral use; a "form" fill never uploads it (#1210). */
+  letterAdded?: boolean;
   applyUrl?: string;
   /** The form has voluntary EEO questions. Lookout never answers those; the user does. */
   hasEeo?: boolean;

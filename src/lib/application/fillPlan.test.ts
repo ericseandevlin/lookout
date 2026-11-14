@@ -28,6 +28,21 @@ describe("planFill", () => {
       ["Email", "text", "maya@example.com"],
     ]);
   });
+
+  it("skips a cover letter the published form never listed, keeping the resume and other uploads (#1210)", () => {
+    const items = [
+      item({ id: "1", kind: "resume", prompt: "Resume/CV", approvedVersionId: "v1" }),
+      item({ id: "2", kind: "cover_letter", prompt: "Cover letter", required: false, approvedVersionId: "v2" }),
+      item({ id: "3", kind: "portfolio", prompt: "Transcript", required: false, fieldType: "file", approvedVersionId: "v3" }),
+    ];
+    const versions = [
+      { id: "v1", content: "# Maya" },
+      { id: "v2", content: "Dear team" },
+      { id: "v3", content: "A+" },
+    ];
+    expect(planFill(items, versions, { skipLetter: true }).map((s) => s.itemKind)).toEqual(["resume", "portfolio"]);
+    expect(planFill(items, versions).map((s) => s.itemKind)).toEqual(["resume", "cover_letter", "portfolio"]);
+  });
 });
 
 describe("pickOptions (#165)", () => {

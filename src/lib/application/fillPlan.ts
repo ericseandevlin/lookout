@@ -6,11 +6,13 @@ export type FillStep = { prompt: string; required: boolean; itemKind: Applicatio
 type ItemRow = { id: string; kind: ApplicationItemKind; prompt: string; required: boolean; fieldType: string | null; options: string[] | null; approvedVersionId: string | null };
 
 /** Approved versions only, in form order. Optional items the user didn't approve are left blank on the form. */
-export function planFill(items: ItemRow[], versions: { id: string; content: string }[]): FillStep[] {
+export function planFill(items: ItemRow[], versions: { id: string; content: string }[], opts: { skipLetter?: boolean } = {}): FillStep[] {
   const out: FillStep[] = [];
   for (const i of items) {
     // Outreach is for the person to send themselves; it is never an application-form field.
     if (i.kind === "outreach") continue;
+    // A letter the published form never asked for is for email or referral use; guessing an upload put it in "Transcript" (#1210).
+    if (opts.skipLetter && i.kind === "cover_letter") continue;
     const v = versions.find((x) => x.id === i.approvedVersionId);
     if (!v) continue;
     const kind: FillStep["kind"] = i.kind === "resume" || i.kind === "cover_letter" || i.fieldType === "file" ? "file" : i.options?.length ? "choice" : "text";

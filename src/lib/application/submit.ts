@@ -60,7 +60,8 @@ async function files(appId: string, steps: FillStep[], name: string, company: st
 /** Everything a form needs, in form order, with the Word files written to disk. Shared by the browser worker and the Firefox extension (#169). */
 export async function preparePacket(appId: string) {
   const { a, items, versions, user, opp } = await loadPacket(appId);
-  const steps = planFill(items, versions);
+  // The published form listed every upload it has; a letter Lookout added has no field there (#1210).
+  const steps = planFill(items, versions, { skipLetter: a.report.source === "form" && !!a.report.letterAdded });
   // Voluntary EEO questions: from the encrypted profile, only with consent, matched in code (#122).
   if (items.some((i) => i.kind === "eeo")) {
     const { consent, profile } = await loadEeo(a.userId);
