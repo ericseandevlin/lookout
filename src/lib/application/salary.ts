@@ -152,8 +152,14 @@ export function askPer(prompt: string): Per | null {
   if (!asks.length) return orYear(periodIn(prompt));
   const own = periodIn(asks.join(" "));
   if (own) return orYear(own);
-  return orYear(periodIn(all.filter((s) => !asks.includes(s) && PAY_TALK.test(s)).join(" ")));
+  return orYear(periodIn(all.filter((s) => !asks.includes(s) && (PAY_TALK.test(s) || answerHint(s))).join(" ")));
 }
+
+// A short instruction about the answer with no pay word: "Please answer monthly.", "Monthly, before tax.",
+// "Hourly is fine." Only the -ly words count, so "We will get back to you in a week" still doesn't (#1245).
+const ADVERB = /\b(hourly|daily|weekly|monthly|annually|yearly)\b/i;
+const HOW_TO_ANSWER = /\b(answer|enter|give|provide|before tax|after tax|gross|net|is fine)\b/i;
+const answerHint = (s: string) => ADVERB.test(s) && (HOW_TO_ANSWER.test(s) || s.trim().split(/\s+/).length <= 4);
 
 const orYear = (p: ReturnType<typeof periodIn>) => (p === "year" ? null : p);
 
