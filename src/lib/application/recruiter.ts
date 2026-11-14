@@ -56,7 +56,10 @@ const FRAMING = new RegExp(
 // Curly apostrophes too: letters pasted from Word or a phone carry them (#769).
 const WEAK_OPEN = /^(?:i am|i['’]m) (?:writing|excited|thrilled|pleased|interested|applying|reaching out)|^i(?: would|['’]d) (?:like|love) to|^please accept|^my name is|^i wish to|^i was (?:excited|thrilled) to/i;
 // "Doubled sign-ups" states the scale too (#776).
-const HAS_NUMBER = /\d|\b(one|two|three|four|five|six|seven|eight|nine|ten|dozen|hundreds?|thousands?|millions?|billions?|doubled|doubling|tripled|tripling|quadrupled|halved|halving|twice|(?:two|three|four|five|ten)fold)\b/i;
+// A digit right after a letter is a name ("B2B", "HTML5", "S3"), and a number word hyphened onto a word
+// ("one-click", "two-factor") or "one of" is no count; "two-thirds" still is (#1265).
+const COUNT_WORDS = "two|three|four|five|six|seven|eight|nine|ten|dozen|hundreds?|thousands?|millions?|billions?|doubled|doubling|tripled|tripling|quadrupled|halved|halving|twice|(?:two|three|four|five|ten)fold";
+const HAS_NUMBER = new RegExp(`(?<![a-z])\\d|\\b(?:one(?!\\s+of\\b)|${COUNT_WORDS})\\b(?!-(?!(?:thirds?|quarters?|halves|fold)\\b))`, "i");
 
 /** Checks on a resume draft's markdown. */
 function resumeChecks(md: string): Finding[] {
