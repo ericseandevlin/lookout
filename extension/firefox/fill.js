@@ -203,7 +203,6 @@
     return labels.findIndex((l) => Math.min(a.length, norm(l).length) >= 80 && sameText(l, answer));
   }
 
-  /** The first number in an answer, for a number field: "$165,000" is "165000". Same as the worker (#1140). */
   /** The answer's first number, same as the worker: "$165k" is 165000 (#1168). */
   function numberAnswer(t) {
     const m = String(t || "").match(/(\d[\d,]*(?:\.\d+)?)([km]\b)?/i);
