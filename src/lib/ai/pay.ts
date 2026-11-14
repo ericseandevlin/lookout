@@ -91,9 +91,11 @@ const FIRST_UNIT = String.raw`\s?(?:\/\s?|(?:per|an?)\s)(?:hours?|hr|h|days?|yea
 // "S$", "SG$", "NZ$" and "HK$" name their dollar too (#883), and so do "AU$", "MX$", "NT$" and "SGD $120,000" (#905).
 const DOLLARS = "USD|CAD|AUD|SGD|NZD|HKD|MXN|TWD";
 const PRE = String.raw`(?:\b(US|CA|C|AU|A|SG|S|NZ|HK|MX|NT|(?:${DOLLARS}) ?)(?=\$))?`;
-const CODE = String.raw`(?:\s?(${DOLLARS})\b)?`;
+// Pound, euro and franc codes stand in for a sign the same way: "GBP 60,000 - 70,000", "120,000 - 140,000 CHF" (#1239).
+const CODES = `${DOLLARS}|GBP|EUR|CHF`;
+const CODE = String.raw`(?:\s?(${CODES})\b)?`;
 // A code may stand in for the "$": "USD 150,000 - 200,000" (#753). A bare "120,000 - 150,000" still doesn't count.
-const CODE_LEAD = String.raw`\b(${DOLLARS})\s?(?=\d)`;
+const CODE_LEAD = String.raw`\b(${CODES})\s?(?=\d)`;
 // The second end may carry the same symbol as the first: "£60,000 - £70,000" (#1186). The 40-character tail is read in a
 // lookahead, so a bonus range the reader throws out doesn't swallow the salary right after it (#1205).
 const range = (start: string, sep: string, lead = String.raw`${PRE}\$`, end = "") =>
@@ -104,7 +106,7 @@ const OTHER_SIGN = "([£€])";
 // Or the code comes only after the numbers: "180,000 - 220,000 USD", "180K - 220K CAD" (#809). The empty group keeps
 // the match groups in line; the code stays in the tail, where the currency is read from.
 const NO_LEAD = String.raw`()(?<![\d.,$])`;
-const CODE_TRAIL = String.raw`(?=\s?(?:${DOLLARS})\b)`;
+const CODE_TRAIL = String.raw`(?=\s?(?:${CODES})\b)`;
 // "and" joins a range only after "between": "between $150,000 and $180,000" (#686).
 const RANGES = [
   range("", "(?:-|–|—|to)"),
@@ -128,7 +130,7 @@ const EU_RANGES = [
 const EU_NUMBER = new RegExp(`^${EU_AMT}$`);
 /** "60.000" or "60 000,50" -> 60000 / 60000.5; anything else as money() reads it. */
 const amountOf = (s: string) => (EU_NUMBER.test(s) ? Number(s.replace(/[.\u00a0\u202f ]/g, "").replace(",", ".")) : money(s));
-const PREFIX: Record<string, string> = { us: "USD", ca: "CAD", c: "CAD", a: "AUD", s: "SGD", sg: "SGD", nz: "NZD", hk: "HKD", au: "AUD", mx: "MXN", nt: "TWD", "£": "GBP", "€": "EUR", eur: "EUR", gbp: "GBP", usd: "USD", cad: "CAD", aud: "AUD", sgd: "SGD", nzd: "NZD", hkd: "HKD", mxn: "MXN", twd: "TWD" };
+const PREFIX: Record<string, string> = { us: "USD", ca: "CAD", c: "CAD", a: "AUD", s: "SGD", sg: "SGD", nz: "NZD", hk: "HKD", au: "AUD", mx: "MXN", nt: "TWD", "£": "GBP", "€": "EUR", eur: "EUR", gbp: "GBP", chf: "CHF", usd: "USD", cad: "CAD", aud: "AUD", sgd: "SGD", nzd: "NZD", hkd: "HKD", mxn: "MXN", twd: "TWD" };
 
 // What the range is per, from the words after it. The unit named first wins, so "per year, paid monthly" stays yearly (#484)
 // and "per hour, plus an annual bonus" stays hourly (#646).
