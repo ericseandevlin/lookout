@@ -129,6 +129,13 @@ describe("placesDiffer (#1285)", () => {
     expect(placesDiffer("San Francisco, CA", "San Francisco, California, United States")).toBe(false);
     expect(placesDiffer("Montréal, QC", "Montreal, Québec")).toBe(false);
   });
+  it("reads dotted state codes like D.C. and N.Y. as the state (#1303)", () => {
+    expect(placesDiffer("Washington, D.C.", "Washington, DC")).toBe(false);
+    expect(placesDiffer("Washington, D.C., USA", "Washington, District of Columbia")).toBe(false);
+    expect(placesDiffer("New York, N.Y.", "New York, NY")).toBe(false);
+    expect(placeId("Washington, D.C.")).toBe("us-dc");
+    expect(placesDiffer("Washington, D.C.", "Seattle, WA")).toBe(true);
+  });
   it("does not split a location with no region from one with a region", () => {
     expect(placesDiffer("Remote", "Remote, Canada")).toBe(false);
     expect(placesDiffer("New York", "New York, NY")).toBe(false);
