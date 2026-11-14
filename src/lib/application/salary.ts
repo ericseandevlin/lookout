@@ -137,7 +137,8 @@ export function askPer(prompt: string): "hour" | "week" | "month" | null {
   prompt = prompt.replace(/\b(hours?|hrs?|days?)\s*(per|a|each|\/)\s*(week|wk|month|day)\b/gi, " ");
   prompt = prompt.replace(/\b(last(s|ing)?|for|within|after|over|least)\s+(about\s+|up to\s+|roughly\s+)?(a|one)\s+(year|month|week)\b/gi, " ");
   // "a year-end bonus" and "a year-long contract" are not a yearly ask (#1060).
-  if (/\b(annual(ly)?|yearly|per (year|annum)|a year|\/\s?y(ea)?r)\b(?!-)/i.test(prompt)) return null;
+  // "/yr" after a space or "(" has no word boundary before the slash (#1121).
+  if (/(\b(annual(ly)?|yearly|per (year|annum)|a year)|\/\s?y(ea)?r)\b(?!-)/i.test(prompt)) return null;
   if (/\bhourly\b|\b(per|an|each) (hour|hr)\b|\/\s?h(ou)?r\b/i.test(prompt)) return "hour";
   if (/\bweekly\b|\b(per|a|each) week\b|\/\s?w(ee)?k\b/i.test(prompt) && !/\bbi-?weekly\b/i.test(prompt)) return "week";
   // Semi-monthly is paid twice a month: left yearly, like bi-weekly (#1002).
