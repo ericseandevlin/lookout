@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { applyRules, fingerprint, legacyFingerprint, normUrl } from "./rules";
+import { applyRules, fingerprint, legacyFingerprint, normUrl, placeId, placesDiffer } from "./rules";
 
 const base = { score: 5, reasonsMatch: ["Director title"], reasonsGap: [], locationFit: true, dealbreaker: false, compMin: 140000, compMax: 160000 };
 
@@ -107,5 +107,36 @@ describe("dedupe keys", () => {
     expect(normUrl("https://careers.acme.com/#/jobs/101")).not.toBe(normUrl("https://careers.acme.com/#/jobs/202"));
     expect(normUrl("https://careers.acme.com/?utm_source=li#!/Job/101/")).toBe("careers.acme.com#!/job/101");
     expect(normUrl("https://jobs.example.com/acme/123#content")).toBe("jobs.example.com/acme/123");
+  });
+});
+
+describe("placesDiffer (#1285)", () => {
+  it("tells apart the same city in another state or country", () => {
+    expect(placesDiffer("Remote, US", "Remote, Canada")).toBe(true);
+    expect(placesDiffer("Cambridge, MA", "Cambridge, United Kingdom")).toBe(true);
+    expect(placesDiffer("Portland, OR", "Portland, ME")).toBe(true);
+    expect(placesDiffer("Paris, TX", "Paris, France")).toBe(true);
+    expect(placesDiffer("Remote, US", "Remote, Mexico")).toBe(true);
+  });
+  it("keeps one place written two ways as one", () => {
+    expect(placesDiffer("New York, NY", "New York, New York")).toBe(false);
+    expect(placesDiffer("New York, NY (hybrid)", "New York, NY 10001, USA")).toBe(false);
+    expect(placesDiffer("Remote, US", "Remote, United States of America")).toBe(false);
+    expect(placesDiffer("Remote, U.S.", "Remote, USA")).toBe(false);
+    expect(placesDiffer("Toronto, ON", "Toronto, Canada")).toBe(false);
+    expect(placesDiffer("Toronto, Ontario, Canada", "Toronto, ON")).toBe(false);
+    expect(placesDiffer("London, England", "London, UK")).toBe(false);
+    expect(placesDiffer("San Francisco, CA", "San Francisco, California, United States")).toBe(false);
+    expect(placesDiffer("Montréal, QC", "Montreal, Québec")).toBe(false);
+  });
+  it("does not split a location with no region from one with a region", () => {
+    expect(placesDiffer("Remote", "Remote, Canada")).toBe(false);
+    expect(placesDiffer("New York", "New York, NY")).toBe(false);
+    expect(placesDiffer("", "Remote, US")).toBe(false);
+  });
+  it("names the region by state, else country", () => {
+    expect(placeId("Portland, ME")).toBe("us-me");
+    expect(placeId("Remote, Canada")).toBe("ca");
+    expect(placeId("Paris, Île-de-France, France")).toBe("france");
   });
 });

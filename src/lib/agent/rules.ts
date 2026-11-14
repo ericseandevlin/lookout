@@ -87,6 +87,74 @@ export const fingerprint = (company: string, title: string, location: string) =>
  */
 export const legacyFingerprint = (company: string, title: string, location: string) => key(company, title, location, false);
 
+const US_STATES: Record<string, string> = {
+  al: "alabama", ak: "alaska", az: "arizona", ar: "arkansas", ca: "california", co: "colorado", ct: "connecticut",
+  de: "delaware", dc: "district of columbia", fl: "florida", ga: "georgia", hi: "hawaii", id: "idaho", il: "illinois",
+  in: "indiana", ia: "iowa", ks: "kansas", ky: "kentucky", la: "louisiana", me: "maine", md: "maryland",
+  ma: "massachusetts", mi: "michigan", mn: "minnesota", ms: "mississippi", mo: "missouri", mt: "montana", ne: "nebraska",
+  nv: "nevada", nh: "new hampshire", nj: "new jersey", nm: "new mexico", ny: "new york", nc: "north carolina",
+  nd: "north dakota", oh: "ohio", ok: "oklahoma", or: "oregon", pa: "pennsylvania", ri: "rhode island",
+  sc: "south carolina", sd: "south dakota", tn: "tennessee", tx: "texas", ut: "utah", vt: "vermont", va: "virginia",
+  wa: "washington", wv: "west virginia", wi: "wisconsin", wy: "wyoming", pr: "puerto rico",
+};
+// None of these codes is also a US state's.
+const CA_PROVINCES: Record<string, string> = {
+  ab: "alberta", bc: "british columbia", mb: "manitoba", nb: "new brunswick", nl: "newfoundland and labrador",
+  ns: "nova scotia", nt: "northwest territories", nu: "nunavut", on: "ontario", pe: "prince edward island",
+  qc: "quebec", sk: "saskatchewan", yt: "yukon",
+};
+/** A state or province, by code or name, as "us-ny" or "ca-on". "CA" is California, the way US postings write it. */
+const STATES = new Map<string, string>(
+  (
+    [
+      ["us", US_STATES],
+      ["ca", CA_PROVINCES],
+    ] as const
+  ).flatMap(([c, m]) => Object.entries(m).flatMap(([code, name]) => [[code, `${c}-${code}`] as const, [name, `${c}-${code}`] as const])),
+);
+const COUNTRIES = new Map<string, string>([
+  ...["us", "usa", "u s", "u s a", "united states", "united states of america", "america"].map((n) => [n, "us"] as const),
+  ...["uk", "u k", "gb", "united kingdom", "great britain", "britain", "england", "scotland", "wales", "northern ireland"].map((n) => [n, "gb"] as const),
+  ["canada", "ca"],
+]);
+
+/**
+ * The state and country after a location's first comma: "Portland, OR" is { state: "us-or", country: "us" }, "Remote,
+ * Canada" is { country: "ca" }. A country not known here stands as its own text, so "Remote, Mexico" still differs from
+ * "Remote, US". ZIP codes are dropped ("NY 10001").
+ */
+export function region(location: string) {
+  let state: string | null = null;
+  let country: string | null = null;
+  let other: string | null = null;
+  for (const part of location.split(",").slice(1)) {
+    const p = normPart(true)(part).replace(/\b\d+\b/g, " ").replace(/\s+/g, " ").trim();
+    if (!p) continue;
+    const s = STATES.get(p);
+    if (s) state ??= s;
+    else if (COUNTRIES.has(p)) country ??= COUNTRIES.get(p)!;
+    else other = p;
+  }
+  return { state, country: country ?? state?.slice(0, 2) ?? other };
+}
+
+/**
+ * Two locations that share the fingerprint's city but are in different places: both name a country and they differ, or
+ * both name a state and those differ. "New York, NY" and "New York, New York" are one place; "Remote, US" and "Remote,
+ * Canada", or "Portland, OR" and "Portland, ME", are two (#1285). A location with no region differs from none.
+ */
+export function placesDiffer(a: string, b: string) {
+  const x = region(a);
+  const y = region(b);
+  return (!!x.country && !!y.country && x.country !== y.country) || (!!x.state && !!y.state && x.state !== y.state);
+}
+
+/** The region a posting is keyed under when it shares a city with a posting somewhere else: the state, else the country. */
+export const placeId = (location: string) => {
+  const r = region(location);
+  return r.state ?? r.country ?? "";
+};
+
 // Tracking params only, matched by exact name, so job IDs like referenceId or refnum stay in the key (#487). Ad and email
 // click IDs too: Google, Meta, Microsoft, LinkedIn, Instagram, HubSpot, Mailchimp, Marketo and the Google linker (#1193).
 // Jobvite's source tags __jvst and __jvsd (#1252).
