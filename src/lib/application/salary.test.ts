@@ -453,6 +453,37 @@ describe('"/yr" after a space or "(" is a yearly ask (#1121)', () => {
   });
 });
 
+describe("day rate questions (#1194)", () => {
+  it.each([
+    ["Daily rate expectations", "day"],
+    ["Rate expectations (daily)", "day"],
+    ["Desired day rate (USD)", "day"],
+    ["What is your expected rate per day?", "day"],
+    ["Expected rate /day", "day"],
+  ])("reads %s as a day rate ask", (q, per) => {
+    expect(isSalaryQuestion(q)).toBe(true);
+    expect(askPer(q)).toBe(per);
+  });
+
+  it.each([
+    "Desired salary. This role is 8 hours a day, 5 days a week.",
+    "What are your salary expectations? Describe your day-to-day as a design lead in another answer.",
+    "Desired salary (this role is salaried, not daily)",
+  ])("keeps %s a yearly ask", (q) => {
+    expect(askPer(q)).toBe(null);
+  });
+
+  it("an hourly ask stays hourly", () => {
+    expect(askPer("Desired hourly rate")).toBe("hour");
+  });
+
+  it("divides the yearly ask by 260 working days", () => {
+    const r = suggestSalary({ min: 130000, max: 130000, per: "day" });
+    expect(r?.amount).toBe("$500");
+    expect(r?.note).toContain("260 working days");
+  });
+});
+
 describe("askPer reads the period from the ask, not a side sentence (#1136)", () => {
   it.each([
     ["What is your desired hourly rate? Rates are reviewed once a year.", "hour"],
