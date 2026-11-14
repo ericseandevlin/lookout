@@ -761,6 +761,23 @@ describe("runFill controls (#567)", () => {
     expect(page.did).toEqual(expect.arrayContaining(["fill Website=https://pat.design", "fill Email *=pat@example.com", "fill Portfolio Website=https://pat.design/work"]));
   });
 
+  it("a label holds the question only as whole words, and \"(optional)\" is not part of it (#1253)", async () => {
+    const id = await seed("approved", [
+      { kind: "field", prompt: "City", content: "Brooklyn" },
+      { kind: "field", prompt: "Website", content: "https://pat.dev" },
+    ]);
+    page = fakePage([
+      { kind: "control", label: "Ethnicity" },
+      { kind: "control", label: "Current City" },
+      { kind: "control", label: "Portfolio Website" },
+      { kind: "control", label: "Website (optional)" },
+    ]);
+    const r = await runFill(id, "test");
+    expect(r.log.map((l) => [l.prompt, l.ok])).toEqual([["City", true], ["Website", true]]);
+    expect(page.did).toEqual(expect.arrayContaining(["fill Current City=Brooklyn", "fill Website (optional)=https://pat.dev"]));
+    expect(page.did.join("\n")).not.toMatch(/fill (Ethnicity|Portfolio Website)=/);
+  });
+
   it("fills the form straight away when there's no Apply button", async () => {
     const id = await seed("approved", [{ kind: "field", prompt: "Phone", content: "555-0100" }]);
     page = fakePage([{ kind: "control", label: "Phone", type: "tel" }]);

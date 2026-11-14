@@ -127,6 +127,17 @@ describe("extension fill: text fields", () => {
     expect(p.value("#w")).toBe("https://pat.design");
   });
 
+  it("a \"(required)\" label is the question itself, and a label holds it only as whole words (#1253)", async () => {
+    const p = page(`<label for="pw">Portfolio Website</label><input id="pw"><label for="w">Website (required)</label><input id="w">
+      <label for="e">Ethnicity</label><input id="e"><label for="c">Current City</label><input id="c">`);
+    const log = await p.fill({ steps: [text("Website", "https://pat.dev"), text("City", "Brooklyn")] });
+    expect(log.map((r) => r.ok)).toEqual([true, true]);
+    expect(p.value("#w")).toBe("https://pat.dev");
+    expect(p.value("#pw")).toBe("");
+    expect(p.value("#c")).toBe("Brooklyn");
+    expect(p.value("#e")).toBe("");
+  });
+
   it("fires input and change so React-style forms see the value", async () => {
     const p = page(`<label for="fn">First Name</label><input id="fn">`);
     const seen: string[] = [];
