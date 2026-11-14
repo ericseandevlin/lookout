@@ -193,7 +193,11 @@ function fromText(text: string): Pay | null {
     const own = tail.split(/\d/)[0];
     // Any common code there counts, so "SGD" or "NZD" after a range isn't read as US dollars (#883).
     const code3 = own.match(/\b(CAD|AUD|EUR|GBP|SGD|NZD|HKD|CHF|MXN|TWD|INR|JPY|CNY|USD)\b|€|£/)?.[0];
-    const currency = named ?? (code3 === "€" ? "EUR" : code3 === "£" ? "GBP" : (code3 ?? "USD"));
+    // After a "$" lead another currency counts only as a code right after the numbers ("$60,000 - $70,000 EUR"). Further
+    // on, or as a sign, it is another office's pay: "$150,000 - $180,000 (£110,000 - £130,000 in London)" (#1204).
+    const adjacent = !!code3 && code3.length === 3 && /^[\s,.;:()[\]\/-]*$/.test(own.slice(0, own.indexOf(code3)));
+    const dollarLead = /^\D*\$/.test(m[0]) && !!code3 && !adjacent && !new RegExp(`^(?:${DOLLARS})$`).test(code3);
+    const currency = named ?? (dollarLead ? "USD" : code3 === "€" ? "EUR" : code3 === "£" ? "GBP" : (code3 ?? "USD"));
     // A range that is already a year's pay stays yearly when only a pay schedule follows it; "$4,000 - $5,000 paid
     // twice a month" still reads by the schedule (#716).
     const yearly = plausible(a) && plausible(b);
