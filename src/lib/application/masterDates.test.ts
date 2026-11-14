@@ -37,6 +37,31 @@ describe("looseDates", () => {
     expect(looseDates("### Staff Engineer | Acme Corp | 03/2019 – Present", "Staff Engineer, Acme Corp  March 2019 - June 2021")).toHaveLength(1);
   });
 
+  it.each([
+    "Director of Marketing 2019 – 2021",
+    "Director, Marriott 2019 - 2021",
+    "Director, Marqeta 2019 - 2021",
+    "Director, Decagon 2019 - 2021",
+    "Director, Mayo Clinic 2019 - 2021",
+    "Director, Novo Nordisk 2019 - 2021",
+    "Director, Octopus 2019 - 2021",
+    "Director, Junebug 2019 - 2021",
+  ])("reads a word that starts like a month as no month: %s (#1177)", (line) => {
+    expect(looseDates("### Director | Acme | 06/2019 – 06/2021", line)).toEqual([]);
+  });
+
+  it.each(["Mar 2019 - Jun 2021", "Mar. 2019 - June 2021", "March, 2019 - June 2021", "Sept 2019 - Sep 2021", "September 2019 - July 2021"])(
+    "still reads real month spellings: %s (#1177)",
+    (dates) => {
+      const [s, e] = dates.split(" - ");
+      const m = (x: string) => String(["jan", "feb", "mar", "apr", "may", "jun", "jul", "aug", "sep", "oct", "nov", "dec"].indexOf(x.slice(0, 3).toLowerCase()) + 1).padStart(2, "0");
+      const heading = `### Staff Engineer | Acme | ${m(s)}/2019 – ${m(e)}/2021`;
+      expect(looseDates(heading, `Staff Engineer, Acme ${dates}`)).toEqual([]);
+      // A different month still warns, so the month was really read.
+      expect(looseDates("### Staff Engineer | Acme | 01/2019 – 01/2021", `Staff Engineer, Acme ${dates}`)).toHaveLength(1);
+    },
+  );
+
   it("warns once, naming the job, when the dates sat elsewhere in the file", () => {
     // Two-column PDF: dates float to their own line, away from the title.
     const loose = `Jane Doe
