@@ -200,10 +200,11 @@ export function newNumbers(master: string, draft: string): string[] {
     for (const [u, k] of [[1e9, "b"], [1e6, "m"], [1e3, "k"]] as const) if (v >= u && Number.isInteger((v * 100) / u)) return m[1] + String(v / u) + k + m[3];
     return n;
   };
-  const isYear = (n: string) => /^(19|20)\d\d$/.test(n);
+  // A year is written bare, as in the text: "2,000" has a thousands comma, so it is a count, not the year 2000 (#1218).
+  const years = new Set((norm(draft).match(/\$?\d[\d,.]*/g) ?? []).map((n) => n.replace(/\.$/, "")).filter((n) => /^(19|20)\d\d$/.test(n)));
   const have = new Set([...nums(master)].map(short));
   // The master's "over 20" is "20+": a plain "20" in the draft says no more than that (#1148).
-  return [...nums(draft)].filter((n) => n && !isYear(n) && !have.has(short(n)) && !have.has(short(n) + "+"));
+  return [...nums(draft)].filter((n) => n && !years.has(n) && !have.has(short(n)) && !have.has(short(n) + "+"));
 }
 
 /** The resume's version note, as bullets: score, what was added where, each change, numbers to check. */

@@ -136,6 +136,13 @@ describe("newNumbers", () => {
     expect(newNumbers("15 years leading teams.", "15+ years leading teams.")).toEqual(["15+"]);
     expect(newNumbers("Over 15 years.", "20+ years.")).toEqual(["20+"]);
   });
+
+  it("flags a count with a thousands comma even when its digits look like a year (#1218)", () => {
+    expect(newNumbers("Grew the community to 200 members, 2019 to 2024.", "Grew the community to 2,000 members.")).toEqual(["2000"]);
+    expect(newNumbers("Led a team of 12.", "Shipped to 1,950 stores.")).toEqual(["1950"]);
+    // A bare year is still a year.
+    expect(newNumbers("Led a team of 12.", "Led a team of 12 since 2019.")).toEqual([]);
+  });
 });
 
 describe("checkAnswer", () => {
