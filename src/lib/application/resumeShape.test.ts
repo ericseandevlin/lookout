@@ -62,6 +62,15 @@ describe("Experience shape in code (#137)", () => {
     expect(b.filter((x) => x.t === "subrole").slice(0, 2).map((x) => x.text)).toEqual(["Vice President", "UX Engineering Lead (contract via Photon)"]);
   });
 
+  it("keeps a title with a comma whole when it groups one employer's roles (#1267)", () => {
+    const md = `# A\n\n## Experience\n### Director, UX, Acme | NYC | 2019 – Present\n- One thing done here well.\n### Senior Manager, UX, Acme | NYC | 2016 – 2019\n- Another thing done well.\n### Designer, Globex, Inc. (Paris, France) | 2014 – 2016\n- Earlier work.\n### Intern, Globex, Inc. (Paris, France) | 2013 – 2014\n- First job.\n`;
+    const s = shapeResume(md);
+    const b = parseDraft(s.md);
+    expect(b.filter((x) => x.t === "role").map((x) => x.text)).toEqual(["Acme | NYC", "Globex, Inc. (Paris, France)"]);
+    expect(b.filter((x) => x.t === "subrole").map((x) => x.text)).toEqual(["Director, UX", "Senior Manager, UX", "Designer", "Intern"]);
+    expect(s.fixed.join(" ")).toContain("titles at Acme under one heading");
+  });
+
   it("leaves a company note that starts like a keyword alone (#1152)", () => {
     for (const line of ["Product Designer, Meta (formerly Facebook)", "UX Lead, Acme (Fortune 500 retailer)", "Engineer, Initech (Atlanta office)", "Designer, Globex (Client Services)"])
       expect(agencyWording(line)).toBe(line);
