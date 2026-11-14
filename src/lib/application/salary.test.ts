@@ -491,6 +491,11 @@ describe("askPer reads the period from the ask, not a side sentence (#1136)", ()
     ["What are your salary expectations? Please give an hourly figure.", "hour"],
     ["Desired salary. We pay monthly.", "month"],
     ["What are your salary expectations? This role is about 40 hours per week.", null],
+    // A short instruction about the answer counts with no pay word (#1245).
+    ["What are your salary expectations? Please answer monthly.", "month"],
+    ["Desired salary? Monthly, before tax.", "month"],
+    ["What are your salary expectations? Hourly is fine.", "hour"],
+    ["What are your salary expectations? We review applications weekly and reply to everyone.", null],
   ] as const)("%s", (q, per) => {
     expect(askPer(q)).toBe(per);
   });
