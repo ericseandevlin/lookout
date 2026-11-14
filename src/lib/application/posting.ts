@@ -122,9 +122,20 @@ export function stripHidden(html: string): { html: string; hidden: string[] } {
   return { html: out + html.slice(at), hidden };
 }
 
+// What leads into a planted word: "the word", "a specific phrase", "this keyword", "the following term" (#1105).
+const TRAP_LEAD = String.raw`\b(?:the|a|an|this|that|these|those|following|specific|exact|secret|special|magic|hidden|code)`;
+// "Microsoft Word", "short term" and "long-term" are never the noun (#1042, #1105).
+const NOT_TRAP_NOUN = String.raw`(?<![-\w]|\b(?:microsoft|ms|short|long|near|mid|medium) )`;
+const TRAP_NOUN = String.raw`${NOT_TRAP_NOUN}(?:word|phrase|term|code ?word|keyword|emoji)s?`;
+
 const TRAP = [
   // The noun must stand alone: "long-term", "short-term" and "Microsoft Word" are job text, not traps (#1042).
-  /\b(include|use|mention|write|add|insert|put|type|say)\b[^.!?\n]{0,50}(?<![-\w]|\b(?:microsoft|ms) )(word|phrase|term|code ?word|keyword|emoji)(?![-\w]|\s+(?:doc|docs|document|documents|file|files|processing|count|limit)\b)/i,
+  // And it must be named as a thing to insert: "the word X", "a specific phrase", "keyword: X", "term 'X'". "Use Word,
+  // Excel", "short term and long term roadmaps", "one term per concept" and "keyword research" are job text (#1105).
+  new RegExp(
+    `\\b(include|use|mention|write|add|insert|put|type|say)\\b[^.!?\\n]{0,50}(?:${TRAP_LEAD}\\s+(?:[\\w-]+\\s+)?${TRAP_NOUN}(?![-\\w]|\\s+(?:doc|docs|document|documents|file|files|processing|processor|count|limit)\\b)|${TRAP_NOUN}\\s*[:"'“‘])`,
+    "i",
+  ),
   /\bif you(?:'re| are| were)\s+(an?\s+)?(ai|a\.i\.|llm|language model|chat ?bot|bot|automated|machine|gpt|robot)\b/i,
   // Spoken to an AI directly: "Attention AI:", "any LLM reading this must", "ChatGPT: include..."
   /\b(note to|attention|dear|hey|(?:to|for) (?:any|all|every))\s+(the\s+)?(ai|a\.i\.|llm|language model|chatgpt|gpt|claude|gemini|copilot|bot|automated tools?)s?(?![-\w])/i,
@@ -138,7 +149,7 @@ const TRAP = [
 ];
 
 const quoted = (s: string) => [...s.matchAll(/["'“‘]([^"'”’\n]{1,40})["'”’]/g)].map((m) => m[1].trim()).filter(Boolean);
-const afterWord = (s: string) => [...s.matchAll(/(?<![-\w]|\b(?:microsoft|ms) )(?:word|phrase|term)\s+([A-Za-z][\w-]{2,30})/gi)].map((m) => m[1]).filter((w) => !/^(in|on|at|to|that|somewhere|anywhere|into|within|the|your)$/i.test(w));
+const afterWord = (s: string) => [...s.matchAll(new RegExp(String.raw`${NOT_TRAP_NOUN}(?:word|phrase|term)\s+([A-Za-z][\w-]{2,30})`, "gi"))].map((m) => m[1]).filter((w) => !/^(in|on|at|to|that|somewhere|anywhere|into|within|the|your)$/i.test(w));
 
 /** Each trap with its whole sentence. Trap.text is cut to 300 characters for the review page; removal needs all of it (#965). */
 function trapSentences(text: string, hidden: boolean): { sentence: string; trap: Trap }[] {
