@@ -225,7 +225,15 @@ export function shapeResume(md: string): { md: string; fixed: string[] } {
     }
   }
 
-  const ex = secs.findIndex((x) => EXPERIENCE.test(x.title));
+  let ex = secs.findIndex((x) => EXPERIENCE.test(x.title));
+  // A summary below Experience goes up to sit right above it; moving only Experience never fixed this order (#1281).
+  const si = sum ? secs.indexOf(sum) : -1;
+  if (sum && ex >= 0 && si > ex) {
+    secs.splice(si, 1);
+    secs.splice(ex, 0, sum);
+    ex++;
+    fixed.push("Moved your summary above Experience, so it's the first thing a recruiter reads.");
+  }
   const want = sum ? secs.indexOf(sum) + 1 : 0;
   if (ex > want) {
     const [e] = secs.splice(ex, 1);
