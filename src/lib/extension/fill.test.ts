@@ -485,17 +485,19 @@ describe("extension fill: choices", () => {
 });
 
 /** A react-select style picker: the list renders on mousedown; clicking an option sets the visible value. */
-function combobox(w: JSDOM["window"], id: string, options: string[]) {
+function combobox(w: JSDOM["window"], id: string, options: string[], multi = false) {
   const input = w.document.getElementById(id) as HTMLInputElement;
   input.addEventListener("mousedown", () => {
     const list = w.document.createElement("div");
     list.id = `${id}-list`;
+    list.setAttribute("role", "listbox");
+    if (multi) list.setAttribute("aria-multiselectable", "true");
     for (const o of options) {
       const el = w.document.createElement("div");
       el.setAttribute("role", "option");
       el.textContent = o;
       el.addEventListener("click", () => {
-        input.dataset.picked = o;
+        input.dataset.picked = multi && input.dataset.picked ? `${input.dataset.picked},${o}` : o;
         list.remove();
       });
       list.append(el);
@@ -526,6 +528,31 @@ describe("extension fill: custom dropdowns", () => {
     combobox(p.w, "loc", ["Austin"]);
     const [r] = await p.fill({ steps: [{ prompt: "Which office?", kind: "choice", content: "Denver" }] });
     expect(r).toMatchObject({ ok: false, how: "option not in the list" });
+  }, 10_000);
+
+  it("picks every line of the answer on a multi-select dropdown (#1126)", async () => {
+    const p = page(`<label for="loc">Which offices?</label><input id="loc" role="combobox">`);
+    combobox(p.w, "loc", ["Austin", "Boston", "Remote"], true);
+    const [r] = await p.fill({ steps: [{ prompt: "Which offices?", kind: "choice", content: "Boston\nRemote", options: ["Austin", "Boston", "Remote"] }] });
+    expect(r).toMatchObject({ ok: true, how: "picked 2 options" });
+    expect((p.doc.querySelector("#loc") as HTMLInputElement).dataset.picked).toBe("Boston,Remote");
+  });
+
+  it("a one-choice dropdown takes the first line and reports the rest not filled (#1126)", async () => {
+    const p = page(`<label for="loc">Which offices?</label><input id="loc" role="combobox">`);
+    combobox(p.w, "loc", ["Austin", "Boston", "Remote"]);
+    const [r] = await p.fill({ steps: [{ prompt: "Which offices?", kind: "choice", content: "Boston\nRemote" }] });
+    expect(r).toMatchObject({ ok: false, how: "one choice only, not filled: Remote" });
+    expect((p.doc.querySelector("#loc") as HTMLInputElement).dataset.picked).toBe("Boston");
+  });
+
+  it("types one line, never the whole answer, when the list doesn't show it (#1126)", async () => {
+    const p = page(`<label for="loc">Which offices?</label><input id="loc" role="combobox">`);
+    const typed: string[] = [];
+    p.doc.querySelector("#loc")!.addEventListener("input", (e) => typed.push((e.target as HTMLInputElement).value));
+    const [r] = await p.fill({ steps: [{ prompt: "Which offices?", kind: "choice", content: "Boston\nRemote" }] });
+    expect(r).toMatchObject({ ok: false, how: "list didn't open: Boston" });
+    expect(typed).toEqual(["Boston"]);
   }, 10_000);
 
   it("sets the phone's own country picker to United States, not the Minor Outlying Islands", async () => {

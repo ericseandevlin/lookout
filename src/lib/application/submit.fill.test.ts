@@ -19,7 +19,7 @@ vi.mock("@/lib/db", () => ({ db, schema }));
  * A fake application form in place of Chromium (#385). It answers the Playwright calls submit.ts
  * makes: controls found by label or role, a Submit button, and what the page shows after Submit.
  */
-type El = { kind: "control" | "file" | "button" | "option" | "confirm" | "captcha" | "group" | "wrapper"; label: string; tag?: string; type?: string; role?: string; after?: boolean; options?: string[]; children?: El[] };
+type El = { kind: "control" | "file" | "button" | "option" | "confirm" | "captcha" | "group" | "wrapper"; label: string; tag?: string; type?: string; role?: string; after?: boolean; options?: string[]; children?: El[]; multi?: boolean };
 type Page = ReturnType<typeof fakePage>;
 
 /** The full text content of an element: its own label plus all descendants' labels. */
@@ -69,7 +69,7 @@ function fakePage(els: El[]) {
       waitFor: () => (find().length ? Promise.resolve() : new Promise((_, no) => setTimeout(() => no(new Error("timeout")), 20))),
       evaluate: async (fn) => {
         const e = one();
-        return fn({ tagName: (e.tag ?? "input").toUpperCase(), getAttribute: (a) => (a === "type" ? (e.type ?? null) : a === "role" ? (e.role ?? null) : null) });
+        return fn({ tagName: (e.tag ?? "input").toUpperCase(), getAttribute: (a) => (a === "type" ? (e.type ?? null) : a === "role" ? (e.role ?? null) : a === "aria-multiselectable" ? (e.multi ? "true" : null) : null) });
       },
       innerText: async () => one().label,
       allTextContents: async () => find().map((e) => e.label),
@@ -477,6 +477,51 @@ describe("runFill controls (#567)", () => {
     const r = await runFill(id, "test");
     expect(r.log[0]).toMatchObject({ ok: true, how: "picked option" });
     expect(page.did).toEqual(["goto https://jobs.example.com/apply", "click Are you authorized to work in the US?", "fill Are you authorized to work in the US?=Yes", "click Yes", "screenshot filled.png"]);
+  });
+
+  it("a multi-select dropdown picks every line of the answer (#1126)", async () => {
+    const id = await seed("approved", [{ kind: "field", prompt: "Which offices?", content: "Boston\nRemote", options: ["Boston", "Denver", "Remote"] }]);
+    page = fakePage([
+      { kind: "control", label: "Which offices?", role: "combobox", multi: true },
+      { kind: "option", label: "Boston", role: "option" },
+      { kind: "option", label: "Remote", role: "option" },
+    ]);
+    const r = await runFill(id, "test");
+    expect(r.log[0]).toMatchObject({ ok: true, how: "picked 2 options" });
+    expect(page.did).toEqual([
+      "goto https://jobs.example.com/apply",
+      "click Which offices?",
+      "fill Which offices?=Boston",
+      "click Boston",
+      "click Which offices?",
+      "fill Which offices?=Remote",
+      "click Remote",
+      "screenshot filled.png",
+    ]);
+  });
+
+  it("a one-choice dropdown with several lines picks the first and reports the rest not filled (#1126)", async () => {
+    const id = await seed("approved", [{ kind: "field", prompt: "Which offices?", content: "Boston\nRemote" }]);
+    page = fakePage([
+      { kind: "control", label: "Which offices?", role: "combobox" },
+      { kind: "option", label: "Boston", role: "option" },
+      { kind: "option", label: "Remote", role: "option" },
+    ]);
+    const r = await runFill(id, "test");
+    expect(r.log[0]).toMatchObject({ ok: false, how: "one choice only, not filled: Remote" });
+    expect(r.missing).toEqual(["Which offices?"]);
+    expect(page.did).not.toContain("fill Which offices?=Boston\nRemote");
+    expect(page.did).not.toContain("click Remote");
+  });
+
+  it("a multi-select line that doesn't show is reported, not passed over (#1126)", async () => {
+    const id = await seed("approved", [{ kind: "field", prompt: "Which offices?", content: "Boston\nParis" }]);
+    page = fakePage([
+      { kind: "control", label: "Which offices?", role: "combobox", multi: true },
+      { kind: "option", label: "Boston", role: "option" },
+    ]);
+    const r = await runFill(id, "test");
+    expect(r.log[0]).toMatchObject({ ok: false, how: "option did not show: Paris" });
   });
 
   it("logs the phone country as not filled when United States isn't listed, without stopping", async () => {

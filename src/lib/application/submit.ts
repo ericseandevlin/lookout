@@ -183,6 +183,30 @@ async function letterBox(page: Page, prompt: string) {
   return /^textarea:|^input:(text)?$/.test(tag) ? field : null;
 }
 
+/**
+ * One line of a custom dropdown's answer: open, type, click the exact option. With the options known, the one the
+ * line means: "Yes, I am authorized" is "Yes" (#700). Also says whether the dropdown keeps several choices (#1126).
+ */
+async function pickLine(page: Page, field: ReturnType<Page["getByLabel"]>, line: string, options?: string[]) {
+  const i = options?.length ? pickOne(line, options) : -1;
+  const want = i >= 0 ? options![i] : line;
+  await field.click();
+  const multi =
+    (await field.evaluate((e) => e.getAttribute("aria-multiselectable") === "true" || !!e.closest?.("[aria-multiselectable=true], [class*=--is-multi]")).catch(() => false)) ||
+    (await page.locator("[role=listbox][aria-multiselectable=true]").count()) > 0;
+  await field.fill(want).catch(() => {});
+  // Options that load after typing (Greenhouse Location or School) need a moment. No option, no fill: Enter on an
+  // empty menu left the field blank while the step said "picked", and Submit went out to a rejection (#1073).
+  const opt = page.getByRole("option", { name: want, exact: true }).first();
+  const shown = await opt.waitFor({ state: "visible", timeout: 2000 }).then(() => true, () => false);
+  if (!shown) {
+    await field.press("Escape").catch(() => {});
+    return { ok: false, how: `option did not show: ${want.slice(0, 60)}`, multi };
+  }
+  await opt.click();
+  return { ok: true, how: "picked option", multi };
+}
+
 /** Find the control for one question by its label and put the approved answer in. */
 async function fillOne(page: Page, s: FillStep): Promise<{ ok: boolean; how: string }> {
   try {
@@ -277,21 +301,19 @@ async function fillOne(page: Page, s: FillStep): Promise<{ ok: boolean; how: str
     }
     if (tag.includes("combobox") || s.kind === "choice") {
       // Custom dropdowns (react-select on Greenhouse, Ashby's own): open, type, pick the exact option.
-      // With the options known, the one the answer means: "Yes, I am authorized" is "Yes" (#700).
-      const i = s.options?.length ? pickOne(s.content, s.options) : -1;
-      const want = i >= 0 ? s.options![i] : s.content;
-      await field.click();
-      await field.fill(want).catch(() => {});
-      // Options that load after typing (Greenhouse Location or School) need a moment. No option, no fill: Enter on an
-      // empty menu left the field blank while the step said "picked", and Submit went out to a rejection (#1073).
-      const opt = page.getByRole("option", { name: want, exact: true }).first();
-      const shown = await opt.waitFor({ state: "visible", timeout: 2000 }).then(() => true, () => false);
-      if (!shown) {
-        await field.press("Escape").catch(() => {});
-        return { ok: false, how: `option did not show: ${want.slice(0, 60)}` };
+      // Several lines are several choices (#1126): each one on a multi-select, else the first and the rest reported
+      // not filled. Same as the extension.
+      const lines = s.content.split(/\n+/).map((t) => t.trim()).filter(Boolean);
+      if (lines.length < 2) {
+        const r = await pickLine(page, field, s.content, s.options);
+        return { ok: r.ok, how: r.how };
       }
-      await opt.click();
-      return { ok: true, how: "picked option" };
+      for (const [n, line] of lines.entries()) {
+        const r = await pickLine(page, field, line, s.options);
+        if (!r.ok) return { ok: false, how: r.how };
+        if (n === 0 && !r.multi) return { ok: false, how: `one choice only, not filled: ${lines.slice(1).join(", ").slice(0, 60)}` };
+      }
+      return { ok: true, how: `picked ${lines.length} options` };
     }
     await field.fill(s.content);
     return { ok: true, how: "typed" };
