@@ -305,6 +305,23 @@ async function fillOne(page: Page, s: FillStep): Promise<{ ok: boolean; how: str
       return { ok: true, how: "selected" };
     }
     if (tag.includes(":checkbox:")) {
+      // One box per option, each labeled with the question and its option ("Are you 18 or older? Yes"): check the boxes
+      // the answer means. Checking the box the label search landed on put "Yes" on the "No" box (#1209), as #720 did for radios.
+      if (!hasExact && s.options?.length) {
+        const optionBox = (o: string) => page.getByRole("checkbox", { name: new RegExp(`^\\s*${pattern(s.prompt)}\\s*(?:\\*|✱|\\(required\\))?\\s+${pattern(o)}\\s*$`, "i") }).first();
+        let own = 0;
+        for (const o of s.options) own += await optionBox(o).count();
+        if (own) {
+          const picks = pickOptions(s.content, s.options);
+          if (!picks.length) return { ok: false, how: "answer matches no option" };
+          for (const label of picks) {
+            const box = optionBox(label);
+            if (!(await box.count())) return { ok: false, how: `option not found: ${label.slice(0, 60)}` };
+            await box.check();
+          }
+          return { ok: true, how: `checked ${picks.length}` };
+        }
+      }
       // A box whose label only holds the question is a text answer's field only if the answer is a yes or a no (#1112).
       if (!hasExact && s.kind !== "choice" && !answersBox(s.content)) return { ok: false, how: "field not found" };
       // A required box the answer doesn't tick is reported missing, not filled (#669).
