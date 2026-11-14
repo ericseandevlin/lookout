@@ -246,6 +246,22 @@ describe("findPay", () => {
     expect(findPay("", text)).toMatchObject({ min, max });
   });
 
+  it.each([
+    ["Annual bonus target $30,000 - $45,000\nThe base pay range is $160,000 - $200,000", 160000, 200000],
+    ["Signing bonus: $25,000 - $50,000. Salary $150,000 - $180,000", 150000, 180000],
+    ["Relocation assistance of $20,000 - $30,000\nSalary range: $140,000 - $170,000", 140000, 170000],
+    ["Equity: $100,000 - $400,000 over 4 years\nBase salary $180,000 - $220,000", 180000, 220000],
+    ["$25,000 - $50,000 signing bonus, and a salary of $150,000 - $180,000", 150000, 180000],
+    ["Base salary plus bonus: $150,000 - $180,000", 150000, 180000],
+  ])("skips a bonus, equity or relocation range above $20k in %s (#1238)", (text, min, max) => {
+    expect(findPay("", text)).toMatchObject({ min, max });
+  });
+
+  it("keeps a range when a bonus comes later on the line (#1238)", () => {
+    expect(findPay("", "$140,000 - $170,000 per year plus an annual bonus")).toMatchObject({ min: 140000, max: 170000 });
+    expect(findPay("", "Annual bonus target $30,000 - $45,000")).toBeNull();
+  });
+
   it("still reads a code right after the range (#811)", () => {
     expect(findPay("", "$150,000 - $200,000 CAD per year")).toMatchObject({ currency: "CAD" });
     expect(findPay("", "$150,000 - $200,000 a year (AUD), plus super")).toMatchObject({ currency: "AUD" });
