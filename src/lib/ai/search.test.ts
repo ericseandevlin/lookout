@@ -102,3 +102,23 @@ describe("webSearch config errors", () => {
     expect(fetchMock).not.toHaveBeenCalled();
   });
 });
+
+describe("probe: SearXNG under a path", () => {
+  it("keeps the path of a SearXNG address served under a prefix (#1224)", async () => {
+    const fetchMock = vi.fn().mockResolvedValue({ ok: true, json: async () => ({ results: [] }) });
+    vi.stubGlobal("fetch", fetchMock);
+    await webSearch("designer jobs", emptyUsage(), { ...cfg, searxngUrl: "https://tools.example.com/searxng" });
+    const url = new URL(String(fetchMock.mock.calls[0][0]));
+    expect(url.origin + url.pathname).toBe("https://tools.example.com/searxng/search");
+  });
+
+  it("still works with a bare host or an address that already ends in /search (#1224)", async () => {
+    for (const [base, want] of [["http://searxng:8080", "http://searxng:8080/search"], ["http://searxng:8080/", "http://searxng:8080/search"], ["https://tools.example.com/searxng/search", "https://tools.example.com/searxng/search"]]) {
+      const fetchMock = vi.fn().mockResolvedValue({ ok: true, json: async () => ({ results: [] }) });
+      vi.stubGlobal("fetch", fetchMock);
+      await webSearch("designer jobs", emptyUsage(), { ...cfg, searxngUrl: base });
+      const url = new URL(String(fetchMock.mock.calls[0][0]));
+      expect(url.origin + url.pathname).toBe(want);
+    }
+  });
+});

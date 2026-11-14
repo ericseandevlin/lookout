@@ -18,7 +18,9 @@ export async function webSearch(query: string, usage: Usage, cfg?: SearchConfig,
 }
 
 async function searxng(q: string, c: SearchConfig, recent: boolean): Promise<SearchHit[]> {
-  const u = new URL("/search", c.searxngUrl);
+  // Under the address's own path: "/search" from the root dropped a prefix like https://host/searxng (#1224). An address
+  // that already ends in /search worked before, so it still does.
+  const u = new URL("search", c.searxngUrl.replace(/\/search\/?$/, "").replace(/\/?$/, "/"));
   u.searchParams.set("q", q);
   u.searchParams.set("format", "json");
   u.searchParams.set("language", "en-US");
