@@ -214,7 +214,7 @@ function DeleteModal({ close }: { close: () => void }) {
         <div style={{ background: color.ink, color: "#fff", padding: "22px 24px 20px", display: "flex", alignItems: "flex-start", gap: 12 }}>
           <div style={{ flex: 1, minWidth: 0 }}>
             <div style={{ fontSize: 14, fontWeight: 700, letterSpacing: ".14em", textTransform: "uppercase", color: color.orange }}>Delete everything</div>
-            <div id="del-title" style={{ fontSize: 22, fontWeight: 700, letterSpacing: "-0.01em", marginTop: 6 }}>Start Lookout from scratch?</div>
+            <div id="del-title" style={{ fontSize: 21, fontWeight: 700, letterSpacing: "-0.01em", marginTop: 6 }}>Start Lookout from scratch?</div>
           </div>
           <button onClick={close} aria-label="Close" style={{ border: 0, background: "rgba(255,255,255,.1)", color: "#fff", width: 30, height: 30, borderRadius: "50%", cursor: "pointer", fontSize: 16, lineHeight: 1, flex: "none" }}>×</button>
         </div>

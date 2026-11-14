@@ -186,10 +186,10 @@ export function Shell({ children }: { children: React.ReactNode }) {
 
       <main id="main" tabIndex={-1} className="lk-main" style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", outline: "none" }}>
         <div className="mob-only" style={{ position: "relative", zIndex: 8, height: 56, background: color.ink, color: "#fff", alignItems: "center", gap: 10, padding: "0 12px 0 16px" }}>
-          <div className="mob-flex" style={{ display: "flex", alignItems: "center", height: "100%" }}>
+          <div className="mob-flex" style={{ display: "flex", alignItems: "center", gap: 8, height: "100%" }}>
             <div className="wordmark">Lookout</div>
             {state.user.searches && <SearchSwitcher variant="bar" />}
-            <Link href="/settings" aria-label="Settings" style={{ width: 44, height: 44, display: "flex", alignItems: "center", justifyContent: "center" }}>
+            <Link href="/settings" aria-label="Settings" style={{ width: 44, height: 44, marginLeft: "auto", flex: "none", display: "flex", alignItems: "center", justifyContent: "center" }}>
               <Avatar initials={initials} ring={onSettings} />
             </Link>
           </div>

@@ -40,11 +40,11 @@ export function Tabs() {
   const path = usePathname();
   const tabs = [["/admin", "People"], ["/admin/ai", "AI settings"], ["/admin/surveys", "Surveys"], ["/admin/quality", "Finds quality"], ["/admin/activity", "Activity"], ["/admin/metrics", "Metrics"], ["/admin/errors", "Errors"]] as const;
   return (
-    <div style={{ display: "flex", gap: 8, marginTop: 18 }}>
+    <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginTop: 16 }}>
       {tabs.map(([href, label]) => {
         const on = path === href;
         return (
-          <Link key={href} href={href} style={{ display: "flex", alignItems: "center", height: 34, padding: "0 15px", borderRadius: 999, border: `1.5px solid ${on ? color.brick : color.border}`, background: on ? color.brick : "#fff", color: on ? "#fff" : color.ink, fontSize: 14, fontWeight: 600, textDecoration: "none" }}>
+          <Link key={href} href={href} aria-current={on ? "page" : undefined} style={{ display: "flex", alignItems: "center", height: 34, padding: "0 16px", whiteSpace: "nowrap", borderRadius: 999, border: `1.5px solid ${on ? color.brick : color.border}`, background: on ? color.brick : "#fff", color: on ? "#fff" : color.ink, fontSize: 14, fontWeight: 600, textDecoration: "none" }}>
             {label}
           </Link>
         );
