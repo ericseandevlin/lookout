@@ -69,7 +69,7 @@ function fakePage(els: El[]) {
       waitFor: () => (find().length ? Promise.resolve() : new Promise((_, no) => setTimeout(() => no(new Error("timeout")), 20))),
       evaluate: async (fn) => {
         const e = one();
-        return fn({ tagName: (e.tag ?? "input").toUpperCase(), getAttribute: (a) => (a === "type" ? (e.type ?? null) : a === "role" ? (e.role ?? null) : a === "aria-multiselectable" ? (e.multi ? "true" : null) : null) });
+        return fn({ tagName: (e.tag ?? "input").toUpperCase(), getAttribute: (a) => (a === "type" ? (e.type ?? null) : a === "role" ? (e.role ?? null) : a === "aria-multiselectable" ? (e.multi ? "true" : null) : a === "multiple" ? (e.multi ? "" : null) : null) });
       },
       innerText: async () => one().label,
       allTextContents: async () => find().map((e) => e.label),
@@ -82,10 +82,11 @@ function fakePage(els: El[]) {
       press: async (k) => void did.push(`press ${one().label} ${k}`),
       check: async () => void did.push(`check ${one().label}`),
       uncheck: async () => void did.push(`uncheck ${one().label}`),
-      selectOption: async ({ label }) => {
+      selectOption: async (o) => {
         const e = one();
-        if (!e.options?.includes(label)) throw new Error(`no option ${label}`);
-        did.push(`select ${e.label}=${label}`);
+        const labels = [o].flat().map((x) => x.label);
+        for (const label of labels) if (!e.options?.includes(label)) throw new Error(`no option ${label}`);
+        did.push(`select ${e.label}=${labels.join("|")}`);
       },
       setInputFiles: async (f) => void did.push(`upload ${one().label}=${path.basename(f)}`),
     };
@@ -142,7 +143,7 @@ type Loc = {
   press(k: string): Promise<void>;
   check(): Promise<void>;
   uncheck(): Promise<void>;
-  selectOption(o: { label: string }): Promise<void>;
+  selectOption(o: { label: string } | { label: string }[]): Promise<void>;
   setInputFiles(f: string): Promise<void>;
 };
 
@@ -285,6 +286,31 @@ describe("runFill (#385)", () => {
     ]);
     expect(page.did).toContain("select Are you authorized to work in the US?=Yes");
     expect(page.did).toContain(`select ${q}=No, I will not require sponsorship`);
+  });
+
+  it("a <select multiple> takes every line of the answer (#1132)", async () => {
+    const id = await seed("approved", [{ kind: "field", prompt: "Which offices?", content: "Boston\nRemote" }]);
+    page = fakePage([{ kind: "control", label: "Which offices?", tag: "select", multi: true, options: ["Boston", "Denver", "Remote"] }]);
+    const r = await runFill(id, "test");
+    expect(r.log[0]).toMatchObject({ ok: true, how: "selected 2" });
+    expect(page.did).toContain("select Which offices?=Boston|Remote");
+  });
+
+  it("a one-choice <select> with several lines takes the first and reports the rest not filled (#1132)", async () => {
+    const id = await seed("approved", [{ kind: "field", prompt: "Which office?", content: "Boston\nRemote" }]);
+    page = fakePage([{ kind: "control", label: "Which office?", tag: "select", options: ["Boston", "Denver", "Remote"] }]);
+    const r = await runFill(id, "test");
+    expect(r.log[0]).toMatchObject({ ok: false, how: "one choice only, not filled: Remote" });
+    expect(r.missing).toEqual(["Which office?"]);
+    expect(page.did).toContain("select Which office?=Boston");
+  });
+
+  it("a <select multiple> line that isn't an option is reported, not passed over (#1132)", async () => {
+    const id = await seed("approved", [{ kind: "field", prompt: "Which offices?", content: "Boston\nParis" }]);
+    page = fakePage([{ kind: "control", label: "Which offices?", tag: "select", multi: true, options: ["Boston", "Remote"] }]);
+    const r = await runFill(id, "test");
+    expect(r.log[0]).toMatchObject({ ok: false, how: "option not in the list: Paris" });
+    expect(page.did.some((d) => d.startsWith("select "))).toBe(false);
   });
 });
 
