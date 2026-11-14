@@ -23,6 +23,16 @@ function annual(min: number, max: number, unit: string, currency: string, source
   return plausible(lo) && plausible(hi) && hi <= lo * 4 ? { min: lo, max: hi, currency, source } : null;
 }
 
+/**
+ * A structured-data currency as a 3-letter code (#1130). Pages write "usd", "US$" or "$"; a lowercase "usd" read as a
+ * foreign currency skipped the pay floor. Anything that isn't a code reads as USD, so page text never reaches the find.
+ */
+export function currencyCode(x: unknown): string {
+  const s = typeof x === "string" ? x.trim().toUpperCase() : "";
+  const sym: Record<string, string> = { $: "USD", US$: "USD", "€": "EUR", "£": "GBP" };
+  return sym[s] ?? (/^[A-Z]{3}$/.test(s) ? s : "USD");
+}
+
 /** A structured-data amount: a number, or a string like "120,000" or "$120K". NaN when it's neither. */
 const amount = (x: unknown) => (typeof x === "number" ? x : typeof x === "string" ? (money(x) ?? NaN) : NaN);
 
@@ -44,7 +54,7 @@ function fromJsonLd(html: string): Pay | null {
           const v = (typeof bs.value === "object" && bs.value ? bs.value : { value: bs.value }) as Record<string, unknown>;
           const min = amount(v.minValue ?? bs.minValue ?? v.value), max = amount(v.maxValue ?? bs.maxValue ?? v.value);
           if (Number.isFinite(min) && Number.isFinite(max) && min > 0) {
-            const p = annual(min, max, String(v.unitText ?? bs.unitText ?? "YEAR"), String(bs.currency ?? n.salaryCurrency ?? "USD"), "structured data");
+            const p = annual(min, max, String(v.unitText ?? bs.unitText ?? "YEAR"), currencyCode(bs.currency ?? n.salaryCurrency), "structured data");
             if (p) return p;
           }
         }

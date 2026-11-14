@@ -95,7 +95,7 @@ export async function sendDigest(userId: string, runId?: string) {
 <div style="font-size:14px;font-weight:700;color:#99220F">MATCH ${uo.score}/5</div>
 <div style="font-size:15px;font-weight:600;margin-top:2px"><a href="${link(o.id)}" style="color:#1D1A0F">${escapeHtml(o.title)}</a></div>
 <div style="font-size:14px;color:#6B6358">${escapeHtml(o.company)}${o.location.trim() ? ` · ${escapeHtml(o.location)}` : ""}</div>
-<div style="font-size:14px;color:${posted ? "#99220F" : "#6B6358"};margin-top:2px">${comp}</div></td></tr>`,
+<div style="font-size:14px;color:${posted ? "#99220F" : "#6B6358"};margin-top:2px">${escapeHtml(comp)}</div></td></tr>`,
       )
       .join("")}</table>${moreHtml}` : ""}${dueHtml}
 <a href="${link("board")}" style="display:inline-block;margin-top:20px;background:#99220F;color:#fff;text-decoration:none;font-weight:600;font-size:14.5px;padding:13px 24px;border-radius:12px">Open your board</a>${firstHtml}${footer.html}`,
