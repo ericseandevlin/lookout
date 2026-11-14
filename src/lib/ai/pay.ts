@@ -83,7 +83,7 @@ function fromGreenhouse(html: string): Pay | null {
 }
 
 // A dollar amount: $224,000 / $224K / $224000 / $55.50 (hourly). The second end of a range may drop the "$" ("$224,000 - 308,000").
-const AMT = String.raw`\d{1,3}(?:,\d{3})+(?:\.\d+)?|\d+(?:\.\d+)?\s?[kK]\b|\d{4,7}(?:\.\d+)?|\d{2,3}(?:\.\d{2})?`;
+const AMT = String.raw`\d{1,3}(?:,\d{3})+(?:\.\d+)?|\d+(?:\.\d+)?\s?[kK]\b|\d{4,7}(?:\.\d+)?|\d{2,3}(?:\.\d{1,2})?`;
 // A unit right after the first end, as in "$95/hr - $110/hr" or "$95 an hour - $110 an hour" (#682).
 const FIRST_UNIT = String.raw`\s?(?:\/\s?|(?:per|an?)\s)(?:hours?|hr|h|days?|years?|yr|months?|mo|weeks?|wk)\b`;
 // Either end may carry a currency: "US$120,000 - US$150,000", "CA$...", "$120,000 USD - $150,000 USD" (#686),
