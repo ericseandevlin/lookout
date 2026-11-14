@@ -307,3 +307,23 @@ describe("a job that was removed (#1271)", () => {
     expect(classifyPage(200, `TITLE: Product Designer\nTEXT: ${text}`).state).toBe("open");
   });
 });
+
+describe("a job post or advert that expired, closed or was archived (#1279)", () => {
+  it.each([
+    "This job post has expired.",
+    "This job post is closed.",
+    "This advert has expired.",
+    "This job advert has now closed.",
+    "This job has been archived.",
+    "Sorry, this posting was archived by the employer.",
+  ])("reads %s as closed", (text) => {
+    expect(classifyPage(200, `TITLE: Product Designer\nTEXT: ${text}`).state).toBe("gone");
+  });
+  it.each([
+    "Job Post Expired Date: 12/31/2026. Apply now.",
+    "This job post is closed to agencies. Apply now.",
+    "We archived our old design system and this role will build the new one. Apply now.",
+  ])("keeps %s open", (text) => {
+    expect(classifyPage(200, `TITLE: Product Designer\nTEXT: ${text}`).state).toBe("open");
+  });
+});
