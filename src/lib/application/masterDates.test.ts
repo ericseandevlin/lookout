@@ -37,6 +37,17 @@ describe("looseDates", () => {
     expect(looseDates("### Staff Engineer | Acme Corp | 03/2019 – Present", "Staff Engineer, Acme Corp  March 2019 - June 2021")).toHaveLength(1);
   });
 
+  it.each(["Director of Marketing 2019 – 2021", "Director of Marketing, Marriott 2019 – 2021", "Director of Marketing, Mayo Clinic 2019 – 2021", "Director of Marketing  Sept. 2019 – June 2021"])(
+    "reads a word that only starts like a month as no month: %s (#1177)",
+    (line) => {
+      expect(looseDates("### Director of Marketing | Acme | 09/2019 – 06/2021", line)).toEqual([]);
+    },
+  );
+
+  it("still reads the month when a word that starts like one sits before it (#1177)", () => {
+    expect(looseDates("### Director of Marketing | Acme | 09/2019 – 06/2021", "Director of Marketing  March 2019 – June 2021")).toHaveLength(1);
+  });
+
   it("warns once, naming the job, when the dates sat elsewhere in the file", () => {
     // Two-column PDF: dates float to their own line, away from the title.
     const loose = `Jane Doe
