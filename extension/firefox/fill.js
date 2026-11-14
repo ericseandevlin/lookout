@@ -223,24 +223,50 @@
    */
   async function pickFromCombobox(el, answer, matches) {
     const options = () => [...document.querySelectorAll("[role=option], [class*=select__option]")].filter(visible);
-    const find = () => {
-      const opts = options();
-      return matches ? opts.find((o) => matches(o.textContent)) : opts[pickOne(answer, opts.map((o) => o.textContent))];
+    // One line of the answer: open the list, match it, and type it (never the whole answer) when it isn't showing.
+    const pickLine = async (line) => {
+      const find = () => {
+        const opts = options();
+        return matches ? opts.find((o) => matches(o.textContent)) : opts[pickOne(line, opts.map((o) => o.textContent))];
+      };
+      press(el);
+      let option = await waitFor(find, 1500);
+      const multi = multiSelect(el);
+      if (!option && el.tagName === "INPUT") {
+        setValue(el, line.slice(0, 40));
+        option = await waitFor(find, 1500);
+      }
+      if (!option) {
+        el.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true }));
+        return { ok: false, how: options().length ? "option not in the list" : "list didn't open" };
+      }
+      option.scrollIntoView({ block: "nearest" });
+      press(option);
+      await sleep(200);
+      return { ok: true, how: "picked option", multi: multi || multiSelect(el) };
     };
-    press(el);
-    let option = await waitFor(find, 1500);
-    if (!option && el.tagName === "INPUT") {
-      setValue(el, answer.slice(0, 40));
-      option = await waitFor(find, 1500);
+    // Several lines are several choices (#1126): each one on a multi-select, else the first and the rest reported
+    // not filled. Picking only the first and saying "picked option" dropped "Remote" from "Boston\nRemote". Same as the worker.
+    const lines = matches ? [answer] : (answer || "").split(/\n+/).map((t) => t.trim()).filter(Boolean);
+    if (lines.length < 2) {
+      const { ok, how } = await pickLine(lines[0] || answer || "");
+      return { ok, how };
     }
-    if (!option) {
-      el.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true }));
-      return { ok: false, how: options().length ? "option not in the list" : "list didn't open" };
+    for (const [i, line] of lines.entries()) {
+      const r = await pickLine(line);
+      if (!r.ok) return { ok: false, how: `${r.how}: ${line.slice(0, 60)}` };
+      if (i === 0 && !r.multi) return { ok: false, how: `one choice only, not filled: ${lines.slice(1).join(", ").slice(0, 60)}` };
     }
-    option.scrollIntoView({ block: "nearest" });
-    press(option);
-    await sleep(200);
-    return { ok: true, how: "picked option" };
+    return { ok: true, how: `picked ${lines.length} options` };
+  }
+
+  /** A dropdown that keeps several choices: aria-multiselectable on it or its open list, or react-select's multi value box. */
+  function multiSelect(el) {
+    return (
+      el.getAttribute("aria-multiselectable") === "true" ||
+      !!el.closest("[aria-multiselectable=true], [class*=--is-multi]") ||
+      [...document.querySelectorAll("[role=listbox][aria-multiselectable=true]")].some(visible)
+    );
   }
 
   async function fillFile(step) {
