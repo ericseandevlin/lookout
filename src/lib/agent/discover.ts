@@ -15,7 +15,7 @@ import { traceAs } from "@/lib/ai/trace";
 import { startBudgetedRun, finishRun, progress, startRun } from "@/lib/ai/runs";
 import { webSearch, type SearchHit } from "@/lib/ai/search";
 import { getAiConfig } from "@/lib/config";
-import { applyRules, fingerprint, fullTitle, normUrl } from "./rules";
+import { applyRules, fingerprint, fullTitle, legacyFingerprint, normUrl } from "./rules";
 import { closeGonePostings } from "./linkCheck";
 import { findEventsIfDue } from "./networking";
 import { featureOn } from "@/lib/features";
@@ -330,12 +330,27 @@ const reposted = sql`(${schema.opportunities.attributes} -> 'linkCheck' ->> 'sta
 const noPay = sql`(${schema.opportunities.compMin} is null and ${schema.opportunities.compMax} is null)`;
 
 /**
+ * The fingerprint, or the key from before #1269 when a posting with an accented name is stored under that one and none is
+ * under the new key, so "Montréal" saved last week is matched, not saved again.
+ */
+async function baseKey(f: { company: string; title: string; location: string }) {
+  const fp = fingerprint(f.company, f.title, f.location);
+  const old = legacyFingerprint(f.company, f.title, f.location);
+  if (old === fp) return fp;
+  const rows = await db
+    .select({ fp: schema.opportunities.fingerprint })
+    .from(schema.opportunities)
+    .where(inArray(schema.opportunities.fingerprint, [fp, old]));
+  return rows.some((r) => r.fp === fp) || !rows.length ? fp : old;
+}
+
+/**
  * The posting's dedupe key. The fingerprint drops title parentheticals, so "Designer (Payments)" and "Designer (Identity)"
  * at one company and city share it, and the second job was saved onto the first's row and never shown (#838). When the
  * titles differ and both links name a different ATS job, the second gets a key of its own.
  */
 async function postingKey(f: { company: string; title: string; location: string; url: string }) {
-  const fp = fingerprint(f.company, f.title, f.location);
+  const fp = await baseKey(f);
   const mine = atsKey(f.url);
   if (!mine) return fp;
   const [hit] = await db

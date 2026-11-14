@@ -12,7 +12,7 @@ const db = drizzle(pg, { schema });
 vi.mock("@/lib/db", () => ({ db, schema }));
 
 const { loadContext, save, realDate } = await import("./discover");
-const { fingerprint } = await import("./rules");
+const { fingerprint, legacyFingerprint } = await import("./rules");
 type Ctx = Awaited<ReturnType<typeof loadContext>>;
 type Find = Parameters<typeof save>[1][number];
 
@@ -300,6 +300,21 @@ describe("save", () => {
     await save(ctx(), [find({ url: "https://job-boards.greenhouse.io/acme/jobs/222", title: "Director of Design" })], "agent");
     const opps = await db.select().from(schema.opportunities);
     expect(opps.map((o) => o.sourceUrl)).toEqual(["https://job-boards.greenhouse.io/acme/jobs/111"]);
+  });
+
+  it("merges an accented name with its plain spelling (#1269)", async () => {
+    await save(ctx(), [find({ url: "https://jobs.example.com/a", company: "L'Oréal", location: "Montréal, QC" })], "agent");
+    const t = await save(ctx(), [find({ url: "https://jobs.example.com/b", company: "L'Oreal", location: "Montreal, QC" })], "agent");
+    expect(t.added).toBe(0);
+    expect(await db.select().from(schema.opportunities)).toHaveLength(1);
+  });
+
+  it("matches a posting stored under the key from before #1269, not a second row", async () => {
+    const old = legacyFingerprint("L'Oréal", "Director of Design", "Montréal, QC");
+    await db.insert(schema.opportunities).values({ company: "L'Oréal", title: "Director of Design", sourceUrl: "https://jobs.example.com/a", fingerprint: old });
+    await save(ctx(), [find({ url: "https://jobs.example.com/b", company: "L'Oréal", location: "Montréal, QC" })], "agent");
+    const opps = await db.select().from(schema.opportunities);
+    expect(opps.map((o) => [o.fingerprint, o.sourceUrl])).toEqual([[old, "https://jobs.example.com/a"]]);
   });
 
   it("fills a shared posting's link and summary when it has none", async () => {

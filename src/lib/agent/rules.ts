@@ -47,24 +47,45 @@ const otherScript = (s: string) =>
     .replace(/[^\p{L}\p{N}\p{M}]+/gu, " ")
     .trim();
 
+/** Latin letters NFKD leaves whole, spelled the way a plain-ASCII page writes them. */
+const FOLD: Record<string, string> = { ß: "ss", æ: "ae", œ: "oe", ø: "o", ł: "l", đ: "d", ð: "d", þ: "th", ı: "i" };
+
+/**
+ * Accents dropped from Latin letters, so "Montréal" keys as "Montreal" whether the é is stored as one character or as e
+ * plus a combining mark (#1269). Only the a-z pass uses it: non-Latin text keeps its marks in otherScript.
+ */
+const foldLatin = (s: string) =>
+  s
+    .normalize("NFKD")
+    .replace(/(\p{Script=Latin})\p{M}+/gu, "$1")
+    .toLowerCase()
+    .replace(/[ßæœøłđðþı]/g, (c) => FOLD[c]);
+
 /** The a-z/0-9 words, then any non-Latin words, so "メルカリ" and "ソニー" no longer both normalize to "" (#1075). */
-const withOtherScript = (s: string) => {
-  const latin = s.toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
+const withOtherScript = (s: string, fold = true) => {
+  const latin = (fold ? foldLatin(s) : s.toLowerCase()).replace(/[^a-z0-9]+/g, " ").trim();
   const other = otherScript(s);
   return other ? `${latin} ${other}`.trim() : latin;
 };
 
-const normPart = (s: string) => withOtherScript(s.replace(/\(.*?\)/g, " "));
+const normPart = (fold: boolean) => (s: string) => withOtherScript(s.replace(/\(.*?\)/g, " "), fold);
 
 /** A title with its parentheticals kept, to tell "Designer (Payments)" from "Designer (Identity)" (#838). */
 export const fullTitle = (t: string) => withOtherScript(t);
 
-export function fingerprint(company: string, title: string, location: string) {
+const key = (company: string, title: string, location: string, fold: boolean) =>
   // nosemgrep: javascript.lang.security.audit.node-sha1.node_sha1 -- SHA-1 here only fingerprints postings for dedupe, not security
-  return createHash("sha1")
-    .update([company, title, location.split(",")[0]].map(normPart).join("|"))
+  createHash("sha1")
+    .update([company, title, location.split(",")[0]].map(normPart(fold)).join("|"))
     .digest("hex");
-}
+
+export const fingerprint = (company: string, title: string, location: string) => key(company, title, location, true);
+
+/**
+ * The key stored before #1269, when an accented letter became a space ("montr al"). The same as fingerprint for text with
+ * no accents. postingKey looks it up so a posting saved under it is matched, not saved again.
+ */
+export const legacyFingerprint = (company: string, title: string, location: string) => key(company, title, location, false);
 
 // Tracking params only, matched by exact name, so job IDs like referenceId or refnum stay in the key (#487). Ad and email
 // click IDs too: Google, Meta, Microsoft, LinkedIn, Instagram, HubSpot, Mailchimp, Marketo and the Google linker (#1193).

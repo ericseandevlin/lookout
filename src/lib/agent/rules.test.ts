@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { applyRules, fingerprint, normUrl } from "./rules";
+import { applyRules, fingerprint, legacyFingerprint, normUrl } from "./rules";
 
 const base = { score: 5, reasonsMatch: ["Director title"], reasonsGap: [], locationFit: true, dealbreaker: false, compMin: 140000, compMax: 160000 };
 
@@ -47,7 +47,23 @@ describe("dedupe keys", () => {
   });
   it("keeps the fingerprints of Latin-script postings stored before #1075", () => {
     expect(fingerprint("Tishman Speyer", "Director of Banquets", "Rockefeller Center, NY")).toBe("17ef17fd57dd4d6761d52d8fa79b4c4684a3352d");
-    expect(fingerprint("Café Société", "Sous-Chef (Nuit)", "Montréal, QC")).toBe("e82bc15d03229e2083e76c1f412fdc15adb57778");
+    expect(legacyFingerprint("Café Société", "Sous-Chef (Nuit)", "Montréal, QC")).toBe("e82bc15d03229e2083e76c1f412fdc15adb57778");
+    expect(legacyFingerprint("Tishman Speyer", "Director of Banquets", "Rockefeller Center, NY")).toBe("17ef17fd57dd4d6761d52d8fa79b4c4684a3352d");
+  });
+  it("keys an accented Latin name like its plain spelling (#1269)", () => {
+    expect(fingerprint("Café Société", "Sous-Chef", "Montréal, QC")).toBe(fingerprint("Cafe Societe", "Sous-Chef", "Montreal"));
+    expect(fingerprint("L'Oréal", "Designer", "Paris")).toBe(fingerprint("L'Oreal", "Designer", "Paris"));
+    // One é character, or e plus a combining acute.
+    expect(fingerprint("Acme", "Designer", "Montr\u00e9al")).toBe(fingerprint("Acme", "Designer", "Montre\u0301al"));
+    expect(fingerprint("Ørsted", "Designer", "København")).toBe(fingerprint("Orsted", "Designer", "Kobenhavn"));
+    expect(fingerprint("Acme", "Designer", "Düsseldorf")).toBe(fingerprint("Acme", "Designer", "Dusseldorf"));
+    expect(fingerprint("Acme", "Designer", "Straße")).toBe(fingerprint("Acme", "Designer", "Strasse"));
+    expect(fingerprint("Acme", "Designer", "Montréal")).not.toBe(legacyFingerprint("Acme", "Designer", "Montréal"));
+    expect(fingerprint("Acme", "Designer", "Montreal")).toBe(legacyFingerprint("Acme", "Designer", "Montreal"));
+  });
+  it("keeps marks in non-Latin text, so डिज़ाइनर and डिजाइन stay apart (#1269)", () => {
+    expect(fingerprint("मेरा", "डिज़ाइनर", "दिल्ली")).toBe(legacyFingerprint("मेरा", "डिज़ाइनर", "दिल्ली"));
+    expect(fingerprint("メルカリ", "ガイド", "東京")).not.toBe(fingerprint("メルカリ", "カイト", "東京"));
   });
   it("tells apart postings whose company and title are in a non-Latin script (#1075)", () => {
     expect(fingerprint("メルカリ", "シニアエンジニア", "東京")).not.toBe(fingerprint("ソニー", "デザイナー", "東京"));
