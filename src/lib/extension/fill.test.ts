@@ -746,4 +746,18 @@ describe("extension probe and submit watch", () => {
     await new Promise((r) => setTimeout(r, 20));
     expect(p.sent[1]).toMatchObject({ type: "lookout-thanks", appId: "app-1", text: "application has been submitted" });
   });
+
+  it("a dollar answer in a number field fills its number (#1140)", async () => {
+    const p = page(`<label for="s">Desired salary</label><input id="s" type="number">`);
+    const log = await p.fill({ steps: [{ prompt: "Desired salary", kind: "text", content: "$165,000", required: true }] });
+    expect(p.value("#s")).toBe("165000");
+    expect(log[0]).toMatchObject({ ok: true, how: "typed" });
+  });
+
+  it("a number field with no number in the answer is not filled (#1140)", async () => {
+    const p = page(`<label for="y">Years of experience</label><input id="y" type="number">`);
+    const log = await p.fill({ steps: [{ prompt: "Years of experience", kind: "text", content: "Over a decade", required: true }] });
+    expect(p.value("#y")).toBe("");
+    expect(log[0]).toMatchObject({ ok: false, how: "number field, answer has no number" });
+  });
 });
