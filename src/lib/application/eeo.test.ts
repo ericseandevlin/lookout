@@ -41,6 +41,14 @@ describe("classify", () => {
     expect(classify("Sexual Orientation")).toBe("orientation");
   });
 
+  it("reads a Sex question worded as a sentence as gender, not a sex offense question (#1275)", () => {
+    expect(classify("What is your sex?")).toBe("gender");
+    expect(classify("Please select your legal sex")).toBe("gender");
+    expect(classify("Your sex")).toBe("gender");
+    expect(classify("Have you ever been convicted of a sex offense?")).toBeNull();
+    expect(classify("Is your sex offender registration current?")).toBeNull();
+  });
+
   it("leaves an LGBTQ+ question and a military-spouse question unclassified (#909)", () => {
     expect(classify("Do you identify as LGBTQ+ (lesbian, gay, bisexual, transgender, queer or another identity)?")).toBeNull();
     expect(classify("Do you identify as a member of the LGBTQIA+ community?")).toBeNull();
