@@ -81,6 +81,17 @@ Design Systems Lead
     expect(recruiterChecks("resume", resume.replace("Ran design reviews", "Ran double-blind design reviews")).some((x) => x.line?.startsWith("Ran double-blind"))).toBe(true);
   });
 
+  it("doesn't read names like B2B or HTML5, or one-click, as a number (#1265)", () => {
+    const bareOf = (line: string) =>
+      recruiterChecks("resume", resume.replace("Built the design system site used across the firm.", line)).some((x) => x.dim === "impact" && x.line === line);
+    for (const line of ["Led the B2B checkout redesign.", "Shipped the HTML5 player.", "Moved hosting to S3.", "Built one-click checkout.", "Led one of the payments squads.", "Added two-factor sign-in."]) {
+      expect(bareOf(line), line).toBe(true);
+    }
+    for (const line of ["Cut costs by two-thirds.", "Made deploys 10x faster.", "Grew revenue to $5M.", "Lifted sign-ups 40%.", "Ran one launch a week for B2B clients.", "Covered 3 B2B markets."]) {
+      expect(bareOf(line), line).toBe(false);
+    }
+  });
+
   it("flags vague skill phrases in the skills section", () => {
     expect(f.some((x) => x.what.includes('"Accessibility Concepts"'))).toBe(true);
   });
