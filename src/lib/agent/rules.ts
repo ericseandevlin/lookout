@@ -69,11 +69,24 @@ export function fingerprint(company: string, title: string, location: string) {
 // Tracking params only, matched by exact name, so job IDs like referenceId or refnum stay in the key (#487).
 const TRACKING = /^(utm_.*|gh_src|source|src|ref|refid|ref_src|referrer|trk|trackingid|lever-source|lever-origin)$/i;
 
+/** A query pair's name, decoded when it can be. */
+const pairName = (p: string) => {
+  const k = p.split("=")[0].replace(/\+/g, " ");
+  try {
+    return decodeURIComponent(k);
+  } catch {
+    return k;
+  }
+};
+
 export function normUrl(u: string) {
   try {
     const url = new URL(u);
-    for (const k of [...url.searchParams.keys()]) if (TRACKING.test(k)) url.searchParams.delete(k);
-    return (url.host.replace(/^www\./, "") + url.pathname.replace(/\/$/, "") + url.search + hashRoute(url)).toLowerCase();
+    // Drop tracking pairs from the query text itself: URLSearchParams.delete rewrote the rest in form encoding ("%20" as
+    // "+", "," as "%2C"), so a link with a tracking tag no longer matched the same link stored without one (#1166).
+    const kept = url.search.slice(1).split("&").filter((p) => p && !TRACKING.test(pairName(p)));
+    const query = kept.length ? `?${kept.join("&")}` : "";
+    return (url.host.replace(/^www\./, "") + url.pathname.replace(/\/$/, "") + query + hashRoute(url)).toLowerCase();
   } catch {
     return u.toLowerCase();
   }
