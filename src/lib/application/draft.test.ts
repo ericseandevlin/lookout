@@ -192,6 +192,12 @@ describe("newNumbers: the same number spelled another way (#1148)", () => {
     expect(newNumbers("Saved $250K a year.", "Saved $250,000 a year.")).toEqual([]);
     expect(newNumbers("Raised $1,200,000.", "Raised $1.2 million.")).toEqual([]);
   });
+  it("\"MM\" is millions (#1170)", () => {
+    expect(newNumbers("Managed a $5M budget", "Managed a $5MM budget")).toEqual([]);
+    expect(newNumbers("Managed a $5,000,000 budget", "Managed a $5 MM budget")).toEqual([]);
+    expect(newNumbers("Managed a $5MM budget", "Managed a $5M budget")).toEqual([]);
+    expect(newNumbers("Managed a $5MM budget", "Managed a $6MM budget")).toEqual(["$6m"]);
+  });
   it("a bigger claim is still new", () => {
     expect(newNumbers("Managed 20 engineers.", "Managed over 20 engineers.")).toEqual(["20+"]);
     expect(newNumbers("Grew to 1,000,000 users.", "Grew to 2M users.")).toEqual(["2m"]);
