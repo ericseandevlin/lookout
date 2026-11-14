@@ -16,7 +16,7 @@ vi.mock("@/lib/db", () => ({ db, schema }));
 // The file is a .docx whose text is whatever the test sets.
 let resumeText = "";
 vi.mock("@/lib/files", () => ({ readUserFile: vi.fn(async () => Buffer.from("docx")) }));
-vi.mock("mammoth", () => ({ extractRawText: vi.fn(async () => ({ value: resumeText })) }));
+vi.mock("mammoth", () => ({ convertToHtml: vi.fn(async () => ({ value: resumeText })) }));
 const readLink = vi.fn(async () => {});
 vi.mock("./links", () => ({ readLink }));
 

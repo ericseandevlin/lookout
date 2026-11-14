@@ -1,5 +1,6 @@
-import { Document, Packer, Paragraph } from "docx";
+import { Document, Packer, Paragraph, TextRun } from "docx";
 import { describe, expect, it } from "vitest";
+import { finishMaster } from "@/lib/application/masterCheck";
 import { extractResumeText } from "./resume";
 
 /** A one-page PDF with each line of `lines` drawn in Helvetica, built by hand so the test needs no fixture file (#568). */
@@ -45,5 +46,41 @@ describe("extractResumeText", () => {
     const text = await extractResumeText(await Packer.toBuffer(doc), "application/vnd.openxmlformats-officedocument.wordprocessingml.document");
     expect(text).toContain("Pat Lee");
     expect(text).toContain("Grew the team from 3 to 20.");
+  });
+
+  describe("Word lists and line breaks (#1263)", () => {
+    const DOCX = "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
+    const resume = () =>
+      Packer.toBuffer(
+        new Document({
+          sections: [
+            {
+              children: [
+                new Paragraph("Maya Ortiz & Co"),
+                new Paragraph({ children: [new TextRun("Senior Designer, Acme"), new TextRun({ text: "2019 – Present", break: 1 })] }),
+                new Paragraph({ text: "Led the checkout redesign for the mobile app", bullet: { level: 0 } }),
+                new Paragraph({ text: "Built the design system used by forty product teams", bullet: { level: 1 } }),
+              ],
+            },
+          ],
+        }),
+      );
+
+    it("keeps list bullets, line breaks and entities", async () => {
+      const text = await extractResumeText(await resume(), DOCX);
+      expect(text).toContain("Maya Ortiz & Co");
+      expect(text).toContain("Senior Designer, Acme\n\n2019 – Present");
+      expect(text).toContain("• Led the checkout redesign for the mobile app");
+      expect(text).toContain("• Built the design system used by forty product teams");
+      expect(text).not.toMatch(/^•\s*$/m);
+    });
+
+    it("so a line the master rebuild drops lands under Unplaced", async () => {
+      const source = await extractResumeText(await resume(), DOCX);
+      const md = "# Maya Ortiz\n\n## Experience\n### Senior Designer, Acme | 2019 – Present\n- Led the checkout redesign for the mobile app";
+      const r = finishMaster(md, source);
+      expect(r.md).toContain("## Unplaced\n- Built the design system used by forty product teams");
+      expect(r.uncertain.join(" ")).toMatch(/didn't make it into the rebuild/);
+    });
   });
 });
