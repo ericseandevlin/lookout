@@ -128,8 +128,26 @@ function asksPastPay(s: string) {
  * amount is null when Lookout shouldn't put a number in: the floor is above their range, or their range
  * is total cash and the question asks base. question is set when the person has to decide.
  */
-/** The pay period the question asks in: "hourly wage expectations", "desired monthly salary". Null is a year (#949). */
+// A sentence that talks about pay, so its period can be the ask's: "Please give an hourly figure." (#1136).
+const PAY_TALK = /\b(pay|paid|rate|salary|compensation|wages?|earn\w*|figure|amount|number)\b/i;
+
+/**
+ * The pay period the question asks in: "hourly wage expectations", "desired monthly salary". Null is a year (#949).
+ * The ask's own sentence decides first, then other sentences about pay, so "Rates are reviewed once a year" after an
+ * hourly ask, or "We will get back to you in a week" after a salary ask, doesn't set the period (#1136).
+ */
 export function askPer(prompt: string): "hour" | "week" | "month" | null {
+  const all = sentences(prompt);
+  const asks = all.filter((s) => SALARY_ASK.test(s));
+  if (!asks.length) return orYear(periodIn(prompt));
+  const own = periodIn(asks.join(" "));
+  if (own) return orYear(own);
+  return orYear(periodIn(all.filter((s) => !asks.includes(s) && PAY_TALK.test(s)).join(" ")));
+}
+
+const orYear = (p: ReturnType<typeof periodIn>) => (p === "year" ? null : p);
+
+function periodIn(prompt: string): "year" | "hour" | "week" | "month" | null {
   // "This role is salaried, not hourly" and "(non-hourly)" rule a period out, not in (#974).
   prompt = prompt.replace(/\b(not|non)[\s-]+(hourly|weekly|monthly|(per|an|a|each) (hour|hr|week|month))\b/gi, " ");
   // Working hours ("40 hours per week", "37.5 hrs/week") and a contract's length ("expected to last a year") are not
@@ -138,7 +156,7 @@ export function askPer(prompt: string): "hour" | "week" | "month" | null {
   prompt = prompt.replace(/\b(last(s|ing)?|for|within|after|over|least)\s+(about\s+|up to\s+|roughly\s+)?(a|one)\s+(year|month|week)\b/gi, " ");
   // "a year-end bonus" and "a year-long contract" are not a yearly ask (#1060).
   // "/yr" after a space or "(" has no word boundary before the slash (#1121).
-  if (/(\b(annual(ly)?|yearly|per (year|annum)|a year)|\/\s?y(ea)?r)\b(?!-)/i.test(prompt)) return null;
+  if (/(\b(annual(ly)?|yearly|per (year|annum)|a year)|\/\s?y(ea)?r)\b(?!-)/i.test(prompt)) return "year";
   if (/\bhourly\b|\b(per|an|each) (hour|hr)\b|\/\s?h(ou)?r\b/i.test(prompt)) return "hour";
   if (/\bweekly\b|\b(per|a|each) week\b|\/\s?w(ee)?k\b/i.test(prompt) && !/\bbi-?weekly\b/i.test(prompt)) return "week";
   // Semi-monthly is paid twice a month: left yearly, like bi-weekly (#1002).

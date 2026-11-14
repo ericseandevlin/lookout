@@ -418,3 +418,15 @@ describe('"/yr" after a space or "(" is a yearly ask (#1121)', () => {
     expect(suggestSalary({ floor: "150k", min: 150000, max: 190000, per: askPer("Salary expectations (/yr) - paid monthly") })?.amount).toBe("$180,000");
   });
 });
+
+describe("askPer reads the period from the ask, not a side sentence (#1136)", () => {
+  it.each([
+    ["What is your desired hourly rate? Rates are reviewed once a year.", "hour"],
+    ["What are your salary expectations? We will get back to you in a week.", null],
+    ["What are your salary expectations? Please give an hourly figure.", "hour"],
+    ["Desired salary. We pay monthly.", "month"],
+    ["What are your salary expectations? This role is about 40 hours per week.", null],
+  ] as const)("%s", (q, per) => {
+    expect(askPer(q)).toBe(per);
+  });
+});
