@@ -119,7 +119,7 @@ export function ItemCard({ appId, item, locked, act, analysis, template, accent,
           locked={locked}
           busy={busy}
           onAnalyze={() => run("analyze", { action: "analyze", versionId: shown.id }, "Recruiter Analysis is ready.")}
-          onFix={(f) => run("revise", { action: "revise", instruction: f.fix }, "Lookout made a new version with that fix.")}
+          onFix={(f) => run("revise", { action: "revise", instruction: f.fix, versionId: shown.id }, "Lookout made a new version with that fix.")}
         />
       )}
 
@@ -183,7 +183,7 @@ export function ItemCard({ appId, item, locked, act, analysis, template, accent,
             <form
               onSubmit={(e) => {
                 e.preventDefault();
-                if (instr.trim()) run("revise", { action: "revise", instruction: instr }, "Lookout made a new version.");
+                if (instr.trim() && !dirty) run("revise", { action: "revise", instruction: instr, ...(shown ? { versionId: shown.id } : {}) }, "Lookout made a new version.");
               }}
               style={{ display: "flex", gap: 8, flexWrap: "wrap" }}
             >
@@ -197,7 +197,7 @@ export function ItemCard({ appId, item, locked, act, analysis, template, accent,
                 placeholder={item.kind === "resume" ? "Ask Lookout: lead with the platform work, cut to one page…" : outreach ? "Ask Lookout: shorter, warmer, change the request…" : "Ask Lookout: shorter, more specific, mention…"}
                 style={{ flex: "1 1 260px", height: 38, borderRadius: 10, border: `1.5px solid ${color.border}`, padding: "0 12px", fontSize: 14 }}
               />
-              <button type="submit" disabled={!instr.trim() || !!busy} style={btn("outline")}>
+              <button type="submit" disabled={!instr.trim() || !!busy || dirty} data-tip={dirty ? "Save your edits first" : undefined} style={btn("outline")}>
                 {busy === "revise" ? "Revising…" : "Revise"}
               </button>
             </form>
