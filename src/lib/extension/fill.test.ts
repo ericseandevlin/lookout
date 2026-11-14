@@ -495,6 +495,13 @@ describe("extension fill: choices", () => {
     expect(ticked(p, 2)).toEqual([false, true]);
   });
 
+  it.each(["(required)", "✱"])("checks the option when the question in each box's label ends in %s (#1179)", async (mark) => {
+    const p = page(asked(`Are you 18 or older? ${mark}`, ["No", "Yes"]));
+    const [r] = await p.fill({ steps: [{ prompt: "Are you 18 or older?", kind: "choice", content: "Yes", options: ["No", "Yes"], required: true }] });
+    expect(r.ok).toBe(true);
+    expect(ticked(p, 2)).toEqual([false, true]);
+  });
+
   it("checks a multi-select option labeled question + option (#1091)", async () => {
     const p = page(asked("Which days can you work?", ["Weekdays", "Weekends"]));
     const [r] = await p.fill({ steps: [{ prompt: "Which days can you work?", kind: "choice", content: "Weekends", options: ["Weekdays", "Weekends"] }] });

@@ -51,6 +51,11 @@
     el.dispatchEvent(new MouseEvent("click", { ...o, buttons: 0 }));
   }
 
+  /** What a "question + option" label says past the question and a "(required)" mark ("*" and "✱" are already gone) (#1160, #1179). */
+  function optionAfter(label, prompt) {
+    return label.slice(norm(prompt).length).replace(/^\s*\(required\)/, "").trim();
+  }
+
   function sameText(a, b) {
     const x = norm(a), y = norm(b);
     if (!x || !y) return false;
@@ -328,8 +333,7 @@
           const i = step.options && step.options.length ? pickOne(step.content, step.options) : -1;
           if (i < 0) return { ok: false, how: "answer matches no option" };
           // What follows the question, past a "(required)" mark ("*" and "✱" are already gone), is the option (#1160).
-          const q = norm(step.prompt);
-          const radio = radios.find((r) => labelOf(r).slice(q.length).replace(/^\s*\(required\)/, "").trim() === norm(step.options[i]));
+          const radio = radios.find((r) => optionAfter(labelOf(r), step.prompt) === norm(step.options[i]));
           if (!radio) return { ok: false, how: `option not found: ${step.options[i].slice(0, 60)}` };
           if (!radio.checked) radio.click();
           return { ok: true, how: "checked 1" };
@@ -343,7 +347,8 @@
           // A box labeled with the question and its option ("Are you 18 or older? Yes") is that option (#1091).
           const box =
             boxes.find((b) => labelOf(b) === norm(label)) ||
-            boxes.find((b) => labelOf(b) === norm(step.prompt) + " " + norm(label)) ||
+            // Past a "(required)" mark too, as for radios outside a group (#1179).
+            boxes.find((b) => labelOf(b).startsWith(norm(step.prompt)) && optionAfter(labelOf(b), step.prompt) === norm(label)) ||
             boxes.find((b) => sameText(labelOf(b), label));
           if (!box) return { ok: false, how: `option not found: ${label.slice(0, 60)}` };
           if (!box.checked) box.click();
