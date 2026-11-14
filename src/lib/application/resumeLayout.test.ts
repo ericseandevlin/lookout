@@ -184,4 +184,14 @@ BFA, Parsons`;
     expect(SUMMARY_HEADING.test("Selected Projects")).toBe(false);
     expect(SUMMARY_HEADING.test("Company Profile Work")).toBe(false);
   });
+
+  it("moves a summary that sits below Experience up above it (#1281)", () => {
+    const md = "# Jo\n## Experience\n### Lead, Acme | 2021 – Present\n- did\n## Summary\nOne thing.\n## Skills\n- x";
+    const r = shapeResume(md);
+    expect(parseDraft(r.md).filter((x) => x.t === "section").map((x) => x.text)).toEqual(["Summary", "Experience", "Skills"]);
+    expect(r.fixed).toEqual(["Moved your summary above Experience, so it's the first thing a recruiter reads."]);
+    expect(shapeResume(r.md)).toEqual({ md: r.md, fixed: [] });
+    const below = shapeResume("# Jo\n## Experience\n### Lead, Acme | 2021 – Present\n- did\n## Skills\n- x\n## Summary\nOne thing.");
+    expect(parseDraft(below.md).filter((x) => x.t === "section").map((x) => x.text)).toEqual(["Summary", "Experience", "Skills"]);
+  });
 });
