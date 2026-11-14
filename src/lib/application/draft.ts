@@ -181,6 +181,7 @@ export function keywordReport(master: string, tailored: string, d: z.infer<typeo
  */
 export function newNumbers(master: string, draft: string): string[] {
   // One fact, one spelling: "$1.2 million" is "$1.2m", "over 15" is "15+", and a MM/YYYY date is a date, not a number (#901).
+  // The finance "$5MM" is "$5m" (#1170).
   const UNIT: Record<string, string> = { thousand: "k", million: "m", billion: "b", percent: "%" };
   const norm = (s: string) =>
     s
@@ -189,7 +190,7 @@ export function newNumbers(master: string, draft: string): string[] {
       .replace(/\b(?:over|more than)\s+(\$?\d[\d,.]*(?:%|k|m|b)?)(?![\w+])/gi, "$1+");
   const nums = (raw: string) => {
     const s = norm(raw);
-    return new Set((s.match(/\$?\d[\d,.]*(?:\s?(?:%|mm|k|m|b|x|\+)(?![a-z]))?/gi) ?? []).map((n) => n.toLowerCase().replace(/[,\s]/g, "").replace(/\.$/, "")));
+    return new Set((s.match(/\$?\d[\d,.]*(?:\s?(?:%|mm|k|m|b|x|\+)(?![a-z]))?/gi) ?? []).map((n) => n.toLowerCase().replace(/[,\s]/g, "").replace(/\.$/, "").replace(/mm$/, "m")));
   };
   // Round numbers in one spelling: "1,000,000" is "1m" and "250,000" is "250k", like "1M" and "250K" (#1148).
   const short = (n: string) => {
