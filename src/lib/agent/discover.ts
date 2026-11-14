@@ -241,7 +241,8 @@ const Scored = z.object({
   dealbreaker: z.boolean().describe("True only if it clearly hits something the candidate ruled out"),
 });
 export const ScoredList = z.object({ finds: z.array(Scored) });
-export type ScoredT = z.infer<typeof Scored> & { url: string };
+/** currency: set only when the page's own pay read found a currency other than USD (#1095). */
+export type ScoredT = z.infer<typeof Scored> & { url: string; currency?: string };
 
 // Built per call: the server runs for days between deploys, and the date decides what still looks open (#608).
 const scorerSystem = () => `You score job postings for one candidate. Today is ${today()}.
@@ -281,7 +282,11 @@ export async function scorePages(ctx: Context, pages: Page[], usage: Usage, repo
         // the deterministic read fills the gap. It also replaces a range missing one end: a lone low end read as the top
         // and cut the find as below the floor (#851).
         const comp = { comp_min: annualPay(f.comp_min), comp_max: annualPay(f.comp_max) };
-        if (page) out.push({ ...f, ...comp, url: page.url, ...((comp.comp_min == null || comp.comp_max == null) && page.pay && page.pay.currency === "USD" && { comp_min: page.pay.min, comp_max: page.pay.max }) });
+        if (!page) continue;
+        // Pay posted in another currency: the model copies the posted numbers as dollars, so the page's read and its
+        // currency win, and the USD floor leaves it alone (#1095).
+        if (page.pay && page.pay.currency !== "USD") out.push({ ...f, comp_min: page.pay.min, comp_max: page.pay.max, currency: page.pay.currency, url: page.url });
+        else out.push({ ...f, ...comp, url: page.url, ...((comp.comp_min == null || comp.comp_max == null) && page.pay && { comp_min: page.pay.min, comp_max: page.pay.max }) });
       }
     } catch (e) {
       console.error("[discover] scoring batch failed", e);
@@ -352,8 +357,13 @@ export async function save(ctx: Context, finds: ScoredT[], via: "agent" | "manua
     }
     const key = await postingKey(f);
     // A shared posting keeps the pay already stored (#846), so the rules and the floor judge that pay, not this read's (#879).
-    const [stored] = await db.select({ min: schema.opportunities.compMin, max: schema.opportunities.compMax }).from(schema.opportunities).where(eq(schema.opportunities.fingerprint, key));
-    const pay = stored && (stored.min != null || stored.max != null) ? stored : { min: f.comp_min, max: f.comp_max };
+    const [stored] = await db
+      .select({ min: schema.opportunities.compMin, max: schema.opportunities.compMax, currency: schema.opportunities.currency })
+      .from(schema.opportunities)
+      .where(eq(schema.opportunities.fingerprint, key));
+    const pay = stored && (stored.min != null || stored.max != null) ? stored : { min: f.comp_min, max: f.comp_max, currency: f.currency ?? "USD" };
+    // The floor is in US dollars; pay in another currency isn't converted, so the floor doesn't judge it (#1095).
+    const floor = pay.currency === "USD" ? ctx.floor : null;
     const ruled = applyRules(
       {
         score: f.score,
@@ -364,7 +374,7 @@ export async function save(ctx: Context, finds: ScoredT[], via: "agent" | "manua
         compMin: pay.min,
         compMax: pay.max,
       },
-      ctx.floor,
+      floor,
     );
     if (!ruled) {
       t.dealbreaker++;
@@ -372,7 +382,7 @@ export async function save(ctx: Context, finds: ScoredT[], via: "agent" | "manua
     }
     // A range that tops out under the floor does not make the board (#740). A link the person adds still goes on, marked down.
     const top = pay.max ?? pay.min;
-    if (ctx.floor && top && top < ctx.floor) {
+    if (floor && top && top < floor) {
       t.belowFloor++;
       if (via !== "manual") continue;
     }
@@ -387,6 +397,7 @@ export async function save(ctx: Context, finds: ScoredT[], via: "agent" | "manua
         workMode: f.work_mode === "Unknown" ? null : f.work_mode,
         compMin: f.comp_min,
         compMax: f.comp_max,
+        currency: f.currency ?? "USD",
         postedAt: realDate(f.posted_at),
         sourceUrl: f.url.slice(0, 1000),
         description: f.description.slice(0, 2000),
@@ -405,6 +416,7 @@ export async function save(ctx: Context, finds: ScoredT[], via: "agent" | "manua
           // Pay fills as a pair, so a stored range is never half replaced.
           compMin: sql`case when ${noPay} then excluded.comp_min else ${schema.opportunities.compMin} end`,
           compMax: sql`case when ${noPay} then excluded.comp_max else ${schema.opportunities.compMax} end`,
+          currency: sql`case when ${noPay} then excluded.currency else ${schema.opportunities.currency} end`,
           workMode: sql`coalesce(${schema.opportunities.workMode}, excluded.work_mode)`,
           attributes: sql`case when ${reposted} then ${schema.opportunities.attributes} - 'linkCheck' else ${schema.opportunities.attributes} end`,
         },

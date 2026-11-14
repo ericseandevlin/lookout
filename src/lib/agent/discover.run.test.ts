@@ -190,6 +190,24 @@ describe("discover (#379)", () => {
     expect(rows).toEqual([{ min: 150000, max: 200000 }]);
   });
 
+  it("keeps pay posted in another currency in that currency, and doesn't cut it against the USD floor (#1095)", async () => {
+    results.set("design systems lead", [hit("https://jobs.example.com/a")]);
+    results.set("design systems lead site:greenhouse.io", []);
+    pages.set("https://jobs.example.com/a", posting("<p>Salary: CA$120,000 - CA$150,000 per year.</p>"));
+    verdicts.set("https://jobs.example.com/a", { comp_min: 120000, comp_max: 150000 });
+    await expect(discover(searchId)).resolves.toMatchObject({ found: 1, added: 1 });
+    const rows = await db.select({ min: schema.opportunities.compMin, max: schema.opportunities.compMax, currency: schema.opportunities.currency }).from(schema.opportunities);
+    expect(rows).toEqual([{ min: 120000, max: 150000, currency: "CAD" }]);
+  });
+
+  it("still saves US dollar pay as USD and cuts it under the floor (#1095)", async () => {
+    results.set("design systems lead", [hit("https://jobs.example.com/a")]);
+    results.set("design systems lead site:greenhouse.io", []);
+    pages.set("https://jobs.example.com/a", posting("<p>Salary: $120,000 - $150,000 per year.</p>"));
+    verdicts.set("https://jobs.example.com/a", { comp_min: 120000, comp_max: 150000 });
+    await expect(discover(searchId)).resolves.toMatchObject({ found: 1, added: 0 });
+  });
+
   it("says a posting under the floor was left off, not that it is already on the board (#862)", async () => {
     results.set("design systems lead", [hit("https://jobs.example.com/a")]);
     results.set("design systems lead site:greenhouse.io", []);
