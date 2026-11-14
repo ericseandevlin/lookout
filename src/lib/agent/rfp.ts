@@ -61,7 +61,13 @@ async function scoreRfps(ctx: Context, items: RfpItem[], usage: Usage) {
         system: rfpSystem(),
         user: `${profileBlock(ctx)}\n\n<notices>\n${batch.map((it, j) => `[${j}]\n${rfpText(it)}`).join("\n\n")}\n</notices>\n\nReturn one entry per notice, using its [n] as index.`,
       });
-      for (const s of res.finds) if (batch[s.index]) out.push({ item: batch[s.index], s });
+      // One entry per notice: small models sometimes repeat an index, which saved it twice and counted it as known (#1284, like #612).
+      const seen = new Set<number>();
+      for (const s of res.finds) {
+        if (seen.has(s.index) || !batch[s.index]) continue;
+        seen.add(s.index);
+        out.push({ item: batch[s.index], s });
+      }
     } catch (e) {
       console.error("[rfp] scoring batch failed", e);
     }
