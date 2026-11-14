@@ -238,6 +238,14 @@ describe("findPay", () => {
     expect(findPay("", "£110,000 - £130,000")).toMatchObject({ currency: "GBP" });
   });
 
+  it.each([
+    ["We offer a $2,000 - $5,000 sign-on bonus and a base salary of $140,000 - $170,000 per year.", 140000, 170000],
+    ["Relocation $1,500 - $3,000 | Salary $120,000 - $150,000", 120000, 150000],
+    ["Signing bonus €2.000 - €5.000, salary €60.000 - €70.000", 60000, 70000],
+  ])("reads the salary in %s after a range that isn't pay (#1205)", (text, min, max) => {
+    expect(findPay("", text)).toMatchObject({ min, max });
+  });
+
   it("still reads a code right after the range (#811)", () => {
     expect(findPay("", "$150,000 - $200,000 CAD per year")).toMatchObject({ currency: "CAD" });
     expect(findPay("", "$150,000 - $200,000 a year (AUD), plus super")).toMatchObject({ currency: "AUD" });
