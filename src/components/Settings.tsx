@@ -15,8 +15,21 @@ import { color } from "@/lib/tokens";
 
 const ORDER = Object.keys(DAYS);
 
-export const Section = ({ id, children }: { id?: string; children: React.ReactNode }) => (
-  <div id={id} style={{ scrollMarginTop: 16, fontSize: 14, fontWeight: 700, letterSpacing: ".14em", textTransform: "uppercase", color: color.brick, padding: "28px 0 4px" }}>{children}</div>
+/**
+ * The one section heading for signed-in pages (#1233). On Settings and Admin the rule under it comes from the
+ * first Row; pages without Rows (the profile tabs) pass `ruled` to draw the same rule on the heading itself.
+ */
+export const Section = ({ id, ruled, children }: { id?: string; ruled?: boolean; children: React.ReactNode }) => (
+  <div
+    id={id}
+    style={{
+      scrollMarginTop: 16, fontSize: 14, fontWeight: 700, letterSpacing: ".14em", textTransform: "uppercase", color: color.brick,
+      padding: ruled ? "28px 0 10px" : "28px 0 4px",
+      ...(ruled ? { borderBottom: `1px solid ${color.border}`, marginBottom: 6 } : {}),
+    }}
+  >
+    {children}
+  </div>
 );
 
 export function Row({ title, help, danger, children }: { title: string; help: React.ReactNode; danger?: boolean; children: React.ReactNode }) {
