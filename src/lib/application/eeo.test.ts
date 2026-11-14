@@ -192,3 +192,11 @@ describe("a non-veteran never gets a veteran's answer (#961)", () => {
   });
 });
 
+
+describe("a veteran never gets the decline option (#1142)", () => {
+  it("skips a decline that says protected veteran", () => {
+    const opts = ["I decline to self-identify as a protected veteran", "I identify as one or more of the classifications of protected veteran", "I am not a protected veteran"];
+    expect(matchOption("Veteran", opts)).toBe("I identify as one or more of the classifications of protected veteran");
+    expect(matchOption(DECLINE, opts)).toBe("I decline to self-identify as a protected veteran");
+  });
+});
