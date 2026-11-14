@@ -6,6 +6,11 @@ describe("saved answers", () => {
     expect(isCommon("Are you currently legally authorized to work in the United States?", "Yes")).toBe(true);
     expect(isCommon("Zip / Postal", "10001")).toBe(true);
     expect(isCommon("Will you now or in the future require sponsorship?", "No")).toBe(true);
+    // #1123: "for this role" doesn't make work authorization role-specific; "this location" still can.
+    expect(isCommon("Are you legally authorized to work in the United States for this position?", "Yes")).toBe(true);
+    expect(isCommon("Will you now or in the future require visa sponsorship for this role?", "No")).toBe(true);
+    expect(isCommon("Will you require sponsorship to work in this location?", "No")).toBe(false);
+    expect(isCommon("Are you willing to relocate for this role?", "Yes")).toBe(false);
     expect(isCommon("What is your desired base salary?", "$220,000")).toBe(false);
     expect(isCommon("Why do you want to work here?", "Because")).toBe(false);
     expect(isCommon("Zip / Postal", "")).toBe(false);
