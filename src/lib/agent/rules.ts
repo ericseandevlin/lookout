@@ -128,7 +128,12 @@ export function region(location: string) {
   let country: string | null = null;
   let other: string | null = null;
   for (const part of location.split(",").slice(1)) {
-    const p = normPart(true)(part).replace(/\b\d+\b/g, " ").replace(/\s+/g, " ").trim();
+    // Dotted codes come out of normPart as single letters: "D.C." is "d c", read as "dc" (#1303).
+    const p = normPart(true)(part)
+      .replace(/\b\d+\b/g, " ")
+      .replace(/\s+/g, " ")
+      .trim()
+      .replace(/\b([a-z]) (?=[a-z]\b)/g, "$1");
     if (!p) continue;
     const s = STATES.get(p);
     if (s) state ??= s;
