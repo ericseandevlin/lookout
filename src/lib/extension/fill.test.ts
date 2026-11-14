@@ -796,6 +796,33 @@ describe("extension probe and submit watch", () => {
     expect(log[0]).toMatchObject({ ok: false, how: "number field, answer has no number" });
   });
 
+  for (const [content, want] of [
+    ["12/01/2026", "2026-12-01"],
+    ["December 1, 2026", "2026-12-01"],
+    ["1 Dec 2026", "2026-12-01"],
+    ["2026-12-01", "2026-12-01"],
+  ])
+    it(`a date field gets "${content}" as yyyy-mm-dd (#1242)`, async () => {
+      const p = page(`<label for="d">Earliest start date</label><input id="d" type="date">`);
+      const log = await p.fill({ steps: [{ prompt: "Earliest start date", kind: "text", content, required: true }] });
+      expect(p.value("#d")).toBe(want);
+      expect(log[0]).toMatchObject({ ok: true, how: "typed" });
+    });
+
+  it("a date field with no date in the answer is not filled (#1242)", async () => {
+    const p = page(`<label for="d">Earliest start date</label><input id="d" type="date">`);
+    const log = await p.fill({ steps: [{ prompt: "Earliest start date", kind: "text", content: "Two weeks after an offer", required: true }] });
+    expect(p.value("#d")).toBe("");
+    expect(log[0]).toMatchObject({ ok: false, how: "date field, answer is not a date" });
+  });
+
+  it("a field that drops what was typed is never called typed (#1242)", async () => {
+    const p = page(`<label for="t">Start time</label><input id="t" type="time">`);
+    const log = await p.fill({ steps: [{ prompt: "Start time", kind: "text", content: "9am", required: true }] });
+    expect(p.value("#t")).toBe("");
+    expect(log[0]).toMatchObject({ ok: false, how: "field rejected the answer" });
+  });
+
   for (const legend of ["How did you hear about us? (required)", "How did you hear about us?✱"])
     it(`radio group "${legend}" beats the "If other" text box (#1150)`, async () => {
       const p = page(`<fieldset><legend>${legend}</legend>

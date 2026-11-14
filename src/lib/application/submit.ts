@@ -358,6 +358,13 @@ async function fillOne(page: Page, s: FillStep): Promise<{ ok: boolean; how: str
       await field.fill(n);
       return { ok: true, how: "typed" };
     }
+    // A date field takes only yyyy-mm-dd: Playwright throws "Malformed value" on "12/01/2026" (#1242).
+    if (/^input:date:/.test(tag)) {
+      const d = dateAnswer(s.content);
+      if (!d) return { ok: false, how: "date field, answer is not a date" };
+      await field.fill(d);
+      return { ok: true, how: "typed" };
+    }
     await field.fill(s.content);
     return { ok: true, how: "typed" };
   } catch (e) {
@@ -371,6 +378,27 @@ export const numberAnswer = (t: string) => {
   if (!m) return "";
   const n = m[1].replace(/,/g, "");
   return m[2] ? String(Math.round(Number(n) * (m[2].toLowerCase() === "k" ? 1e3 : 1e6))) : n;
+};
+
+const MONTHS = ["jan", "feb", "mar", "apr", "may", "jun", "jul", "aug", "sep", "oct", "nov", "dec"];
+const MON = String.raw`(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*\.?`;
+
+/**
+ * The answer as yyyy-mm-dd for a date field: "12/01/2026" (month first, as US forms ask), "December 1, 2026" and
+ * "1 Dec 2026" all read as "2026-12-01". "" when the answer holds no date. The extension does the same (#1242).
+ */
+export const dateAnswer = (t: string) => {
+  const iso = (y: number, m: number, d: number) => (m >= 1 && m <= 12 && d >= 1 && d <= 31 ? `${y}-${String(m).padStart(2, "0")}-${String(d).padStart(2, "0")}` : "");
+  const mon = (w: string) => MONTHS.indexOf(w.slice(0, 3).toLowerCase()) + 1;
+  let m = t.match(/\b(\d{4})-(\d{1,2})-(\d{1,2})\b/);
+  if (m) return iso(+m[1], +m[2], +m[3]);
+  m = t.match(/\b(\d{1,2})[/-](\d{1,2})[/-](\d{4})\b/);
+  if (m) return iso(+m[3], +m[1], +m[2]);
+  m = t.match(new RegExp(String.raw`\b${MON}\s+(\d{1,2})(?:st|nd|rd|th)?,?\s+(\d{4})\b`, "i"));
+  if (m) return iso(+m[3], mon(m[1]), +m[2]);
+  m = t.match(new RegExp(String.raw`\b(\d{1,2})(?:st|nd|rd|th)?\s+${MON},?\s+(\d{4})\b`, "i"));
+  if (m) return iso(+m[3], mon(m[2]), +m[1]);
+  return "";
 };
 
 /**
