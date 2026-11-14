@@ -409,3 +409,12 @@ describe("a year-end bonus or a year-long contract is not a yearly ask (#1060)",
     expect(askPer("What hourly rate, or what pay a year?")).toBeNull();
   });
 });
+
+describe('"/yr" after a space or "(" is a yearly ask (#1121)', () => {
+  it.each(["Salary expectations (/yr) - paid monthly", "Salary expectations /year (we pay hourly for overtime)", "Desired base / yr, paid per month"])("%s", (q) => {
+    expect(askPer(q)).toBeNull();
+  });
+  it("asks the yearly amount, not a twelfth of it", () => {
+    expect(suggestSalary({ floor: "150k", min: 150000, max: 190000, per: askPer("Salary expectations (/yr) - paid monthly") })?.amount).toBe("$180,000");
+  });
+});
