@@ -109,6 +109,10 @@ describe("blank options (#722)", () => {
     expect(pickOne("$185,000", ["  ", "$100,000 - $150,000", "$150,000+"])).toBe(-1);
     expect(pickOptions("(none)", [" ", "Figma"])).toEqual([]);
     expect(pickOne("$150,000+", ["", "$150,000+"])).toBe(1);
+    // #1255
+    expect(pickOne("I don't wish to answer", ["Yes", "No", "I don’t wish to answer"])).toBe(2);
+    expect(pickOne("I don’t know", ["Yes", "No", "I don't know"])).toBe(2);
+    expect(pickOptions("Women’s network\n“Other”", ["Women's network", "\"Other\"", "None"])).toEqual(["Women's network", "\"Other\""]);
   });
 });
 

@@ -42,13 +42,19 @@ export function uploadLabels(steps: Pick<FillStep, "kind" | "itemKind" | "prompt
 const startsWord = (a: string, b: string) => !!a && b.startsWith(a) && (b.length === a.length || /\W/.test(b[a.length]) || /\W/.test(a[a.length - 1]));
 
 /**
+ * An option or answer as compared: a required mark ("Yes*") is not part of it (#1061), and curly quotes match straight
+ * ones, so "I don't wish to answer" lands on "I don’t wish to answer" (#1255). fill.js carries the same rule.
+ */
+const normChoice = (t: string) =>
+  t.replace(/\*/g, "").replace(/[‘’]/g, "'").replace(/[“”]/g, '"').replace(/\s+/g, " ").trim().toLowerCase();
+
+/**
  * Which option labels to tick on a "select any that apply" question (#165). One answer per line.
  * Exact text first, then a prefix match either way, so a long label cut short in the answer still lands.
  * Prefixes stop at a word boundary and the closest length wins, so "None" is "None of the above", not "No" (#632).
  */
 export function pickOptions(content: string, options: string[] = []): string[] {
-  // A required mark ("Yes*") is not part of the option, as in pickOne and fill.js (#1061).
-  const norm = (t: string) => t.replace(/\*/g, "").replace(/\s+/g, " ").trim().toLowerCase();
+  const norm = normChoice;
   const out: string[] = [];
   for (const part of content.split(/\n+/).map((t) => t.trim()).filter(Boolean)) {
     const p = norm(part);
@@ -66,7 +72,7 @@ export function pickOptions(content: string, options: string[] = []): string[] {
  * extension/firefox/fill.js carries the same rule.
  */
 export function pickOne(answer: string, labels: string[]): number {
-  const norm = (t: string) => t.replace(/\*/g, "").replace(/\s+/g, " ").trim().toLowerCase();
+  const norm = normChoice;
   const a = norm(answer);
   const exact = labels.findIndex((l) => norm(l) === a);
   if (exact >= 0) return exact;
