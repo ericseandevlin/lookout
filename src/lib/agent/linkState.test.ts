@@ -104,6 +104,14 @@ describe("classifyPage", () => {
   ])("keeps %s open (#903)", (text) => {
     expect(classifyPage(200, text).state).toBe("open");
   });
+  it.each([
+    "Applications will be accepted till the position has been filled.",
+    "This posting stays open 'til the role has been filled.",
+    "We review applications on a rolling basis til this position is filled.",
+    "Open ’til this job has been filled.",
+  ])("keeps %s open: till and 'til read like until (#1101)", (text) => {
+    expect(classifyPage(200, text).state).toBe("open");
+  });
   it.each(["Sorry, the position has been filled.", "This position has been filled. Thank you for your interest.", "This job is no longer open."])("still reads %s as closed (#903)", (text) => {
     expect(classifyPage(200, text).state).toBe("gone");
   });
