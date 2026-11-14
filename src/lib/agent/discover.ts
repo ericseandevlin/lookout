@@ -358,9 +358,62 @@ export async function save(ctx: Context, finds: ScoredT[], via: "agent" | "manua
     const key = await postingKey(f);
     // A shared posting keeps the pay already stored (#846), so the rules and the floor judge that pay, not this read's (#879).
     const [stored] = await db
-      .select({ min: schema.opportunities.compMin, max: schema.opportunities.compMax, currency: schema.opportunities.currency })
+      .select({ id: schema.opportunities.id, min: schema.opportunities.compMin, max: schema.opportunities.compMax, currency: schema.opportunities.currency })
       .from(schema.opportunities)
       .where(eq(schema.opportunities.fingerprint, key));
+    // The shared posting row: new, or an existing one that takes what this read adds.
+    const upsert = async () =>
+      (
+        await db
+          .insert(schema.opportunities)
+          .values({
+            type: "job",
+            company: f.company.slice(0, 200),
+            title: f.title.slice(0, 300),
+            location: f.location.slice(0, 200),
+            workMode: f.work_mode === "Unknown" ? null : f.work_mode,
+            compMin: f.comp_min,
+            compMax: f.comp_max,
+            currency: f.currency ?? "USD",
+            postedAt: realDate(f.posted_at),
+            sourceUrl: f.url.slice(0, 1000),
+            description: f.description.slice(0, 2000),
+            fingerprint: key,
+          })
+          // The row is shared by everyone who has this find: keep its link and summary, only fill what's missing (#585, #846).
+          // A posting the link check found gone and the company put up again at a new URL takes the new link, summary and
+          // date, and drops the old check, so the repost isn't shown with the dead link and closed at once on its next check (#830).
+          .onConflictDoUpdate({
+            target: schema.opportunities.fingerprint,
+            set: {
+              sourceUrl: sql`case when ${reposted} then excluded.source_url else coalesce(${schema.opportunities.sourceUrl}, excluded.source_url) end`,
+              description: sql`case when ${reposted} then excluded.description else coalesce(nullif(${schema.opportunities.description}, ''), excluded.description) end`,
+              postedAt: sql`case when ${reposted} then coalesce(excluded.posted_at, ${schema.opportunities.postedAt}) else coalesce(${schema.opportunities.postedAt}, excluded.posted_at) end`,
+              // A first read that missed the pay, date or work mode takes them from a later read; stored values stay (#846).
+              // Pay fills as a pair, so a stored range is never half replaced.
+              compMin: sql`case when ${noPay} then excluded.comp_min else ${schema.opportunities.compMin} end`,
+              compMax: sql`case when ${noPay} then excluded.comp_max else ${schema.opportunities.compMax} end`,
+              currency: sql`case when ${noPay} then excluded.currency else ${schema.opportunities.currency} end`,
+              workMode: sql`coalesce(${schema.opportunities.workMode}, excluded.work_mode)`,
+              attributes: sql`case when ${reposted} then ${schema.opportunities.attributes} - 'linkCheck' else ${schema.opportunities.attributes} end`,
+            },
+          })
+          .returning()
+      )[0];
+    // Already on this board at another link: it is known, not a dealbreaker, under the floor or off location (#1109).
+    // The shared row still takes this read, so a repost's new link reaches the board (#830).
+    if (stored) {
+      const [mine] = await db
+        .select({ id: schema.userOpportunities.opportunityId })
+        .from(schema.userOpportunities)
+        .where(and(eq(schema.userOpportunities.searchId, ctx.searchId), eq(schema.userOpportunities.opportunityId, stored.id)));
+      if (mine) {
+        await upsert();
+        t.known++;
+        known.add(normUrl(f.url));
+        continue;
+      }
+    }
     const pay = stored && (stored.min != null || stored.max != null) ? stored : { min: f.comp_min, max: f.comp_max, currency: f.currency ?? "USD" };
     // The floor is in US dollars; pay in another currency isn't converted, so the floor doesn't judge it (#1095).
     const floor = pay.currency === "USD" ? ctx.floor : null;
@@ -387,41 +440,7 @@ export async function save(ctx: Context, finds: ScoredT[], via: "agent" | "manua
       if (via !== "manual") continue;
     }
     if (!f.location_fit) t.offLocation++;
-    const [opp] = await db
-      .insert(schema.opportunities)
-      .values({
-        type: "job",
-        company: f.company.slice(0, 200),
-        title: f.title.slice(0, 300),
-        location: f.location.slice(0, 200),
-        workMode: f.work_mode === "Unknown" ? null : f.work_mode,
-        compMin: f.comp_min,
-        compMax: f.comp_max,
-        currency: f.currency ?? "USD",
-        postedAt: realDate(f.posted_at),
-        sourceUrl: f.url.slice(0, 1000),
-        description: f.description.slice(0, 2000),
-        fingerprint: key,
-      })
-      // The row is shared by everyone who has this find: keep its link and summary, only fill what's missing (#585, #846).
-      // A posting the link check found gone and the company put up again at a new URL takes the new link, summary and
-      // date, and drops the old check, so the repost isn't shown with the dead link and closed at once on its next check (#830).
-      .onConflictDoUpdate({
-        target: schema.opportunities.fingerprint,
-        set: {
-          sourceUrl: sql`case when ${reposted} then excluded.source_url else coalesce(${schema.opportunities.sourceUrl}, excluded.source_url) end`,
-          description: sql`case when ${reposted} then excluded.description else coalesce(nullif(${schema.opportunities.description}, ''), excluded.description) end`,
-          postedAt: sql`case when ${reposted} then coalesce(excluded.posted_at, ${schema.opportunities.postedAt}) else coalesce(${schema.opportunities.postedAt}, excluded.posted_at) end`,
-          // A first read that missed the pay, date or work mode takes them from a later read; stored values stay (#846).
-          // Pay fills as a pair, so a stored range is never half replaced.
-          compMin: sql`case when ${noPay} then excluded.comp_min else ${schema.opportunities.compMin} end`,
-          compMax: sql`case when ${noPay} then excluded.comp_max else ${schema.opportunities.compMax} end`,
-          currency: sql`case when ${noPay} then excluded.currency else ${schema.opportunities.currency} end`,
-          workMode: sql`coalesce(${schema.opportunities.workMode}, excluded.work_mode)`,
-          attributes: sql`case when ${reposted} then ${schema.opportunities.attributes} - 'linkCheck' else ${schema.opportunities.attributes} end`,
-        },
-      })
-      .returning();
+    const opp = await upsert();
     const inserted = await db
       .insert(schema.userOpportunities)
       .values({

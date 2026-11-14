@@ -110,6 +110,16 @@ describe("save", () => {
     expect(await board()).toHaveLength(1);
   });
 
+  it("counts a board posting found at a new link only as known, never off location, dealbreaker or under the floor (#1109)", async () => {
+    await save(ctx({ floor: 180000 }), [find()], "agent");
+    const other = "https://boards.example.org/acme-director";
+    for (const f of [find({ url: other, location_fit: false }), find({ url: other, dealbreaker: true }), find({ url: other, comp_min: 120000, comp_max: 150000 })]) {
+      const r = await save(ctx({ floor: 180000 }), [f], "agent");
+      expect(r).toMatchObject({ postings: 1, known: 1, added: 0, offLocation: 0, dealbreaker: 0, belowFloor: 0 });
+    }
+    expect(await board()).toEqual([expect.objectContaining({ title: "Director of Design", score: 5 })]);
+  });
+
   it("drops dealbreakers on a search but keeps them when the person adds the link", async () => {
     expect(await save(ctx(), [find({ dealbreaker: true })], "agent")).toMatchObject({ dealbreaker: 1, added: 0 });
     const manual = await save(ctx({ knownUrls: ["https://jobs.example.com/acme/123"] }), [find({ dealbreaker: true })], "manual");
