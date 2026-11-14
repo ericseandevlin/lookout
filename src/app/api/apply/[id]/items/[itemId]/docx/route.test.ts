@@ -146,6 +146,8 @@ describe("GET /api/apply/[id]/items/[itemId]/docx (#465)", () => {
     const it = await item(a.id, "resume");
     await version(it.id, 1, "# Dana");
     const res = await download(a.id, it.id);
-    expect(res.headers.get("content-disposition")).toBe('attachment; filename="Dana nal - Foo-Bar- -Baz- Resume.docx"');
+    expect(res.headers.get("content-disposition")).toBe(
+      "attachment; filename=\"Dana Unal - Foo-Bar- -Baz- Resume.docx\"; filename*=UTF-8''Dana%20%C3%9Cnal%20-%20Foo-Bar-%20-Baz-%20Resume.docx",
+    );
   });
 });
