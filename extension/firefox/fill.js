@@ -203,10 +203,12 @@
     return labels.findIndex((l) => Math.min(a.length, norm(l).length) >= 80 && sameText(l, answer));
   }
 
-  /** The first number in an answer, for a number field: "$165,000" is "165000". Same as the worker (#1140). */
+  /** The answer's first number, same as the worker: "$165k" is 165000 (#1168). */
   function numberAnswer(t) {
-    const m = String(t || "").match(/\d[\d,]*(\.\d+)?/);
-    return m ? m[0].replace(/,/g, "") : "";
+    const m = String(t || "").match(/(\d[\d,]*(?:\.\d+)?)([km]\b)?/i);
+    if (!m) return "";
+    const n = m[1].replace(/,/g, "");
+    return m[2] ? String(Math.round(Number(n) * (m[2].toLowerCase() === "k" ? 1e3 : 1e6))) : n;
   }
 
   /** Set a value the way typing would, so React and friends notice. */

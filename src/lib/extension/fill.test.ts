@@ -765,6 +765,13 @@ describe("extension probe and submit watch", () => {
     expect(log[0]).toMatchObject({ ok: true, how: "typed" });
   });
 
+  it("a number field reads a k after the number, like the worker (#1168)", async () => {
+    const p = page(`<label for="s">Desired salary</label><input id="s" type="number">`);
+    const log = await p.fill({ steps: [{ prompt: "Desired salary", kind: "text", content: "$165k", required: true }] });
+    expect(p.value("#s")).toBe("165000");
+    expect(log[0]).toMatchObject({ ok: true, how: "typed" });
+  });
+
   it("a number field with no number in the answer is not filled (#1140)", async () => {
     const p = page(`<label for="y">Years of experience</label><input id="y" type="number">`);
     const log = await p.fill({ steps: [{ prompt: "Years of experience", kind: "text", content: "Over a decade", required: true }] });

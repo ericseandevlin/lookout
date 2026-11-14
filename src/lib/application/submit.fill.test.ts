@@ -152,7 +152,7 @@ const close = vi.fn(async () => {});
 const launch = vi.fn(async () => ({ newContext: async () => ({ newPage: async () => page }), close }));
 vi.mock("playwright-core", () => ({ chromium: { launch } }));
 
-const { runFill, startFill } = await import("./submit");
+const { numberAnswer, runFill, startFill } = await import("./submit");
 
 let dataDir: string;
 let userId: string;
@@ -302,6 +302,15 @@ describe("runFill (#385)", () => {
     const r = await runFill(id, "test");
     expect(r.log[0]).toMatchObject({ ok: true, how: "typed" });
     expect(page.did).toContain("fill Desired salary=165000");
+  });
+
+  it("a number field reads a k or M after the number (#1168)", async () => {
+    const id = await seed("approved", [{ kind: "answer", prompt: "Desired salary", content: "$165k" }]);
+    page = fakePage([{ kind: "control", label: "Desired salary", type: "number" }]);
+    const r = await runFill(id, "test");
+    expect(r.log[0]).toMatchObject({ ok: true, how: "typed" });
+    expect(page.did).toContain("fill Desired salary=165000");
+    expect(["$2.3K", "$1.2M", "7.5 years", "165000", "5 months", "$165,000 base"].map(numberAnswer)).toEqual(["2300", "1200000", "7.5", "165000", "5", "165000"]);
   });
 
   it("a one-choice <select> with several lines takes the first and reports the rest not filled (#1132)", async () => {
