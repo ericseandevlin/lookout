@@ -62,6 +62,14 @@ describe("Experience shape in code (#137)", () => {
     expect(b.filter((x) => x.t === "subrole").slice(0, 2).map((x) => x.text)).toEqual(["Vice President", "UX Engineering Lead (contract via Photon)"]);
   });
 
+  it("leaves a company note that starts like a keyword alone (#1152)", () => {
+    for (const line of ["Product Designer, Meta (formerly Facebook)", "UX Lead, Acme (Fortune 500 retailer)", "Engineer, Initech (Atlanta office)", "Designer, Globex (Client Services)"])
+      expect(agencyWording(line)).toBe(line);
+    expect(agencyWording("Designer, Photon (for Acme)")).toBe("Designer (contract via Photon), Acme");
+    expect(agencyWording("Designer, Photon (at Acme)")).toBe("Designer (contract via Photon), Acme");
+    expect(agencyWording("Designer, Photon (on assignment to Acme)")).toBe("Designer (contract via Photon), Acme");
+  });
+
   it("shows freelance once, as an umbrella with the clients named", () => {
     const b = parseDraft(r.md);
     const all = b.map((x) => x.t === "section" && x.text);

@@ -274,10 +274,14 @@ function span(right?: string): Span | null {
   return { s, e, from: from.trim(), to: to.trim(), sy: yearOnly(from), ey: e !== Infinity && yearOnly(to) };
 }
 
-/** "Title, Agency (client: Brand)" and "Title, Brand (via Agency)" read as "Title (contract via Agency), Brand". */
+/**
+ * "Title, Agency (client: Brand)" and "Title, Brand (via Agency)" read as "Title (contract via Agency), Brand".
+ * The keyword ends at a word boundary and "client" needs its colon, so "(formerly Facebook)", "(Atlanta office)" or
+ * "(Client Services)" is not a client (#1152).
+ */
 export function agencyWording(line: string): string {
   if (/\(contract via /i.test(line)) return line;
-  const client = line.match(/^(.+?),\s*(.+?)\s*\((?:client|for|at|on assignment (?:to|at))\s*:?\s*(.+?)\)$/i);
+  const client = line.match(/^(.+?),\s*(.+?)\s*\((?:client\s*:|(?:for|at|on assignment (?:to|at))\b\s*:?)\s*(.+?)\)$/i);
   if (client) return `${client[1]} (contract via ${client[2]}), ${client[3]}`;
   const via = line.match(/^(.+?),\s*(.+?)\s*\((?:contract(?:ed)?\s+)?(?:via|through)\s+(.+?)\)$/i);
   if (via) return `${via[1]} (contract via ${via[3]}), ${via[2]}`;
