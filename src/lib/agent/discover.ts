@@ -470,7 +470,8 @@ export async function save(ctx: Context, finds: ScoredT[], via: "agent" | "manua
       continue;
     }
     // A range that tops out under the floor does not make the board (#740). A link the person adds still goes on, marked down.
-    const top = pay.max ?? pay.min;
+    // A lone starting pay like "$150,000+" has no max and is unbounded above (#877).
+    const top = pay.max;
     if (floor && top && top < floor) {
       t.belowFloor++;
       if (via !== "manual") continue;
