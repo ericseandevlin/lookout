@@ -6,6 +6,32 @@ Every production release of Lookout, newest first. The format follows [Keep a Ch
 
 Work merged to `main` (staging) and waiting for the weekly release.
 
+## [0.6.2] - 2026-11-16
+
+Tracing and the first scaling work after the group demo, plus about 150 small fixes. No database changes. Everyone agrees to the privacy page again on their next visit, because it now lists PostHog.
+
+### Added
+- AI tracing: each OpenRouter call carries its step name, its run and a scrambled person ID, so OpenRouter Broadcast can send it to PostHog. No names, emails or text are sent (#985).
+- Spend alerts: admins get an email before and when a spending cap stops searches, and a person is told when they reach their own cap (#990).
+- Admin: send several invites at once, and make, list and close group links (#993).
+- Admin > Metrics: the AI cost of one application, and a week-one Settings metric (#991, #992).
+- First week: a tips card on the board and the search schedule in the first finds email, so people find the settings (#992).
+- Health check reports low disk at 85% full, with a weekly safe prune (#995).
+- Docs: a diagram of every user flow and who acts at each step (#997).
+
+### Changed
+- Scheduler runs due searches 3 at a time instead of one by one. Set with `SCHEDULER_CONCURRENCY` (#988).
+- A scheduled search runs once per local day, so a late run no longer pushes the next one to the evening (#1222).
+- Signed-in people can view the landing page, the sign-in page and group link pages (#999).
+- One type scale across the app, and admin tables and tabs fit on phones (#1217, #1232, #1233, #1234).
+
+### Fixed
+- Spend caps count runs in flight and check before start in one step (#1038).
+- Search: pay in pounds, euros and francs, day rates, decimals and bonus ranges are read correctly. More closed-posting wording is caught, and tracking tags no longer make a known job look new (#1095, #1186, #1199, #1239, #1283, #1193, and more).
+- Link check: fewer live postings closed by mistake (#1026, #1027, #1083, #1101, #1103, and more).
+- Auto-apply and the extension: salary asks, dates, number fields, checkboxes, radios, uploads and EEO answers are filled correctly in more forms. Saved answers no longer carry one employer's answers to the next form (#1032, #1059, #1140, #1242, #1295, #1297, and more).
+- Resume drafts and Recruiter Analysis: fewer false flags and better ordering (#1265, #1281, #1282, #1299, and more).
+
 ## [0.6.1] - 2026-11-13
 
 Fixes and polish only. About 100 small fixes, most of them to auto-apply (still a beta for admins) and to how Lookout reads pay. No new switches and no database changes.
