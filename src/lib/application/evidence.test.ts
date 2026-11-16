@@ -84,6 +84,23 @@ describe("keyword evidence (#121)", () => {
   });
 });
 
+describe("postingSnippet window (#1314)", () => {
+  const long = `Job expectations include familiarity with at least one area of engineering, acting as a go to reference across the organization, and applying knowledge to improve technical competencies through recruitment and development activities.</p><p><b>Position Summary:</b></p><p>This job is responsible for defining and leading the engineering approach and strategy for AI solutions across ${"the wider program and portfolio of solutions ".repeat(8)}for Global Markets Regulatory Reporting, to deliver significant business outcomes`;
+  it("shows the term even when it sits far into a long passage", () => {
+    for (const term of ["Regulatory Reporting", "Global Markets"]) {
+      const q = postingSnippet(long, term)!;
+      expect(q).toContain(term);
+      expect(q.startsWith("…")).toBe(true);
+      expect(q.length).toBeLessThanOrEqual(221);
+    }
+  });
+  it("starts at the passage when the term is near the front", () => {
+    const q = postingSnippet(long, "Job expectations")!;
+    expect(q.startsWith("Job expectations")).toBe(true);
+    expect(q.endsWith("…")).toBe(true);
+  });
+});
+
 describe("keywordPicks (#738)", () => {
   const row = (term: string, o: Partial<KeywordRow> = {}): KeywordRow => ({ term, support: null, mine: false, removed: false, used: false, ...o });
   const posting = "Design Systems Engineer. You will own our design systems. Required: React and TypeScript. Design systems experience is a must. Nice to have: Figma.";
