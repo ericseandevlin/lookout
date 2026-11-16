@@ -50,7 +50,13 @@ export function postingSnippet(posting: string, term: string) {
     .map((s) => s.trim().replace(/^[•·*-]\s*/, ""))
     .find((s) => s && !/^(Role|Company|Location|Work mode|Pay range on file):/.test(s) && hasKeyword(s, term));
   if (!hit) return undefined;
-  return hit.length <= 220 ? hit : `${hit.slice(0, 217).trimEnd()}…`;
+  if (hit.length <= 220) return hit;
+  // A long passage is cut around the term, so the quote always shows it (#1314).
+  const words = term.trim().split(/[^A-Za-z0-9+#]+/).filter(Boolean).map((w) => w.replace(/[+#]/g, "\\$&"));
+  const at = words.length ? Math.max(0, hit.search(new RegExp(words.join("[^A-Za-z0-9+#]+"), "i"))) : 0;
+  const start = Math.max(0, Math.min(at - 80, hit.length - 217));
+  const end = Math.min(hit.length, start + 217);
+  return `${start > 0 ? "…" : ""}${hit.slice(start, end).trim()}${end < hit.length ? "…" : ""}`;
 }
 
 const flat = (s: string) => s.toLowerCase().replace(/[^a-z0-9+#]+/g, " ").trim();
