@@ -88,6 +88,9 @@ const SYNONYMS: Record<string, RegExp> = {
   Yes: /^yes\b|i have a|^(hispanic|latin)/i,
 };
 
+// "I am a veteran, but not a protected veteran", "I identify as a veteran, just not a protected veteran".
+const VETERAN_NOT_PROTECTED = /\b(am|identify as) a veteran\b.*\bnot\b.*\bprotected\b/i;
+
 /** The form option for the person's answer, if one clearly matches. */
 export function matchOption(choice: string, options: string[]): string | null {
   if (choice === DECLINE) return options.find((o) => DECLINES.test(o)) ?? null;
@@ -96,7 +99,12 @@ export function matchOption(choice: string, options: string[]): string | null {
   const re = SYNONYMS[choice];
   // "Not a veteran" must not match "I am a veteran", and the reverse: test the negative form first. "I decline to
   // self-identify as a protected veteran" is not a veteran's answer either (#1142).
-  if (choice === "Veteran") return options.find((o) => !DECLINES.test(o) && !SYNONYMS["Not a veteran"].test(o) && re.test(o)) ?? null;
+  if (choice === "Veteran") {
+    // "Veteran" does not say whether the person is a protected veteran. A list that offers "a veteran, just not a
+    // protected veteran" asks exactly that: ask once and remember the wording rather than claim protected status (#1244).
+    if (options.some((o) => !DECLINES.test(o) && VETERAN_NOT_PROTECTED.test(o))) return null;
+    return options.find((o) => !DECLINES.test(o) && !SYNONYMS["Not a veteran"].test(o) && re.test(o)) ?? null;
+  }
   // Workday race lists say "White (Not Hispanic or Latino)": a Hispanic person must not get one of those (#662).
   const negated = (o: string) =>
     (choice === "Hispanic or Latino" && /\bnot\s+(hispanic|latin)/i.test(o)) ||
