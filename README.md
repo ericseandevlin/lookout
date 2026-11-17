@@ -60,6 +60,8 @@ Why it's built this way (open models, zero-retention routing, rules in code, sta
 
 Where the code lives and how a request flows through it: [docs/architecture.md](docs/architecture.md).
 
+Every page and who sees it: [docs/screens.md](docs/screens.md). Every feature and whether it is on production: [docs/features.md](docs/features.md). Every flow as a diagram: [docs/flows.md](docs/flows.md).
+
 ## Run it yourself
 
 Docker and your own AI key, about five minutes:
