@@ -239,6 +239,13 @@
       "when": 1795305600000,
       "tag": "0033_referral_links",
       "breakpoints": true
+    },
+    {
+      "idx": 34,
+      "version": "7",
+      "when": 1795392000000,
+      "tag": "0034_waitlist_optin",
+      "breakpoints": true
     }
   ]
 }

@@ -28,3 +28,11 @@ export function versionDate(v: string) {
  */
 export const WAITLIST_NOTICE_VERSION = "2026-11-07";
 export const WAITLIST_NOTICE = "We'll email you about your invite and, now and then, news about Lookout. Every email has an unsubscribe link.";
+
+/**
+ * The notice when FEATURE_WAITLIST is on (#9): a confirm email first, then an update about every two weeks.
+ * Its own version, so a row records which of the two notices that person saw.
+ */
+export const WAITLIST_OPTIN_NOTICE_VERSION = "2026-11-17";
+export const WAITLIST_OPTIN_NOTICE =
+  "We'll send one email to confirm it's you. After that: your invite, and an update about every two weeks on what's new and what it can find. Every email has an unsubscribe link.";

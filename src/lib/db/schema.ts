@@ -333,6 +333,10 @@ export const accessRequests = pgTable("access_requests", {
     channel: text("channel"),
     /** Who referred them (#527), when they came through someone's personal link; their channel is then "referral". */
     referredBy: uuid("referred_by").references(() => users.id, { onDelete: "set null" }),
+    /** In their own words, what they'd want it to search for (#9). Free text, optional. */
+    searchFor: text("search_for"),
+    /** When they clicked the confirm link in the waitlist email (#9, double opt-in). Null until then. */
+    confirmedAt: timestamp("confirmed_at", { withTimezone: true }),
   status: text("status").$type<"pending" | "approved" | "declined">().notNull().default("pending"),
   createdAt: createdAt(),
   decidedAt: timestamp("decided_at", { withTimezone: true }),
