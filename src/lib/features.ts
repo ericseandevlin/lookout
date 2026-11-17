@@ -5,7 +5,9 @@
  * - FEATURE_SEARCHES: more than one search per account, the search switcher, and the kind picker at sign-up (#8).
  * - FEATURE_PREVIEW: the /next page that shows features still being built, for demos (#602). Turn it off after.
  * - FEATURE_DEMO: the public, read-only /demo board of the made-up Maya Ortiz account, rebuilt at startup (#1317). Staging only.
+ * - FEATURE_WAITLIST: the /jobs and /what-it-finds pages, the "what would you search for" question, and double opt-in
+ *   (a confirm email) on the waitlist form (#9). Off in prod until Eric opens the waitlist.
  */
-export type Feature = "EVENTS" | "SEARCHES" | "PREVIEW" | "DEMO";
+export type Feature = "EVENTS" | "SEARCHES" | "PREVIEW" | "DEMO" | "WAITLIST";
 
 export const featureOn = (name: Feature) => process.env[`FEATURE_${name}`] === "on";

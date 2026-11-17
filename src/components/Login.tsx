@@ -2,18 +2,19 @@
 
 import { useEffect, useRef, useState } from "react";
 import { LegalLinks } from "./LegalLinks";
-import { WAITLIST_NOTICE } from "@/lib/legal";
+import { WAITLIST_NOTICE, WAITLIST_OPTIN_NOTICE } from "@/lib/legal";
 import { NEXT_MOVES } from "@/lib/onboarding";
 import { color, font } from "@/lib/tokens";
 
-export function Login({ emailEnabled, inviteOnly, turnstileSiteKey = "", kinds = false, signedOut = false, channel = null, start }: { emailEnabled: boolean; inviteOnly: boolean; turnstileSiteKey?: string; kinds?: boolean; signedOut?: boolean; channel?: string | null; start?: "signin" | "request" }) {
+/** waitlist: FEATURE_WAITLIST (#9), which adds the "what would you search for" question and the confirm email. */
+export function Login({ emailEnabled, inviteOnly, turnstileSiteKey = "", kinds = false, signedOut = false, channel = null, start, waitlist = false }: { emailEnabled: boolean; inviteOnly: boolean; turnstileSiteKey?: string; kinds?: boolean; signedOut?: boolean; channel?: string | null; start?: "signin" | "request"; waitlist?: boolean }) {
   const [mode, setMode] = useState<"signin" | "request">(start ?? (inviteOnly && !emailEnabled ? "request" : "signin"));
   return (
     <AuthCard>
       {mode === "signin" ? (
         <SignIn emailEnabled={emailEnabled} inviteOnly={inviteOnly} signedOut={signedOut} onRequest={() => setMode("request")} />
       ) : (
-        <RequestAccess emailEnabled={emailEnabled} turnstileSiteKey={turnstileSiteKey} kinds={kinds} channel={channel} onSignIn={() => setMode("signin")} />
+        <RequestAccess emailEnabled={emailEnabled} turnstileSiteKey={turnstileSiteKey} kinds={kinds} channel={channel} waitlist={waitlist} onSignIn={() => setMode("signin")} />
       )}
     </AuthCard>
   );
@@ -84,8 +85,10 @@ function SignIn({ emailEnabled, inviteOnly, signedOut, onRequest }: { emailEnabl
   );
 }
 
-function RequestAccess({ emailEnabled, turnstileSiteKey, kinds, channel, onSignIn }: { emailEnabled: boolean; turnstileSiteKey: string; kinds: boolean; channel: string | null; onSignIn: () => void }) {
+function RequestAccess({ emailEnabled, turnstileSiteKey, kinds, channel, waitlist, onSignIn }: { emailEnabled: boolean; turnstileSiteKey: string; kinds: boolean; channel: string | null; waitlist: boolean; onSignIn: () => void }) {
   const [email, setEmail] = useState("");
+  const [searchFor, setSearchFor] = useState("");
+  const [confirm, setConfirm] = useState(false);
   const [kind, setKind] = useState<string>("job");
   const [move, setMove] = useState<string | null>(null);
   const [state, setState] = useState<"idle" | "sending" | "sent" | "error">("idle");
@@ -99,9 +102,12 @@ function RequestAccess({ emailEnabled, turnstileSiteKey, kinds, channel, onSignI
     const res = await fetch("/api/auth/request-access", {
       method: "POST",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify({ email, kind, nextMove: kind === "job" ? move ?? undefined : undefined, turnstileToken: token || undefined, channel: channel ?? undefined }),
+      body: JSON.stringify({ email, kind, nextMove: kind === "job" ? move ?? undefined : undefined, turnstileToken: token || undefined, channel: channel ?? undefined, ...(waitlist && searchFor.trim() && { searchFor: searchFor.trim() }) }),
     }).catch(() => null);
-    if (res?.ok) return setState("sent");
+    if (res?.ok) {
+      setConfirm(!!(await res.json().catch(() => ({})))?.confirm);
+      return setState("sent");
+    }
     const data = await res?.json().catch(() => ({}));
     setMsg(data?.error === "Invalid input" ? "Enter a valid email address." : data?.error || "Couldn't send your request. Try again.");
     // A Turnstile token works once, so a retry needs a fresh one.
@@ -111,6 +117,17 @@ function RequestAccess({ emailEnabled, turnstileSiteKey, kinds, channel, onSignI
     }
     setState("error");
   };
+
+  if (state === "sent" && confirm)
+    return (
+      <>
+        <Eyebrow>One more step</Eyebrow>
+        <h1 style={h1}>Check your email</h1>
+        <p style={p}>
+          We sent a link to <strong style={{ color: color.ink }}>{email}</strong>. Tap it to confirm and you&apos;re on the list. It can take a minute, and it may land in spam.
+        </p>
+      </>
+    );
 
   if (state === "sent")
     return (
@@ -177,8 +194,25 @@ function RequestAccess({ emailEnabled, turnstileSiteKey, kinds, channel, onSignI
           })}
         </fieldset>
         )}
+        {waitlist && (
+          <>
+            <label htmlFor="req-search" style={{ ...label, marginTop: 18 }}>
+              What would you want it to look for? <span style={{ textTransform: "none", letterSpacing: 0, fontWeight: 500 }}>(optional)</span>
+            </label>
+            <textarea
+              id="req-search"
+              rows={3}
+              maxLength={500}
+              value={searchFor}
+              onChange={(e) => setSearchFor(e.target.value)}
+              placeholder="A design lead role in Chicago, a two-bedroom rental near a good school, grants for a small nonprofit…"
+              className="f-brick"
+              style={{ ...field, height: "auto", padding: "12px 14px", fontFamily: "inherit", fontSize: font.base, lineHeight: 1.45, resize: "vertical" }}
+            />
+          </>
+        )}
         {turnstileSiteKey && <Turnstile siteKey={turnstileSiteKey} resetKey={resetKey} onToken={setToken} />}
-        <p style={{ fontSize: font.base, lineHeight: 1.5, color: color.t2, margin: 0 }}>{WAITLIST_NOTICE}</p>
+        <p style={{ fontSize: font.base, lineHeight: 1.5, color: color.t2, margin: 0 }}>{waitlist ? WAITLIST_OPTIN_NOTICE : WAITLIST_NOTICE}</p>
         <button type="submit" disabled={state === "sending" || (!!turnstileSiteKey && !token)} style={primary}>{state === "sending" ? "Sending…" : "Request access"}</button>
         {state === "error" && <div role="alert" style={{ fontSize: font.base, color: color.brick }}>{msg}</div>}
       </form>

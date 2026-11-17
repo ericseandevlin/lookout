@@ -429,10 +429,15 @@ function Requests({ requests, emailEnabled, onDone }: { requests: Overview["requ
   };
   const approved = Object.keys(links);
   const pending = requests.filter((r) => !links[r.email]);
+  // The whole waitlist, decided ones too (#9). A plain link: the browser downloads it with the session cookie.
+  const csv = <a href="/api/admin/requests/export" download style={{ fontSize: font.base, color: color.t2 }}>Download all as CSV</a>;
   if (!pending.length && !approved.length) {
     return (
       <Row title="Access requests" help="People who asked to join from the sign-in page.">
-        <span style={{ fontSize: font.base, color: color.t2 }}>No requests waiting.</span>
+        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+          <span style={{ fontSize: font.base, color: color.t2 }}>No requests waiting.</span>
+          {csv}
+        </div>
       </Row>
     );
   }
@@ -440,6 +445,7 @@ function Requests({ requests, emailEnabled, onDone }: { requests: Overview["requ
     <Row title="Access requests" help={emailEnabled ? "Approving emails them an invite." : "Approving creates an invite link to send them yourself, since email isn't set up yet."}>
       <div style={{ display: "flex", flexDirection: "column", gap: 8, maxWidth: 520 }}>
         <Msg text={err} />
+        {csv}
         {approved.map((email) => (
           <div key={email} style={{ display: "flex", flexDirection: "column", gap: 8, padding: 12, borderRadius: 10, background: "#fff", border: `1.5px solid ${color.border}` }}>
             <span style={{ fontSize: font.base, color: color.greenText, fontWeight: 600 }}>{links[email].emailed ? `Approved and emailed ${email}` : `Approved ${email}. Send them this link:`}</span>
@@ -455,7 +461,11 @@ function Requests({ requests, emailEnabled, onDone }: { requests: Overview["requ
           <div key={r.email} style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 10px 10px 12px", borderRadius: 10, background: "#fff", border: `1.5px solid ${color.border}`, flexWrap: "wrap" }}>
             <div style={{ flex: 1, minWidth: 180 }}>
               <div style={{ fontSize: font.base, fontWeight: 600, overflow: "hidden", textOverflow: "ellipsis" }}>{r.email}</div>
-              <div style={{ fontSize: font.base, color: color.t2 }}>{r.nextMove ?? "No answer"} · {when(r.createdAt)}</div>
+              <div style={{ fontSize: font.base, color: color.t2 }}>
+                {r.nextMove ?? "No answer"} · {when(r.createdAt)}
+                {r.confirmed !== null && <> · {r.confirmed ? "Confirmed" : "Not confirmed yet"}</>}
+              </div>
+              {r.searchFor && <div style={{ fontSize: font.base, color: color.ink, marginTop: 4, overflowWrap: "anywhere" }}>&ldquo;{r.searchFor}&rdquo;</div>}
             </div>
             <button onClick={() => decide(r.email, "decline")} className="h-danger" style={{ ...btn("danger"), height: 32, padding: "0 12px", fontSize: font.base }}>Decline</button>
             <button onClick={() => decide(r.email, "approve")} style={{ ...btn("solid"), height: 32, padding: "0 12px", fontSize: font.base }}>Approve</button>

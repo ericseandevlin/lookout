@@ -8,7 +8,7 @@ import { color, font } from "@/lib/tokens";
 /** Shared by the admin pages: response types, small formatters and styles, the tab bar and the message line. */
 export type Overview = {
   inbox: { id: string; from: string; subject: string; receivedAt: string; status: string; triage: { kind: string; summary: string; draftReply?: string | null } | null }[];
-  requests: { email: string; nextMove: string | null; createdAt: string }[];
+  requests: { email: string; nextMove: string | null; createdAt: string; searchFor: string | null; confirmed: boolean | null }[];
   totals: { users: number; usdDay: number; usdWeek: number; usdMonth: number };
   emailEnabled: boolean;
   users: {

@@ -8,6 +8,7 @@ Work merged to `main` (staging) and waiting for the weekly release.
 
 ### Added
 - Referral links: Settings > Invite a friend shows each person's own link. Someone who requests access through it lands on the waitlist tagged as a referral from that person, and Admin > Metrics counts referral signups, how many joined and were active, and how many people have referred someone. Database change: migration 0033 (#527).
+- Waitlist, behind `FEATURE_WAITLIST` (off in prod): `/jobs` and `/what-it-finds` pages, a "What would you want it to look for?" question, and double opt-in with a confirm email. Admin > People downloads every request as CSV. The product name now lives in `src/lib/brand.ts` for the marketing pages and waitlist. Database change: migration 0034 (#9).
 
 ## [0.6.2] - 2026-11-16
 
