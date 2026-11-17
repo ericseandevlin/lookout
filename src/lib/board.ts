@@ -125,7 +125,7 @@ export function postedText(f: Find) {
 export const isNewFind = (f: Find, newDays: number) =>
   !f.archived && !f.seen && Date.now() - new Date(f.addedAt).getTime() <= newDays * 864e5;
 
-export const slugOf = (f: Find) =>
+export const slugOf = (f: Pick<Find, "company" | "role">) =>
   (f.company + " " + f.role).toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
 
 export const scoreStyle = (s: number) =>

@@ -25,7 +25,12 @@ const NOT_A_FIT = ["Wrong level", "Wrong kind of role", "Wrong industry", "Locat
 
 type DrawerNav = { index: number; total: number; prev?: () => void; next?: () => void };
 
-export function Drawer({ f, currentComp, close, toggle, setStage, enter, nav }: { f: Find; currentComp: number | null; close: () => void; toggle: (f: Find, k: "pinned" | "archived") => void; setStage: (f: Find, s: string) => void; enter: boolean; nav: DrawerNav }) {
+/**
+ * One find's detail. On phones (and narrower desktops) it slides in over the board as a modal drawer. Docked (#1331),
+ * it is the right-hand pane of the desktop split view: always in view, no scrim, no slide, no focus trap, and it
+ * leaves focus on the list so the arrow keys keep working.
+ */
+export function Drawer({ f, currentComp, close, toggle, setStage, enter, nav, docked = false }: { f: Find; currentComp: number | null; close: () => void; toggle: (f: Find, k: "pinned" | "archived") => void; setStage: (f: Find, s: string) => void; enter: boolean; nav: DrawerNav; docked?: boolean }) {
   const { patchFind, state, refresh, readOnly } = useStore();
   const [applyMsg, setApplyMsg] = useState<string | null>(null);
   const applyWithLookout = async () => {
@@ -46,7 +51,7 @@ export function Drawer({ f, currentComp, close, toggle, setStage, enter, nav }: 
   const timers = useRef<{ save?: ReturnType<typeof setTimeout>; hide?: ReturnType<typeof setTimeout>; copy?: ReturnType<typeof setTimeout> }>({});
   const closeBtn = useRef<HTMLButtonElement>(null);
   const panel = useRef<HTMLElement>(null);
-  useFocusTrap(panel);
+  useFocusTrap(panel, !docked);
   // Notes stay local while typing; they save after a long pause or when the drawer closes, so typing never stalls.
   const pending = useRef<string | null>(null);
   const navRef = useRef(nav);
@@ -68,13 +73,14 @@ export function Drawer({ f, currentComp, close, toggle, setStage, enter, nav }: 
 
   const animatedClose = useCallback(() => {
     flushNotes();
+    if (docked) return close();
     setLeaving(true);
     const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
     setTimeout(close, reduce ? 0 : DRAWER_MS);
-  }, [close, flushNotes]);
+  }, [close, docked, flushNotes]);
 
   useEffect(() => {
-    closeBtn.current?.focus();
+    if (!docked) closeBtn.current?.focus();
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") return animatedClose();
       const typing = (e.target as HTMLElement | null)?.closest("input, textarea, select, [contenteditable]");
@@ -102,7 +108,7 @@ export function Drawer({ f, currentComp, close, toggle, setStage, enter, nav }: 
         pending.current = null;
       }
     };
-  }, [animatedClose, f.id, patchFind]);
+  }, [animatedClose, docked, f.id, patchFind]);
 
   const onNotes = (v: string) => {
     setNotes(v);
@@ -131,9 +137,15 @@ export function Drawer({ f, currentComp, close, toggle, setStage, enter, nav }: 
 
   return (
     <>
-      <div onClick={animatedClose} className={leaving ? "drawer-scrim out" : enter ? "drawer-scrim" : undefined} style={{ position: "fixed", inset: 0, background: "rgba(29,26,15,.28)", zIndex: 20 }} />
-      <aside ref={panel} role="dialog" aria-modal="true" aria-label={`${f.role} at ${f.company}`} className={leaving ? "drawer-panel out" : enter ? "drawer-panel" : undefined} style={{ position: "fixed", top: 0, right: 0, bottom: 0, width: 440, maxWidth: "100vw", background: "#fff", zIndex: 21, display: "flex", flexDirection: "column", boxShadow: "-12px 0 40px rgba(29,26,15,.18)" }}>
-        {nav.index >= 0 && nav.total > 1 && (
+      {!docked && <div onClick={animatedClose} className={leaving ? "drawer-scrim out" : enter ? "drawer-scrim" : undefined} style={{ position: "fixed", inset: 0, background: "rgba(29,26,15,.28)", zIndex: 20 }} />}
+      <aside
+        ref={panel}
+        {...(docked ? { role: "region" } : { role: "dialog", "aria-modal": true })}
+        aria-label={`${f.role} at ${f.company}`}
+        className={docked ? "find-pane" : leaving ? "drawer-panel out" : enter ? "drawer-panel" : undefined}
+        style={docked ? { background: "#fff", display: "flex", flexDirection: "column" } : { position: "fixed", top: 0, right: 0, bottom: 0, width: 440, maxWidth: "100vw", background: "#fff", zIndex: 21, display: "flex", flexDirection: "column", boxShadow: "-12px 0 40px rgba(29,26,15,.18)" }}
+      >
+        {!docked && nav.index >= 0 && nav.total > 1 && (
           <div className="drawer-nav" role="group" aria-label="Move between finds">
             <button onClick={nav.prev} disabled={!nav.prev} aria-label="Previous find" data-tip="Previous (←)" className="drawer-nav-btn">‹</button>
             <span aria-live="polite" className="drawer-nav-count">{nav.index + 1}/{nav.total}</span>
