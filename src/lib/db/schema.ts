@@ -36,8 +36,10 @@ export const users = pgTable(
     lastActiveAt: timestamp("last_active_at", { withTimezone: true }),
     /** When the 12-month inactivity email went out (#26). Deleting the account after that is by hand. */
     inactiveWarnedAt: timestamp("inactive_warned_at", { withTimezone: true }),
+    /** Their personal referral link's code (#527), made the first time Settings shows it. See lib/referral.ts. */
+    referralCode: text("referral_code"),
   },
-  (t) => [uniqueIndex("users_email_idx").on(sql`lower(${t.email})`)],
+  (t) => [uniqueIndex("users_email_idx").on(sql`lower(${t.email})`), uniqueIndex("users_referral_code_idx").on(t.referralCode)],
 );
 
 export const loginTokens = pgTable("login_tokens", {
@@ -329,6 +331,8 @@ export const accessRequests = pgTable("access_requests", {
     kind: text("kind").notNull().default("job"),
     /** Where they came from (#527): the landing link's ?ref= or ?utm_source=, kept from their first request. */
     channel: text("channel"),
+    /** Who referred them (#527), when they came through someone's personal link; their channel is then "referral". */
+    referredBy: uuid("referred_by").references(() => users.id, { onDelete: "set null" }),
   status: text("status").$type<"pending" | "approved" | "declined">().notNull().default("pending"),
   createdAt: createdAt(),
   decidedAt: timestamp("decided_at", { withTimezone: true }),

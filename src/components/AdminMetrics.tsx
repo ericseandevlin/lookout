@@ -29,7 +29,7 @@ type Data = {
   searchCost: { searches: number; avg: number | null };
   spend: { monthToDate: number; actives: number; perActive: number | null; key: { usd: number; limit: number; reset: string | null } | null };
   weeks: { week: string; active: number; acted: number; actedPerActive: number }[];
-  growth: { channels: { channel: string; signups: number; joined: number; active: number }[]; invites: { sent: number; accepted: number; rate: number | null } };
+  growth: { channels: { channel: string; signups: number; joined: number; active: number }[]; invites: { sent: number; accepted: number; rate: number | null }; referrers: number };
 };
 
 const card: React.CSSProperties = { background: "#fff", borderRadius: 16, overflowX: "auto", marginTop: 8 };
@@ -59,6 +59,9 @@ export function AdminMetrics() {
       ? ""
       : `${plural(board, "find", "finds")} at ${stage} on the board, all time` +
         (d.outcomes.questions ? `, plus ${plural(survey, "person", "people")} who reported ${noun} in the survey with none on the board` : ". No survey question counts yet (tag one in Surveys)");
+
+  /** Signups through someone's personal link (#527) land in the "referral" channel. */
+  const referred = d?.growth.channels.find((c) => c.channel === "referral");
 
   const rows = d
     ? [
@@ -259,10 +262,17 @@ export function AdminMetrics() {
                   </th>
                   <td style={{ ...td, fontWeight: 600 }}>{percent(d.growth.invites.rate)}</td>
                 </tr>
+                <tr>
+                  <th scope="row" style={{ ...td, fontWeight: 400, textAlign: "left" }}>
+                    Referrals
+                    <div style={muted}>{referred ? `${plural(d.growth.referrers, "person has", "people have")} sent someone with their link from Settings. ${referred.joined} joined, ${referred.active} active in the week of ${day(d.lastWeek)}` : "Nobody has signed up from someone's Settings link yet"}</div>
+                  </th>
+                  <td style={{ ...td, fontWeight: 600 }}>{referred?.signups ?? 0}</td>
+                </tr>
               </tbody>
             </table>
           </div>
-          <p style={muted}>Not measured here yet: zero data incidents, and referrals.</p>
+          <p style={muted}>Not measured here yet: zero data incidents.</p>
         </>
       )}
     </div>
