@@ -13,3 +13,16 @@ export function decodeEntities(s: string) {
     return n > 0 && n <= 0x10ffff && !(n >= 0xd800 && n <= 0xdfff) ? String.fromCodePoint(n) : " ";
   });
 }
+
+/** Strip HTML tags from text, turning block tags into newlines and decoding entities. Used by the page reader and on read for stored posting text (#1311). */
+export function stripHtml(s: string): string {
+  return decodeEntities(
+    s
+      .replace(/<(script|style|noscript)[\s\S]*?<\/\1>/gi, " ")
+      .replace(/<br\s*\/?>|<\/(p|div|li|h\d|tr)>/gi, "\n")
+      .replace(/<[^>]+>/g, " "),
+  )
+    .replace(/[ \t]+/g, " ")
+    .replace(/\n[ \t]*\n+/g, "\n")
+    .trim();
+}
