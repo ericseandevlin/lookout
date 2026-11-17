@@ -8,6 +8,7 @@ import { traceAs } from "@/lib/ai/trace";
 import { assertBudget } from "@/lib/ai/runs";
 import { HttpError } from "@/lib/api";
 import { checkAnswer, newNumbers } from "./draft";
+import { stripHtml } from "@/lib/ai/entities";
 import { humanize, shapeResume } from "./resumeLayout";
 import { isCommon, upsert } from "./saved";
 import { notesBlock } from "./skills";
@@ -104,7 +105,7 @@ export async function getApplicationDetail(userId: string, id: string) {
   // The floor and target come from the active search's answers (#8).
   const search = items.some((i) => i.kind !== "eeo" && !i.options?.length && isSalaryQuestion(i.prompt)) ? await getActiveSearch(userId) : null;
   const answers = search?.answers;
-  const postingText = a.report.postingText || o?.description || "";
+  const postingText = stripHtml(a.report.postingText || o?.description || "");
   const salaryHint = (prompt: string) =>
     answers ? suggestSalary({ floor: answers.floor, target: answers.target, min: o?.compMin, max: o?.compMax, basis: rangeBasis(postingText), asksBase: asksBase(prompt), asksMinimum: asksMinimum(prompt), per: askPer(prompt), thousands: asksThousands(prompt) }) : null;
   // EEO answers are matched here from the encrypted profile, only with consent; they're never stored on the application (#122).
@@ -127,7 +128,7 @@ export async function getApplicationDetail(userId: string, id: string) {
     company: o?.company ?? "",
     role: o?.title ?? "",
     url: o?.sourceUrl ?? null,
-    posting: a.report.postingText || o?.description || "",
+    posting: stripHtml(a.report.postingText || o?.description || ""),
     items: items.map((i) => ({
       id: i.id,
       kind: i.kind,
@@ -271,7 +272,7 @@ export async function reviseItem(userId: string, appId: string, itemId: string, 
     name: "apply-revise",
     schema: Revision,
     system: REVISE_SYSTEM,
-    user: `Posting: ${o?.title} at ${o?.company}\n<posting>\n${(a.report.postingText || o?.description || "").slice(0, 8000)}\n</posting>\n\n<resume>\n${master.slice(0, 12000)}\n</resume>\n\nApplication item: ${it.prompt}${it.options?.length ? `\nOptions: ${it.options.join(" | ")}` : ""}\n<current>\n${cur?.content ?? ""}\n</current>\n\nApplicant's instruction: ${instruction}`,
+    user: `Posting: ${o?.title} at ${o?.company}\n<posting>\n${stripHtml(a.report.postingText || o?.description || "").slice(0, 8000)}\n</posting>\n\n<resume>\n${master.slice(0, 12000)}\n</resume>\n\nApplication item: ${it.prompt}${it.options?.length ? `\nOptions: ${it.options.join(" | ")}` : ""}\n<current>\n${cur?.content ?? ""}\n</current>\n\nApplicant's instruction: ${instruction}`,
     maxTokens: 8000,
     usage,
   });
@@ -314,7 +315,7 @@ export async function analyzeItem(userId: string, appId: string, itemId: string,
     name: "apply-recruiter",
     schema: RecruiterDraft,
     system: RECRUITER_SYSTEM,
-    user: `Posting: ${o?.title} at ${o?.company}\n${recruiterPrompt(it.kind, v.content, a.report.postingText || o?.description || "", facts, found)}`,
+    user: `Posting: ${o?.title} at ${o?.company}\n${recruiterPrompt(it.kind, v.content, stripHtml(a.report.postingText || o?.description || ""), facts, found)}`,
     maxTokens: 6000,
     usage,
   });

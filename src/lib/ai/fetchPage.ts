@@ -3,7 +3,7 @@ import { lookup } from "node:dns";
 import { isIP, type LookupFunction } from "node:net";
 // undici's own fetch: Node 22's built-in fetch rejects an Agent from a newer undici.
 import { Agent, fetch } from "undici";
-import { decodeEntities } from "./entities";
+import { decodeEntities, stripHtml } from "./entities";
 import { findPay, payLine } from "./pay";
 
 /**
@@ -209,10 +209,30 @@ export function decodeBody(bytes: Uint8Array, contentType = "") {
 }
 
 /** Readable text plus any schema.org JobPosting data, which most ATS pages embed. */
+
+/** Parse a JSON-LD block and strip HTML from all string values. Falls back to the raw text when parsing fails (#1311). */
+function cleanJsonLd(json: string): string {
+  try {
+    const clean = (obj: unknown): unknown => {
+      if (typeof obj === "string") return stripHtml(obj);
+      if (Array.isArray(obj)) return obj.map(clean);
+      if (obj && typeof obj === "object") {
+        const result: Record<string, unknown> = {};
+        for (const [k, v] of Object.entries(obj)) result[k] = clean(v);
+        return result;
+      }
+      return obj;
+    };
+    return JSON.stringify(clean(JSON.parse(json)));
+  } catch {
+    return json;
+  }
+}
+
 export function pageToText(html: string, maxChars = 9000) {
   const ld: string[] = [];
   for (const m of html.matchAll(/<script[^>]+application\/ld\+json[^>]*>([\s\S]*?)<\/script>/gi)) {
-    if (/JobPosting/i.test(m[1])) ld.push(m[1].trim().slice(0, 6000));
+    if (/JobPosting/i.test(m[1])) ld.push(cleanJsonLd(m[1].trim().slice(0, 6000)));
   }
   const title = decodeEntities(html.match(/<title[^>]*>([\s\S]*?)<\/title>/i)?.[1] ?? "").replace(/\s+/g, " ").trim();
   const text = decodeEntities(

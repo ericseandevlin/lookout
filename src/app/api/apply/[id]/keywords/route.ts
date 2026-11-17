@@ -8,6 +8,7 @@ import { redraftResume } from "@/lib/application/run";
 import { choose, upsertNote } from "@/lib/application/skills";
 import { db, schema } from "@/lib/db";
 import { patchReport } from "@/lib/application/reportStore";
+import { stripHtml } from "@/lib/ai/entities";
 
 type Ctx = { params: Promise<{ id: string }> };
 
@@ -26,7 +27,7 @@ export const POST = authed<Ctx>(async (req, { user, params }) => {
   const a = await ownApplication(user.id, (await params).id);
   assertEditable(a.status);
   const p = await body(req, Pick);
-  const posting = a.report.postingText ?? "";
+  const posting = stripHtml(a.report.postingText ?? "");
 
   if (p.action === "approve") {
     const { rows } = await keywordState(user.id, a, posting);
