@@ -8,6 +8,7 @@ import { WAITLIST_NOTICE_VERSION } from "@/lib/legal";
 import { channelOf } from "@/lib/metrics";
 import { NEXT_MOVES } from "@/lib/onboarding";
 import { rateLimit } from "@/lib/ratelimit";
+import { referrerOf } from "@/lib/referral";
 import { turnstileSiteKey, verifyTurnstile } from "@/lib/turnstile";
 import { normalizeEmail } from "@/lib/users";
 
@@ -31,10 +32,20 @@ export const POST = publicRoute(async (req) => {
   const email = normalizeEmail(p.email);
   // The consent record (#28): which email notice the form showed, and when they sent it.
   const answers = { kind: featureOn("SEARCHES") ? p.kind ?? "job" : "job", nextMove: p.nextMove ?? null, consentVersion: WAITLIST_NOTICE_VERSION, consentAt: new Date() };
+  // Someone's personal link (#527) counts under one "referral" channel and records who sent them.
+  const channel = channelOf(p.channel);
+  const referredBy = await referrerOf(channel);
   await db
     .insert(schema.accessRequests)
-    .values({ email, ...answers, channel: channelOf(p.channel) })
+    .values({ email, ...answers, channel: referredBy ? "referral" : channel, referredBy })
     // A repeat request refreshes the answers but never reopens a decision, and keeps the channel they first came from.
-    .onConflictDoUpdate({ target: schema.accessRequests.email, set: { ...answers, channel: sql`coalesce(${schema.accessRequests.channel}, excluded.channel)` } });
+    .onConflictDoUpdate({
+      target: schema.accessRequests.email,
+      set: {
+        ...answers,
+        channel: sql`coalesce(${schema.accessRequests.channel}, excluded.channel)`,
+        referredBy: sql`case when ${schema.accessRequests.channel} is null then excluded.referred_by else ${schema.accessRequests.referredBy} end`,
+      },
+    });
   return json({ ok: true });
 });

@@ -74,6 +74,18 @@ describe("POST /api/auth/request-access (#454)", () => {
     expect((await rows())[0].channel).toBe("hn");
   });
 
+  it("counts someone's personal link as a referral and records who sent them (#527)", async () => {
+    const [paul] = await db.insert(schema.users).values({ email: "paul@example.com", referralCode: "abc123" }).returning();
+    await post({ email: "maya@example.com", channel: "r-abc123" });
+    await post({ email: "lee@example.com", channel: "r-unknown" });
+    // A later referral link doesn't take over a request that already has a channel.
+    await post({ email: "sam@example.com", channel: "hn" });
+    await post({ email: "sam@example.com", channel: "r-abc123" });
+    const byEmail = Object.fromEntries((await rows()).map((r) => [r.email, [r.channel, r.referredBy]]));
+    expect(byEmail).toEqual({ "maya@example.com": ["referral", paul.id], "lee@example.com": ["r-unknown", null], "sam@example.com": ["hn", null] });
+    await db.delete(schema.users);
+  });
+
   it("gives an approved address the same answer as a new one", async () => {
     await db.insert(schema.accessRequests).values({ email: "maya@example.com", status: "approved" });
     const res = await post({ email: "maya@example.com" });

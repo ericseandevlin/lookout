@@ -6,6 +6,9 @@ Every production release of Lookout, newest first. The format follows [Keep a Ch
 
 Work merged to `main` (staging) and waiting for the weekly release.
 
+### Added
+- Referral links: Settings > Invite a friend shows each person's own link. Someone who requests access through it lands on the waitlist tagged as a referral from that person, and Admin > Metrics counts referral signups, how many joined and were active, and how many people have referred someone. Database change: migration 0033 (#527).
+
 ## [0.6.2] - 2026-11-16
 
 Tracing and the first scaling work after the group demo, plus about 150 small fixes. No database changes. Everyone agrees to the privacy page again on their next visit, because it now lists PostHog.
