@@ -208,3 +208,19 @@ describe("a veteran never gets the decline option (#1142)", () => {
     expect(matchOption(DECLINE, opts)).toBe("I decline to self-identify as a protected veteran");
   });
 });
+
+describe("a veteran is asked when the list splits protected and not protected (#1244)", () => {
+  const workday = ["I am not a veteran", "I identify as a veteran, just not a protected veteran", "I identify as one or more of the classifications of protected veterans", "I don't wish to answer"];
+  it("does not claim protected status", () => {
+    expect(matchOption("Veteran", workday)).toBeNull();
+    expect(resolve({ answers: { veteran: "Veteran" }, exact: {} }, "Veteran Status", workday)).toBeNull();
+  });
+  it("uses the remembered wording", () => {
+    expect(resolve({ answers: { veteran: "Veteran" }, exact: { [answerKey("Veteran Status")]: workday[1] } }, "Veteran Status", workday)).toBe(workday[1]);
+  });
+  it("also asks for the \"but not a protected veteran\" wording", () => {
+    const opts = ["I am a veteran, but not a protected veteran", "I am not a veteran", "I identify as one or more of the classifications of protected veteran", "I do not wish to self-identify"];
+    expect(matchOption("Veteran", opts)).toBeNull();
+    expect(matchOption("Not a veteran", opts)).toBe("I am not a veteran");
+  });
+});
