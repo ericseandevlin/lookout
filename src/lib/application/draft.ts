@@ -96,12 +96,15 @@ export const ResumeDraft = z.object({
 export const RESUME_SYSTEM = `You tailor a master resume to one job posting so it passes applicant tracking systems and reads well to a recruiter.
 Rules:
 - Use only facts in the master resume and the person's experience notes. Never add employers, titles, dates, degrees, certifications, tools or numbers that are in neither.
-- You may reorder, cut, merge and reword bullets, and reword the summary, to carry the posting's own terms where the experience truly supports them.
+- You may reorder, cut, merge and reword bullets, and write the Career Highlights, to carry the posting's own terms where the experience truly supports them.
 - Keep every employer, title and date exactly as written.
 - Keep the person's level of ownership exactly. "Helped build", "worked on", "contributed to" or "part of" never become "built", "led", "owned" or "designed"; team work stays team work. Recruiters check this in interviews.
 - A recruiter decides in about 10 seconds from the top third of page one. Write for that scan:
   - Line 2 is a headline of 12 words or fewer that positions the person for this role: their real title or function, plus the strengths this role wants. Never present the posting's title (or any title they haven't held) as theirs; a recruiter reads that as overclaiming. No year counts unless the master resume states that exact figure.
-  - Summary is ONE sentence of 30 words or fewer: the takeaway a hiring manager should remember.
+  - No Summary section. Write "## Career Highlights" in its place, right above Experience: 3 or 4 bullets, each "**<Skill>:** <proof>".
+    - <Skill> is one of the posting's top requirements in the posting's own words, in the order the posting lists them (its first is its top priority). Take them from the approved keyword list when there is one.
+    - Use a skill only when the master resume or experience notes really back it. Skip a requirement the person can't prove rather than write a vague line.
+    - <proof> is one line: what they did and the result, with a number when the master resume or notes state one. Same ownership rule as every bullet. No slogans, no "passionate about", no claims about the industry.
   - Most recent and most relevant roles get 3 to 5 bullets, most relevant first. Roles older than about 10 years, or from a different field, get 1 or 2 bullets that keep only the strongest signal (leadership, scale, a famous name).
   - Each bullet leads with the result or what was built, then how. Keep every number in the master resume that shows scale (team sizes, counts like "over 35 websites", years, famous clients, firm-wide use) unless you cut that whole bullet; numbers are what recruiters scan for. Never invent a number; list in "strengthen" what to ask for instead.
   - Skills: 3 or 4 grouped lines of concrete tools, methods and domains. Never pad with vague entries like "X Concepts" or "familiarity with".

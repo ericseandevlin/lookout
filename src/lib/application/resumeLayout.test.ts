@@ -195,3 +195,42 @@ BFA, Parsons`;
     expect(parseDraft(below.md).filter((x) => x.t === "section").map((x) => x.text)).toEqual(["Summary", "Experience", "Skills"]);
   });
 });
+
+describe("Career Highlights (#1326)", () => {
+  const md = [
+    "# Ada Park",
+    "Design engineer",
+    "## Experience",
+    "### Lead, Acme | NYC | 01/2020 – Present",
+    "- Built things",
+    "## Career Highlights",
+    "- **Design Systems:** Built a component library used by 12 teams",
+    "- **Revenue Growth:** Grew checkout conversion 18%",
+    "- **Team Leadership:** Led 6 engineers",
+    "- **Accessibility:** Took 40 pages to WCAG AA",
+    "- **Prototyping:** Shipped 30 prototypes",
+  ].join("\n");
+
+  it("keeps the bold label apart from the proof", () => {
+    const b = parseDraft("# A\n## Career Highlights\n- **Revenue Growth:** Grew conversion 18%").find((x) => x.t === "bullet");
+    expect(b).toEqual({ t: "bullet", lead: "Revenue Growth:", text: "Grew conversion 18%" });
+    expect(toPlain("# A\n## Career Highlights\n- **Revenue Growth:** Grew conversion 18%")).toContain("• Revenue Growth: Grew conversion 18%");
+  });
+
+  it("reads a label with the colon outside the bold, and leaves a plain bullet alone", () => {
+    expect(parseDraft("# A\n## X\n- **Team Leadership**: Led 6").find((x) => x.t === "bullet")).toMatchObject({ lead: "Team Leadership:", text: "Led 6" });
+    expect(parseDraft("# A\n## X\n- Built a **fast** thing").find((x) => x.t === "bullet")).toEqual({ t: "bullet", text: "Built a fast thing" });
+  });
+
+  it("caps highlights at four, names the cut one, and puts them right above Experience", () => {
+    const out = shapeResume(md);
+    expect(out.md).not.toContain("Prototyping");
+    expect(out.fixed.join(" ")).toMatch(/Kept the first 4 career highlights\. Left out: "Prototyping: Shipped 30 prototypes"/);
+    expect(out.md.indexOf("## Career Highlights")).toBeLessThan(out.md.indexOf("## Experience"));
+  });
+
+  it("never cuts highlights to one sentence like a summary", () => {
+    const out = shapeResume("# A\n## Career Highlights\n- **A Skill:** Did one thing. Then another.\n## Experience\n### T, C | X | 2020 – 2021\n- b");
+    expect(out.md).toContain("Did one thing. Then another.");
+  });
+});
