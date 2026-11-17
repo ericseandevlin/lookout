@@ -1,6 +1,6 @@
 # How Lookout works: the flows
 
-Every main flow as a diagram, for someone who has not read the code. For where the code lives, see [architecture.md](architecture.md).
+Every main flow as a diagram, for someone who has not read the code. For where the code lives, see [architecture.md](architecture.md). For every page, see [screens.md](screens.md); for every feature and its status, see [features.md](features.md).
 
 Each box has one of three colors:
 
