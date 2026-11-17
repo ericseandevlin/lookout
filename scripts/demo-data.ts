@@ -124,8 +124,9 @@ const isoDate = (d: Date) => d.toISOString().slice(0, 10);
 /**
  * Create the demo account, or rebuild it from scratch if it's already there. Refuses to touch an account
  * with the same email that isn't the demo one, so it can't wipe a real person's board.
+ * disabled: the public /demo copy (#1317). Nobody can sign in to it and the scheduler never searches for it.
  */
-export async function seedDemo(db: Db, email = DEMO_EMAIL, now = new Date()) {
+export async function seedDemo(db: Db, email = DEMO_EMAIL, now = new Date(), { disabled = false } = {}) {
   const e = email.trim().toLowerCase();
   const [existing] = await db.select().from(schema.users).where(dsql`lower(${schema.users.email}) = ${e}`);
   if (existing && existing.name !== DEMO_NAME) throw new Error(`${e} belongs to an account that isn't the demo one; pick another email`);
@@ -135,7 +136,7 @@ export async function seedDemo(db: Db, email = DEMO_EMAIL, now = new Date()) {
     if (existing) await tx.delete(schema.users).where(eq(schema.users.id, existing.id));
     const [user] = await tx
       .insert(schema.users)
-      .values({ email: e, name: DEMO_NAME, createdAt: daysAgo(now, 30), onboardedAt: daysAgo(now, 30), ...acceptedNow() })
+      .values({ email: e, name: DEMO_NAME, disabled, createdAt: daysAgo(now, 30), onboardedAt: daysAgo(now, 30), ...acceptedNow() })
       .returning();
     const [search] = await tx
       .insert(schema.searches)
