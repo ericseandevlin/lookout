@@ -12,6 +12,12 @@ describe("applyRules", () => {
     expect(r.score).toBe(3);
     expect(r.reasonsGap[0]).toMatch(/below your floor/);
   });
+  it("treats a lone starting pay under the floor as the top of the range (#877)", () => {
+    const r = applyRules({ ...base, compMin: 150000, compMax: null }, 180000)!;
+    expect(r.score).toBe(3);
+    expect(r.reasonsGap[0]).toMatch(/below your floor/);
+    expect(applyRules({ ...base, compMin: 190000, compMax: null }, 180000)!.score).toBe(5);
+  });
   it("does not penalize missing comp, only notes it", () => {
     const r = applyRules({ ...base, compMin: null, compMax: null }, 120000)!;
     expect(r.score).toBe(5);
