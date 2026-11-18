@@ -2,6 +2,20 @@ import { describe, expect, it } from "vitest";
 import { askPer, asksBase, asksThousands, isSalaryQuestion, rangeBasis, suggestSalary } from "./salary";
 
 describe("suggestSalary", () => {
+  it("leaves a non-USD range blank and asks, showing it in its own currency (#914)", () => {
+    const r = suggestSalary({ floor: "90000", min: 80000, max: 100000, currency: "GBP" })!;
+    expect(r.amount).toBeNull();
+    expect(r.note).toContain("80,000 – 100,000 GBP");
+    expect(r.note).not.toContain("$");
+    expect(r.question).toMatch(/in GBP\?$/);
+    // Per-period and thousands asks don't turn the blank into a number.
+    expect(suggestSalary({ floor: "90000", min: 80000, max: 100000, currency: "EUR", per: "month", thousands: true })!.amount).toBeNull();
+  });
+
+  it("still answers a USD range as before (#914)", () => {
+    expect(suggestSalary({ floor: "120000", min: 100000, max: 140000, currency: "USD" })!.amount).toBe("$130,000");
+  });
+
   // Quill's criteria 1 and 3 first: these are the cases where a wrong number looks confident.
   it("asks in the top quarter of 100-140 with a floor of 120, never above 140", () => {
     const r = suggestSalary({ floor: "120000", min: 100000, max: 140000 })!;

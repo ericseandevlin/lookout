@@ -4,6 +4,7 @@
  * note can show it.
  */
 
+import { compLabel } from "@/lib/digestComp";
 import { parseMoney } from "@/lib/kinds";
 
 const round5k = (n: number) => Math.round(n / 5000) * 5000;
@@ -220,7 +221,7 @@ export function suggestSalary(i: Parameters<typeof yearlyAsk>[0] & { per?: Per |
   return { ...r, amount, ...(r.question ? { question: r.question.replace(r.amount, `${amount} per ${i.per}`) } : {}), note: `${r.note}\n• This question asks per ${i.per}, so the ask is ${r.amount} a year divided by ${p.how}: ${amount} per ${i.per}.` };
 }
 
-function yearlyAsk(i: { floor?: unknown; target?: unknown; min?: number | null; max?: number | null; basis?: "total" | "base" | null; asksBase?: boolean; asksMinimum?: boolean }): { amount: string | null; note: string; question?: string } | null {
+function yearlyAsk(i: { floor?: unknown; target?: unknown; min?: number | null; max?: number | null; basis?: "total" | "base" | null; asksBase?: boolean; asksMinimum?: boolean; currency?: string | null }): { amount: string | null; note: string; question?: string } | null {
   // The same reading discovery uses for the floor, so "150" is $150,000 in both places (#761).
   const floor = parseMoney(i.floor);
   const target = parseMoney(i.target);
@@ -229,6 +230,13 @@ function yearlyAsk(i: { floor?: unknown; target?: unknown; min?: number | null; 
   if (!lo || !hi) {
     const pick = target ?? floor;
     return pick ? { amount: usd(pick), note: `The posting gives no range, so this is your ${target ? "target" : "floor"}.` } : null;
+  }
+  // A range in another currency can't be held against a USD floor or target, and Lookout doesn't convert (#914).
+  // The person decides, with their range shown in its own currency.
+  if (i.currency && i.currency.toUpperCase() !== "USD") {
+    const theirs = `${compLabel(lo, hi, i.currency.toUpperCase())}${i.basis === "total" ? " total cash including bonus" : ""}`;
+    const note = `Their range (${theirs}) is not in US dollars, so Lookout left this blank. It doesn't convert currencies or compare your floor with it.`;
+    return { amount: null, note, question: `${note} What do you want to ask for, in ${i.currency.toUpperCase()}?` };
   }
   const range = `${usd(lo)} – ${usd(hi)}${i.basis === "total" ? " total cash including bonus" : ""}`;
   if (floor && floor > hi) {
