@@ -347,6 +347,16 @@ export const accessRequests = pgTable("access_requests", {
 });
 
 /** Addresses that unsubscribed from news and waitlist mail (#28). Kept after account deletion on purpose. */
+/**
+ * One row per deleted account: id and time only, nothing personal (#1342). Backups are write-once,
+ * so a restore brings deleted accounts back; the restore runbook deletes every id listed here again.
+ * No foreign key: the user row is gone by design.
+ */
+export const accountDeletions = pgTable("account_deletions", {
+  userId: uuid("user_id").primaryKey(),
+  deletedAt: timestamp("deleted_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
 export const emailOptOuts = pgTable("email_opt_outs", {
   email: text("email").primaryKey(),
   /** How they opted out, e.g. "link". */

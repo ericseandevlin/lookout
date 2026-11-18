@@ -36,7 +36,7 @@ export default function Privacy() {
         <li><b>Signed-in devices:</b> deleted 30 days after you last used them.</li>
         <li><b>Search logs:</b> the details of each search are deleted after 12 months. Only the counts and cost stay.</li>
         <li><b>Your account:</b> kept while you use it. If you don&apos;t use Lookout for 12 months, it emails you once. If you still don&apos;t sign in, Eric may delete the account by hand after 18 months. Nothing is deleted automatically.</li>
-        <li><b>Deleted accounts:</b> removed right away. Copies in encrypted backups age out within 60 days.</li>
+        <li><b>Deleted accounts:</b> removed right away. Copies in encrypted backups age out within 2 years (see Amazon S3 below). Lookout keeps a list of deleted account numbers, with nothing else about you, so if a backup is ever restored, your account is deleted again before Lookout comes back online.</li>
       </ul>
       <p>A daily job on the server does the deleting, so these limits hold without anyone remembering to.</p>
 
@@ -50,7 +50,7 @@ export default function Privacy() {
         <li><b>OpenRouter, and the AI model host it picks.</b> Gets: your profile answers, the text of your resume, LinkedIn PDF and links, your search profile, and the postings being scored or drafted for. Why: to build your search profile, score finds and draft applications. Lookout tells OpenRouter to use only hosts that don&apos;t keep your data or train on it, and to try US hosts first. Lookout doesn&apos;t train any models on your data either.</li>
         <li><b>PostHog (AI request log).</b> Gets: a record of each AI request Lookout makes: which step it was, how long it took, what it cost, and a scrambled ID that stands for you. Never your name, your email, or the text that went to or came back from the AI. Why: to find the steps that fail or cost too much.</li>
         <li><b>Resend (email).</b> Gets: your email address and the emails Lookout sends you: sign-in links, invites, the finds email and account notices, like the one-year inactivity email. It also receives mail sent to Lookout&apos;s own addresses, like the one at the bottom of this page, and tells Lookout whether each email was delivered.</li>
-        <li><b>Amazon S3 (backups).</b> Gets: a nightly copy of the database and uploaded files, encrypted before upload, so Amazon can&apos;t read it. Copies are kept for up to 60 days. Before upload, the server keeps 14 days of copies and Eric&apos;s own computer keeps 30.</li>
+        <li><b>Amazon S3 (backups).</b> Gets: a nightly copy of the database and uploaded files, encrypted before upload, so Amazon can&apos;t read it. Nightly copies are kept for 7 days, one a week for 4 weeks, one a month for 6 months and one a year for 2 years, so nothing is kept longer than 2 years. Backups can&apos;t be edited, so a deleted account stays in older copies until they age out; it is never restored (see Deleted accounts above). The server itself keeps the last 2 nights.</li>
         <li><b>Cloudflare Turnstile (bot check).</b> Gets: your IP address and the browser details its check reads, only when you fill in the request-access form. Why: to keep bots off that form.</li>
         <li><b>Search engines, through Lookout&apos;s own relay.</b> Get: search queries only: job titles, company names, places and keywords. Never your name, email or resume. Queries come from Lookout&apos;s server, not your browser.</li>
         <li><b>SAM.gov.</b> Gets: the same kind of keywords, for RFP searches only. It&apos;s the US government&apos;s public contracts site.</li>
@@ -63,7 +63,7 @@ export default function Privacy() {
       <H>Your controls</H>
       <ul>
         <li><b>Export:</b> Settings, Export data downloads your board, stages, notes, profile answers and what Lookout recorded you doing.</li>
-        <li><b>Delete:</b> Settings, Delete everything removes your account and all of the above right away. Copies in encrypted backups age out within 60 days.</li>
+        <li><b>Delete:</b> Settings, Delete everything removes your account and all of the above right away. Copies in encrypted backups age out within 2 years and are never restored.</li>
         <li><b>Unsubscribe:</b> every email except sign-in links, invites and account notices has an unsubscribe link at the bottom. It works at once and needs no sign-in.</li>
         <li><b>Remove one thing:</b> delete your resume, LinkedIn PDF or any link on the Materials tab, and it stops being used.</li>
       </ul>

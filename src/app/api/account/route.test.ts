@@ -89,11 +89,17 @@ async function fill(u: User) {
     });
 }
 
+/**
+ * The one table allowed to keep a deleted person's id: id and time only, so a restored backup can delete them
+ * again (#1342). Its own test below pins it to exactly those two columns.
+ */
+const DELETION_LOG = "account_deletions";
+
 /** Every column that holds a user id, read from the live schema so new tables are covered without editing this test. */
 const userColumns = async () =>
   (
     await db.execute<{ table_name: string; column_name: string }>(
-      sql`select table_name, column_name from information_schema.columns where table_schema = 'public' and data_type = 'uuid' and column_name in ('user_id', 'owner_id')`,
+      sql`select table_name, column_name from information_schema.columns where table_schema = 'public' and data_type = 'uuid' and column_name in ('user_id', 'owner_id') and table_name <> ${DELETION_LOG}`,
     )
   ).rows;
 
@@ -124,6 +130,7 @@ afterAll(async () => {
 beforeEach(async () => {
   await db.delete(schema.opportunities);
   await db.delete(schema.users);
+  await db.delete(schema.accountDeletions);
   await rm(path.join(dir, "uploads"), { recursive: true, force: true });
   destroySession.mockClear();
   alice = await user("alice@example.com");
@@ -159,6 +166,17 @@ describe("DELETE /api/account (#467)", () => {
     expect(await rowsOf(bob)).toEqual(bobBefore);
   });
 
+  it("records only the deleted id and time, so a restored backup can delete it again (#1342)", async () => {
+    await del({ confirm: "DELETE" });
+    expect(await db.select().from(schema.accountDeletions)).toEqual([
+      { userId: alice.id, deletedAt: expect.any(Date) },
+    ]);
+    const { rows } = await db.execute<{ column_name: string }>(
+      sql`select column_name from information_schema.columns where table_name = ${DELETION_LOG} order by column_name`,
+    );
+    expect(rows.map((r) => r.column_name)).toEqual(["deleted_at", "user_id"]);
+  });
+
   it("removes the person's uploads and keeps everyone else's", async () => {
     await del({ confirm: "DELETE" });
     expect(await readdir(path.join(dir, "uploads"))).toEqual([bob.id]);
@@ -188,7 +206,7 @@ describe("account deletion schema (#467)", () => {
   it("every user_id column points at users", async () => {
     const { rows } = await db.execute<{ tbl: string }>(sql`
       select c.table_name as tbl from information_schema.columns c
-      where c.table_schema = 'public' and c.column_name = 'user_id' and not exists (
+      where c.table_schema = 'public' and c.column_name = 'user_id' and c.table_name <> ${DELETION_LOG} and not exists (
         select 1 from information_schema.key_column_usage k
         join information_schema.constraint_column_usage u on u.constraint_name = k.constraint_name
         where k.table_name = c.table_name and k.column_name = 'user_id' and u.table_name = 'users')`);
