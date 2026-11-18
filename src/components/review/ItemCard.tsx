@@ -16,7 +16,7 @@ import { DownloadIcon, EyeIcon, PencilIcon, RedoIcon } from "../icons";
 
 const iconBtn: React.CSSProperties = { ...btn("outline"), width: 38, padding: 0, display: "inline-flex", alignItems: "center", justifyContent: "center" };
 
-export function ItemCard({ appId, item, locked, act, analysis, template, accent, header, letter, onTemplate, onAccent }: { appId: string; item: Item; locked: boolean; act: Act; analysis?: RecruiterAnalysis; template: Template; accent: string | null; header: { name: string; contact: string; headline?: string } | null; letter?: Detail["letter"]; onTemplate: (t: Template) => void; onAccent: (hex: string) => void }) {
+export function ItemCard({ appId, item, locked, act, analysis, template, accent, header, letter, onTemplate, onAccent, needsKeywords = false }: { appId: string; item: Item; locked: boolean; act: Act; needsKeywords?: boolean; analysis?: RecruiterAnalysis; template: Template; accent: string | null; header: { name: string; contact: string; headline?: string } | null; letter?: Detail["letter"]; onTemplate: (t: Template) => void; onAccent: (hex: string) => void }) {
   const latest = item.versions[0];
   const [pick, setPick] = useState<string | null>(null);
   const shown = item.versions.find((v) => v.id === pick) ?? item.versions.find((v) => v.id === item.approvedVersionId) ?? latest;
@@ -32,6 +32,8 @@ export function ItemCard({ appId, item, locked, act, analysis, template, accent,
   }
 
   const outreach = item.kind === "outreach";
+  // The resume is written from approved keywords; until then the server refuses a redraft (#1334).
+  const blocked = item.kind === "resume" && needsKeywords;
   const isApproved = !outreach && !!shown && shown.id === item.approvedVersionId;
   const dirty = text !== (shown?.content ?? "");
   const doc = item.kind === "resume" || item.kind === "cover_letter";
@@ -60,6 +62,15 @@ export function ItemCard({ appId, item, locked, act, analysis, template, accent,
         </label>
         {isApproved && <span style={{ fontSize: font.base, fontWeight: 600, color: color.greenText }}>{item.kind === "field" ? "✓ Will be filled" : `✓ Approved v${shown.version}`}</span>}
       </div>
+      {blocked && !locked && (
+        <div style={{ ...muted, fontSize: font.sm }}>
+          This resume is written from the keywords you approve.{" "}
+          <a href="#keywords" onClick={(e) => { e.preventDefault(); document.getElementById("keywords")?.scrollIntoView({ behavior: "smooth", block: "start" }); }}>
+            Check the keywords above
+          </a>{" "}
+          and press &ldquo;Use these keywords&rdquo; to write it.
+        </div>
+      )}
 
       {item.salary && item.salary.amount === null && !locked && (
         <div style={{ padding: "8px 12px", borderRadius: 10, background: "#FBF4E6", border: "1px solid #E8D3A6", fontSize: font.base, color: "#5C4613" }}>
@@ -139,11 +150,11 @@ export function ItemCard({ appId, item, locked, act, analysis, template, accent,
             {doc && !dirty && (
               <button
                 onClick={() => run("revise", { action: "redraft" }, item.kind === "resume" ? "Lookout wrote a fresh resume from the posting." : "Lookout wrote a fresh cover letter from the posting.")}
-                disabled={!!busy}
-                aria-label="Redraft from the posting"
-                data-tip={busy === "revise" ? "Working…" : "Redraft from the posting"}
+                disabled={!!busy || blocked}
+                aria-label={blocked ? "Redraft from the posting (approve the keywords first)" : "Redraft from the posting"}
+                data-tip={blocked ? "Approve the keywords above first" : busy === "revise" ? "Working…" : "Redraft from the posting"}
                 aria-busy={busy === "revise"}
-                style={{ ...iconBtn, opacity: busy ? 0.6 : 1 }}
+                style={{ ...iconBtn, opacity: busy || blocked ? 0.45 : 1 }}
               >
                 <RedoIcon />
               </button>

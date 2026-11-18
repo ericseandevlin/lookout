@@ -53,7 +53,7 @@ export function KeywordReport({ d, rows, reload, locked }: { d: Detail; rows: Ke
   };
 
   return (
-    <div style={{ ...card, display: "flex", flexDirection: "column", gap: 12 }}>
+    <div id="keywords" style={{ scrollMarginTop: 80, ...card, display: "flex", flexDirection: "column", gap: 12 }}>
       <div style={{ fontSize: font.md, fontWeight: 700 }}>Keywords for this resume</div>
       <div style={{ ...muted, lineHeight: 1.5 }}>
         {d.keywordsApproved

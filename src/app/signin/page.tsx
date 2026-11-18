@@ -18,7 +18,7 @@ export default async function SignInPage({ searchParams }: { searchParams: Promi
   const { signupMode } = await getAccessConfig();
   return (
     <main>
-      <Login emailEnabled={!!env.smtpUrl || env.logEmails} inviteOnly={signupMode === "invite"} turnstileSiteKey={turnstileSiteKey()} kinds={featureOn("SEARCHES")} signedOut={out === "1"} channel={channelOf(ref ?? utm_source)} />
+      <Login emailEnabled={!!env.smtpUrl || env.logEmails} inviteOnly={signupMode === "invite"} turnstileSiteKey={turnstileSiteKey()} kinds={featureOn("SEARCHES")} signedOut={out === "1"} channel={channelOf(ref ?? utm_source)} waitlist={featureOn("WAITLIST")} />
     </main>
   );
 }

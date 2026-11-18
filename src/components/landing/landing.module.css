@@ -124,6 +124,18 @@
   .playHint { display: none; }
 }
 
+/* Jobs and "What it finds" pages (#9): a grid of cards with a status tag. */
+.cards { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; margin-top: 36px; }
+.card { background: #fff; border: 1px solid #E6E0D8; border-radius: 16px; padding: 22px; display: flex; flex-direction: column; gap: 8px; }
+.card h3 { font-size: var(--text-2xl); font-weight: 700; letter-spacing: -0.01em; margin: 0; }
+.card p { font-size: var(--text-lg); line-height: 1.5; color: #4A4339; margin: 0; }
+.tag { align-self: flex-start; font-size: var(--text-xs); font-weight: 700; letter-spacing: .1em; text-transform: uppercase; border-radius: 999px; padding: 3px 10px; }
+.tagLive { color: #1F5130; background: #DCEFD9; }
+.tagTest { color: #7A3A10; background: #FCE3CC; }
+.tagNext { color: #4A4339; background: #ECE7E0; }
+@media (max-width: 960px) { .cards { grid-template-columns: 1fr 1fr; } }
+@media (max-width: 560px) { .cards { grid-template-columns: 1fr; } }
+
 /* Buttons keep their text color and never underline on hover; only the fill changes (globals.css tints links). */
 .page .wrap a.navCta:hover, .page .wrap a.btn:hover, .page .wrap a.finalBtn:hover { color: #fff !important; text-decoration: none !important; }
 .page .wrap a.btnGhost:hover { color: #1D1A0F !important; text-decoration: none !important; }

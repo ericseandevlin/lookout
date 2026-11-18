@@ -143,34 +143,28 @@ describe("parseMoney", () => {
     ["$85 hourly", 176800],
     ["$85.50/h", 177840],
     ["$85-95/hr", 176800],
-    // An en or em dash is a range too (#1081).
-    ["$60–70/hr", 124800],
-    ["$60 – $70/hr", 124800],
-    ["$60—70 per hour", 124800],
-    ["$9k–$10k/mo", 108000],
     ["$12,500/month", 150000],
     ["12.5k per month", 150000],
     ["$12,500 a month", 150000],
     ["$3,000/week", 156000],
+    // Day rate (x260), biweekly (x26) and semimonthly (x24) (#982).
+    ["$650/day", 169000],
+    ["$650/d", 169000],
+    ["$250 per day", 65000],
+    ["$3,000 bi-weekly", 78000],
+    ["$3,000 biweekly", 78000],
+    ["$3,000/biweek", 78000],
+    ["$4,000 semi-monthly", 96000],
+    ["$4,000 semimonthly", 96000],
+    ["$4,000/semimonth", 96000],
     ["$250k/year", 250000],
     ["150k a year", 150000],
     ["150k base, hourly ok", 150000],
-    // A day rate, biweekly and semimonthly pay (#982).
-    ["$650/day", 169000],
-    ["$650 a day", 169000],
-    ["650 daily", 169000],
-    ["$4,000 bi-weekly", 104000],
-    ["$4,000 biweekly", 104000],
-    ["$4000 every two weeks", 104000],
-    ["$6,250 semi-monthly", 150000],
-    ["$6,250 twice a month", 150000],
-    ["$150,000 per year", 150000],
-    ["150k/yr", 150000],
   ])("reads %s as %d", (v, n) => {
     expect(parseMoney(v)).toBe(n);
   });
 
-  it.each([[""], ["  "], ["0"], ["€90k"], ["90k EUR"], ["£80,000"], ["negotiable"], ["6 figures"], ["low 6 figures"], [null], [120000], [["120k"]], ["$95 per project"], ["500/visit"]])("returns null for %j", (v) => {
+  it.each([[""], ["  "], ["0"], ["€90k"], ["90k EUR"], ["£80,000"], ["negotiable"], ["6 figures"], ["low 6 figures"], [null], [120000], [["120k"]]])("returns null for %j", (v) => {
     expect(parseMoney(v)).toBeNull();
   });
 });

@@ -4,7 +4,8 @@ import { migrate } from "drizzle-orm/pglite/migrator";
 import path from "node:path";
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import * as schema from "@/lib/db/schema";
-import { WAITLIST_NOTICE_VERSION } from "@/lib/legal";
+import { WAITLIST_NOTICE_VERSION, WAITLIST_OPTIN_NOTICE_VERSION } from "@/lib/legal";
+import { readConfirmToken } from "@/lib/waitlist";
 
 // An in-process Postgres with the real migrations, standing in for the app database.
 const pg = new PGlite();
@@ -16,6 +17,8 @@ vi.hoisted(() => {
 let ip = "10.0.0.1";
 let origin = "https://lookout.test";
 vi.mock("next/headers", () => ({ headers: async () => new Headers({ origin, "x-forwarded-for": ip }) }));
+const sendMail = vi.hoisted(() => vi.fn<(mail: { to: string; subject: string; text: string }) => Promise<void>>(async () => {}));
+vi.mock("@/lib/email", async (orig) => ({ ...(await orig<typeof import("@/lib/email")>()), sendMail }));
 
 const { POST } = await import("./route");
 
@@ -34,6 +37,7 @@ beforeEach(async () => {
   origin = "https://lookout.test";
   await db.delete(schema.accessRequests);
   await db.delete(schema.rateLimits);
+  sendMail.mockClear();
 });
 afterEach(() => {
   vi.unstubAllEnvs();
@@ -122,6 +126,53 @@ describe("POST /api/auth/request-access (#454)", () => {
     origin = "https://evil.test";
     expect((await post({ email: "a@example.com" })).status).toBe(403);
     expect(await rows()).toEqual([]);
+  });
+
+  it("sends no email and ignores the free-text answer while the waitlist switch is off (#9)", async () => {
+    expect(await (await post({ email: "maya@example.com", searchFor: "Design lead roles" })).json()).toEqual({ ok: true });
+    expect(sendMail).not.toHaveBeenCalled();
+    expect((await rows())[0]).toMatchObject({ searchFor: null, confirmedAt: null, consentVersion: WAITLIST_NOTICE_VERSION });
+  });
+
+  describe("with FEATURE_WAITLIST on (#9)", () => {
+    beforeEach(() => {
+      vi.stubEnv("FEATURE_WAITLIST", "on");
+      vi.stubEnv("APP_SECRET", "x".repeat(32));
+    });
+
+    it("stores what they'd search for, records the opt-in notice and sends one confirm link", async () => {
+      const res = await post({ email: "Maya@Example.com", searchFor: "  Design lead roles in Chicago  " });
+      expect(await res.json()).toEqual({ ok: true, confirm: true });
+      expect((await rows())[0]).toMatchObject({ email: "maya@example.com", searchFor: "Design lead roles in Chicago", consentVersion: WAITLIST_OPTIN_NOTICE_VERSION, confirmedAt: null });
+      expect(sendMail).toHaveBeenCalledTimes(1);
+      const mail = sendMail.mock.calls[0][0];
+      expect(mail.to).toBe("maya@example.com");
+      const t = mail.text.match(/\/waitlist\/confirm\?t=([^\s]+)/)![1];
+      expect(readConfirmToken(t, ["x".repeat(32)])).toBe("maya@example.com");
+    });
+
+    it("sends nothing to someone already confirmed, approved or declined, with the same answer", async () => {
+      await db.insert(schema.accessRequests).values([
+        { email: "c@example.com", confirmedAt: new Date() },
+        { email: "a@example.com", status: "approved" },
+        { email: "d@example.com", status: "declined" },
+      ]);
+      for (const email of ["c@example.com", "a@example.com", "d@example.com"]) expect(await (await post({ email })).json()).toEqual({ ok: true, confirm: true });
+      expect(sendMail).not.toHaveBeenCalled();
+    });
+
+    it("sends at most 3 confirm emails a day to one address", async () => {
+      for (let i = 0; i < 5; i++) {
+        ip = `10.0.1.${i}`;
+        expect((await post({ email: "maya@example.com" })).status).toBe(200);
+      }
+      expect(sendMail).toHaveBeenCalledTimes(3);
+    });
+
+    it("refuses a free-text answer over 500 characters", async () => {
+      expect((await post({ email: "maya@example.com", searchFor: "x".repeat(501) })).status).toBe(400);
+      expect(await rows()).toEqual([]);
+    });
   });
 
   describe("with Turnstile configured", () => {
