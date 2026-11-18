@@ -1,6 +1,6 @@
 # Every screen in Lookout
 
-The owner's list of every page: its address, who can open it, what it does, and whether production hides it. For what each feature is and where it stands, see [features.md](features.md). For how the screens connect, see the diagrams in [flows.md](flows.md).
+The owner's list of every page: its address, who can open it, what it does, and whether production hides it. For what each feature is and where it stands, see [features.md](features.md). For how the screens connect, see the diagrams in [flows.md](flows.md). For why each page exists and whether it ships, see [screen-audit.md](screen-audit.md).
 
 Checked against the code on 2026-11-16. Production is release v0.6.2. `main` is what runs on staging.
 
