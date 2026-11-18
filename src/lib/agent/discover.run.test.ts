@@ -225,6 +225,14 @@ describe("discover (#379)", () => {
     await expect(discover(searchId)).resolves.toMatchObject({ found: 1, added: 0 });
   });
 
+  it("cuts a lone starting pay under the floor, like \"$150,000+\" against $180k (#877)", async () => {
+    results.set("design systems lead", [hit("https://jobs.example.com/a")]);
+    results.set("design systems lead site:greenhouse.io", []);
+    pages.set("https://jobs.example.com/a", posting());
+    verdicts.set("https://jobs.example.com/a", { comp_min: 150000, comp_max: null });
+    await expect(discover(searchId)).resolves.toMatchObject({ found: 1, added: 0 });
+  });
+
   it("says a posting under the floor was left off, not that it is already on the board (#862)", async () => {
     results.set("design systems lead", [hit("https://jobs.example.com/a")]);
     results.set("design systems lead site:greenhouse.io", []);
