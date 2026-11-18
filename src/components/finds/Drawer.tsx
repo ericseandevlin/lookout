@@ -154,7 +154,7 @@ export function Drawer({ f, currentComp, close, toggle, setStage, enter, nav, do
         )}
         <div style={{ background: color.ink, color: "#fff", padding: "24px 26px 22px" }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12 }}>
-            <div style={{ fontSize: font.base, color: color.orange, fontWeight: 600 }}>{f.company}</div>
+            <div style={{ fontSize: font.xl, color: color.orange, fontWeight: 700, lineHeight: 1.2 }}>{f.company}</div>
             <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
               <button ref={closeBtn} onClick={animatedClose} aria-label="Close" style={{ border: 0, background: "rgba(255,255,255,.1)", color: "#fff", width: 30, height: 30, borderRadius: "50%", cursor: "pointer", fontSize: font.lg, lineHeight: 1 }}>×</button>
             </div>
