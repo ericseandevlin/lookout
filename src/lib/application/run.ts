@@ -420,7 +420,7 @@ async function draftAll(id: string, userId: string, opp: typeof schema.opportuni
       // The personal line must come from a saved story, or Lookout asks for one (#155).
       const a = it.kind === "cover_letter" ? checkStory(checked, raw, inp.stories ?? [], opp.company) : checked;
       // Salary asks are math, not model judgment: the top quarter of their range, never below the floor (#139).
-      const ask = !it.options?.length && isSalaryQuestion(it.prompt) ? suggestSalary({ ...inp.pay, min: opp.compMin, max: opp.compMax, basis: rangeBasis(inp.posting.text), asksBase: asksBase(it.prompt), asksMinimum: asksMinimum(it.prompt), per: askPer(it.prompt), thousands: asksThousands(it.prompt) }) : null;
+      const ask = !it.options?.length && isSalaryQuestion(it.prompt) ? suggestSalary({ ...inp.pay, min: opp.compMin, max: opp.compMax, currency: opp.currency, basis: rangeBasis(inp.posting.text), asksBase: asksBase(it.prompt), asksMinimum: asksMinimum(it.prompt), per: askPer(it.prompt), thousands: asksThousands(it.prompt) }) : null;
       if (ask) out.set(it.id, { content: ask.amount ?? "", note: ask.note, sources: ["posting range", "your profile: comp floor and target"], question: ask.question ?? null });
       // Choice answers must stay exactly as the form words them.
       else out.set(it.id, it.options?.length ? a : { ...a, content: humanize(a.content) });

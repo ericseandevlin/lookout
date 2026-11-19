@@ -23,7 +23,7 @@ export function applyRules(s: Scored, floor: number | null) {
   if (s.dealbreaker) return null;
   let cap = 5;
   const gap = [...s.reasonsGap];
-  const topComp = s.compMax; // null (only a starting pay) is unbounded above (#877).
+  const topComp = s.compMax ?? s.compMin; // One number counts as the top, even a starting pay (Eric, #877).
   if (floor && topComp && topComp < floor) {
     cap = Math.min(cap, 3);
     if (!gap.some((g) => /floor/i.test(g))) gap.unshift("Top of the posted range is below your floor");
