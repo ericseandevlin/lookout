@@ -48,8 +48,13 @@ const RfpScore = z.object({
 const rfpSystem = () => `You score government solicitations for one business. Today is ${today()}.
 Only use the facts given for each notice; never invent values or dates. Reasons are read on a phone: short and concrete.`;
 
+/**
+ * One failed batch is skipped, but when every batch fails the run fails, so a model outage isn't reported as
+ * "no new solicitations" and counted as today's search (#1359, as #920 did for jobs).
+ */
 async function scoreRfps(ctx: Context, items: RfpItem[], usage: Usage) {
   const out: { item: RfpItem; s: z.infer<typeof RfpScore>["finds"][number] }[] = [];
+  let failed = 0;
   for (let i = 0; i < items.length; i += BATCH) {
     const batch = items.slice(i, i + BATCH);
     try {
@@ -70,8 +75,11 @@ async function scoreRfps(ctx: Context, items: RfpItem[], usage: Usage) {
       }
     } catch (e) {
       console.error("[rfp] scoring batch failed", e);
+      failed++;
     }
   }
+  const batches = Math.ceil(items.length / BATCH);
+  if (batches && failed === batches) throw new Error(`Lookout found ${items.length} ${items.length === 1 ? "notice" : "notices"} but couldn't score any of them. It will try again later.`);
   return out;
 }
 
@@ -138,7 +146,12 @@ export async function discoverRfp(searchId: string, userId: string, trigger: "sc
     ctx.searchProfile = (await ensureSearchProfile(searchId, usage)).profile;
     const queries = samQueries(ctx.answers);
     await progress(run.id, 15, "Searching SAM.gov for open solicitations");
-    const raw = (await Promise.all(queries.map((q) => fetchSam(q).catch((e) => (console.error("[rfp] SAM.gov", e instanceof Error ? e.message : e), []))))).flat();
+    // One failed query is skipped; when every query fails, SAM.gov is down or the key is bad, and the run fails
+    // instead of reading as "no new solicitations" (#1359).
+    const results = await Promise.allSettled(queries.map((q) => fetchSam(q)));
+    for (const r of results) if (r.status === "rejected") console.error("[rfp] SAM.gov", r.reason instanceof Error ? r.reason.message : r.reason);
+    if (results.length && results.every((r) => r.status === "rejected")) throw new Error("Lookout couldn't reach SAM.gov just now. It will try again later.");
+    const raw = results.flatMap((r) => (r.status === "fulfilled" ? r.value : []));
     const items = keepRfps(raw, { today: today(), known: await knownNotices(searchId), setAsides: setAsideCodes(ctx.answers.certs) }).slice(0, MAX_SCORED);
     await progress(run.id, 40, `Found ${items.length} open ${items.length === 1 ? "notice" : "notices"} you can bid on. Scoring them`);
     const scored = await scoreRfps(ctx, items, usage);
