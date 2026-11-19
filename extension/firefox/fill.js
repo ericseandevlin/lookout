@@ -45,9 +45,11 @@
   /** The words a control is labeled with: <label for>, a wrapping label, aria-labelledby, aria-label. */
   function labelOf(el) {
     const parts = [];
-    if (el.labels) for (const l of el.labels) parts.push(ownText(l));
+    // aria-labelledby first, in its own order, as a screen reader reads it: "q ly" is the question, then the option's
+    // <label for>. Labels first read "yes can you work onsite?" and the question never matched (#1408).
     const by = el.getAttribute("aria-labelledby");
     if (by) for (const id of by.split(/\s+/)) parts.push(ownText(document.getElementById(id)));
+    if (el.labels) for (const l of el.labels) parts.push(ownText(l));
     parts.push(el.getAttribute("aria-label") || "");
     // Greenhouse labels a field twice (<label for> and aria-labelledby with the same text); count it once.
     return [...new Set(parts.map(norm).filter(Boolean))].join(" ");
