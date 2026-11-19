@@ -59,6 +59,16 @@ const CLOSED = [
   // Not "not accepting applications at this time from third-party recruiters" (#1083).
   /not accepting applications (for this (job|role|position)|at this time)(?!,? (from|via|by|through)\b)/i,
   /\bpage not found\b|\b404\b.{0,40}(not found|doesn.t exist)/i,
+  // Stock closed-job pages (#1427): "This job no longer exists", "The job you are looking for does not exist", "Sorry, this
+  // job is not available". Only as the end of the sentence, so "a role that doesn't exist yet" or "this role is not
+  // available for visa sponsorship" stay open.
+  /\b(job|position|posting|role|opening|listing|vacancy|requisition)( listing| posting| post| ad)?\b[^.!?\n]{0,40}?\b(no longer exists?|does(?:n['’]t| not) exist)( anymore| any longer)?\s*(?:[.!?\n]|$)/i,
+  /\b(this|the) (job|position|posting|role|opening|listing|vacancy)( you(['’]re| are) looking for)? is (currently )?not available( anymore)?\s*(?:[.!?\n]|$)/i,
+  // "This position is not currently accepting applications", but not from agencies or by email, as above.
+  /\b(is|are) not currently accepting (applications|applicants|candidates)\b(?!,? (from|via|by|through)\b)/i,
+  // "Applications closed" on its own line, and "The application deadline has passed".
+  /(?:^|\n)\s*applications? (?:are )?closed\s*[.!]?\s*(?:\n|$)/i,
+  /\b(application|applications|submission) deadline (has|have) (now )?passed\b/i,
 ];
 // Pages that prove nothing either way.
 // Only a maintenance page's own wording: "the creation and maintenance of our design system" is a live posting (#933).
