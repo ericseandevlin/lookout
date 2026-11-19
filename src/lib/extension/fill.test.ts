@@ -914,6 +914,23 @@ describe("extension probe and submit watch", () => {
     expect(log[0]).toMatchObject({ ok: false, how: "field rejected the answer" });
   });
 
+  it("a select inside its label is labeled by the label's words, not its options (#1398)", async () => {
+    const p = page(`<label for="cc">Country code</label><input id="cc">
+      <label>Country <select id="c"><option value="">Select</option><option value="ca">Canada</option><option value="us">United States</option></select></label>`);
+    const log = await p.fill({ steps: [{ prompt: "Country", kind: "text", content: "Canada", required: true }] });
+    expect(log[0]).toMatchObject({ ok: true });
+    expect(p.value("#c")).toBe("ca");
+    expect(p.value("#cc")).toBe("");
+  });
+
+  it("finds a phone Country select wrapped in its label (#1398)", async () => {
+    const p = page(`<label for="ph">Phone</label><input id="ph" type="tel">
+      <label>Country <select id="c"><option value="">Select</option><option value="ca">Canada</option><option value="us">United States</option></select></label>`);
+    const log = await p.fill({ steps: [{ prompt: "Phone", kind: "text", content: "555 123 4567", required: true }] });
+    expect(log.find((r) => r.prompt === "Phone country")).toMatchObject({ ok: true, how: "selected" });
+    expect(p.value("#c")).toBe("us");
+  });
+
   for (const legend of ["How did you hear about us? (required)", "How did you hear about us?✱"])
     it(`radio group "${legend}" beats the "If other" text box (#1150)`, async () => {
       const p = page(`<fieldset><legend>${legend}</legend>
