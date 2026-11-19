@@ -608,6 +608,27 @@ function combobox(w: JSDOM["window"], id: string, options: string[], multi = fal
   });
 }
 
+describe("extension fill: character limits (#1421)", () => {
+  it("reports an answer longer than a textarea's maxlength as not filled", async () => {
+    const p = page(`<label for="t">Why us?</label><textarea id="t" maxlength="20"></textarea><span>0/20</span>`);
+    const [row] = await p.fill({ steps: [{ prompt: "Why us?", kind: "text", content: "A".repeat(50) }] });
+    expect(row).toMatchObject({ ok: false, how: "answer is 50 characters, the field takes 20" });
+  });
+
+  it("reports an answer longer than an input's maxlength as not filled", async () => {
+    const p = page(`<label for="c">City</label><input id="c" maxlength="5">`);
+    const [row] = await p.fill({ steps: [{ prompt: "City", kind: "text", content: "Brooklyn" }] });
+    expect(row).toMatchObject({ ok: false, how: "answer is 8 characters, the field takes 5" });
+  });
+
+  it("types an answer that fits, and a field with no limit", async () => {
+    const p = page(`<label for="t">Why us?</label><textarea id="t" maxlength="20"></textarea><label for="u">Anything else?</label><textarea id="u"></textarea>`);
+    const log = await p.fill({ steps: [{ prompt: "Why us?", kind: "text", content: "Short answer" }, { prompt: "Anything else?", kind: "text", content: "B".repeat(500) }] });
+    expect(log.map((r) => r.ok)).toEqual([true, true]);
+    expect(p.value("#t")).toBe("Short answer");
+  });
+});
+
 describe("extension fill: custom dropdowns", () => {
   it("opens a combobox with a real-looking click and picks the matching option", async () => {
     const p = page(`<label for="loc">Which office?</label><input id="loc" role="combobox">`);
