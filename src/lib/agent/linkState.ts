@@ -10,9 +10,13 @@ export const CLOSED_NOTE_SQL = CLOSED_NOTE.source;
 
 /** The line Lookout adds to a closed find it keeps closed when the job comes back at a new link (#922). */
 export const repostedNote = (day: string, url: string) => `Reposted on ${day}: ${url}`;
+const REPOSTED_NOTE = /^Reposted on \d{4}-\d{2}-\d{2}: \S+$/gm;
 
-/** A find's notes without Lookout's own closed line: what the person wrote (#792). */
-export const ownNotes = (notes: string) => notes.replace(CLOSED_NOTE, "").trim();
+/** Every line Lookout writes into notes, closed and reposted, for Postgres like CLOSED_NOTE_SQL (#1362). */
+export const LOOKOUT_NOTES_SQL = `${CLOSED_NOTE.source}|${REPOSTED_NOTE.source}`;
+
+/** A find's notes without Lookout's own closed and reposted lines: what the person wrote (#792, #1362). */
+export const ownNotes = (notes: string) => notes.replace(CLOSED_NOTE, "").replace(REPOSTED_NOTE, "").trim();
 
 // Phrases job boards use for a posting that's no longer live. Checked against the start of the page text only.
 const CLOSED = [

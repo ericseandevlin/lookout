@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { classifyPage, closedNote, ownNotes } from "./linkState";
+import { classifyPage, closedNote, ownNotes, repostedNote } from "./linkState";
 
 describe("ownNotes (#792)", () => {
   it("drops Lookout's closed line and keeps what the person wrote", () => {
@@ -8,6 +8,14 @@ describe("ownNotes (#792)", () => {
     expect(ownNotes(`Ask Sam (recruiter) about this.\n\n${line}`)).toBe("Ask Sam (recruiter) about this.");
     expect(ownNotes(`${line}\n\nReopened, applying anyway.`)).toBe("Reopened, applying anyway.");
     expect(ownNotes("Closed: the role went to an internal hire.")).toBe("Closed: the role went to an internal hire.");
+  });
+
+  it("drops Lookout's reposted line too (#1362)", () => {
+    const closed = closedNote("page answered 404", "2026-11-01");
+    const reposted = repostedNote("2026-11-19", "https://jobs.example.com/acme/456");
+    expect(ownNotes(`${closed}\n\n${reposted}`)).toBe("");
+    expect(ownNotes(`Ask Sam about this.\n\n${closed}\n\n${reposted}`)).toBe("Ask Sam about this.");
+    expect(ownNotes("Reposted on LinkedIn, maybe apply there.")).toBe("Reposted on LinkedIn, maybe apply there.");
   });
 });
 
