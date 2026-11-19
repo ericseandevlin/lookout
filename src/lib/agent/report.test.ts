@@ -19,6 +19,13 @@ describe("buildTips", () => {
     expect(tips[0].href).toBeUndefined();
   });
 
+  it("says when postings it read couldn't be scored, without blaming the profile (#1456)", () => {
+    const tips = buildTips(run({ postings: 4, known: 1, unscored: 3 }), profile);
+    expect(tips[0].text).toBe("Lookout couldn't score 3 postings it read. That's on our end, not your profile. It'll read them again next search.");
+    expect(tips[0].href).toBeUndefined();
+    expect(buildTips(run({ postings: 4, added: 4 }), profile).some((t) => /couldn't score/.test(t.text))).toBe(false);
+  });
+
   it("points empty searches at the first answer", () => {
     const tips = buildTips(run({}, { results: 0, picked: 0, read: 0 }), profile);
     expect(tips[0].href).toBe("/profile#q-q1");

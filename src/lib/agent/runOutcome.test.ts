@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { doneStep, noNewBody, whyNoneAdded } from "./runOutcome";
 
-const tally = (t: Partial<{ postings: number; known: number; dealbreaker: number; belowFloor: number; added: number }>) => ({ postings: 0, known: 0, dealbreaker: 0, belowFloor: 0, added: 0, ...t });
+const tally = (t: Partial<{ postings: number; known: number; dealbreaker: number; belowFloor: number; added: number; unscored: number }>) => ({ postings: 0, known: 0, dealbreaker: 0, belowFloor: 0, added: 0, ...t });
 
 describe("doneStep (#862)", () => {
   it("counts what was added", () => {
@@ -57,5 +57,23 @@ describe("board results skipped before reading don't hide cuts (#1138)", () => {
   });
   it("all known with nothing cut keeps the short line", () => {
     expect(doneStep(tally({ postings: 2, known: 5 }))).toBe("No new finds this time. Everything matching is already on your board");
+  });
+});
+
+describe("postings that couldn't be scored (#1456)", () => {
+  it("doneStep doesn't call them already on the board or no match", () => {
+    expect(doneStep(tally({ postings: 2, known: 2, unscored: 4 }))).toBe("No new finds this time: 2 already on your board, 4 couldn't be scored this time");
+    expect(doneStep(tally({ unscored: 3 }))).toBe("No new finds this time: 3 couldn't be scored this time");
+    expect(doneStep(tally({ postings: 2, added: 1, unscored: 4 }))).toBe("Added 1 new find");
+  });
+  it("noNewBody names them", () => {
+    expect(noNewBody(2, tally({ postings: 2, known: 2, unscored: 1 }))).toBe(
+      "Lookout read 2 matching postings and added none: 2 already on your board, 1 couldn't be scored this time. It'll look again on your schedule.",
+    );
+    expect(noNewBody(0, tally({ unscored: 5 }))).toBe("Lookout couldn't score 5 postings this time. It'll read them again on your schedule.");
+    expect(noNewBody(0, tally({ known: 1, unscored: 1 }))).toBe("Lookout couldn't score 1 posting this time, and 1 is already on your board. It'll read them again on your schedule.");
+  });
+  it("a tally from before #1456 reads as before", () => {
+    expect(doneStep(tally({ postings: 2, known: 2 }))).toBe("No new finds this time. Everything matching is already on your board");
   });
 });
