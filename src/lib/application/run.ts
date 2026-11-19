@@ -99,6 +99,9 @@ async function ashbyEmbedOrForm(org: string, id: string, postingUrl: string) {
   throw new Error("Couldn't find this company's Ashby board");
 }
 
+/** A 404 or 410 from a job board or a posting page: the posting is gone (#1464). */
+const isGone = (e: unknown) => e instanceof Error && /answered (404|410)\b/.test(e.message);
+
 /** Read the application. Published forms first; the model reads the page only when there is no form to fetch. */
 export async function scanPosting(postingUrl: string, usage: Usage): Promise<ScanResult> {
   const ref = detectAts(postingUrl);
@@ -118,11 +121,18 @@ export async function scanPosting(postingUrl: string, usage: Usage): Promise<Sca
     }
   } catch (e) {
     // A closed posting is final; anything else (API change, outage) falls back to reading the page.
-    if (e instanceof Error && /answered 404/.test(e.message)) throw new Error("This posting is closed: the job board no longer lists it.");
+    if (isGone(e)) throw new Error("This posting is closed: the job board no longer lists it.");
     if (e instanceof Error && /closed|doesn't exist/.test(e.message)) throw e;
     console.error(`[apply] ${ref.ats} form read failed, reading the page`, e);
   }
-  const { html } = await fetchPage(applyUrl);
+  let html: string;
+  try {
+    ({ html } = await fetchPage(applyUrl));
+  } catch (e) {
+    // The link check reads 404 and 410 as gone too (#1464); the person sees why, not the HTTP status.
+    if (isGone(e)) throw new Error("This posting is closed: its page is gone.");
+    throw e;
+  }
   const r = await completeJSON({
     name: "apply-scan",
     schema: PageItems,
