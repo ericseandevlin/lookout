@@ -29,12 +29,21 @@
     return false;
   }
 
+  /** A label's own words: a <select>, <textarea> or <datalist> inside it adds its options and text, not words of the label (#1398). */
+  function ownText(node) {
+    if (!node) return "";
+    if (!node.querySelector("select, textarea, datalist")) return node.textContent;
+    const copy = node.cloneNode(true);
+    for (const c of copy.querySelectorAll("select, textarea, datalist")) c.remove();
+    return copy.textContent;
+  }
+
   /** The words a control is labeled with: <label for>, a wrapping label, aria-labelledby, aria-label. */
   function labelOf(el) {
     const parts = [];
-    if (el.labels) for (const l of el.labels) parts.push(l.textContent);
+    if (el.labels) for (const l of el.labels) parts.push(ownText(l));
     const by = el.getAttribute("aria-labelledby");
-    if (by) for (const id of by.split(/\s+/)) parts.push(document.getElementById(id)?.textContent || "");
+    if (by) for (const id of by.split(/\s+/)) parts.push(ownText(document.getElementById(id)));
     parts.push(el.getAttribute("aria-label") || "");
     // Greenhouse labels a field twice (<label for> and aria-labelledby with the same text); count it once.
     return [...new Set(parts.map(norm).filter(Boolean))].join(" ");
