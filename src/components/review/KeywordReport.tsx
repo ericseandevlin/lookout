@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useState } from "react";
 import type { KeywordRow } from "@/lib/application/evidence";
+import { keywordAction } from "@/lib/application/flowRules";
 import { btn } from "../Settings";
 import { api } from "../store";
 import { card, muted, type Detail } from "./shared";
@@ -99,13 +100,14 @@ export function KeywordReport({ d, rows, reload, locked }: { d: Detail; rows: Ke
             {sel.mine && <span style={{ ...muted, fontSize: font.sm }}>added by you</span>}
             {!locked && (
               <button onClick={() => send(sel.term, { action: sel.removed ? "restore" : "remove", term: sel.term })} disabled={!!busy} style={{ ...btn("text"), marginLeft: "auto" }}>
-                {sel.removed ? "Put back" : "Remove"}
+                {keywordAction(sel).label}
               </button>
             )}
             <button onClick={() => setOpen(null)} aria-label="Close keyword detail" style={{ ...btn("text"), textDecoration: "none", padding: "0 4px", marginLeft: locked ? "auto" : 0 }}>
               ×
             </button>
           </div>
+          {!locked && <div style={{ ...muted, fontSize: 13 }}>{keywordAction(sel).note}</div>}
           <div style={line}>
             <span style={{ fontWeight: 600 }}>Posting: </span>
             {sel.snippet ? `\u201c${sel.snippet}\u201d` : <span style={muted}>{sel.mine ? "You added this one." : "Not found in the posting text."}</span>}
