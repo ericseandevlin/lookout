@@ -392,6 +392,8 @@ async function reopenReposted(searchId: string, opportunityId: string, url: stri
       archived: false,
       closedFrom: null,
       notes: sql`btrim(regexp_replace(regexp_replace(${uo.notes}, ${CLOSED_NOTE_SQL}, '', 'gn'), '\n{3,}', '\n\n', 'g'), E' \t\r\n')`,
+      // Added again now: the run counts it as new, so the finds email, which takes finds added since the last one, has it too (#1363).
+      addedAt: new Date(),
     })
     .where(and(mine, inArray(uo.closedFrom, REOPENABLE)))
     .returning({ score: uo.score });

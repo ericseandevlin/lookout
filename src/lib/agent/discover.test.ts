@@ -296,6 +296,22 @@ describe("save", () => {
       expect(await mine()).toMatchObject({ stage: "Not applied", archived: false, closedFrom: null, notes: "Ask Sam." });
     });
 
+    it("dates one it brings back today, so the finds email has it (#1363)", async () => {
+      await closeIt("Not applied");
+      await db.update(schema.userOpportunities).set({ addedAt: new Date(Date.now() - 14 * 864e5) });
+      const before = Date.now();
+      await save(ctx(), [repost()], "agent");
+      expect((await mine()).addedAt.getTime()).toBeGreaterThanOrEqual(before - 1000);
+    });
+
+    it("keeps the date of one it keeps closed", async () => {
+      await closeIt("Ghosted");
+      const old = new Date(Date.now() - 14 * 864e5);
+      await db.update(schema.userOpportunities).set({ addedAt: old });
+      await save(ctx(), [repost()], "agent");
+      expect((await mine()).addedAt).toEqual(old);
+    });
+
     it("brings back one closed while auto-applying", async () => {
       await closeIt("Auto-applying", closedLine);
       const r = await save(ctx(), [repost()], "agent");
