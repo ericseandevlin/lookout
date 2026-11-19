@@ -224,3 +224,23 @@ describe("a veteran is asked when the list splits protected and not protected (#
     expect(matchOption("Not a veteran", opts)).toBe("I am not a veteran");
   });
 });
+
+describe("options worded as a sentence (#1432)", () => {
+  const gender = ["I identify as a woman", "I identify as a man", "I identify as a transgender man", "I don't wish to answer"];
+  it("finds the answer after \"I identify as\"", () => {
+    expect(matchOption("Woman", gender)).toBe("I identify as a woman");
+    expect(matchOption("Man", gender)).toBe("I identify as a man");
+    expect(matchOption("White", ["I am Asian", "I am White", "I am Black or African American"])).toBe("I am White");
+    expect(matchOption("Heterosexual or straight", ["I identify as gay", "I identify as straight"])).toBe("I identify as straight");
+  });
+  it("still keeps a transgender answer apart, and veteran lists as they were", () => {
+    expect(matchOption("Man", ["I identify as a transgender man", "I don't wish to answer"])).toBeNull();
+    const vet = ["I am not a protected veteran", "I identify as one or more of the classifications of protected veteran", "I don't wish to answer"];
+    expect(matchOption("Veteran", vet)).toBe(vet[1]);
+    expect(matchOption("Not a veteran", vet)).toBe(vet[0]);
+  });
+  it("reads \"I am not Hispanic or Latino\" as No", () => {
+    expect(matchOption("No", ["I am Hispanic or Latino", "I am not Hispanic or Latino"])).toBe("I am not Hispanic or Latino");
+    expect(matchOption("Yes", ["I am Hispanic or Latino", "I am not Hispanic or Latino"])).toBe("I am Hispanic or Latino");
+  });
+});
