@@ -74,6 +74,11 @@ const CLOSED = [
   // "Applications closed" on its own line, and "The application deadline has passed".
   /(?:^|\n)\s*applications? (?:are )?closed\s*[.!]?\s*(?:\n|$)/i,
   /\b(application|applications|submission) deadline (has|have) (now )?passed\b/i,
+  // "We're no longer hiring for this role", "We are no longer recruiting for this position" (#1458). The job must follow,
+  // so "no longer hiring for our old office" or "we're no longer recruiting through agencies" stays open.
+  /\bno longer (hiring|recruiting) for (this|the) (job|role|position|posting|opening|vacancy|requisition|opportunity)\b/i,
+  // "We have stopped accepting applications for this job", but not from agencies or by email, as above (#1458).
+  /\b(have|has|we['’]ve) (now )?stopped accepting (applications|applicants|candidates)\b(?!,? (from|via|by|through)\b)/i,
 ];
 // Pages that prove nothing either way.
 // Only a maintenance page's own wording: "the creation and maintenance of our design system" is a live posting (#933).

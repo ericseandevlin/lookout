@@ -427,3 +427,25 @@ describe("no longer live, deleted, withdrawn and cancelled (#1451)", () => {
     expect(classifyPage(200, `TITLE: Product Designer\nTEXT: ${text}`).state).toBe("open");
   });
 });
+
+describe("no longer hiring and stopped accepting applications (#1458)", () => {
+  it.each([
+    "We're no longer hiring for this role.",
+    "We’re no longer hiring for this position",
+    "We are no longer recruiting for this position.",
+    "We have stopped accepting applications for this job.",
+    "The company has stopped accepting applications.",
+    "We've stopped accepting candidates for this opening.",
+  ])("reads %s as closed", (text) => {
+    expect(classifyPage(200, `Careers\n${text}`).state).toBe("gone");
+  });
+  it.each([
+    "We are no longer recruiting through agencies. Apply now.",
+    "We have stopped accepting applications from third-party recruiters. Apply below.",
+    "We have stopped accepting applications by email; apply on this page.",
+    "Once we have stopped accepting applications for this role, we take the posting down. Apply now.",
+    "You will lead hiring for this role's team as it grows. Apply now.",
+  ])("keeps %s open", (text) => {
+    expect(classifyPage(200, `TITLE: Product Designer\nTEXT: ${text}`).state).toBe("open");
+  });
+});
