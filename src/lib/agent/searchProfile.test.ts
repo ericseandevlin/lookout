@@ -200,6 +200,19 @@ describe("what the model is given (#581)", () => {
     expect((await ensure()).raw.hash).toBe(before);
   });
 
+  it("leaves out Lookout's reposted line, so a repost doesn't feed or rebuild the profile (#1362)", async () => {
+    const closed = "Closed: the posting was gone (page says it's closed) as of 2026-11-01. Lookout archived it.";
+    await find("Engineer", closed);
+    const { raw } = await ensure();
+    expect(raw.sources.notes).toBe(0);
+    // What reopenReposted writes on a find closed after they applied (#922).
+    await db.update(schema.userOpportunities).set({ notes: `${closed}\n\nReposted on 2026-11-19: https://jobs.example.com/acme/456` });
+    const second = await ensure();
+    expect(second.raw.sources.notes).toBe(0);
+    expect(second.raw.hash).toBe(raw.hash);
+    expect(prompt()).not.toContain("Reposted on");
+  });
+
   it("keeps an older note of theirs when 60 newer finds hold only Lookout's closed line (#1050)", async () => {
     const closed = "Closed: the posting was gone (page says it's closed) as of 2026-11-01. Lookout archived it.";
     const [old] = await db.insert(schema.opportunities).values({ company: "Acme", title: "Designer", fingerprint: crypto.randomUUID() }).returning();
