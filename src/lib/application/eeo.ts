@@ -37,6 +37,9 @@ export const EEO_CHOICES: Record<EeoCategory, { label: string; choices: string[]
 /** Which category a form question asks about, or null when it isn't an EEO question we know. */
 export function classify(prompt: string): EeoCategory | null {
   const p = prompt.toLowerCase();
+  // "Gender pronouns" and "What gender pronouns do you use?" ask pronouns, not gender: a free-text box would get "Woman"
+  // (#1450). A pronoun aside in parentheses, "Gender (pronouns optional)", still leaves the gender question.
+  if (/\bpronouns?\b/.test(p.replace(/\([^)]*\)/g, " "))) return null;
   // "Do you identify as LGBTQ+ (lesbian, gay, bisexual, transgender...)?" asks neither one alone; ask the person (#909).
   if (/\blgbt|\blesbian|\bgay\b|\bbisexual|\bqueer\b/.test(p) && !/sexual orientation/.test(p)) return null;
   // "Transgender" among a gender question's examples, "Gender identity (e.g. woman, man, transgender)", is not the question (#929).
