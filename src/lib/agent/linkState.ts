@@ -41,10 +41,13 @@ const CLOSED = [
   // Not a live page's "Job Posting Expired Date: 12/31" label (#1083).
   // "This job post has expired", "This advert has expired" (#1279). "This job posting is expired", "This job opening has expired" (#1361).
   /\b(job|posting|position|listing|vacancy|opportunity|role|advert|opening|requisition)( ad| advert| post| posting| opening)? (is |has )?(now )?expired\b(?![- ]?date\b)/i,
-  // "The job you are trying to apply for is no longer available", "attempting to view" too (#1251).
-  /(job|position|posting|role|page) you(['’]re| are) (looking for|(trying|attempting) to (apply for|access|view|reach|open)) ((has|is|was|might have|may have) (been )?(filled|removed|closed|deleted|expired)|is no longer (available|active|open))\b/i,
+  // "The job you are trying to apply for is no longer available", "attempting to view" too (#1251). "Apply to" too (#1441).
+  /(job|position|posting|role|page) you(['’]re| are) (looking for|(trying|attempting) to (apply (for|to)|access|view|reach|open)) ((has|is|was|might have|may have) (been )?(filled|removed|closed|deleted|expired)|is no longer (available|active|open))\b/i,
   /(job|position|posting|role|opening) is not available anymore/i,
   /page you(['’]re| are) looking for (doesn['’]t|does not|no longer) exists?|(can(['’]|no)t|couldn['’]t|could not) find (that|this|the) page/i,
+  // A soft 404 that answers 200: "The page you requested could not be found", "This page cannot be found." (#1441).
+  // "This/the X cannot be found" only as the end of the sentence, so "the job cannot be found on other boards" stays open.
+  /\b(page|job|position|posting) you(['’]ve| have)? requested (could not|cannot|can['’]t) be found|\b(this|the) (page|job|position|posting) (could not|cannot|can['’]t) be found\s*(?:[.!?\n]|$)/i,
   // Careers sites usually render a curly apostrophe (#734).
   /(the )?(job|position) you(['’]re| are) looking for (is no longer|could not be|can(['’]|no)t be) (available|found)/i,
   // Not "Applications for this role are closed to agencies" (#1103). Any noun for the job: "this vacancy" too (#1158).
