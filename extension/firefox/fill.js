@@ -508,6 +508,8 @@
       setValue(el, step.content);
       // Any field that drops what was typed is not filled, so the popup never says "Filled all" over a blank (#1242).
       if ("value" in el && el.value === "" && String(step.content || "").trim()) return { ok: false, how: "field rejected the answer" };
+      // A value set from script skips maxlength, and the site's counter then blocks submit: the person shortens it (#1421).
+      if (el.maxLength > 0 && el.value.length > el.maxLength) return { ok: false, how: `answer is ${el.value.length} characters, the field takes ${el.maxLength}` };
       return { ok: true, how: "typed" };
     } catch (e) {
       return { ok: false, how: String(e && e.message ? e.message : e).slice(0, 120) };
