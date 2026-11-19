@@ -51,11 +51,15 @@ const PAY_INCLUDES_BONUS = (s: string) => {
 const SAYS_TOTAL = (s: string) =>
   !NEGATED.test(s) && (PAY_INCLUDES_BONUS(s) || (BASE_PLUS.test(s) && THE_RANGE.test(s)) || ON_TARGET.test(s) || NAMES_TOTAL(s));
 
+// A sentence about the pay that puts the bonus outside it says the range is base: "The salary range is $150,000 to
+// $180,000 and does not include bonus or equity" (#650, #1411).
+const SAYS_BASE = (s: string) => NEGATED.test(s) && ABOUT_PAY.test(s) && /\b(bonus|commission|incentive)/i.test(s);
+
 /** What the posted range covers: total cash (bonus included), base, or the posting doesn't say. */
 export const rangeBasis = (posting: string): "total" | "base" | null =>
   sentences(posting).some(SAYS_TOTAL)
     ? "total"
-    : /\bbase (salary|pay|compensation)\b/i.test(posting)
+    : /\bbase (salary|pay|compensation)\b/i.test(posting) || sentences(posting).some(SAYS_BASE)
       ? "base"
       : null;
 

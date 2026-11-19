@@ -589,3 +589,18 @@ describe("askPer: 'per mo' and 'per wk' (#1395)", () => {
     expect(askPer(prompt)).toBe(per);
   });
 });
+
+describe("rangeBasis: a range that leaves the bonus out is base (#1411)", () => {
+  it("reads a range that does not include or excludes bonus as base", () => {
+    expect(rangeBasis("The salary range for this role is $150,000 to $180,000 and does not include bonus or equity.")).toBe("base");
+    expect(rangeBasis("This range excludes commission. $120,000 - $140,000.")).toBe("base");
+    expect(rangeBasis("Pay range: $150,000 - $180,000. This range doesn't include incentive pay.")).toBe("base");
+  });
+
+  it("still reads total and unknown the same", () => {
+    expect(rangeBasis("The range of $200,000 - $250,000 includes base and bonus.")).toBe("total");
+    expect(rangeBasis("Salary: $150,000 - $180,000.")).toBe(null);
+    // A bonus left out of a benefits list, not the pay, says nothing about the range.
+    expect(rangeBasis("Salary: $150,000 - $180,000. Our perks don't include a company car.")).toBe(null);
+  });
+});
