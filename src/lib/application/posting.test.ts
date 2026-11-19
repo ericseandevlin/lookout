@@ -48,6 +48,22 @@ describe("isJunkKeyword", () => {
     for (const k of ["interview process", "hiring process", "apply now", "Interviews", "applications", "recruiting"]) expect(isJunkKeyword(k, ux)).toBe(true);
     expect(isJunkKeyword("user interviews", "Design the checkout flow.\nWe never ask for payment during interviews.")).toBe(true);
   });
+
+  it("keeps candidate, applicant and accommodation terms when the job is about them (#1457)", () => {
+    const job = [
+      "You will own the candidate experience and our applicant tracking systems for recruiters.",
+      "Build candidate generation models for the home feed.",
+      "Design the accommodation booking flow.",
+      "The ideal candidate has 5 years of experience. Qualified applicants will receive consideration without regard to race.",
+      "We provide reasonable accommodation to applicants with disabilities.",
+    ].join("\n");
+    for (const k of ["candidate experience", "applicant tracking systems", "candidate generation", "accommodation booking"]) expect(isJunkKeyword(k, job)).toBe(false);
+    // The hiring process and the bare words still drop, even though the posting uses them.
+    for (const k of ["ideal candidate", "qualified applicants", "reasonable accommodation", "Candidates", "applicant", "candidates with disabilities"]) expect(isJunkKeyword(k, job)).toBe(true);
+    // With no posting, or a posting that never uses the term, a topic word drops as before.
+    expect(isJunkKeyword("candidate experience")).toBe(true);
+    expect(isJunkKeyword("candidate experience", "Design the checkout flow.")).toBe(true);
+  });
 });
 
 const fraudRole = [
