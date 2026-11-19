@@ -127,6 +127,23 @@ describe("scanPosting (#378)", () => {
     await expect(scanPosting(GH_URL, emptyUsage())).rejects.toThrow("This posting is closed");
   });
 
+  it("calls a posting closed when the board API answers 410 (#1464)", async () => {
+    fetchPage.mockRejectedValueOnce(new Error("The page answered 410"));
+    await expect(scanPosting(GH_URL, emptyUsage())).rejects.toThrow("This posting is closed");
+    expect(completeJSON).not.toHaveBeenCalled();
+  });
+
+  it.each([404, 410])("calls a posting closed when its page answers %i, not the raw status (#1464)", async (status) => {
+    fetchPage.mockRejectedValueOnce(new Error(`The page answered ${status}`));
+    await expect(scanPosting("https://jobs.lever.co/engines/abc-123", emptyUsage())).rejects.toThrow("This posting is closed: its page is gone.");
+    expect(completeJSON).not.toHaveBeenCalled();
+  });
+
+  it("keeps other page errors as they are (#1464)", async () => {
+    fetchPage.mockRejectedValueOnce(new Error("The page answered 503"));
+    await expect(scanPosting("https://jobs.lever.co/engines/abc-123", emptyUsage())).rejects.toThrow("The page answered 503");
+  });
+
   it("falls back to reading the page with the model when the form API fails", async () => {
     pages.delete(GH_API);
     pages.set(GH_URL, "<html><body><label>Portfolio link</label><p style='display:none'>secret</p></body></html>");
