@@ -988,3 +988,15 @@ describe("extension fill: a checkbox that only mentions the question (#1407)", (
     expect((p.doc.querySelector("#c") as HTMLInputElement).checked).toBe(true);
   });
 });
+
+describe("extension fill: aria-labelledby and <label for> on the same radio (#1408)", () => {
+  it("reads the question from aria-labelledby first and checks the option the answer means", async () => {
+    const p = page(`<span id="q">Can you work onsite?</span>
+      <input type="radio" name="o" id="y" aria-labelledby="q ly"><label id="ly" for="y">Yes</label>
+      <input type="radio" name="o" id="n" aria-labelledby="q ln"><label id="ln" for="n">No</label>`);
+    const [r] = await p.fill({ steps: [{ prompt: "Can you work onsite?", kind: "choice", content: "No", options: ["Yes", "No"], required: true }] });
+    expect(r.ok).toBe(true);
+    expect((p.doc.querySelector("#n") as HTMLInputElement).checked).toBe(true);
+    expect((p.doc.querySelector("#y") as HTMLInputElement).checked).toBe(false);
+  });
+});
