@@ -80,6 +80,13 @@ describe("pageToText", () => {
     expect(t).toContain("Build the backend.");
     expect(t).toContain("Join us!");
   });
+  it("strips HTML from a JobPosting longer than the cut (#1387)", () => {
+    const ld = JSON.stringify({ "@type": "JobPosting", title: "Designer", description: "<p>We are hiring.</p>".repeat(400) });
+    const t = pageToText(`<title>Job</title><script type="application/ld+json">${ld}</script><p>${"word ".repeat(80)}</p>`, 20000);
+    expect(t).toContain("STRUCTURED DATA:");
+    expect(t).toContain("We are hiring.");
+    expect(t).not.toContain("<p>");
+  });
 });
 
 describe("Workday postings (#724)", () => {
