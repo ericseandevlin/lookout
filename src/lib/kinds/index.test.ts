@@ -180,3 +180,15 @@ describe("parseMoney", () => {
     expect(parseMoney(v)).toBeNull();
   });
 });
+
+describe("parseMoney: 'p/h' is per hour (#1386)", () => {
+  it("annualizes p/h like /h", () => {
+    expect(parseMoney("$85/h")).toBe(176800);
+    expect(parseMoney("$85 p/h")).toBe(176800);
+    expect(parseMoney("$60-70 p/h")).toBe(parseMoney("$60-70/hr"));
+  });
+
+  it("reads p/a as a yearly number, not an unknown rate", () => {
+    expect(parseMoney("150 p/a")).toBe(150000);
+  });
+});
