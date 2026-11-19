@@ -80,6 +80,7 @@ describe("closeGonePostings", () => {
     const f = await find(id);
     expect(f.stage).toBe("Closed");
     expect(f.archived).toBe(true);
+    expect(f.closedFrom).toBe("Not applied"); // the stage before closing, for a repost (#922)
     expect(f.notes).toBe("Ask Sam about this.\n\nClosed: the posting was gone (page says it's closed) as of 2026-11-01. Lookout archived it.");
     expect(f.linkCheck?.goneSince).toBe(T0.toISOString());
   });
