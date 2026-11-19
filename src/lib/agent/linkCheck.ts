@@ -147,7 +147,8 @@ export async function closeGonePostings(userId: string, now = new Date()): Promi
         const notes = schema.userOpportunities.notes;
         const done = await db
           .update(schema.userOpportunities)
-          .set({ stage: "Closed", archived: true, notes: sql`case when ${notes} ~ '\\S' then regexp_replace(${notes}, '\\s+$', '') || ${`\n\n${line}`} else ${line} end` })
+          // closed_from takes the stage from before this update, so a repost knows whether they had applied (#922).
+          .set({ stage: "Closed", archived: true, closedFrom: sql`${schema.userOpportunities.stage}`, notes: sql`case when ${notes} ~ '\\S' then regexp_replace(${notes}, '\\s+$', '') || ${`\n\n${line}`} else ${line} end` })
           .where(and(eq(schema.userOpportunities.userId, userId), eq(schema.userOpportunities.opportunityId, r.o.id), inArray(schema.userOpportunities.stage, CLOSABLE)))
           .returning({ stage: schema.userOpportunities.stage });
         if (done.length) {

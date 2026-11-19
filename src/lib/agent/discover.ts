@@ -21,6 +21,9 @@ import { findEventsIfDue } from "./networking";
 import { featureOn } from "@/lib/features";
 import { discoverRfp } from "./rfp";
 import { jobKey } from "@/lib/extension/match";
+import { CLOSED_NOTE_SQL, repostedNote } from "./linkState";
+import { dayKey } from "@/lib/spend";
+import { env } from "@/lib/env";
 
 /**
  * Discovery pipeline, built to work with small, cheap models:
@@ -371,6 +374,37 @@ async function postingKey(f: { company: string; title: string; location: string;
   return `${fp}:${mine}`;
 }
 
+/** Finds the link check closed before they applied: a repost brings these back (Eric, #922). */
+const REOPENABLE = ["Not applied", "Auto-applying"];
+
+/**
+ * A job the link check closed came back at a new link (#922). On this board, a find closed before they applied is back as
+ * "Not applied", unarchived and without Lookout's closed line; returns its score, or null. One closed after they applied
+ * (Ghosted, Not selected) stays closed with a note of the new link.
+ */
+async function reopenReposted(searchId: string, opportunityId: string, url: string): Promise<number | null> {
+  const uo = schema.userOpportunities;
+  const mine = and(eq(uo.searchId, searchId), eq(uo.opportunityId, opportunityId), eq(uo.stage, "Closed"));
+  const [back] = await db
+    .update(uo)
+    .set({
+      stage: "Not applied",
+      archived: false,
+      closedFrom: null,
+      notes: sql`btrim(regexp_replace(regexp_replace(${uo.notes}, ${CLOSED_NOTE_SQL}, '', 'gn'), '\n{3,}', '\n\n', 'g'), E' \t\r\n')`,
+    })
+    .where(and(mine, inArray(uo.closedFrom, REOPENABLE)))
+    .returning({ score: uo.score });
+  if (back) return back.score;
+  // Closed before #922 recorded the stage: Lookout's closed line says it was Lookout's, so it gets the note, not a guess.
+  const line = repostedNote(dayKey(new Date(), env.timezone), url);
+  await db
+    .update(uo)
+    .set({ notes: sql`case when ${uo.notes} ~ '\\S' then regexp_replace(${uo.notes}, '\\s+$', '') || ${`\n\n${line}`} else ${line} end` })
+    .where(and(mine, sql`(${uo.closedFrom} is not null or ${uo.notes} ~ ${`(?n)${CLOSED_NOTE_SQL}`})`));
+  return null;
+}
+
 /** A link's URL text and, on a known ATS, its job key: both say "already on the board" (#670, #1146). */
 const keysOf = (u: string) => [normUrl(u), atsKey(u)].filter((k): k is string => !!k);
 
@@ -394,7 +428,14 @@ export async function save(ctx: Context, finds: ScoredT[], via: "agent" | "manua
     const key = await postingKey(f);
     // A shared posting keeps the pay already stored (#846), so the rules and the floor judge that pay, not this read's (#879).
     const [stored] = await db
-      .select({ id: schema.opportunities.id, min: schema.opportunities.compMin, max: schema.opportunities.compMax, currency: schema.opportunities.currency })
+      .select({
+        id: schema.opportunities.id,
+        min: schema.opportunities.compMin,
+        max: schema.opportunities.compMax,
+        currency: schema.opportunities.currency,
+        sourceUrl: schema.opportunities.sourceUrl,
+        attributes: schema.opportunities.attributes,
+      })
       .from(schema.opportunities)
       .where(eq(schema.opportunities.fingerprint, key));
     // The shared posting row: new, or an existing one that takes what this read adds.
@@ -444,8 +485,15 @@ export async function save(ctx: Context, finds: ScoredT[], via: "agent" | "manua
         .from(schema.userOpportunities)
         .where(and(eq(schema.userOpportunities.searchId, ctx.searchId), eq(schema.userOpportunities.opportunityId, stored.id)));
       if (mine) {
+        // Same test as `reposted` in the upsert, read before the upsert drops the old check (#922).
+        const lc = (stored.attributes as { linkCheck?: { state?: string } } | null)?.linkCheck;
+        const isRepost = lc?.state === "gone" && stored.sourceUrl !== f.url.slice(0, 1000);
         await upsert();
-        t.known++;
+        const score = isRepost ? await reopenReposted(ctx.searchId, stored.id, f.url.slice(0, 1000)) : null;
+        if (score != null) {
+          t.added++;
+          newFinds.push({ id: stored.id, score });
+        } else t.known++;
         for (const k of keysOf(f.url)) known.add(k);
         continue;
       }

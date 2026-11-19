@@ -276,6 +276,64 @@ describe("save", () => {
     expect(o).toMatchObject({ sourceUrl: "https://jobs.example.com/acme/123", description: "Lead the design team.", attributes: goneCheck });
   });
 
+  describe("a repost of a find the link check closed (#922)", () => {
+    const closedLine = "Closed: the posting was gone (404) as of 2026-10-31. Lookout archived it.";
+    const repost = () => find({ url: "https://jobs.example.com/acme/456" });
+    // The find saved, then closed the way closeGonePostings closes it.
+    const closeIt = async (closedFrom: string | null, notes = `Ask Sam.\n\n${closedLine}`) => {
+      await save(ctx(), [find()], "agent");
+      const goneCheck = { linkCheck: { checkedAt: "2026-11-01T00:00:00.000Z", state: "gone", reason: "404", goneSince: "2026-10-30T00:00:00.000Z" } };
+      await db.update(schema.opportunities).set({ attributes: goneCheck });
+      await db.update(schema.userOpportunities).set({ stage: "Closed", archived: true, closedFrom, notes });
+    };
+    const mine = async () => (await db.select().from(schema.userOpportunities))[0];
+
+    it("brings back one closed before they applied, as new", async () => {
+      await closeIt("Not applied");
+      const r = await save(ctx({ knownUrls: ["https://jobs.example.com/acme/123"] }), [repost()], "agent");
+      expect(r).toMatchObject({ postings: 1, added: 1, known: 0 });
+      expect(r.newFinds).toHaveLength(1);
+      expect(await mine()).toMatchObject({ stage: "Not applied", archived: false, closedFrom: null, notes: "Ask Sam." });
+    });
+
+    it("brings back one closed while auto-applying", async () => {
+      await closeIt("Auto-applying", closedLine);
+      const r = await save(ctx(), [repost()], "agent");
+      expect(r.added).toBe(1);
+      expect(await mine()).toMatchObject({ stage: "Not applied", archived: false, notes: "" });
+    });
+
+    it("keeps one closed after they applied closed, with a note of the new link", async () => {
+      await closeIt("Ghosted");
+      const r = await save(ctx(), [repost()], "agent");
+      expect(r).toMatchObject({ added: 0, known: 1 });
+      const uo = await mine();
+      expect(uo).toMatchObject({ stage: "Closed", archived: true, closedFrom: "Ghosted" });
+      expect(uo.notes).toMatch(new RegExp(`^Ask Sam\\.\\n\\n${closedLine.replace(/[.()]/g, "\\$&")}\\n\\nReposted on \\d{4}-\\d{2}-\\d{2}: https://jobs\\.example\\.com/acme/456$`));
+    });
+
+    it("keeps one closed before the stage was recorded closed, with the note", async () => {
+      await closeIt(null);
+      const r = await save(ctx(), [repost()], "agent");
+      expect(r.added).toBe(0);
+      expect(await mine()).toMatchObject({ stage: "Closed", archived: true });
+      expect((await mine()).notes).toContain("Reposted on ");
+    });
+
+    it("leaves a find they closed themselves alone", async () => {
+      await closeIt(null, "Not for me.");
+      await save(ctx(), [repost()], "agent");
+      expect(await mine()).toMatchObject({ stage: "Closed", notes: "Not for me." });
+    });
+
+    it("does nothing when it is found again at the same link", async () => {
+      await closeIt("Not applied");
+      const r = await save(ctx(), [find()], "agent");
+      expect(r.added).toBe(0);
+      expect(await mine()).toMatchObject({ stage: "Closed", archived: true });
+    });
+  });
+
   it("keeps two jobs apart when only a title parenthetical and the ATS job differ (#838)", async () => {
     const gh = (id: number) => `https://job-boards.greenhouse.io/acme/jobs/${id}`;
     await save(ctx(), [find({ url: gh(111), title: "Senior Product Designer (Payments)" })], "agent");

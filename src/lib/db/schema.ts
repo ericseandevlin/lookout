@@ -262,6 +262,8 @@ export const userOpportunities = pgTable(
     pinned: boolean("pinned").notNull().default(false),
     archived: boolean("archived").notNull().default(false),
     notes: text("notes").notNull().default(""),
+    /** The stage it was at when the link check closed it; a repost brings back only one they hadn't applied to (#922). */
+    closedFrom: text("closed_from"),
     /** "Not a fit" from the user, fed back into later searches. */
     feedback: jsonb("feedback").$type<{ reason: string; at: string }>(),
     seenAt: timestamp("seen_at", { withTimezone: true }),

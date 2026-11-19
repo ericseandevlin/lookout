@@ -8,6 +8,9 @@ const CLOSED_NOTE = /^Closed: the posting was gone \(.*\) as of \d{4}-\d{2}-\d{2
 /** The same closed line for Postgres (newline-sensitive "n" flag), to drop closed-only notes inside a query (#1050). */
 export const CLOSED_NOTE_SQL = CLOSED_NOTE.source;
 
+/** The line Lookout adds to a closed find it keeps closed when the job comes back at a new link (#922). */
+export const repostedNote = (day: string, url: string) => `Reposted on ${day}: ${url}`;
+
 /** A find's notes without Lookout's own closed line: what the person wrote (#792). */
 export const ownNotes = (notes: string) => notes.replace(CLOSED_NOTE, "").trim();
 
