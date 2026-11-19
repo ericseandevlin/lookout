@@ -41,7 +41,8 @@ export type RecruiterAnalysis = {
   findings: Finding[];
 };
 
-const words = (s: string) => s.split(/\s+/).filter(Boolean).length;
+// Words only: markdown marks ("-", "###", "|") and dashes are not words, or a two-page resume counts ~10% long (#1447).
+const words = (s: string) => s.split(/\s+/).filter((w) => /[\p{L}\p{N}]/u.test(w)).length;
 const short = (s: string) => (s.length > 90 ? `${s.slice(0, 87).trimEnd()}…` : s);
 const SKILLS = /skills|tools|expertise|competenc/i;
 // Sections whose bullets aren't work results, so the number checks skip them (#704).
