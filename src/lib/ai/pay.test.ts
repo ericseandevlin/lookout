@@ -432,3 +432,17 @@ describe("findPay", () => {
     expect(findPay(`<script type="application/ld+json">${JSON.stringify(ld)}</script>`)).toMatchObject({ min: 156000, max: 208000, source: "structured data" });
   });
 });
+
+describe("findPay: a unit word after a comma or bracket (#1373)", () => {
+  it.each([
+    ["$95,000 - $115,000, monthly bonus eligible", 95000, 115000],
+    ["$95,000 - $115,000 (monthly bonus eligible)", 95000, 115000],
+    ["$100,000 - $130,000 (daily standups, hybrid)", 100000, 130000],
+  ])("keeps %s yearly", (text, min, max) => {
+    expect(findPay("", text)).toMatchObject({ min, max });
+  });
+
+  it("still reads a monthly range by a unit in brackets", () => {
+    expect(findPay("", "$8,000 - $10,000 (monthly)")).toMatchObject({ min: 96000, max: 120000 });
+  });
+});
