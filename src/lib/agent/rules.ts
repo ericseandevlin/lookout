@@ -118,6 +118,16 @@ const COUNTRIES = new Map<string, string>([
   ["canada", "ca"],
 ]);
 
+// Words that say how someone works in a place, not which place. "or", "in" and "on" alone are Oregon, Indiana and
+// Ontario, so they go only as a joining word ("NY or Remote") or as "in office" and "on site".
+const QUALIFIER = /\b(?:remote|hybrid|on ?site|in ?office|metro(?:politan)?|area|only|based)\b/g;
+const withoutQualifier = (p: string) =>
+  p
+    .replace(QUALIFIER, " ")
+    .replace(/\s+/g, " ")
+    .trim()
+    .replace(/^(?:or|and) (?=\S)|(?<=\S) (?:or|and)$/g, "");
+
 /**
  * The state and country after a location's first comma: "Portland, OR" is { state: "us-or", country: "us" }, "Remote,
  * Canada" is { country: "ca" }. A country not known here stands as its own text, so "Remote, Mexico" still differs from
@@ -135,9 +145,11 @@ export function region(location: string) {
       .trim()
       .replace(/\b([a-z]) (?=[a-z]\b)/g, "$1");
     if (!p) continue;
-    const s = STATES.get(p);
+    // A work mode or "metro area" after a known place is not part of it: "NY - Hybrid", "IL Metro Area", "US-based" (#1374).
+    const q = STATES.has(p) || COUNTRIES.has(p) ? p : withoutQualifier(p);
+    const s = STATES.get(q);
     if (s) state ??= s;
-    else if (COUNTRIES.has(p)) country ??= COUNTRIES.get(p)!;
+    else if (COUNTRIES.has(q)) country ??= COUNTRIES.get(q)!;
     else other = p;
   }
   return { state, country: country ?? state?.slice(0, 2) ?? other };
