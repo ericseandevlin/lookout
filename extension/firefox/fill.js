@@ -29,13 +29,17 @@
     return false;
   }
 
-  /** A label's own words: a <select>, <textarea> or <datalist> inside it adds its options and text, not words of the label (#1398). */
+  /**
+   * A label's own words, with a space between its elements. React writes no whitespace between tags, so textContent reads
+   * "<span>Website</span><span>Include https://</span>" as "websiteinclude https://" (#1397). A <select>, <textarea> or
+   * <datalist> inside it adds its options and text, not words of the label (#1398).
+   */
   function ownText(node) {
     if (!node) return "";
-    if (!node.querySelector("select, textarea, datalist")) return node.textContent;
-    const copy = node.cloneNode(true);
-    for (const c of copy.querySelectorAll("select, textarea, datalist")) c.remove();
-    return copy.textContent;
+    const out = [];
+    const walk = document.createTreeWalker(node, NodeFilter.SHOW_TEXT);
+    for (let t = walk.nextNode(); t; t = walk.nextNode()) if (!t.parentElement?.closest("select, textarea, datalist")) out.push(t.nodeValue);
+    return out.join(" ");
   }
 
   /** The words a control is labeled with: <label for>, a wrapping label, aria-labelledby, aria-label. */
@@ -105,7 +109,7 @@
   /** A group's own question: its <legend>, else its aria-labelledby or aria-label. */
   function groupName(g) {
     const legend = [...g.children].find((c) => c.tagName === "LEGEND");
-    return legend ? norm(legend.textContent) : labelOf(g);
+    return legend ? norm(ownText(legend)) : labelOf(g);
   }
 
   /** A "select any that apply" or radio question: one heading over several boxes. */
