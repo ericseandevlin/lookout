@@ -99,7 +99,8 @@ export const profileBlock = (c: Context) =>
       (c.links.length ? `\n<their_links>\n${c.links.map((l) => `${l.url}\n${l.text}`).join("\n---\n")}\n</their_links>` : "")) +
   (c.rejected.length ? `\n<marked_not_a_fit>\nThey said these roles were not a fit. Avoid similar ones.\n${c.rejected.join("\n")}\n</marked_not_a_fit>` : "");
 
-const today = () => new Date().toISOString().slice(0, 10);
+// The app's own date, not UTC: after 7pm in New York UTC is already tomorrow (#1388).
+const today = () => dayKey(new Date(), env.timezone);
 
 // --- 1. queries --------------------------------------------------------------
 

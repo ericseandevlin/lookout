@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 // scorePages only talks to the model; the database is never reached.
 vi.mock("@/lib/db", async () => ({ db: {}, schema: await import("@/lib/db/schema") }));
@@ -31,5 +31,21 @@ describe("scorePages (#920)", () => {
   it("reads no pages without calling the model or failing", async () => {
     await expect(scorePages(ctx, [], {} as never)).resolves.toEqual([]);
     expect(completeJSON).not.toHaveBeenCalled();
+  });
+});
+
+describe("scorePages: today's date (#1388)", () => {
+  afterEach(() => {
+    vi.useRealTimers();
+    vi.unstubAllEnvs();
+  });
+
+  it("tells the scorer the app's local date, not UTC's", async () => {
+    vi.stubEnv("APP_TZ", "America/New_York");
+    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.setSystemTime(new Date("2026-11-19T02:00:00Z")); // 9pm on Nov 18 in New York
+    completeJSON.mockReset().mockResolvedValue({ finds: [] });
+    await scorePages(ctx, [page(1)], {} as never);
+    expect(completeJSON.mock.calls[0][0].system).toContain("Today is 2026-11-18.");
   });
 });
