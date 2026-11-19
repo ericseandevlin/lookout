@@ -1,6 +1,6 @@
 import { z } from "zod";
 import type { ApplicationReport, SkillNote } from "@/lib/db/schema";
-import { hasKeyword } from "./draft";
+import { hasKeyword, shortWordAt } from "./draft";
 import { isJunkKeyword } from "./posting";
 
 /**
@@ -127,9 +127,11 @@ export function keywordPicks(rows: KeywordRow[], posting: string, title: string,
   return rows
     .filter((r) => !r.removed && !r.support)
     .map((r) => {
-      const re = new RegExp(`(^|[^a-z0-9])${escape(r.term.toLowerCase())}(?=$|[^a-z0-9])`, "g");
-      const count = (posting.toLowerCase().match(re) ?? []).length;
-      const score = count + (title.toLowerCase().match(re) ? 2 : 0) + (r.snippet && MUST.test(r.snippet) ? 1 : 0);
+      const k = r.term.toLowerCase();
+      const re = new RegExp(`(^|[^a-z0-9])${escape(k)}(?=$|[^a-z0-9])`, "g");
+      // A one- or two-character skill counts only as its own word: "Go" is not in "go-to-market", "R" not in "R&D" (#1377).
+      const count = (text: string) => [...text.matchAll(re)].filter((m) => k.length > 2 || shortWordAt(text, m.index + m[1].length, k)).length;
+      const score = count(posting.toLowerCase()) + (count(title.toLowerCase()) ? 2 : 0) + (r.snippet && MUST.test(r.snippet) ? 1 : 0);
       return { term: r.term, score };
     })
     .filter((x) => x.score >= 2)

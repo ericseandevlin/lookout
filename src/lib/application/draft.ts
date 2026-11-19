@@ -144,15 +144,18 @@ export function hasKeyword(text: string, keyword: string) {
  * "C-suite", which would back a skill the person never named (#1087). "AI-driven" and "R/Python" still count.
  */
 function shortWordIn(text: string, k: string) {
-  for (let i = text.indexOf(k); i >= 0; i = text.indexOf(k, i + 1)) {
-    const before = text[i - 1] ?? " ";
-    const after = text[i + k.length] ?? " ";
-    if (/[a-z0-9&+#]/.test(before) || /[a-z0-9&+#]/.test(after)) continue;
-    if (k.length === 1 && (before === "-" || after === "-")) continue;
-    if (k === "go" && text.startsWith("-to", i + k.length)) continue;
-    return true;
-  }
+  for (let i = text.indexOf(k); i >= 0; i = text.indexOf(k, i + 1)) if (shortWordAt(text, i, k)) return true;
   return false;
+}
+
+/** The short skill k (lowercase) at index i of the lowercase text is its own word, by the rule above. */
+export function shortWordAt(text: string, i: number, k: string) {
+  const before = text[i - 1] ?? " ";
+  const after = text[i + k.length] ?? " ";
+  if (/[a-z0-9&+#]/.test(before) || /[a-z0-9&+#]/.test(after)) return false;
+  if (k.length === 1 && (before === "-" || after === "-")) return false;
+  if (k === "go" && text.startsWith("-to", i + k.length)) return false;
+  return true;
 }
 
 export type KeywordReport = { term: string; before: boolean; after: boolean; where?: string; choice?: "include" | "exclude" }[];

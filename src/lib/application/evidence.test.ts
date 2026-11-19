@@ -125,3 +125,20 @@ describe("keywordPicks (#738)", () => {
     expect(keywordPicks([row("design systems", { removed: true })], posting, "Design Systems Engineer")).toEqual([]);
   });
 });
+
+describe("keywordPicks: short skills count only as their own word (#1377)", () => {
+  const row = (term: string, snippet?: string): KeywordRow => ({ term, snippet, support: null, mine: false, removed: false, used: false });
+
+  it.each([
+    ["Go", "You will build backend services in Go.\nPartner with our go-to-market team on go-to-market launches."],
+    ["R", "Analyze experiments in R.\nWork with R&D and present to R&D leads."],
+    ["C", "Firmware in C.\nTooling in C++ and C#."],
+  ])("%s named once is not a pick", (term, posting) => {
+    expect(keywordPicks([row(term, posting.split("\n")[0])], posting, "Engineer")).toEqual([]);
+  });
+
+  it("Go named twice as its own word still is", () => {
+    const posting = "You will build services in Go.\nWe write Go and some Python.";
+    expect(keywordPicks([row("Go", "You will build services in Go.")], posting, "Backend Engineer")).toEqual(["Go"]);
+  });
+});
