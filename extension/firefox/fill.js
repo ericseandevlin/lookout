@@ -93,10 +93,13 @@
     return all.find((el) => own(el) === q) || all.find((el) => word.test(labelOf(el))) || all.find(long) || null;
   }
 
+  /** A dropdown opened by a button: Workday's selects are <button aria-haspopup="listbox"> with no combobox role (#1420). */
+  const listButton = (el) => el.tagName === "BUTTON" && el.getAttribute("aria-haspopup") === "listbox";
+
   // A button input ("Apply with LinkedIn") is not a field: typing into it overwrites its caption (#1399).
   function controlFor(prompt) {
     const input = "input:not([type=hidden]):not([type=file]):not([type=checkbox]):not([type=radio]):not([type=button]):not([type=submit]):not([type=reset]):not([type=image])";
-    return labeledBy([...document.querySelectorAll(`${input}, textarea, select, [role=combobox]`)], prompt);
+    return labeledBy([...document.querySelectorAll(`${input}, textarea, select, [role=combobox], button[aria-haspopup=listbox]`)], prompt);
   }
 
   /** A lone checkbox labeled with the question itself ("I agree to the privacy policy", #669). */
@@ -489,7 +492,7 @@
         el.dispatchEvent(new Event("change", { bubbles: true }));
         return { ok: true, how: "selected" };
       }
-      if (el.getAttribute("role") === "combobox" || step.kind === "choice") return await pickFromCombobox(el, step.content);
+      if (el.getAttribute("role") === "combobox" || listButton(el) || step.kind === "choice") return await pickFromCombobox(el, step.content);
       // A number field drops "$165,000": fill the first number in the answer, and never call an empty field typed (#1140).
       if (el instanceof HTMLInputElement && el.type === "number") {
         const n = numberAnswer(step.content);
