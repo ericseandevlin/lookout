@@ -207,6 +207,24 @@ describe("asksBase", () => {
 });
 
 describe("isSalaryQuestion", () => {
+  it.each([
+    "What pay range are you targeting?",
+    "Pay range you're seeking",
+    "What base pay are you targeting?",
+    "What range are you targeting for base pay?",
+    "Target pay",
+    "What's your ideal pay?",
+    "What is your pay range?",
+  ])("reads %s as a salary ask (#1437)", (q) => expect(isSalaryQuestion(q)).toBe(true));
+
+  it.each([
+    "Describe how you pay attention to detail.",
+    "What is your current base pay?",
+    "Does the posted pay range work for you?",
+    "Describe your experience setting pay ranges for a sales team.",
+    "What are you looking for in your next role (team, growth, pay)?",
+  ])("does not read %s as a salary ask (#1437)", (q) => expect(isSalaryQuestion(q)).toBe(false));
+
   it("knows salary asks, not salary history", () => {
     expect(isSalaryQuestion("What is your desired base salary?")).toBe(true);
     expect(isSalaryQuestion("What is your base salary expectation?")).toBe(true);

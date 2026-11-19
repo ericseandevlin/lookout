@@ -82,10 +82,10 @@ const TO_BE_PAID = /\b(how much|what)\b[^.?!]{0,40}?\b(expect\w*|need|want|like|
 // to count alone, so only as the thing "what" asks for, followed by what they seek or expect.
 const WHAT_PAY_SOUGHT = /\bwhat (\w+ ){0,2}(pay|rate)\b[^.?!]{0,30}?\b(looking for|seek\w*|expect\w*|want\w*|hop\w*|need|accept)\b/i;
 // Rate wording ("Desired hourly rate", "Expected rate per hour", "Desired day rate") is an ask too (#953, #1194), and so
-// is a period word before "pay" ("Desired hourly pay") (#1376).
+// is a period word before "pay" ("Desired hourly pay") (#1376), and so are "pay range", "base pay" and "target pay" (#1437).
 const SALARY_ASK = {
   test: (s: string) =>
-    /salary|compensation|wages?\b|pay (expectation|requirement)|expected (base|annual|pay)|desired (base|pay)|\b(desired|expected) (hourly|daily|weekly|monthly|annual|yearly) (base|pay)\b|expect to (earn|make)\b|\b(hourly|pay|bill|day|daily) rate\b|\brate (expectation|requirement)|\b(desired|expected) rate\b/i.test(s) ||
+    /salary|compensation|wages?\b|pay (expectation|requirement)|expected (base|annual|pay)|desired (base|pay)|\b(desired|expected) (hourly|daily|weekly|monthly|annual|yearly) (base|pay)\b|expect to (earn|make)\b|\b(hourly|pay|bill|day|daily) rate\b|\brate (expectation|requirement)|\b(desired|expected) rate\b|\bpay range\b|\b(base|annual|target|ideal|preferred) pay\b/i.test(s) ||
     TO_BE_PAID.test(s) ||
     WHAT_PAY_SOUGHT.test(s) ||
     (HOPE_TO_EARN.test(s) && !MAKES_SOMETHING.test(s)),
@@ -98,11 +98,11 @@ const PAST_PAY =
 const YES_NO = /^\W*(are|is|does|do|would|will|can)\b/i;
 const ABOUT_THEIR_RANGE = /\b(range|posted|listed|stated|above|acceptable|comfortable|work for you|align|meets?)\b/i;
 // "What" asks for the number only right before the pay word: "What salary...", not "What questions do you have about
-// compensation?" (#1069). "Target", "seeking" and "looking for" likewise only near the pay word.
+// compensation?" (#1069). "Target", "targeting", "seeking" and "looking for" likewise only near the pay word (#1437).
 const PAY_WORD = "(salary|compensation|pay|rate|wages?)";
 const WHAT_PAY = new RegExp(`\\bwhat (\\w+ ){0,2}${PAY_WORD}\\b`, "i");
 const SEEK_PAY = new RegExp(
-  `\\btarget (\\w+ )?${PAY_WORD}\\b|\\b(looking for|seek\\w*)\\W+(\\w+\\W+){0,4}?${PAY_WORD}\\b|\\b${PAY_WORD}\\W+(\\w+\\W+){0,4}?(looking for|seek\\w*)\\b`,
+  `\\btarget (\\w+ )?${PAY_WORD}\\b|\\b(looking for|seek\\w*|targeting)\\W+(\\w+\\W+){0,4}?${PAY_WORD}\\b|\\b${PAY_WORD}\\W+(\\w+\\W+){0,4}?(looking for|seek\\w*|targeting)\\b`,
   "i",
 );
 const NAMES_A_NUMBER = /\b(expectations?|requirements?|desired|expected|how much)\b/i;
