@@ -137,7 +137,13 @@ export function region(location: string) {
   let state: string | null = null;
   let country: string | null = null;
   let other: string | null = null;
-  for (const part of location.split(",").slice(1)) {
+  // A known state or country in parentheses names the place too: "Remote (US)" is not "Remote (Canada)" (#1426). Other
+  // words there ("(hybrid)", "(NYC)") say nothing, so they never make two places of one.
+  const parts = [
+    ...location.split(",").slice(1).map((text) => ({ text, paren: false })),
+    ...[...location.matchAll(/\(([^()]*)\)/g)].map((m) => ({ text: m[1], paren: true })),
+  ];
+  for (const { text: part, paren } of parts) {
     // Dotted codes come out of normPart as single letters: "D.C." is "d c", read as "dc" (#1303).
     const p = normPart(true)(part)
       .replace(/\b\d+\b/g, " ")
@@ -148,7 +154,7 @@ export function region(location: string) {
     // A work mode or "metro area" after a known place is not part of it: "NY - Hybrid", "IL Metro Area", "US-based" (#1374).
     const q = STATES.has(p) || COUNTRIES.has(p) ? p : withoutQualifier(p);
     // A work mode on its own ("New York, Remote") or after an unknown country ("Germany - Hybrid") is not a place (#1385).
-    if (!q) continue;
+    if (!q || (paren && !STATES.has(q) && !COUNTRIES.has(q))) continue;
     const s = STATES.get(q);
     if (s) state ??= s;
     else if (COUNTRIES.has(q)) country ??= COUNTRIES.get(q)!;
