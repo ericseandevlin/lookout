@@ -106,6 +106,15 @@ describe("sameJob", () => {
     // The search list isn't one job.
     expect(jobKey("https://careers-acme.icims.com/jobs/search?ss=1")).toMatch(/^url:/);
   });
+  it("matches a Paylocity form to its posting by job ID (#1435)", () => {
+    const job = "https://recruiting.paylocity.com/Recruiting/Jobs/Details/1234567";
+    expect(jobKey(job)).toBe("paylocity:1234567");
+    expect(sameJob(["https://recruiting.paylocity.com/Recruiting/Jobs/Apply/1234567"], [job])).toBe(true);
+    expect(sameJob(["https://recruiting.paylocity.com/recruiting/jobs/apply/1234567?source=LinkedIn"], [job])).toBe(true);
+    expect(sameJob(["https://recruiting.paylocity.com/Recruiting/Jobs/Apply/7654321"], [job])).toBe(false);
+    // A company's job list isn't one job.
+    expect(jobKey("https://recruiting.paylocity.com/Recruiting/Jobs/All/abc-123")).toMatch(/^url:/);
+  });
 });
 
 describe("Recruitee and Teamtailor apply steps (#1200)", () => {
