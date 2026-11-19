@@ -128,6 +128,14 @@ const withoutQualifier = (p: string) =>
     .trim()
     .replace(/^(?:or|and) (?=\S)|(?<=\S) (?:or|and)$/g, "");
 
+const known = (p: string) => STATES.has(p) || COUNTRIES.has(p);
+
+/** "anywhere in the us" and "within the united states" name a known place once their filler goes (#1466); anything else stays as it is. */
+const withPlace = (p: string) => {
+  const t = p.replace(/^(?:anywhere )?(?:in |within |across |throughout )?(?:the )?(?=\S)/, "");
+  return known(t) ? t : p;
+};
+
 /**
  * The state and country after a location's first comma: "Portland, OR" is { state: "us-or", country: "us" }, "Remote,
  * Canada" is { country: "ca" }. A country not known here stands as its own text, so "Remote, Mexico" still differs from
@@ -152,9 +160,9 @@ export function region(location: string) {
       .replace(/\b([a-z]) (?=[a-z]\b)/g, "$1");
     if (!p) continue;
     // A work mode or "metro area" after a known place is not part of it: "NY - Hybrid", "IL Metro Area", "US-based" (#1374).
-    const q = STATES.has(p) || COUNTRIES.has(p) ? p : withoutQualifier(p);
+    const q = known(p) ? p : withPlace(withoutQualifier(p));
     // A work mode on its own ("New York, Remote") or after an unknown country ("Germany - Hybrid") is not a place (#1385).
-    if (!q || (paren && !STATES.has(q) && !COUNTRIES.has(q))) continue;
+    if (!q || (paren && !known(q))) continue;
     const s = STATES.get(q);
     if (s) state ??= s;
     else if (COUNTRIES.has(q)) country ??= COUNTRIES.get(q)!;

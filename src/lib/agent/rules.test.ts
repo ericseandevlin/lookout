@@ -141,6 +141,18 @@ describe("placesDiffer (#1285)", () => {
     expect(placesDiffer("Paris, TX", "Paris, France")).toBe(true);
     expect(placesDiffer("Remote, US", "Remote, Mexico")).toBe(true);
   });
+  it("reads a known place inside filler words: 'Anywhere in the US' is the US (#1466)", () => {
+    expect(placesDiffer("Remote, US", "Remote, Anywhere in the US")).toBe(false);
+    expect(placesDiffer("Remote, United States", "Remote, Within the United States")).toBe(false);
+    expect(placesDiffer("Remote, US", "Remote (anywhere in the US)")).toBe(false);
+    expect(placesDiffer("Remote, Canada", "Remote, Anywhere in the US")).toBe(true);
+    expect(placesDiffer("Remote, Canada", "Remote (anywhere in the US)")).toBe(true);
+    expect(placeId("Remote, Anywhere in the US")).toBe("us");
+    expect(placeId("Remote, across Canada")).toBe("ca");
+    // "in" alone is still Indiana, and words that name no known place stay as they are.
+    expect(placeId("Fort Wayne, IN")).toBe("us-in");
+    expect(placeId("Remote, Anywhere in LATAM")).toBe("anywhere in latam");
+  });
   it("keeps one place written two ways as one", () => {
     expect(placesDiffer("New York, NY", "New York, New York")).toBe(false);
     expect(placesDiffer("New York, NY (hybrid)", "New York, NY 10001, USA")).toBe(false);
