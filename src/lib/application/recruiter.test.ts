@@ -250,3 +250,12 @@ describe("fix now or needs a fact (#738)", () => {
     expect(a.findings[0].needsFact).toBe(true);
   });
 });
+
+describe("recruiterChecks: a greeting with no comma (#1396)", () => {
+  const whats = (text: string) => recruiterChecks("cover_letter", text).map((x) => x.what);
+  const body = "I am writing to apply for the Staff Designer role at Acme, where I can help.\n\nBest,\nEric";
+
+  it.each(["Hello! ", "Hi there! ", "Dear Ms. Lee, "])("finds the stock opening after %j", (greeting) => {
+    expect(whats(greeting + body)).toContain("The opening line is the stock one.");
+  });
+});
