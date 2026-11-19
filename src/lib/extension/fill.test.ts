@@ -629,6 +629,36 @@ describe("extension fill: character limits (#1421)", () => {
   });
 });
 
+describe("extension fill: Lever questions with no fieldset (#1419)", () => {
+  const form = `<ul><li class="application-question custom-question"><div class="application-label"><div class="text">Are you authorized to work in the US?<span class="required">✱</span></div></div><div class="application-field"><ul data-qa="multiple-choice"><li><label><input type="radio" id="f0-0" name="cards[a][f0]" value="Yes"><span>Yes</span></label></li><li><label><input type="radio" id="f0-1" name="cards[a][f0]" value="No"><span>No</span></label></li></ul></div></li><li class="application-question custom-question"><div class="application-label"><div class="text">Do you require sponsorship?<span class="required">✱</span></div></div><div class="application-field"><ul data-qa="multiple-choice"><li><label><input type="radio" id="f1-0" name="cards[a][f1]" value="Yes"><span>Yes</span></label></li><li><label><input type="radio" id="f1-1" name="cards[a][f1]" value="No"><span>No</span></label></li></ul></div></li><li class="application-question custom-question"><div class="application-label"><div class="text">Which areas interest you?<span class="required">✱</span></div></div><div class="application-field"><ul data-qa="checkboxes"><li><label><input type="checkbox" id="f2-0" name="cards[a][f2]" value="Research"><span>Research</span></label></li><li><label><input type="checkbox" id="f2-1" name="cards[a][f2]" value="Design systems"><span>Design systems</span></label></li><li><label><input type="checkbox" id="f2-2" name="cards[a][f2]" value="Prototyping"><span>Prototyping</span></label></li></ul></div></li></ul>`;
+  const checked = (doc: Document) => [...doc.querySelectorAll("input:checked")].map((e) => e.id);
+
+  it("checks the radio under a plain heading, not the next question's", async () => {
+    const p = page(form);
+    const log = await p.fill({ steps: [
+      { prompt: "Are you authorized to work in the US?", kind: "choice", content: "Yes", options: ["Yes", "No"] },
+      { prompt: "Do you require sponsorship?", kind: "choice", content: "No", options: ["Yes", "No"] },
+    ] });
+    expect(log.map((r) => r.ok)).toEqual([true, true]);
+    expect(checked(p.doc)).toEqual(["f0-0", "f1-1"]);
+  });
+
+  it("ticks the checkboxes the answer means", async () => {
+    const p = page(form);
+    const [row] = await p.fill({ steps: [{ prompt: "Which areas interest you?", kind: "choice", content: "Research\nPrototyping", options: ["Research", "Design systems", "Prototyping"] }] });
+    expect(row).toMatchObject({ ok: true, how: "checked 2" });
+    expect(checked(p.doc)).toEqual(["f2-0", "f2-2"]);
+    expect(await p.probe({ steps: [{ prompt: "Which areas interest you?", kind: "choice" }] })).toEqual({ score: 1 });
+  });
+
+  it("never borrows boxes from further up the form for a heading whose own block has a text field", async () => {
+    const p = page(`<div><div class="q"><div class="text">Preferred start date</div><input id="d"></div><div><label><input type="radio" name="x" id="x0">Yes</label></div></div>`);
+    const [row] = await p.fill({ steps: [{ prompt: "Preferred start date", kind: "choice", content: "Yes", options: ["Yes"] }] });
+    expect(row.ok).toBe(false);
+    expect(checked(p.doc)).toEqual([]);
+  });
+});
+
 describe("extension fill: custom dropdowns", () => {
   it("opens a Workday dropdown, a button with aria-haspopup=listbox, and picks the option (#1420)", async () => {
     const p = page(`<label for="b">Phone Device Type<abbr title="required">*</abbr></label><button type="button" id="b" aria-haspopup="listbox">Select One</button>`);
