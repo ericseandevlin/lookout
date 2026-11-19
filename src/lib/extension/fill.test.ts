@@ -630,6 +630,30 @@ describe("extension fill: character limits (#1421)", () => {
 });
 
 describe("extension fill: custom dropdowns", () => {
+  it("opens a Workday dropdown, a button with aria-haspopup=listbox, and picks the option (#1420)", async () => {
+    const p = page(`<label for="b">Phone Device Type<abbr title="required">*</abbr></label><button type="button" id="b" aria-haspopup="listbox">Select One</button>`);
+    combobox(p.w, "b", ["Landline", "Mobile"]);
+    const [row] = await p.fill({ steps: [{ prompt: "Phone Device Type", kind: "choice", content: "Mobile", options: ["Landline", "Mobile"] }] });
+    expect(row).toMatchObject({ ok: true, how: "picked option" });
+    expect((p.doc.getElementById("b") as HTMLElement).dataset.picked).toBe("Mobile");
+    expect(await p.probe({ steps: [{ prompt: "Phone Device Type", kind: "choice" }] })).toEqual({ score: 1 });
+  });
+
+  it("never types into a Workday dropdown, even for a text step", async () => {
+    const p = page(`<label for="b">State</label><button type="button" id="b" aria-haspopup="listbox">Select One</button>`);
+    combobox(p.w, "b", ["New Jersey", "New York"]);
+    const [row] = await p.fill({ steps: [{ prompt: "State", kind: "text", content: "New York" }] });
+    expect(row).toMatchObject({ ok: true, how: "picked option" });
+    expect((p.doc.getElementById("b") as HTMLElement).textContent).toBe("Select One");
+    expect((p.doc.getElementById("b") as HTMLElement).dataset.picked).toBe("New York");
+  });
+
+  it("still leaves a plain button alone", async () => {
+    const p = page(`<label for="b">State</label><button type="button" id="b">Upload</button>`);
+    const [row] = await p.fill({ steps: [{ prompt: "State", kind: "text", content: "New York" }] });
+    expect(row).toMatchObject({ ok: false, how: "field not found" });
+  });
+
   it("opens a combobox with a real-looking click and picks the matching option", async () => {
     const p = page(`<label for="loc">Which office?</label><input id="loc" role="combobox">`);
     combobox(p.w, "loc", ["Austin", "New York", "Remote"]);
