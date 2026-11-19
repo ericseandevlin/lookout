@@ -177,6 +177,10 @@ describe("CONFIRMATION (#692, #748, #762)", () => {
       // #1154
       "Your application to Acme has been submitted.",
       "Your application with Acme has been received!",
+      // #1452: Workday-style thank-you pages.
+      "You have submitted your application",
+      "You've submitted your application for Senior Designer.",
+      "You’ve submitted your application.",
     ])
       expect(CONFIRMATION.test(t), t).toBe(true);
   });
@@ -214,6 +218,10 @@ describe("CONFIRMATION (#692, #748, #762)", () => {
       "Your application hasn't yet been successfully submitted.",
       "No application has been submitted yet.",
       "Once your application to Acme has been received, we will review it.",
+      // #1452
+      "Once you have submitted your application, we will email you.",
+      "Have you submitted your application yet?",
+      "You have not submitted your application.",
     ])
       expect(CONFIRMATION.test(t), t).toBe(false);
   });
