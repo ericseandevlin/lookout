@@ -76,10 +76,11 @@ const TO_BE_PAID = /\b(how much|what)\b[^.?!]{0,40}?\b(expect\w*|need|want|like|
 // "What pay are you looking for?", "What hourly rate would you accept?" (#1192). Plain "pay" and "rate" are too common
 // to count alone, so only as the thing "what" asks for, followed by what they seek or expect.
 const WHAT_PAY_SOUGHT = /\bwhat (\w+ ){0,2}(pay|rate)\b[^.?!]{0,30}?\b(looking for|seek\w*|expect\w*|want\w*|hop\w*|need|accept)\b/i;
-// Rate wording ("Desired hourly rate", "Expected rate per hour", "Desired day rate") is an ask too (#953, #1194).
+// Rate wording ("Desired hourly rate", "Expected rate per hour", "Desired day rate") is an ask too (#953, #1194), and so
+// is a period word before "pay" ("Desired hourly pay") (#1376).
 const SALARY_ASK = {
   test: (s: string) =>
-    /salary|compensation|wages?\b|pay (expectation|requirement)|expected (base|annual|pay)|desired (base|pay)|expect to (earn|make)\b|\b(hourly|pay|bill|day|daily) rate\b|\brate (expectation|requirement)|\b(desired|expected) rate\b/i.test(s) ||
+    /salary|compensation|wages?\b|pay (expectation|requirement)|expected (base|annual|pay)|desired (base|pay)|\b(desired|expected) (hourly|daily|weekly|monthly|annual|yearly) (base|pay)\b|expect to (earn|make)\b|\b(hourly|pay|bill|day|daily) rate\b|\brate (expectation|requirement)|\b(desired|expected) rate\b/i.test(s) ||
     TO_BE_PAID.test(s) ||
     WHAT_PAY_SOUGHT.test(s) ||
     (HOPE_TO_EARN.test(s) && !MAKES_SOMETHING.test(s)),
@@ -178,7 +179,8 @@ function periodIn(prompt: string): "year" | Per | null {
   // "a year-end bonus" and "a year-long contract" are not a yearly ask (#1060).
   // "/yr" after a space or "(" has no word boundary before the slash (#1121).
   if (/(\b(annual(ly)?|yearly|per (year|annum)|a year)|\/\s?y(ea)?r)\b(?!-)/i.test(prompt)) return "year";
-  if (/\bhourly\b|\b(per|an|each) (hour|hr)\b|\/\s?h(ou)?r\b/i.test(prompt)) return "hour";
+  // "p/h" and "$/h" are an hourly rate too (#1376).
+  if (/\bhourly\b|\b(per|an|each) (hour|hr)\b|\/\s?h(ou)?r\b|\/\s?h\b/i.test(prompt)) return "hour";
   // A day rate (#1194). "Day-to-day" is not a period; "8 hours a day" and "5 days a week" were taken out above.
   if (/\bdaily\b|\b(per|a|each) day\b(?!-)|\/\s?day\b|\bday rate\b/i.test(prompt)) return "day";
   if (/\bweekly\b|\b(per|a|each) week\b|\/\s?w(ee)?k\b/i.test(prompt) && !/\bbi-?weekly\b/i.test(prompt)) return "week";
