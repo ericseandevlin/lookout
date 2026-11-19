@@ -289,10 +289,19 @@ function span(right?: string): Span | null {
  */
 export function agencyWording(line: string): string {
   if (/\(contract via /i.test(line)) return line;
-  const client = line.match(/^(.+?),\s*(.+?)\s*\((?:client\s*:|(?:for|at|on assignment (?:to|at))\b\s*:?)\s*(.+?)\)$/i);
-  if (client) return `${client[1]} (contract via ${client[2]}), ${client[3]}`;
-  const via = line.match(/^(.+?),\s*(.+?)\s*\((?:contract(?:ed)?\s+)?(?:via|through)\s+(.+?)\)$/i);
-  if (via) return `${via[1]} (contract via ${via[3]}), ${via[2]}`;
+  // The note in parentheses comes off first; then the title is everything before the company's comma, so
+  // "Director, UX, Acme (via Photon)" keeps the title "Director, UX", as companyComma does for any role (#1367).
+  const note = line.match(/^(.+?)\s*\(([^()]*)\)$/);
+  if (!note) return line;
+  const k = companyComma(note[1]);
+  if (k <= 0) return line;
+  const title = note[1].slice(0, k).trim();
+  const company = note[1].slice(k + 2).trim();
+  if (!title || !company) return line;
+  const client = note[2].match(/^\s*(?:client\s*:|(?:for|at|on assignment (?:to|at))\b\s*:?)\s*(.+?)\s*$/i);
+  if (client) return `${title} (contract via ${company}), ${client[1]}`;
+  const via = note[2].match(/^\s*(?:contract(?:ed)?\s+)?(?:via|through)\s+(.+?)\s*$/i);
+  if (via) return `${title} (contract via ${via[1]}), ${company}`;
   return line;
 }
 
