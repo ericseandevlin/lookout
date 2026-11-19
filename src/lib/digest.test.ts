@@ -40,7 +40,7 @@ beforeEach(async () => {
 });
 
 /** A find on the board, added `ago` ms back. */
-async function find(title: string, o: { ago?: number; score?: number; due?: string; pinned?: boolean; archived?: boolean; compMin?: number; compMax?: number; currency?: string; location?: string } = {}) {
+async function find(title: string, o: { ago?: number; score?: number; due?: string; pinned?: boolean; archived?: boolean; compMin?: number; compMax?: number; currency?: string; location?: string; via?: "agent" | "manual" | "import" } = {}) {
   const [opp] = await db
     .insert(schema.opportunities)
     .values({ company: "Acme <Labs>", title, location: o.location ?? "Remote", fingerprint: title, compMin: o.compMin, compMax: o.compMax, currency: o.currency, attributes: o.due ? { due: o.due } : {} })
@@ -53,6 +53,7 @@ async function find(title: string, o: { ago?: number; score?: number; due?: stri
     pinned: o.pinned ?? false,
     archived: o.archived ?? false,
     addedAt: new Date(Date.now() - (o.ago ?? 0)),
+    addedVia: o.via ?? "agent",
   });
   return opp.id;
 }
@@ -269,6 +270,37 @@ describe("sendDigest", () => {
     const [m] = sent();
     expect(m.subject).toBe("Lookout: 1 new find");
     expect(m.text).not.toContain("Archived");
+  });
+
+  it("leaves out links they added themselves and imports (#1127)", async () => {
+    await find("Found by search");
+    await find("Added by link", { via: "manual", score: 5 });
+    await find("Imported", { via: "import", score: 5 });
+    await sendDigest(userId);
+    const [m] = sent();
+    expect(m.subject).toBe("Lookout: 1 new find");
+    expect(m.text).toContain("Found by search");
+    expect(m.text).not.toContain("Added by link");
+    expect(m.text).not.toContain("Imported");
+    expect((await digests())[0].finds).toBe(1);
+  });
+
+  it("sends nothing when the only new finds are their own links (#1127)", async () => {
+    await find("Added by link", { via: "manual" });
+    await sendDigest(userId);
+    expect(sendMail).not.toHaveBeenCalled();
+    expect(await digests()).toHaveLength(0);
+  });
+
+  it("leaves out a link they added by hand that another search found later (#1127)", async () => {
+    const id = await find("Added by link", { via: "manual", ago: 3600_000 });
+    const [s2] = await db.insert(schema.searches).values({ userId, name: "Second search", answers: {} }).returning();
+    await db.insert(schema.userOpportunities).values({ userId, searchId: s2.id, opportunityId: id, score: 5 });
+    await find("Really new", { score: 4 });
+    await sendDigest(userId);
+    const [m] = sent();
+    expect(m.subject).toBe("Lookout: 1 new find");
+    expect(m.text).not.toContain("Added by link");
   });
 
   it("drops the digest record when the send fails", async () => {
