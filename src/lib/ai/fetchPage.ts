@@ -267,7 +267,8 @@ export function dropChrome(html: string) {
 export function pageToText(html: string, maxChars = 9000) {
   const ld: string[] = [];
   for (const m of html.matchAll(/<script[^>]+application\/ld\+json[^>]*>([\s\S]*?)<\/script>/gi)) {
-    if (/JobPosting/i.test(m[1])) ld.push(cleanJsonLd(m[1].trim().slice(0, 6000)));
+    // Clean, then cut: cut first, a long description is no longer valid JSON and keeps its HTML (#1387).
+    if (/JobPosting/i.test(m[1])) ld.push(cleanJsonLd(m[1].trim()).slice(0, 6000));
   }
   const title = decodeEntities(html.match(/<title[^>]*>([\s\S]*?)<\/title>/i)?.[1] ?? "").replace(/\s+/g, " ").trim();
   const text = decodeEntities(
