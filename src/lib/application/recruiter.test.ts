@@ -270,3 +270,22 @@ describe("recruiterChecks: a greeting with no comma (#1396)", () => {
     expect(whats(greeting + body)).toContain("The opening line is the stock one.");
   });
 });
+
+describe("recruiterChecks: length counts words, not markdown marks (#1447)", () => {
+  // 15 words with a number, so the impact checks stay quiet.
+  const bullet = "Led the redesign of the checkout flow for 12 markets with design and engineering partners";
+  const draft = (roles: number, bullets: number) =>
+    `# Pat Lee\nDesign Director\n## Experience\n` +
+    Array.from({ length: roles }, (_, i) => `### Acme ${i} | New York, NY | 201${i % 10} – 201${(i + 1) % 10}\n` + Array.from({ length: bullets }, () => `- ${bullet}`).join("\n")).join("\n");
+  const length = (md: string) => recruiterChecks("resume", md).find((x) => x.dim === "length");
+
+  it("a resume under 900 real words isn't called too long for its bullets, bars and dashes", () => {
+    // 9 roles of 6 bullets: 878 words, and 970 tokens when every "-", "###", "|" and "–" counted.
+    expect(length(draft(9, 6))).toBeUndefined();
+  });
+
+  it("a resume over 900 real words still is, and the count is of words", () => {
+    // 10 roles of 6 bullets: 975 words.
+    expect(length(draft(10, 6))?.what).toBe("About 975 words, likely more than two pages.");
+  });
+});
