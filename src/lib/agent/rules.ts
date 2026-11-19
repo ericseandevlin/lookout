@@ -186,14 +186,16 @@ export const placeId = (location: string) => {
 const TRACKING =
   /^(utm_.*|gh_src|source|src|ref|refid|ref_src|referrer|trk|trackingid|lever-source|lever-origin|gclid|gbraid|wbraid|dclid|fbclid|msclkid|li_fat_id|igshid|_hsenc|_hsmi|mc_cid|mc_eid|mkt_tok|_gl|__jvst|__jvsd)$/i;
 
-/** A query pair's name, decoded when it can be. */
+/** A query pair's name, decoded when it can be. An array name ("lever-source[]", Lever's shared links) is its plain name (#1431). */
 const pairName = (p: string) => {
   const k = p.split("=")[0].replace(/\+/g, " ");
+  let name = k;
   try {
-    return decodeURIComponent(k);
+    name = decodeURIComponent(k);
   } catch {
-    return k;
+    // keep the raw name
   }
+  return name.replace(/\[\]$/, "");
 };
 
 export function normUrl(u: string) {
