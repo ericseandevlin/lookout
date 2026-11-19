@@ -544,6 +544,34 @@ describe("extension fill: choices", () => {
     expect(ticked(p, 2)).toEqual([false, true]);
   });
 
+  // The same boxes with no fieldset or group around them; the worker fills these since #1209 (#1369).
+  const loose = (q: string, opts: string[]) =>
+    `<span id="q">${q}</span>${opts.map((o, i) => `<input type="checkbox" id="b${i}" aria-labelledby="q l${i}"><span id="l${i}">${o}</span>`).join("")}`;
+
+  it.each([
+    ["Yes", [false, true]],
+    ["No", [true, false]],
+  ])("checks the %s box labeled question + option with no group around it (#1369)", async (answer, want) => {
+    const p = page(loose("Are you 18 or older?", ["No", "Yes"]));
+    const [r] = await p.fill({ steps: [{ prompt: "Are you 18 or older?", kind: "choice", content: answer, options: ["No", "Yes"], required: true }] });
+    expect(r).toMatchObject({ ok: true, how: "checked 1" });
+    expect(ticked(p, 2)).toEqual(want);
+  });
+
+  it("checks every line of a multi-select answer labeled question + option with no group (#1369)", async () => {
+    const p = page(loose("Which days can you work? (required)", ["Weekdays", "Weekends", "Nights"]));
+    const [r] = await p.fill({ steps: [{ prompt: "Which days can you work?", kind: "choice", content: "Weekdays\nNights", options: ["Weekdays", "Weekends", "Nights"] }] });
+    expect(r).toMatchObject({ ok: true, how: "checked 2" });
+    expect(ticked(p, 3)).toEqual([true, false, true]);
+  });
+
+  it("reports an answer that is none of the loose boxes' options, and ticks nothing (#1369)", async () => {
+    const p = page(loose("Are you 18 or older?", ["No", "Yes"]));
+    const [r] = await p.fill({ steps: [{ prompt: "Are you 18 or older?", kind: "choice", content: "Maybe", options: ["No", "Yes"], required: true }] });
+    expect(r.ok).toBe(false);
+    expect(ticked(p, 2)).toEqual([false, false]);
+  });
+
   it("does not untick a lone checkbox that is already ticked", async () => {
     const p = page(`<label><input type="checkbox" id="t" checked> I agree to the terms</label>`);
     const [r] = await p.fill({ steps: [{ prompt: "I agree to the terms", kind: "text", content: "Yes" }] });
