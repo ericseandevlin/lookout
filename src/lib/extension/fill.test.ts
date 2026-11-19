@@ -925,3 +925,13 @@ describe("extension probe and submit watch", () => {
       expect(p.value("#o")).toBe("");
     });
 });
+
+describe("extension fill: button inputs are not fields (#1399)", () => {
+  it.each(["button", "submit"])("never types into an input of type %s", async (type) => {
+    const p = page(`<input type="${type}" id="b" value="Apply with LinkedIn" aria-label="Apply with LinkedIn">
+      <label for="li">LinkedIn Profile URL</label><input id="li">`);
+    await p.fill({ steps: [text("LinkedIn", "https://linkedin.com/in/pat")] });
+    expect(p.value("#b")).toBe("Apply with LinkedIn");
+    expect(p.value("#li")).toBe("https://linkedin.com/in/pat");
+  });
+});

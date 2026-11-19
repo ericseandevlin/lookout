@@ -78,8 +78,10 @@
     return all.find((el) => own(el) === q) || all.find((el) => word.test(labelOf(el))) || all.find(long) || null;
   }
 
+  // A button input ("Apply with LinkedIn") is not a field: typing into it overwrites its caption (#1399).
   function controlFor(prompt) {
-    return labeledBy([...document.querySelectorAll("input:not([type=hidden]):not([type=file]):not([type=checkbox]):not([type=radio]), textarea, select, [role=combobox]")], prompt);
+    const input = "input:not([type=hidden]):not([type=file]):not([type=checkbox]):not([type=radio]):not([type=button]):not([type=submit]):not([type=reset]):not([type=image])";
+    return labeledBy([...document.querySelectorAll(`${input}, textarea, select, [role=combobox]`)], prompt);
   }
 
   /** A lone checkbox labeled with the question itself ("I agree to the privacy policy", #669). */
