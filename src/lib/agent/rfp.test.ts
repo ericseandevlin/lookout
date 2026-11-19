@@ -165,11 +165,44 @@ describe("discoverRfp (#272)", () => {
     err.mockRestore();
   });
 
-  it("saves nothing from a batch the model fails on, and still finishes the run", async () => {
+  it("fails the run when every SAM.gov query fails, instead of 'no new solicitations' (#1359)", async () => {
+    sam = () => new Response("forbidden", { status: 403 });
+    const err = vi.spyOn(console, "error").mockImplementation(() => {});
+    await expect(discoverRfp(searchId, userId, "manual")).rejects.toThrow("couldn't reach SAM.gov");
+    err.mockRestore();
+    expect(completeJSON).not.toHaveBeenCalled();
+    const [run] = await runs();
+    expect(run.status).toBe("failed");
+    expect(run.error).toContain("couldn't reach SAM.gov");
+  });
+
+  it("skips a batch the model fails on and saves the rest", async () => {
+    // Seven notices are two batches of six and one.
+    sam = () => Response.json({ opportunitiesData: Array.from({ length: 7 }, (_, i) => notice(`n${i}`)) });
     completeJSON.mockRejectedValueOnce(new Error("model down"));
     const err = vi.spyOn(console, "error").mockImplementation(() => {});
     const out = await discoverRfp(searchId, userId, "manual");
     err.mockRestore();
+    expect(completeJSON).toHaveBeenCalledTimes(2);
+    expect(out).toMatchObject({ found: 1, added: 1 });
+    expect((await runs())[0].status).toBe("done");
+  });
+
+  it("fails the run when every scoring batch fails, so an outage isn't today's search (#1359)", async () => {
+    completeJSON.mockRejectedValueOnce(new Error("model down"));
+    const err = vi.spyOn(console, "error").mockImplementation(() => {});
+    await expect(discoverRfp(searchId, userId, "manual")).rejects.toThrow("couldn't score any of them");
+    err.mockRestore();
+    expect(await board()).toEqual([]);
+    const [run] = await runs();
+    expect(run.status).toBe("failed");
+    expect(run.error).toBe("Lookout found 2 notices but couldn't score any of them. It will try again later.");
+  });
+
+  it("finishes with nothing found when SAM.gov has no open notices", async () => {
+    sam = () => Response.json({ totalRecords: 0, opportunitiesData: [] });
+    const out = await discoverRfp(searchId, userId, "manual");
+    expect(completeJSON).not.toHaveBeenCalled();
     expect(out).toMatchObject({ found: 0, added: 0 });
     expect((await runs())[0].status).toBe("done");
   });
