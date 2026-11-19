@@ -193,7 +193,8 @@ export function newNumbers(master: string, draft: string): string[] {
       .replace(/\b(?:over|more than)\s+(\$?\d[\d,.]*(?:%|k|m|b)?)(?![\w+])/gi, "$1+");
   const nums = (raw: string) => {
     const s = norm(raw);
-    return new Set((s.match(/\$?\d[\d,.]*(?:\s?(?:%|mm|k|m|b|x|\+)(?![a-z]))?/gi) ?? []).map((n) => n.toLowerCase().replace(/[,\s]/g, "").replace(/\.$/, "").replace(/mm$/, "m")));
+    // A digit inside a word is part of a name, not a number: B2B, HTML5, CSS3, S3 (#1393, as #1265).
+    return new Set((s.match(/(?<![a-z\d])\$?\d[\d,.]*(?:\s?(?:%|mm|k|m|b|x|\+)(?![a-z]))?/gi) ?? []).map((n) => n.toLowerCase().replace(/[,\s]/g, "").replace(/\.$/, "").replace(/mm$/, "m")));
   };
   // Round numbers in one spelling: "1,000,000" is "1m" and "250,000" is "250k", like "1M" and "250K" (#1148).
   const short = (n: string) => {
@@ -204,7 +205,7 @@ export function newNumbers(master: string, draft: string): string[] {
     return n;
   };
   // A year is written bare, as in the text: "2,000" has a thousands comma, so it is a count, not the year 2000 (#1218).
-  const years = new Set((norm(draft).match(/\$?\d[\d,.]*/g) ?? []).map((n) => n.replace(/\.$/, "")).filter((n) => /^(19|20)\d\d$/.test(n)));
+  const years = new Set((norm(draft).match(/(?<![a-z\d])\$?\d[\d,.]*/gi) ?? []).map((n) => n.replace(/\.$/, "")).filter((n) => /^(19|20)\d\d$/.test(n)));
   const have = new Set([...nums(master)].map(short));
   // The master's "over 20" is "20+": a plain "20" in the draft says no more than that (#1148).
   return [...nums(draft)].filter((n) => n && !years.has(n) && !have.has(short(n)) && !have.has(short(n) + "+"));
