@@ -33,6 +33,24 @@ describe("fetchPage refuses internal targets", () => {
 });
 
 describe("pageToText", () => {
+  it("drops dialogs, buttons and lone close marks (#1312)", () => {
+    // The Bank of America shape: age and eligibility modals, a referral button and close glyphs around the job.
+    const html = `<title>Software Engineer</title>
+      <div role="dialog" aria-modal="true"><button>×</button><p>To proceed with your application, you must be at least 18 years of age.</p><button>Acknowledge</button></div>
+      <div class="modal" aria-modal="true"><span>✕</span><p>Bank of America employees are required to meet all posting eligibility requirements.</p><a>Acknowledge</a></div>
+      <dialog><p>Refer someone</p></dialog>
+      <main><h1>Software Engineer</h1><p>Build the payments platform.</p><div>×</div><button>Refer a friend</button><p>Lead code reviews.</p></main>`;
+    const t = pageToText(html);
+    expect(t).toContain("Build the payments platform.");
+    expect(t).toContain("Lead code reviews.");
+    for (const chrome of ["18 years of age", "eligibility requirements", "Acknowledge", "Refer a friend", "Refer someone", "×", "✕"]) expect(t).not.toContain(chrome);
+  });
+  it("keeps a whole job shown inside a dialog (#1312)", () => {
+    const job = "Design and build the search service. ".repeat(30);
+    const t = pageToText(`<div role="dialog"><h1>Engineer</h1><p>${job}</p><button>Apply</button></div>`);
+    expect(t).toContain("Design and build the search service.");
+    expect(t).not.toContain("Apply");
+  });
   it("keeps JobPosting data and drops scripts", () => {
     const html = `<title>Director of Events</title><script>alert(1)</script>
       <script type="application/ld+json">{"@type":"JobPosting","baseSalary":{"value":{"minValue":140000}}}</script>
