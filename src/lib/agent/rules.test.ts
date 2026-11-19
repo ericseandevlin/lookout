@@ -86,6 +86,12 @@ describe("dedupe keys", () => {
     expect(normUrl("https://jobs.lever.co/x/1?lever-source=LinkedIn&lever-origin=applied&ref=hn&src=feed&source=x")).toBe("jobs.lever.co/x/1");
     expect(normUrl("https://example.com/job/1?refId=a1&trackingId=b2&trk=c3")).toBe("example.com/job/1");
   });
+  it("drops Lever's array source tag, lever-source[], encoded or not (#1431)", () => {
+    expect(normUrl("https://jobs.lever.co/acme/123?lever-source%5B%5D=LinkedIn")).toBe("jobs.lever.co/acme/123");
+    expect(normUrl("https://jobs.lever.co/acme/123?lever-origin=applied&lever-source[]=Glassdoor")).toBe("jobs.lever.co/acme/123");
+    // A job ID passed as an array stays in the key.
+    expect(normUrl("https://acme.com/careers?jobId%5B%5D=9")).toBe("acme.com/careers?jobid%5b%5d=9");
+  });
   it("drops ad and email click IDs, so a known job found through an ad stays known (#1193)", () => {
     expect(normUrl("https://jobs.lever.co/acme/abc?fbclid=xyz")).toBe("jobs.lever.co/acme/abc");
     // #1252
