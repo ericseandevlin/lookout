@@ -178,6 +178,22 @@
     return boxes.filter((b) => b.type === "checkbox" && after(b) && (!scope || scope.contains(b)));
   }
 
+  /**
+   * Boxes under a plain heading with no fieldset or group role: Lever writes a question as a text div over a list of
+   * labeled radios or checkboxes (#1419). The block is the nearest ancestor of the heading that holds any field, and
+   * only if those fields are boxes, so a heading never borrows the next question's boxes from further up the form.
+   */
+  function blockFor(prompt) {
+    const q = norm(prompt);
+    const heads = [...document.querySelectorAll("body *")].filter((el) => !el.querySelector("input, select, textarea, button") && bare(norm(ownText(el))) === q);
+    for (const h of heads) {
+      let n = h.parentElement;
+      while (n && n !== document.body && !n.querySelector("input:not([type=hidden]), select, textarea")) n = n.parentElement;
+      if (n && n !== document.body && n.querySelector("input[type=checkbox], input[type=radio]")) return n;
+    }
+    return null;
+  }
+
   /** Radios labeled with the question and their option ("Can you work onsite? No"), no group around them (#773). */
   function radiosFor(prompt) {
     const q = norm(prompt) + " ";
@@ -419,7 +435,8 @@
         return { ok: true, how: "checked" };
       }
       if (!el) {
-        const group = groupFor(step.prompt);
+        // Lever's plain-heading blocks only when nothing else names the question, so every earlier match stays first (#1419).
+        const group = groupFor(step.prompt) || (!radiosFor(step.prompt).length && !optionBoxesFor(step.prompt).length ? blockFor(step.prompt) : null);
         if (!group) {
           // Check the radio the answer means, never the first one found, same as the worker (#720, #773).
           const radios = radiosFor(step.prompt);
@@ -537,7 +554,7 @@
 
   function probe(packet) {
     let score = 0;
-    for (const s of packet.steps) if (s.kind === "file" ? document.querySelector("input[type=file]") : controlFor(s.prompt) || groupFor(s.prompt) || checkboxFor(s.prompt) || radiosFor(s.prompt).length || optionBoxesFor(s.prompt).length) score++;
+    for (const s of packet.steps) if (s.kind === "file" ? document.querySelector("input[type=file]") : controlFor(s.prompt) || groupFor(s.prompt) || checkboxFor(s.prompt) || radiosFor(s.prompt).length || optionBoxesFor(s.prompt).length || blockFor(s.prompt)) score++;
     return { score };
   }
 
