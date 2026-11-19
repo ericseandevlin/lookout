@@ -403,3 +403,27 @@ describe("apply-to and soft 404 wordings (#1441)", () => {
     expect(classifyPage(200, `TITLE: Product Designer\nTEXT: ${text}`).state).toBe("open");
   });
 });
+
+describe("no longer live, deleted, withdrawn and cancelled (#1451)", () => {
+  it.each([
+    "This job is no longer live.",
+    "Sorry, this job is no longer live",
+    "This job has been deleted.",
+    "This job listing has been deleted",
+    "This job has been taken down",
+    "The job ad has been withdrawn",
+    "This job has been unpublished",
+    "This position has been cancelled.",
+    "This requisition was canceled.",
+  ])("reads %s as closed", (text) => {
+    expect(classifyPage(200, `Careers\n${text}`).state).toBe("gone");
+  });
+  it.each([
+    "Apply now. Once this position has been cancelled or filled, we take the posting down.",
+    "The visa requirement for this role has been withdrawn. Apply now.",
+    "The travel for this role has been taken down to two days a month. Apply now.",
+    "Our old app is no longer live; you will build its replacement. Apply now.",
+  ])("keeps %s open", (text) => {
+    expect(classifyPage(200, `TITLE: Product Designer\nTEXT: ${text}`).state).toBe("open");
+  });
+});
