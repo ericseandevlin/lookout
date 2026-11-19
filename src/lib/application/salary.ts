@@ -170,7 +170,7 @@ type Per = "hour" | "day" | "week" | "month";
 
 function periodIn(prompt: string): "year" | Per | null {
   // "This role is salaried, not hourly" and "(non-hourly)" rule a period out, not in (#974).
-  prompt = prompt.replace(/\b(not|non)[\s-]+(hourly|daily|weekly|monthly|(per|an|a|each) (hour|hr|day|week|month))\b/gi, " ");
+  prompt = prompt.replace(/\b(not|non)[\s-]+(hourly|daily|weekly|monthly|(per|an|a|each) (hour|hr|day|week|wk|month|mo|mth))\b/gi, " ");
   // Working hours ("40 hours per week", "37.5 hrs/week") and a contract's length ("expected to last a year") are not
   // the pay period (#1002), nor is "2,080 hours per year" (#1156).
   prompt = prompt.replace(/\b(hours?|hrs?|days?)\s*(per|a|each|\/)\s*(week|wk|month|day|year|yr)\b/gi, " ");
@@ -183,9 +183,10 @@ function periodIn(prompt: string): "year" | Per | null {
   if (/\bhourly\b|\b(per|an|each) (hour|hr)\b|\/\s?h(ou)?r\b|\/\s?h\b/i.test(prompt)) return "hour";
   // A day rate (#1194). "Day-to-day" is not a period; "8 hours a day" and "5 days a week" were taken out above.
   if (/\bdaily\b|\b(per|a|each) day\b(?!-)|\/\s?day\b|\bday rate\b/i.test(prompt)) return "day";
-  if (/\bweekly\b|\b(per|a|each) week\b|\/\s?w(ee)?k\b/i.test(prompt) && !/\bbi-?weekly\b/i.test(prompt)) return "week";
+  if (/\bweekly\b|\b(per|a|each) w(ee)?k\b|\/\s?w(ee)?k\b/i.test(prompt) && !/\bbi-?weekly\b/i.test(prompt)) return "week";
   // Semi-monthly is paid twice a month: left yearly, like bi-weekly (#1002).
-  if (/\bmonthly\b|\b(per|a|each) month\b|\/\s?mo(nth)?\b/i.test(prompt) && !/\bsemi-?monthly\b/i.test(prompt)) return "month";
+  // Short forms as with "per hr": "per mo", "per wk" (#1395).
+  if (/\bmonthly\b|\b(per|a|each) (month|mo|mth)\b|\/\s?mo(nth)?\b/i.test(prompt) && !/\bsemi-?monthly\b/i.test(prompt)) return "month";
   return null;
 }
 

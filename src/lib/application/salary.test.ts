@@ -578,3 +578,14 @@ describe("salary asks with a period word before 'pay', and rates written p/h (#1
     expect(askPer(p)).toBe("hour");
   });
 });
+
+describe("askPer: 'per mo' and 'per wk' (#1395)", () => {
+  it.each([
+    ["Salary expectations (per mo)", "month"],
+    ["Desired pay per mth", "month"],
+    ["Desired pay per wk", "week"],
+    ["Expected salary, not per mo", null],
+  ])("%s -> %s", (prompt, per) => {
+    expect(askPer(prompt)).toBe(per);
+  });
+});
