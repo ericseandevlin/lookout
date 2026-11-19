@@ -53,7 +53,8 @@ export function postingSnippet(posting: string, term: string) {
   if (hit.length <= 220) return hit;
   // A long passage is cut around the term, so the quote always shows it (#1314).
   const words = term.trim().split(/[^A-Za-z0-9+#]+/).filter(Boolean).map((w) => w.replace(/[+#]/g, "\\$&"));
-  const at = words.length ? Math.max(0, hit.search(new RegExp(words.join("[^A-Za-z0-9+#]+"), "i"))) : 0;
+  // As whole words, the way hasKeyword picked the sentence: "SQL" is not the one inside "PostgreSQL" (#1368).
+  const at = words.length ? Math.max(0, hit.search(new RegExp(`(?<![A-Za-z0-9+#])${words.join("[^A-Za-z0-9+#]+")}(?![A-Za-z0-9+#])`, "i"))) : 0;
   const start = Math.max(0, Math.min(at - 80, hit.length - 217));
   const end = Math.min(hit.length, start + 217);
   return `${start > 0 ? "…" : ""}${hit.slice(start, end).trim()}${end < hit.length ? "…" : ""}`;
