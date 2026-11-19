@@ -950,5 +950,20 @@ describe("extension fill: button inputs are not fields (#1399)", () => {
     await p.fill({ steps: [text("LinkedIn", "https://linkedin.com/in/pat")] });
     expect(p.value("#b")).toBe("Apply with LinkedIn");
     expect(p.value("#li")).toBe("https://linkedin.com/in/pat");
+describe("extension fill: a label made of separate elements (#1397)", () => {
+  it("reads a label whose parts have no whitespace between them", async () => {
+    const p = page(`<label><span>Website</span><span class="hint">Include https://</span><input id="w"></label>`);
+    const [r] = await p.fill({ steps: [text("Website", "https://pat.dev")] });
+    expect(r.ok).toBe(true);
+    expect(p.value("#w")).toBe("https://pat.dev");
+  });
+
+  it("checks a question + option box whose label parts have no whitespace", async () => {
+    const box = (id: string, o: string) => `<label><input type="checkbox" id="${id}"><span>Are you 18 or older?</span><span>${o}</span></label>`;
+    const p = page(box("y", "Yes") + box("n", "No"));
+    const [r] = await p.fill({ steps: [{ prompt: "Are you 18 or older?", kind: "choice", content: "Yes", options: ["Yes", "No"], required: true }] });
+    expect(r.ok).toBe(true);
+    expect((p.doc.querySelector("#y") as HTMLInputElement).checked).toBe(true);
+    expect((p.doc.querySelector("#n") as HTMLInputElement).checked).toBe(false);
   });
 });
