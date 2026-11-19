@@ -35,8 +35,8 @@ const NAMES_TOTAL = (s: string) =>
 // equity" lists benefits; it says nothing about what the range covers (#815).
 const PACKAGE = /\b(rewards?|benefits?|package|perks|offerings?)\b/i;
 // "Total compensation also includes a bonus" is about the whole offer, not the posted range, unless it gives the amount
-// itself: "Total compensation of $200k-$250k includes a bonus" (#927).
-const WHOLE_OFFER = /\btotal (compensation|comp|pay)\b/i;
+// itself: "Total compensation of $200k-$250k includes a bonus" (#927). "Total target (cash) compensation" too (#1438).
+const WHOLE_OFFER = /\btotal (target )?(cash )?(compensation|comp|pay)\b/i;
 // Pay on top of the range: "also eligible for additional compensation, including a bonus", "Other compensation may
 // include a bonus" (#1074). "Total compensation of $200k-$250k also includes a bonus" is left to WHOLE_OFFER.
 const EXTRA_PAY = /\b(eligib\w*|additional|other|also)\b/i;

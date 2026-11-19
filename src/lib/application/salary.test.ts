@@ -182,6 +182,19 @@ describe("rangeBasis", () => {
     expect(rangeBasis("The total compensation range includes a target bonus.")).toBe("total");
   });
 
+  it.each([
+    "Base Salary Range: $150,000 to $180,000. Total target compensation includes bonus.",
+    "Base pay range: $150,000 - $180,000. Total target cash compensation includes an annual bonus.",
+    "The base salary range is $150,000 - $180,000. Your total target compensation will include a bonus.",
+  ])("reads %s as base: total target compensation is the whole offer (#1438)", (posting) => {
+    expect(rangeBasis(posting)).toBe("base");
+  });
+
+  it("still reads total target compensation with the amount as total (#1438)", () => {
+    expect(rangeBasis("Total target compensation of $200,000-$250,000 includes base and bonus.")).toBe("total");
+    expect(rangeBasis("Total target compensation range of $200,000-$250,000 includes bonus.")).toBe("total");
+  });
+
   it("reads total cash or OTE only where it names the range (#795)", () => {
     expect(rangeBasis("The base salary range for this role is $150,000 - $180,000. Beyond base pay, this role is eligible for an annual bonus, so total cash compensation may be higher.")).toBe("base");
     expect(rangeBasis("The base salary range is $150,000 - $180,000. This range is not OTE.")).toBe("base");
