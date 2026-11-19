@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { autoApproveField, optionAnswerAllowed, settledStatus, statusAfterFill, submitClicked, toggleOption } from "./flowRules";
+import { autoApproveField, keywordAction, optionAnswerAllowed, settledStatus, statusAfterFill, submitClicked, toggleOption } from "./flowRules";
 
 const approved = { required: true, approvedVersionId: "version-1" };
 
@@ -112,5 +112,22 @@ describe("toggleOption (#627)", () => {
     const out = toggleOption("Design\nSomething else", opts, "Research");
     expect(out).toBe("Design\nResearch");
     expect(optionAnswerAllowed(opts, out, true)).toBe(true);
+  });
+});
+
+describe("keywordAction (#1313)", () => {
+  const line = { line: "Led the design system", from: "resume" as const };
+  it("a red keyword says Not relevant, not Remove", () => {
+    expect(keywordAction({ support: null, removed: false })).toEqual({ label: "Not relevant", note: expect.stringContaining("suggestions and the keyword match") });
+  });
+  it("a green keyword says Leave out", () => {
+    expect(keywordAction({ support: line, removed: false }).label).toBe("Leave out");
+  });
+  it("a struck keyword says Put back, with the effect that fits its color", () => {
+    expect(keywordAction({ support: null, removed: true })).toEqual({ label: "Put back", note: expect.stringContaining("count it again") });
+    expect(keywordAction({ support: line, removed: true })).toEqual({ label: "Put back", note: expect.stringContaining("use it again") });
+  });
+  it("never says Remove", () => {
+    for (const support of [null, line]) for (const removed of [false, true]) expect(keywordAction({ support, removed }).label).not.toBe("Remove");
   });
 });
