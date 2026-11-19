@@ -64,6 +64,9 @@ const COUNT_WORDS =
 // "Cut it in half" and "by a third" say what "halved" says (#1273).
 const FRACTION = String.raw`\b(?:in|by)\s+half\b(?!-)|\bby\s+a\s+(?:third|quarter)\b(?!-)`;
 const HAS_NUMBER = new RegExp(`(?<![a-z])\\d|\\b(?:one(?!\\s+of\\b)|${COUNT_WORDS})\\b(?!-(?!(?:thirds?|quarters?|halves|fold|one|two|three|four|five|six|seven|eight|nine)\\b))|${FRACTION}`, "i");
+// A meeting, not a scale: "1:1s", "1-on-1s", "one-on-one coaching" say nothing about size or result (#1445).
+const ONE_ON_ONE = /(?<![\w:])(?:1|one)(?:\s*:\s*|-on-|\s+on\s+)(?:1|one)(?:['’]?s)?(?![\w:])/gi;
+const hasNumber = (l: string) => HAS_NUMBER.test(l.replace(ONE_ON_ONE, " "));
 
 /** Checks on a resume draft's markdown. */
 function resumeChecks(md: string): Finding[] {
@@ -135,7 +138,7 @@ function resumeChecks(md: string): Finding[] {
   }
 
   // Numbers: recruiters scan for scale. The latest role counts most, so its bullets are named one by one.
-  const bare = latest.filter((l) => !HAS_NUMBER.test(l));
+  const bare = latest.filter((l) => !hasNumber(l));
   for (const l of bare.slice(0, 3))
     out.push({
       dim: "impact",
@@ -146,7 +149,7 @@ function resumeChecks(md: string): Finding[] {
       from: "code",
       needsFact: true,
     });
-  const withNumber = all.filter((l) => HAS_NUMBER.test(l)).length;
+  const withNumber = all.filter(hasNumber).length;
   if (all.length >= 6 && withNumber < all.length / 3)
     out.push({
       dim: "impact",

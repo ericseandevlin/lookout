@@ -103,6 +103,17 @@ Design Systems Lead
     expect(bareOf("Led the twentieth-anniversary site."), "twentieth").toBe(true);
   });
 
+  it("doesn't read 1:1s or one-on-ones as a number, but keeps a real number beside them (#1445)", () => {
+    const bareOf = (line: string) =>
+      recruiterChecks("resume", resume.replace("Built the design system site used across the firm.", line)).some((x) => x.dim === "impact" && x.line === line);
+    for (const line of ["Ran weekly 1:1s and career plans for the design team.", "Led 1-on-1s with the team.", "Coached designers through one-on-one sessions.", "Held one on one coaching with designers.", "Ran 1:1 reviews."]) {
+      expect(bareOf(line), line).toBe(true);
+    }
+    for (const line of ["Ran 1:1s with 8 designers.", "Held one-on-ones with twelve reports.", "Kept a 1:10 manager ratio.", "Led one team of designers."]) {
+      expect(bareOf(line), line).toBe(false);
+    }
+  });
+
   it("doesn't read names like B2B or HTML5, or one-click, as a number (#1265)", () => {
     const bareOf = (line: string) =>
       recruiterChecks("resume", resume.replace("Built the design system site used across the firm.", line)).some((x) => x.dim === "impact" && x.line === line);
