@@ -117,6 +117,17 @@ describe("dedupe keys", () => {
 });
 
 describe("placesDiffer (#1285)", () => {
+  it("reads a state or country in parentheses (#1426)", () => {
+    expect(placesDiffer("Remote (US)", "Remote (Canada)")).toBe(true);
+    expect(placesDiffer("Remote (United States)", "Remote (Canada)")).toBe(true);
+    expect(placesDiffer("Remote (US)", "Remote, Canada")).toBe(true);
+    expect(placesDiffer("Portland (OR)", "Portland (ME)")).toBe(true);
+    expect(placesDiffer("Remote (US)", "Remote, United States")).toBe(false);
+    expect(placesDiffer("New York (NYC)", "New York, NY")).toBe(false);
+    expect(placesDiffer("New York, NY (hybrid)", "New York, NY")).toBe(false);
+    expect(placeId("Remote (Canada)")).toBe("ca");
+  });
+
   it("tells apart the same city in another state or country", () => {
     expect(placesDiffer("Remote, US", "Remote, Canada")).toBe(true);
     expect(placesDiffer("Cambridge, MA", "Cambridge, United Kingdom")).toBe(true);
