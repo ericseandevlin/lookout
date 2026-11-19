@@ -66,6 +66,19 @@ describe("classifyPage", () => {
   ])("reads %s as closed (#760)", (text) => {
     expect(classifyPage(200, text).state).toBe("gone");
   });
+  it.each(["This job opening is closed.", "This job opening has closed.", "This requisition is closed.", "This job posting is expired.", "This job opening has expired."])(
+    "reads %s as closed (#1361)",
+    (text) => {
+      expect(classifyPage(200, text).state).toBe("gone");
+    },
+  );
+  it.each([
+    "TITLE: Designer\nThis job opening is closed to agencies. Apply directly.",
+    "TITLE: Designer\nRequisition closed date: 12/31. Apply now.",
+    "TITLE: Designer\nJob opening expired-date: 2026-12-31",
+  ])("keeps %s open (#1361)", (text) => {
+    expect(classifyPage(200, text).state).toBe("open");
+  });
   it.each([
     "TITLE: Engineer\nThis role is closed to agencies. Apply directly.",
     "TITLE: Designer\nWe are not accepting applications from candidates who need sponsorship.",
