@@ -141,6 +141,12 @@
     return [...document.querySelectorAll("input[type=radio]")].filter((el) => labelOf(el).startsWith(q));
   }
 
+  /** Checkboxes labeled with the question and their option ("Are you 18 or older? Yes"), no group around them (#1369). */
+  function optionBoxesFor(prompt) {
+    const q = norm(prompt) + " ";
+    return [...document.querySelectorAll("input[type=checkbox]")].filter((el) => labelOf(el).startsWith(q));
+  }
+
   /**
    * The text matched only in another branch of this container that holds its own upload box: a section with a shallow
    * Cover Letter box and a deeper Resume box must not hand the resume to the cover letter's input (#1085).
@@ -366,7 +372,20 @@
         if (!group) {
           // Check the radio the answer means, never the first one found, same as the worker (#720, #773).
           const radios = radiosFor(step.prompt);
-          if (!radios.length) return { ok: false, how: "field not found" };
+          if (!radios.length) {
+            // Checkboxes, one per option, each labeled with the question: tick the ones the answer means, same as the
+            // worker (#1209, #1369).
+            const boxes = optionBoxesFor(step.prompt);
+            if (!boxes.length) return { ok: false, how: "field not found" };
+            const picks = pickOptions(step.content, step.options);
+            if (!picks.length) return { ok: false, how: "answer matches no option" };
+            for (const label of picks) {
+              const box = boxes.find((b) => optionAfter(labelOf(b), step.prompt) === norm(label));
+              if (!box) return { ok: false, how: `option not found: ${label.slice(0, 60)}` };
+              if (!box.checked) box.click();
+            }
+            return { ok: true, how: `checked ${picks.length}` };
+          }
           const i = step.options && step.options.length ? pickOne(step.content, step.options) : -1;
           if (i < 0) return { ok: false, how: "answer matches no option" };
           // What follows the question, past a "(required)" mark ("*" and "✱" are already gone), is the option (#1160).
@@ -465,7 +484,7 @@
 
   function probe(packet) {
     let score = 0;
-    for (const s of packet.steps) if (s.kind === "file" ? document.querySelector("input[type=file]") : controlFor(s.prompt) || groupFor(s.prompt) || checkboxFor(s.prompt) || radiosFor(s.prompt).length) score++;
+    for (const s of packet.steps) if (s.kind === "file" ? document.querySelector("input[type=file]") : controlFor(s.prompt) || groupFor(s.prompt) || checkboxFor(s.prompt) || radiosFor(s.prompt).length || optionBoxesFor(s.prompt).length) score++;
     return { score };
   }
 
