@@ -124,7 +124,22 @@
     // Next a group whose own name starts with the question: "Do you require sponsorship? (required)" beats a later group
     // that only quotes it ("If you answered Yes to "Do you require sponsorship?", which visa?") (#1044).
     const q = norm(prompt);
-    return groups.filter((g) => groupName(g) === q).pop() || groups.filter((g) => groupName(g).startsWith(q)).pop() || groups.pop() || null;
+    // A group with no name of its own is named by the words before its first box: "... about relocation" is not the later
+    // "... about relocation benefits too", which also holds its first 60 characters (#1409).
+    const lead = (g) => {
+      const first = g.querySelector("input[type=checkbox], input[type=radio]");
+      const r = document.createRange();
+      r.setStart(g, 0);
+      r.setEndBefore(first.closest("label") && g.contains(first.closest("label")) ? first.closest("label") : first);
+      return bare(norm(r.toString()));
+    };
+    return (
+      groups.filter((g) => groupName(g) === q).pop() ||
+      groups.filter((g) => groupName(g).startsWith(q)).pop() ||
+      groups.filter((g) => !groupName(g) && lead(g) === q).pop() ||
+      groups.pop() ||
+      null
+    );
   }
 
   /**
