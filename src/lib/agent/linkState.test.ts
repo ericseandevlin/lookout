@@ -357,3 +357,29 @@ describe("a job post or advert that expired, closed or was archived (#1279)", ()
     expect(classifyPage(200, `TITLE: Product Designer\nTEXT: ${text}`).state).toBe("open");
   });
 });
+
+describe("stock closed-job pages (#1427)", () => {
+  it.each([
+    "This job no longer exists.",
+    "Sorry, the job listing you are looking for no longer exists.",
+    "The job you are looking for does not exist.",
+    "This job does not exist anymore.",
+    "Sorry, this job is not available.",
+    "The job you are looking for is not available.",
+    "This position is not currently accepting applications",
+    "Applications closed",
+    "The application deadline has passed.",
+  ])("reads %s as closed", (text) => {
+    expect(classifyPage(200, `Careers\n${text}`).state).toBe("gone");
+  });
+  it.each([
+    "This is a role that doesn't exist yet: you will define it.",
+    "This position does not exist at most companies. Apply now.",
+    "This role is not available for visa sponsorship. Apply now.",
+    "We are not currently accepting applications from agencies. Apply now.",
+    "Applications closed on a rolling basis are reviewed weekly. Apply now.",
+    "Apply before the deadline. Once the application deadline has passed, we review every submission.",
+  ])("keeps %s open", (text) => {
+    expect(classifyPage(200, `TITLE: Product Designer\nTEXT: ${text}`).state).toBe("open");
+  });
+});
