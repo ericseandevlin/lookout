@@ -153,3 +153,25 @@ describe("placesDiffer (#1285)", () => {
     expect(placeId("Paris, Île-de-France, France")).toBe("france");
   });
 });
+
+describe("placesDiffer: a work mode or 'metro area' after the place (#1374)", () => {
+  it.each([
+    ["New York, NY", "New York, NY - Hybrid"],
+    ["New York, NY", "New York, NY or Remote"],
+    ["Austin, TX", "Austin, TX · Hybrid"],
+    ["Chicago, IL", "Chicago, IL Metro Area"],
+    ["Remote, US", "Remote, US-based"],
+    ["Remote, United States", "Remote, United States only"],
+    ["Portland, OR", "Portland, OR - Hybrid"],
+    ["Toronto, ON", "Toronto, ON - On site"],
+  ])("%s and %s are one place", (a, b) => {
+    expect(placesDiffer(a, b)).toBe(false);
+  });
+
+  it.each([
+    ["Portland, OR", "Portland, ME - Hybrid"],
+    ["Remote, US", "Remote, Canada only"],
+  ])("%s and %s are still two places", (a, b) => {
+    expect(placesDiffer(a, b)).toBe(true);
+  });
+});
