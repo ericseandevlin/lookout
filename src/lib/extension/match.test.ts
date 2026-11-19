@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { jobKey, sameJob } from "./match";
+import { normUrl } from "@/lib/agent/rules";
 
 describe("jobKey (#169)", () => {
   it("reduces every Greenhouse URL for one job to the same key", () => {
@@ -130,5 +131,24 @@ describe("a link with a bad % escape (#1162)", () => {
     expect(sameJob([wd], [wd])).toBe(true);
     expect(() => jobKey("https://acme.wd1.myworkdayjobs.com/job/Paris/Caf%E9-Manager_R9")).not.toThrow();
     expect(jobKey("https://acme.wd1.myworkdayjobs.com/job/New-York/Senior%20Designer_R1")).toBe("workday:acme.wd1.myworkdayjobs.com:senior designer_r1");
+  });
+});
+
+describe("a query inside a hash route (#1375)", () => {
+  it("drops tracking tags from it, in jobKey and normUrl", () => {
+    const plain = "https://careers.acme.com/#/jobs/101";
+    const tagged = "https://careers.acme.com/#/jobs/101?utm_source=linkedin&gh_src=abc";
+    expect(jobKey(tagged)).toBe(jobKey(plain));
+    expect(normUrl(tagged)).toBe(normUrl(plain));
+    expect(normUrl(tagged)).toBe("careers.acme.com#/jobs/101");
+  });
+
+  it("keeps a job ID param in it, so two jobs stay two", () => {
+    expect(jobKey("https://acme.com/#/job?id=101")).not.toBe(jobKey("https://acme.com/#/job?id=202"));
+    expect(jobKey("https://acme.com/#/job?id=101&utm_source=x")).toBe(jobKey("https://acme.com/#/job?id=101"));
+  });
+
+  it("still drops the apply step before the query", () => {
+    expect(jobKey("https://acme.com/#/jobs/101/apply?utm_source=x")).toBe(jobKey("https://acme.com/#/jobs/101"));
   });
 });
