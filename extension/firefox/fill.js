@@ -125,18 +125,26 @@
     // that only quotes it ("If you answered Yes to "Do you require sponsorship?", which visa?") (#1044).
     const q = norm(prompt);
     // A group with no name of its own is named by the words before its first box: "... about relocation" is not the later
-    // "... about relocation benefits too", which also holds its first 60 characters (#1409).
+    // "... about relocation benefits too", which also holds its first 60 characters. Of those that hold the question, the
+    // shortest is the closest (#1409).
     const lead = (g) => {
       const first = g.querySelector("input[type=checkbox], input[type=radio]");
+      const label = first.closest("label");
       const r = document.createRange();
       r.setStart(g, 0);
-      r.setEndBefore(first.closest("label") && g.contains(first.closest("label")) ? first.closest("label") : first);
+      r.setEndBefore(label && g.contains(label) ? label : first);
       return bare(norm(r.toString()));
     };
+    const unnamed = groups
+      .filter((g) => !groupName(g))
+      .map((g) => ({ g, text: lead(g) }))
+      .filter((u) => u.text.includes(q))
+      .reverse() // on a tie the later group still wins, as before
+      .sort((a, b) => a.text.length - b.text.length);
     return (
       groups.filter((g) => groupName(g) === q).pop() ||
       groups.filter((g) => groupName(g).startsWith(q)).pop() ||
-      groups.filter((g) => !groupName(g) && lead(g) === q).pop() ||
+      unnamed[0]?.g ||
       groups.pop() ||
       null
     );

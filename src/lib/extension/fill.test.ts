@@ -1016,4 +1016,14 @@ describe("extension fill: legend-less groups whose questions start the same (#14
     const checked = (s: string) => (p.doc.querySelector(s) as HTMLInputElement).checked;
     expect([checked("#ay"), checked("#an"), checked("#by"), checked("#bn")]).toEqual([true, false, false, true]);
   });
+
+  it("picks the group with the shortest question text that holds the step, even with a number before it", async () => {
+    const a = "Please confirm that you have read our policy about relocation";
+    const p = page(`<fieldset><div>1. ${a}</div><label><input type="radio" name="a" id="ay">Yes</label><label><input type="radio" name="a" id="an">No</label></fieldset>
+      <fieldset><div>2. ${a} benefits too</div><label><input type="radio" name="b" id="by">Yes</label><label><input type="radio" name="b" id="bn">No</label></fieldset>`);
+    const log = await p.fill({ steps: [{ prompt: a, kind: "choice", content: "Yes", options: ["Yes", "No"], required: true }] });
+    expect(log.map((r) => r.ok)).toEqual([true]);
+    const checked = (s: string) => (p.doc.querySelector(s) as HTMLInputElement).checked;
+    expect([checked("#ay"), checked("#by")]).toEqual([true, false]);
+  });
 });
