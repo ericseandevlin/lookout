@@ -99,6 +99,13 @@ describe("postingSnippet window (#1314)", () => {
     expect(q.startsWith("Job expectations")).toBe(true);
     expect(q.endsWith("…")).toBe(true);
   });
+  it("cuts around the term as a whole word, not a piece of an earlier word (#1368)", () => {
+    const filler = "and partner closely with product, design and data science on a roadmap that spans many teams ".repeat(2);
+    const sql = `You will own our PostgreSQL clusters ${filler}and write SQL every day.`;
+    expect(sql.length).toBeGreaterThan(220);
+    expect(postingSnippet(sql, "SQL")).toMatch(/\bSQL\b/);
+    expect(postingSnippet(`You will maintain the platform ${filler}and ship AI features to customers.`, "AI")).toMatch(/\bAI\b/);
+  });
 });
 
 describe("keywordPicks (#738)", () => {
