@@ -88,6 +88,9 @@ const SYNONYMS: Record<string, RegExp> = {
   Yes: /^yes\b|i have a|^(hispanic|latin)/i,
 };
 
+// Options worded as a sentence, "I identify as a woman" or "I am Asian": the answer is what follows (#1432).
+const bare = (o: string) => o.replace(/^\s*i (?:(?:self-)?identify as|am)\s+(?:an?\s+)?/i, "");
+
 // "I am a veteran, but not a protected veteran", "I identify as a veteran, just not a protected veteran".
 const VETERAN_NOT_PROTECTED = /\b(am|identify as) a veteran\b.*\bnot\b.*\bprotected\b/i;
 
@@ -111,7 +114,7 @@ export function matchOption(choice: string, options: string[]): string | null {
     // "I am a veteran, but not a protected veteran" and "I identify as a veteran, just not a protected veteran" hold
     // "not ... veteran" but are a veteran's answer (#961, #1003).
     (choice === "Not a veteran" && /\b(am|identify as) a veteran\b|^yes\b/i.test(o));
-  const hits = re ? options.filter((o) => !DECLINES.test(o) && re.test(o) && !negated(o)) : [];
+  const hits = re ? options.filter((o) => !DECLINES.test(o) && (re.test(o) || re.test(bare(o))) && !negated(o)) : [];
   // A race answer that fits several options ("Asian" on a list with East, South and Southeast Asian) is not a guess
   // to make: ask once and remember the exact wording (#954).
   if (hits.length > 1 && RACES.has(choice)) return null;
