@@ -367,7 +367,15 @@
       const el = named && bare(groupName(named)) === norm(step.prompt) ? null : found;
       // A lone box labeled with the question is the answer's field for any kind, before the group and radio lookup,
       // same as the worker: a Yes/No question can be one "I consent" box (#940).
-      const box = el ? null : checkboxFor(step.prompt);
+      // A box that only mentions the question ("I agree to share my gender for EEO reporting") is not the answer's field
+      // when a group or radios are named by the question itself ("Gender") (#1407).
+      const lone = el ? null : checkboxFor(step.prompt);
+      const q = norm(step.prompt);
+      const askedElsewhere = () => {
+        const g = groupFor(step.prompt);
+        return (g && bare(groupName(g)) === q) || radiosFor(step.prompt).length > 0;
+      };
+      const box = lone && step.kind === "choice" && labelOf(lone) !== q && askedElsewhere() ? null : lone;
       if (!el && (box || step.kind !== "choice")) {
         if (!box) return { ok: false, how: "field not found" };
         // A box whose label only holds the question is a text answer's field only if the answer is a yes or a no:

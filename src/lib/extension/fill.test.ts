@@ -970,3 +970,21 @@ describe("extension fill: a label made of separate elements (#1397)", () => {
     expect((p.doc.querySelector("#n") as HTMLInputElement).checked).toBe(false);
   });
 });
+
+describe("extension fill: a checkbox that only mentions the question (#1407)", () => {
+  it("answers the radio group named by the question, not the consent box beside it", async () => {
+    const p = page(`<fieldset><legend>Gender</legend><label><input type="radio" name="g" id="m">Male</label><label><input type="radio" name="g" id="f">Female</label></fieldset>
+      <label><input type="checkbox" id="c">I agree to share my gender for EEO reporting</label>`);
+    const [r] = await p.fill({ steps: [{ prompt: "Gender", kind: "choice", content: "Female", options: ["Male", "Female"], required: true }] });
+    expect(r.ok).toBe(true);
+    expect((p.doc.querySelector("#f") as HTMLInputElement).checked).toBe(true);
+    expect((p.doc.querySelector("#c") as HTMLInputElement).checked).toBe(false);
+  });
+
+  it("still ticks the box when no group asks the question", async () => {
+    const p = page(`<label><input type="checkbox" id="c">I agree to share my gender for EEO reporting</label>`);
+    const [r] = await p.fill({ steps: [{ prompt: "Gender", kind: "choice", content: "Yes", options: ["Yes", "No"], required: true }] });
+    expect(r.ok).toBe(true);
+    expect((p.doc.querySelector("#c") as HTMLInputElement).checked).toBe(true);
+  });
+});
