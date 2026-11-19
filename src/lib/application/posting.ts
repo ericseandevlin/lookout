@@ -148,7 +148,8 @@ const TRAP = [
   /\b(secret|code|magic|special|hidden) (word|phrase)\b/i,
 ];
 
-const quoted = (s: string) => [...s.matchAll(/["'“‘]([^"'”’\n]{1,40})["'”’]/g)].map((m) => m[1].trim()).filter(Boolean);
+// A quote mark inside a word is an apostrophe, not a quote: "you're" must not pair with the quote before the word (#1394).
+const quoted = (s: string) => [...s.matchAll(/(?<![\p{L}\p{N}])["'“‘]([^"'”’\n]{1,40})["'”’](?![\p{L}\p{N}])/gu)].map((m) => m[1].trim()).filter(Boolean);
 const afterWord = (s: string) => [...s.matchAll(new RegExp(String.raw`${NOT_TRAP_NOUN}(?:word|phrase|term)\s+([A-Za-z][\w-]{2,30})`, "gi"))].map((m) => m[1]).filter((w) => !/^(in|on|at|to|that|somewhere|anywhere|into|within|the|your)$/i.test(w));
 
 /** Each trap with its whole sentence. Trap.text is cut to 300 characters for the review page; removal needs all of it (#965). */
