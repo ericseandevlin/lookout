@@ -39,6 +39,10 @@ export function jobKey(raw: string | null | undefined): string | null {
   // iCIMS (#852): careers-acme.icims.com/jobs/1234/<title>/job, then .../login and .../candidate on the way to the form.
   const icims = /(^|\.)icims\.com$/.test(host) && u.pathname.match(/^\/jobs\/(\d+)(?:\/|$)/i)?.[1];
   if (icims) return `icims:${host}:${icims}`;
+  // Paylocity (#1435): the posting is /Recruiting/Jobs/Details/<id> and its form /Recruiting/Jobs/Apply/<id>. The ID is
+  // site-wide; the URL names no employer.
+  const paylocity = /(^|\.)paylocity\.com$/.test(host) && u.pathname.match(/\/jobs\/(?:details|apply)\/(\d+)(?:\/|$)/i)?.[1];
+  if (paylocity) return `paylocity:${paylocity}`;
   // Recruitee's form is at /o/<job>/c/new and Teamtailor's at /jobs/<id>-<title>/applications/new: apply steps too (#1200).
   const path = u.pathname.replace(/\/(apply|application|c\/new|applications\/new)\/?$/i, "").replace(/\/+$/, "");
   return `url:${host.replace(/^www\./, "")}${path.toLowerCase()}${idQuery(u.searchParams)}${hashRoute(u)}`;
