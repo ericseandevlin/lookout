@@ -115,7 +115,8 @@ const RESUME_WORD = /(?<![\p{L}\p{N}])(r[eé]sum[eé]|cv|curriculum vitae)(?![\p
 const COVER = /cover\s*letter/i;
 // What may follow the resume words and still be just the upload: "Resume/CV *", "CV (PDF)", "Resume or CV", "Resume link" (#972).
 const RESUME_TAIL = /^\s*(?:(?:\/|or|and|&)\s*(?:r[eé]sum[eé]|cv|curriculum vitae)\s*)?(?:(?:file|upload|attachment|document|link|url)\s*)?(?:\([^)]*\)\s*)?[*:]?\s*$/iu;
-const FIELD = /^(first name|last name|preferred (first )?name|full name|name|email|e-mail|phone|phone number|mobile|linkedin( profile| url)?|website|portfolio( url| link)?|github( url)?|current company|current location|location|city|address)\b/i;
+// "Mobile Phone", "Cell Phone" and "Home Phone" are the phone too; they come first so the whole name is the field (#1412).
+const FIELD = /^((?:mobile|cell(?:ular)?|home|primary) phone(?: number)?|first name|last name|preferred (first )?name|full name|name|email|e-mail|phone|phone number|mobile|linkedin( profile| url)?|website|portfolio( url| link)?|github( url)?|current company|current location|location|city|address)\b/i;
 
 /**
  * A basic field is just its name ("Email address", "Current Location (City, State)"). Fields are approved

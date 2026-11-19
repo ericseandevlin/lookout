@@ -258,3 +258,15 @@ describe("greenhouseEeo", () => {
     ]);
   });
 });
+
+describe("kindFor: phone labels (#1412)", () => {
+  it("reads mobile, cell and home phone as the basic phone field", () => {
+    for (const l of ["Mobile Phone", "Mobile Phone *", "Cell Phone", "Cellular Phone Number", "Home Phone", "Primary Phone Number", "Phone Number", "Mobile Number"])
+      expect(kindFor(l, "text"), l).toBe("field");
+  });
+
+  it("keeps a question that starts with a phone word an answer", () => {
+    expect(kindFor("Mobile phone of your reference", "text")).toBe("answer");
+    expect(kindFor("Home phone: may we call you there?", "text")).toBe("answer");
+  });
+});
