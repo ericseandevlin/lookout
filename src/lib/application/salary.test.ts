@@ -560,3 +560,21 @@ describe("asks in thousands (#1188)", () => {
     expect(r?.question).toContain("190 (thousands)");
   });
 });
+
+describe("salary asks with a period word before 'pay', and rates written p/h (#1376)", () => {
+  it.each([
+    ["Desired hourly pay", "hour"],
+    ["Expected hourly pay", "hour"],
+    ["Desired annual pay", null],
+    ["Desired monthly pay", "month"],
+    ["Desired weekly pay", "week"],
+  ])("%s is a salary ask per %s (null is a year)", (p, per) => {
+    expect(isSalaryQuestion(p)).toBe(true);
+    expect(askPer(p)).toBe(per);
+  });
+
+  it.each(["Expected rate (p/h)", "Desired rate, $/h"])("%s asks per hour", (p) => {
+    expect(isSalaryQuestion(p)).toBe(true);
+    expect(askPer(p)).toBe("hour");
+  });
+});
