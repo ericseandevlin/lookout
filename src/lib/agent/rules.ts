@@ -147,10 +147,12 @@ export function region(location: string) {
     if (!p) continue;
     // A work mode or "metro area" after a known place is not part of it: "NY - Hybrid", "IL Metro Area", "US-based" (#1374).
     const q = STATES.has(p) || COUNTRIES.has(p) ? p : withoutQualifier(p);
+    // A work mode on its own ("New York, Remote") or after an unknown country ("Germany - Hybrid") is not a place (#1385).
+    if (!q) continue;
     const s = STATES.get(q);
     if (s) state ??= s;
     else if (COUNTRIES.has(q)) country ??= COUNTRIES.get(q)!;
-    else other = p;
+    else other = q;
   }
   return { state, country: country ?? state?.slice(0, 2) ?? other };
 }

@@ -175,3 +175,20 @@ describe("placesDiffer: a work mode or 'metro area' after the place (#1374)", ()
     expect(placesDiffer(a, b)).toBe(true);
   });
 });
+
+describe("placesDiffer: a work mode after an unknown country, or on its own (#1385)", () => {
+  it.each([
+    ["Berlin, Germany", "Berlin, Germany - Hybrid"],
+    ["Mexico City, Mexico", "Mexico City, Mexico or Remote"],
+    ["New York, NY", "New York, Remote"],
+  ])("%s and %s are one place", (a, b) => {
+    expect(placesDiffer(a, b)).toBe(false);
+  });
+
+  it.each([
+    ["Remote, Mexico", "Remote, Germany - Hybrid"],
+    ["Berlin, Germany - Hybrid", "Berlin, Mexico"],
+  ])("%s and %s are still two places", (a, b) => {
+    expect(placesDiffer(a, b)).toBe(true);
+  });
+});
