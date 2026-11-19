@@ -950,6 +950,9 @@ describe("extension fill: button inputs are not fields (#1399)", () => {
     await p.fill({ steps: [text("LinkedIn", "https://linkedin.com/in/pat")] });
     expect(p.value("#b")).toBe("Apply with LinkedIn");
     expect(p.value("#li")).toBe("https://linkedin.com/in/pat");
+  });
+});
+
 describe("extension fill: a label made of separate elements (#1397)", () => {
   it("reads a label whose parts have no whitespace between them", async () => {
     const p = page(`<label><span>Website</span><span class="hint">Include https://</span><input id="w"></label>`);
