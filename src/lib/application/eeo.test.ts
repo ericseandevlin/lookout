@@ -49,6 +49,15 @@ describe("classify", () => {
     expect(classify("Is your sex offender registration current?")).toBeNull();
   });
 
+  it("leaves a pronouns question unclassified, so it never gets the gender answer (#1450)", () => {
+    expect(classify("Gender pronouns")).toBeNull();
+    expect(classify("What gender pronouns do you use?")).toBeNull();
+    expect(classify("Pronouns")).toBeNull();
+    expect(classify("Preferred pronoun")).toBeNull();
+    expect(classify("Gender (pronouns optional)")).toBe("gender");
+    expect(classify("What is your gender?")).toBe("gender");
+  });
+
   it("leaves an LGBTQ+ question and a military-spouse question unclassified (#909)", () => {
     expect(classify("Do you identify as LGBTQ+ (lesbian, gay, bisexual, transgender, queer or another identity)?")).toBeNull();
     expect(classify("Do you identify as a member of the LGBTQIA+ community?")).toBeNull();
