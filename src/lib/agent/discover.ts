@@ -309,6 +309,12 @@ export async function scorePages(ctx: Context, pages: Page[], usage: Usage, repo
   return out;
 }
 
+/** How many read pages got no score: scorePages gives each scored page one entry, carrying the page's URL (#1456). */
+export const unscoredCount = (pages: Pick<Page, "url">[], scored: Pick<ScoredT, "url">[]) => {
+  const got = new Set(scored.map((s) => s.url));
+  return pages.filter((p) => !got.has(p.url)).length;
+};
+
 // --- save ----------------------------------------------------------------------
 
 /**
@@ -598,6 +604,9 @@ export async function discover(searchId: string, trigger: "scheduled" | "manual"
     await report(97, "Saving new finds");
     const { newFinds, ...tally } = await save(ctx, scored, "agent");
     tally.known += onBoard;
+    // Pages a failed batch or the model skipped have no entry. They aren't saved, so the next search reads them again,
+    // but this run says so rather than calling everything "already on your board" (#1456).
+    tally.unscored = unscoredCount(pages, scored);
     const { added, postings: found } = tally;
     await autoQueue(search.userId, newFinds).catch((e) => console.error("[auto-apply] queue failed", e));
     await report(98, "Checking that your open finds are still posted");

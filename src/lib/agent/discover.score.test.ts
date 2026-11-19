@@ -5,7 +5,7 @@ vi.mock("@/lib/db", async () => ({ db: {}, schema: await import("@/lib/db/schema
 const completeJSON = vi.fn();
 vi.mock("@/lib/ai/llm", () => ({ completeJSON, emptyUsage: () => ({}) }));
 
-const { scorePages } = await import("./discover");
+const { scorePages, unscoredCount } = await import("./discover");
 type Ctx = Parameters<typeof scorePages>[0];
 
 const ctx = { brief: "Design leader", searchProfile: null, resume: "", linkedin: "", links: [], rejected: [] } as unknown as Ctx;
@@ -47,5 +47,27 @@ describe("scorePages: today's date (#1388)", () => {
     completeJSON.mockReset().mockResolvedValue({ finds: [] });
     await scorePages(ctx, [page(1)], {} as never);
     expect(completeJSON.mock.calls[0][0].system).toContain("Today is 2026-11-18.");
+  });
+});
+
+describe("unscoredCount (#1456)", () => {
+  beforeEach(() => {
+    completeJSON.mockReset();
+  });
+
+  it("counts the pages a failed batch dropped", async () => {
+    const pages = [1, 2, 3, 4, 5].map(page);
+    completeJSON.mockRejectedValueOnce(new Error("429")).mockResolvedValueOnce({ finds: [find(0)] });
+    expect(unscoredCount(pages, await scorePages(ctx, pages, {} as never))).toBe(4);
+  });
+
+  it("counts a page the model gave no entry, and not a page it called no posting", async () => {
+    const pages = [1, 2, 3].map(page);
+    completeJSON.mockResolvedValueOnce({ finds: [find(0), { ...find(2), is_open_job_posting: false }] });
+    expect(unscoredCount(pages, await scorePages(ctx, pages, {} as never))).toBe(1);
+  });
+
+  it("is zero when every page was scored", () => {
+    expect(unscoredCount([page(1)], [{ url: page(1).url }])).toBe(0);
   });
 });
