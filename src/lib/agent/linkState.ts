@@ -35,8 +35,8 @@ const CLOSED = [
   /(?<!\b(?:until|till|til|once|when|after|if|before|unless) )this (job|position|posting|role)( ad)? (is |has )?(now )?(expired|closed|been filled)\b(?! to\b|[- ]?date\b|-)/i,
   // More wordings careers sites use (#747).
   // Not a live page's "Job Posting Expired Date: 12/31" label (#1083).
-  // "This job post has expired", "This advert has expired" (#1279).
-  /\b(job|posting|position|listing|vacancy|opportunity|role|advert)( ad| advert| post)? (has )?(now )?expired\b(?![- ]?date\b)/i,
+  // "This job post has expired", "This advert has expired" (#1279). "This job posting is expired", "This job opening has expired" (#1361).
+  /\b(job|posting|position|listing|vacancy|opportunity|role|advert|opening|requisition)( ad| advert| post| posting| opening)? (is |has )?(now )?expired\b(?![- ]?date\b)/i,
   // "The job you are trying to apply for is no longer available", "attempting to view" too (#1251).
   /(job|position|posting|role|page) you(['’]re| are) (looking for|(trying|attempting) to (apply for|access|view|reach|open)) ((has|is|was|might have|may have) (been )?(filled|removed|closed|deleted|expired)|is no longer (available|active|open))\b/i,
   /(job|position|posting|role|opening) is not available anymore/i,
@@ -49,8 +49,9 @@ const CLOSED = [
   /applications (are|is) no longer being (accepted|considered)\b(?! (from|via|by (e-?mail|mail|post|phone|fax)|through (e-?mail|mail|linkedin|indeed|recruiters?|agencies))\b)/i,
   // "This job posting has closed", "This vacancy has now closed", "Job Closed", but not "closed to contractors" (#760),
   // a live page's "Position Closed Date: 11/30" label or "closed-loop" (#832).
-  // "This job post is closed" and "This job advert has now closed" too (#1279).
-  /\b(job|posting|position|role|vacancy|opportunity|listing|advert)( posting| post| ad| advert)? (is |has )?(now )?closed\b(?! to\b|[- ]?date\b|-)/i,
+  // "This job post is closed" and "This job advert has now closed" too (#1279). "This job opening is closed" and
+  // "This requisition is closed" (#1361).
+  /\b(job|posting|position|role|vacancy|opportunity|listing|advert|opening|requisition)( posting| post| ad| advert| opening)? (is |has )?(now )?closed\b(?! to\b|[- ]?date\b|-)/i,
   // Not "not accepting applications at this time from third-party recruiters" (#1083).
   /not accepting applications (for this (job|role|position)|at this time)(?!,? (from|via|by|through)\b)/i,
   /\bpage not found\b|\b404\b.{0,40}(not found|doesn.t exist)/i,
