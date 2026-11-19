@@ -107,7 +107,7 @@ export function KeywordReport({ d, rows, reload, locked }: { d: Detail; rows: Ke
               ×
             </button>
           </div>
-          {!locked && <div style={{ ...muted, fontSize: 13 }}>{keywordAction(sel).note}</div>}
+          {!locked && <div style={{ ...muted, fontSize: font.sm }}>{keywordAction(sel).note}</div>}
           <div style={line}>
             <span style={{ fontWeight: 600 }}>Posting: </span>
             {sel.snippet ? `\u201c${sel.snippet}\u201d` : <span style={muted}>{sel.mine ? "You added this one." : "Not found in the posting text."}</span>}
