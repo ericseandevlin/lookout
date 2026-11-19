@@ -383,3 +383,23 @@ describe("stock closed-job pages (#1427)", () => {
     expect(classifyPage(200, `TITLE: Product Designer\nTEXT: ${text}`).state).toBe("open");
   });
 });
+
+describe("apply-to and soft 404 wordings (#1441)", () => {
+  it.each([
+    "The job you're trying to apply to has been closed.",
+    "The position you are attempting to apply to is no longer available.",
+    "The page you requested could not be found.",
+    "Sorry, the page you have requested cannot be found on our server.",
+    "This page can't be found.",
+    "The job could not be found.",
+  ])("reads %s as closed", (text) => {
+    expect(classifyPage(200, `Careers\n${text}`).state).toBe("gone");
+  });
+  it.each([
+    "Apply soon. Until the job you're trying to apply to has been filled, we review every week.",
+    "The right person for this job cannot be found on other boards, so we post here. Apply now.",
+    "We built a page that cannot be found anywhere else: our design system docs. Apply now.",
+  ])("keeps %s open", (text) => {
+    expect(classifyPage(200, `TITLE: Product Designer\nTEXT: ${text}`).state).toBe("open");
+  });
+});
