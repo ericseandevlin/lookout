@@ -14,8 +14,15 @@ export function decodeEntities(s: string) {
   });
 }
 
-/** Strip HTML tags from text, turning block tags into newlines and decoding entities. Used by the page reader and on read for stored posting text (#1311). */
+// A tag written as entities, "&lt;p&gt;": some structured-data descriptions encode their HTML (#1311).
+const ENCODED_TAG = /&lt;\/?[a-z][\s\S]*?&gt;/i;
+
+/**
+ * Strip HTML tags from text, turning block tags into newlines and decoding entities. Used by the page reader and on
+ * read for stored posting text (#1311). Entity-encoded HTML is decoded first, so its tags are stripped too.
+ */
 export function stripHtml(s: string): string {
+  if (ENCODED_TAG.test(s)) s = decodeEntities(s);
   return decodeEntities(
     s
       .replace(/<(script|style|noscript)[\s\S]*?<\/\1>/gi, " ")
@@ -23,6 +30,7 @@ export function stripHtml(s: string): string {
       .replace(/<[^>]+>/g, " "),
   )
     .replace(/[ \t]+/g, " ")
-    .replace(/\n[ \t]*\n+/g, "\n")
+    .replace(/ ?\n ?/g, "\n")
+    .replace(/\n{2,}/g, "\n")
     .trim();
 }
