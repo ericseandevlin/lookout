@@ -51,7 +51,9 @@ export function jobKey(raw: string | null | undefined): string | null {
  */
 export function hashRoute(u: URL) {
   if (!/^#!?\//.test(u.hash)) return "";
-  const [route, query = ""] = u.hash.split(/\?(.*)/s);
+  const q = u.hash.indexOf("?");
+  const route = q < 0 ? u.hash : u.hash.slice(0, q);
+  const query = q < 0 ? "" : u.hash.slice(q + 1);
   return route.replace(/\/(apply|application)\/?$/i, "").replace(/\/+$/, "").toLowerCase() + idQuery(new URLSearchParams(query));
 }
 
