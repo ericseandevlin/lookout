@@ -236,6 +236,11 @@ describe("uploadLabels (#918)", () => {
   it("strips characters a file name can't carry and falls back when nothing is left", () => {
     expect(uploadLabels([f("answer", "Portfolio / work samples?"), f("answer", "***")])).toEqual(["Portfolio work samples", "Document"]);
   });
+  it("never hands out a label twice, even when a prompt already ends in a number (#1378)", () => {
+    expect(uploadLabels([f("answer", "Attachment"), f("answer", "Attachment"), f("answer", "Attachment 2")])).toEqual(["Attachment", "Attachment 2", "Attachment 2 2"]);
+    expect(uploadLabels([f("answer", "Attachment 2"), f("answer", "Attachment"), f("answer", "Attachment")])).toEqual(["Attachment 2", "Attachment", "Attachment 3"]);
+    expect(uploadLabels([f("answer", "attachment"), f("answer", "Attachment")])).toEqual(["attachment", "Attachment 2"]);
+  });
   it("keeps accented letters in a label (#1198)", () => {
     expect(uploadLabels([f("answer", "Carta de presentación"), f("answer", "Échantillon d'écriture")])).toEqual(["Carta de presentación", "Échantillon d écriture"]);
   });
