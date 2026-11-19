@@ -24,17 +24,19 @@ export function planFill(items: ItemRow[], versions: { id: string; content: stri
 /**
  * A file label for each upload step, unique per form (#918). Resume and cover letter keep their names; any other upload
  * ("Portfolio", "Writing sample") is named from its prompt, and a repeat gets " 2", " 3", so no upload writes over another.
- * Non-file steps get null.
+ * The number rises past any label already handed out, so "Attachment", "Attachment", "Attachment 2" gives
+ * "Attachment", "Attachment 2", "Attachment 2 2" rather than two "Attachment 2" (#1378). Non-file steps get null.
  */
 export function uploadLabels(steps: Pick<FillStep, "kind" | "itemKind" | "prompt">[]): (string | null)[] {
-  const seen = new Map<string, number>();
+  const used = new Set<string>();
   return steps.map((s) => {
     if (s.kind !== "file") return null;
     const base =
       s.itemKind === "cover_letter" ? "Cover Letter" : s.itemKind === "resume" ? "Resume" : s.prompt.replace(/[^\p{L}\p{N}\p{M}_ .-]/gu, " ").replace(/\s+/g, " ").trim().slice(0, 40).trim() || "Document";
-    const n = (seen.get(base.toLowerCase()) ?? 0) + 1;
-    seen.set(base.toLowerCase(), n);
-    return n > 1 ? `${base} ${n}` : base;
+    let label = base;
+    for (let n = 2; used.has(label.toLowerCase()); n++) label = `${base} ${n}`;
+    used.add(label.toLowerCase());
+    return label;
   });
 }
 
