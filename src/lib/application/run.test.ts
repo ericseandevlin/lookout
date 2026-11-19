@@ -400,6 +400,31 @@ describe("embedded Greenhouse boards and Ashby outages (#438)", () => {
     expect(completeJSON).not.toHaveBeenCalled();
   });
 
+  it("still tries board names from the host when the company page won't load (#1462)", async () => {
+    // PAGE is not served, so fetching it fails the way a bot wall or a timeout does.
+    pages.set(api("analyticalengines"), ghJob(FORM));
+    const scan = await scanPosting(PAGE, emptyUsage());
+    expect(scan).toMatchObject({ source: "form", applyUrl: "https://job-boards.greenhouse.io/embed/job_app?for=analyticalengines&token=123" });
+    expect(fetchPage.mock.calls.map((c) => c[0])).toEqual([PAGE, api("analytical-engines"), api("analyticalengines")]);
+    expect(completeJSON).not.toHaveBeenCalled();
+  });
+
+  it("calls the posting closed when the company page itself is gone (#1462)", async () => {
+    fetchPage.mockRejectedValueOnce(new Error("Page answered 404"));
+    await expect(scanPosting(PAGE, emptyUsage())).rejects.toThrow("This posting is closed");
+    expect(fetchPage.mock.calls.map((c) => c[0])).toEqual([PAGE]);
+  });
+
+  it("still guesses the Ashby org when the company page won't load (#1462)", async () => {
+    const id = "ec0690d5-be5e-4e8b-be78-d832f166b242";
+    const page = `https://careers.analytical-engines.com/jobs?ashby_jid=${id}`;
+    const form = { data: { jobPosting: { applicationForm: { sections: [{ title: "Apply", fieldEntries: [{ isRequired: true, field: { title: "Name", type: "String" } }] }] } } } };
+    ashby.mockResolvedValueOnce({ ok: true, json: async () => form });
+    const scan = await scanPosting(page, emptyUsage());
+    expect(scan).toMatchObject({ ats: "ashby", source: "form", applyUrl: `https://jobs.ashbyhq.com/analytical-engines/${id}/application` });
+    expect(completeJSON).not.toHaveBeenCalled();
+  });
+
   it("reads the page when no board answers", async () => {
     pages.set(PAGE, "<label>Portfolio link</label>");
     replies["apply-scan"] = () => ({ hasForm: true, hasEeo: false, howToApply: "", items: [{ prompt: "Portfolio link", required: false, fieldType: "text", options: [] }] });
