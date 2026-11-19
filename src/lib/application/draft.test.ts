@@ -210,3 +210,17 @@ describe("newNumbers: the same number spelled another way (#1148)", () => {
     expect(newNumbers("Grew to 1,000,000 users.", "Grew to 2M users.")).toEqual(["2m"]);
   });
 });
+
+describe("newNumbers: a digit inside a word is not a number (#1393)", () => {
+  it.each([
+    ["Led design for SaaS products.", "Led design for B2B SaaS products."],
+    ["Built sites in HTML and CSS.", "Built sites in HTML5 and CSS3."],
+    ["Stored assets in the cloud.", "Stored assets in S3 and HTML55."],
+  ])("%s -> %s adds no number", (master, draft) => {
+    expect(newNumbers(master, draft)).toEqual([]);
+  });
+
+  it("still flags a real new number next to one", () => {
+    expect(newNumbers("Grew B2B revenue.", "Grew B2B revenue 40%.")).toEqual(["40%"]);
+  });
+});
