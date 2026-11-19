@@ -46,10 +46,15 @@ export function jobKey(raw: string | null | undefined): string | null {
 
 /**
  * The fragment when the page routes by it (careers.acme.com/#/jobs/101, #!/job/202), so each job there keeps a key of its
- * own (#841). The apply step at the end goes, like in the path. A plain anchor like #apply names no job and drops.
+ * own (#841). The apply step at the end goes, like in the path. A plain anchor like #apply names no job and drops. A query
+ * inside the hash keeps only its job ID params, so "#/jobs/101?utm_source=linkedin" is the same job as "#/jobs/101" (#1375).
  */
 export function hashRoute(u: URL) {
-  return /^#!?\//.test(u.hash) ? u.hash.replace(/\/(apply|application)\/?$/i, "").replace(/\/+$/, "").toLowerCase() : "";
+  if (!/^#!?\//.test(u.hash)) return "";
+  const q = u.hash.indexOf("?");
+  const route = q < 0 ? u.hash : u.hash.slice(0, q);
+  const query = q < 0 ? "" : u.hash.slice(q + 1);
+  return route.replace(/\/(apply|application)\/?$/i, "").replace(/\/+$/, "").toLowerCase() + idQuery(new URLSearchParams(query));
 }
 
 // Query params that name the job itself (indeed.com/viewjob?jk=..., careers pages with ?jobId=, UltiPro ?opportunityId=,
