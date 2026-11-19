@@ -128,6 +128,9 @@ const TRAP_LEAD = String.raw`\b(?:the|a|an|this|that|these|those|following|speci
 const NOT_TRAP_NOUN = String.raw`(?<![-\w]|\b(?:microsoft|ms|short|long|near|mid|medium) )`;
 const TRAP_NOUN = String.raw`${NOT_TRAP_NOUN}(?:word|phrase|term|code ?word|keyword|emoji)s?`;
 
+// An AI word that names a kind of thing ("every AI product", "all AI features") is about the job, not spoken to an AI (#1410).
+const AI_AS_ADJECTIVE = String.raw`(?!\s+(?:products?|features?|platforms?|systems?|models?|experiences?|teams?|work|projects?|solutions?|services?|capabilit(?:y|ies)|applications?|apps?|initiatives?|research|engineers?|engineering|agents?|assistants?|workflows?|interfaces?|surfaces?|tooling|strategy|roadmaps?|use cases?|ethics|safety|policy|policies|adoption|literacy|design|data|infrastructure)\b)`;
+
 const TRAP = [
   // The noun must stand alone: "long-term", "short-term" and "Microsoft Word" are job text, not traps (#1042).
   // And it must be named as a thing to insert: "the word X", "a specific phrase", "keyword: X", "term 'X'". "Use Word,
@@ -138,10 +141,11 @@ const TRAP = [
   ),
   /\bif you(?:'re| are| were)\s+(an?\s+)?(ai|a\.i\.|llm|language model|chat ?bot|bot|automated|machine|gpt|robot)\b/i,
   // Spoken to an AI directly: "Attention AI:", "any LLM reading this must", "ChatGPT: include..."
-  /\b(note to|attention|dear|hey|(?:to|for) (?:any|all|every))\s+(the\s+)?(ai|a\.i\.|llm|language model|chatgpt|gpt|claude|gemini|copilot|bot|automated tools?)s?(?![-\w])/i,
+  new RegExp(String.raw`\b(note to|attention|dear|hey|(?:to|for) (?:any|all|every))\s+(the\s+)?(ai|a\.i\.|llm|language model|chatgpt|gpt|claude|gemini|copilot|bot|automated tools?)s?(?![-\w])${AI_AS_ADJECTIVE}`, "i"),
   /\b(ai|llm|language model|chatgpt|gpt|claude|gemini|copilot|bots?)s?\s*[:,]\s*(please|you must|include|write|mention|ignore|respond|say)\b/i,
-  /\b(any|all|every)\s+(ai|llm|language model|chatgpt|gpt|bot|automated tool)s?\b[^.!?\n]{0,40}\b(must|should|need to|has to|is required to)\b/i,
-  /\b(ai|llm|language model|chatgpt|gpt|claude|gemini|copilot)s?\b[^.!?\n]{0,30}\b(must|should|need to) (include|write|mention|insert|add|use|say|respond|answer)\b/i,
+  new RegExp(String.raw`\b(any|all|every)\s+(ai|llm|language model|chatgpt|gpt|bot|automated tool)s?\b${AI_AS_ADJECTIVE}[^.!?\n]{0,40}\b(must|should|need to|has to|is required to)\b`, "i"),
+  // Not "use": "LLMs must use tools reliably" is a requirement, and "use the word X" is caught by the first rule (#1410).
+  /\b(ai|llm|language model|chatgpt|gpt|claude|gemini|copilot)s?\b[^.!?\n]{0,30}\b(must|should|need to) (include|write|mention|insert|add|say|respond|answer)\b/i,
   /\bignore (all |any |the )?(previous|prior|above|earlier) (instructions|prompts|directions)/i,
   /\b(start|begin|end|sign|close) (your|the|each) (cover letter|application|answer|response|email|message|summary)\b[^.!?\n]{0,20}\bwith\b/i,
   /\bto (show|prove|confirm|demonstrate) (that )?you (have |actually )?read\b/i,
