@@ -55,10 +55,23 @@ async function ghJob(board: string, id: string) {
   return JSON.parse(html) as unknown;
 }
 
+/**
+ * The company page that embeds a board, or "" when it won't load (a bot wall, a timeout), so the board names
+ * guessed from its host still get tried (#1462). A page that's gone (404, 410) means the posting is closed.
+ */
+async function companyPage(url: string) {
+  try {
+    return (await fetchPage(url)).html;
+  } catch (e) {
+    if (e instanceof Error && /answered (404|410)/.test(e.message)) throw e;
+    return "";
+  }
+}
+
 /** A company page with ?gh_jid=: find its board on the page, else try the obvious names. */
 async function ghEmbedOrJob(board: string, id: string, postingUrl: string) {
   if (board) return { board, job: await ghJob(board, id) };
-  const found = boardFromHtml((await fetchPage(postingUrl)).html);
+  const found = boardFromHtml(await companyPage(postingUrl));
   const host = new URL(postingUrl).hostname;
   // A greenhouse.io host says nothing about the company, so there is nothing to guess (#674).
   const guesses = /(^|\.)greenhouse\.io$/i.test(host) ? [] : boardGuesses(host);
@@ -87,7 +100,7 @@ async function ashbyForm(org: string, id: string) {
 /** A company page with ?ashby_jid=: find its org on the page, else try the obvious names (#676). */
 async function ashbyEmbedOrForm(org: string, id: string, postingUrl: string) {
   if (org) return { org, form: parseAshby(await ashbyForm(org, id)) };
-  const found = ashbyOrgFromHtml((await fetchPage(postingUrl)).html);
+  const found = ashbyOrgFromHtml(await companyPage(postingUrl));
   if (found) return { org: found, form: parseAshby(await ashbyForm(found, id)) };
   for (const o of boardGuesses(new URL(postingUrl).hostname)) {
     try {
