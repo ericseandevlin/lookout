@@ -157,6 +157,15 @@ describe("rangeBasis", () => {
     expect(rangeBasis("Base salary range: $150k-$180k. We offer competitive total compensation and great benefits.")).toBe("base");
   });
 
+  it.each([
+    "Base salary range: $150K - $180K + bonus + equity.",
+    "The base salary range is $150k-$180k plus bonus and equity.",
+    "Salary range: $150,000 - $180,000 base + bonus + equity",
+    "Pay: $150k-$180k base plus commission.",
+  ])("reads %s as base: the bonus is added after the range (#1425)", (posting) => {
+    expect(rangeBasis(posting)).toBe("base");
+  });
+
   it("keeps a bonus the role is also eligible for as base (#1074)", () => {
     expect(rangeBasis("The base salary range for this role is $150,000 - $180,000. You will also be eligible for additional compensation, including an annual bonus and equity.")).toBe("base");
     expect(rangeBasis("Base salary range: $150k-$180k. This position is eligible for incentive compensation, including an annual bonus.")).toBe("base");

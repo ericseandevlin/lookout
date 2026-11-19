@@ -20,8 +20,9 @@ const ABOUT_PAY = /\b(range|salary|pay|compensation|amount|figure)\b/i;
 const NEGATED =
   /(\bnot|n't)\s+(includ|reflect)|\bexclud|\b(in addition to|on top of|separate(ly)? from)\b[^.?!]{0,60}?\b(bonus|commission|incentive)|\b(bonus|commission|incentive)\w*\s+(is|are)\s+(\w+\s+)?separate/i;
 // Other ways a posting says its range is total cash (#690): "base pay plus bonus", "on-target earnings",
-// "Total compensation range: $200,000 - $250,000".
-const BASE_PLUS = /\bbase\b[^.?!]{0,30}?(\+|\bplus\b|\band\b)[^.?!]{0,20}?\b(bonus|commission|incentive)/i;
+// "Total compensation range: $200,000 - $250,000". A bonus added after an amount sits on top of it, so the range is base:
+// "Base salary range: $150K - $180K + bonus" or "$150k-$180k base + bonus + equity" (#1425).
+const BASE_PLUS = /(?<!\d[km]?\s{0,2})\bbase\b[^.?!$\d]{0,30}?(\+|\bplus\b|\band\b)[^.?!]{0,20}?\b(bonus|commission|incentive)/i;
 const THE_RANGE = /\b(range|figure|amount)s?\b/i;
 const ON_TARGET = /\bon[- ]target earnings\b|\btotal (target )?(cash|compensation|comp|pay)\b[^.?!]{0,10}(range|:|\$)/i;
 // "Total cash" and "OTE" count only where they name the range: in a sentence with the range or an amount, or as a short
@@ -55,11 +56,11 @@ const SAYS_TOTAL = (s: string) =>
 // $180,000 and does not include bonus or equity" (#650, #1411).
 const SAYS_BASE = (s: string) => NEGATED.test(s) && ABOUT_PAY.test(s) && /\b(bonus|commission|incentive)/i.test(s);
 
-/** What the posted range covers: total cash (bonus included), base, or the posting doesn't say. */
+/** What the posted range covers: total cash (bonus included), base, or the posting doesn't say. "$150k-$180k base" names it base (#1425). */
 export const rangeBasis = (posting: string): "total" | "base" | null =>
   sentences(posting).some(SAYS_TOTAL)
     ? "total"
-    : /\bbase (salary|pay|compensation)\b/i.test(posting) || sentences(posting).some(SAYS_BASE)
+    : /\bbase (salary|pay|compensation)\b|\d[km]?\s{0,2}base\b/i.test(posting) || sentences(posting).some(SAYS_BASE)
       ? "base"
       : null;
 
