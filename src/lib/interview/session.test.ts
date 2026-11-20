@@ -156,6 +156,26 @@ describe("gap questions (#1449)", () => {
     expect(series.quote).toContain("touring supper series");
     const rows = await turns(user.id);
     expect(rows.at(-1)).toMatchObject({ question: "What was your exact part?", parentId: v.current!.id, outcome: "pending" });
+
+    // The follow-up's answer: the model repeats an earlier fact (differently cased); only the new one is saved.
+    replies = [
+      {
+        facts: [
+          { text: "ran a 12-dinner touring supper series.", kind: "project", namesPerson: false, complaint: false, confidential: false, personal: false },
+          { text: "Owned a budget of about $240k", kind: "skill", namesPerson: false, complaint: false, confidential: false, personal: false },
+        ],
+        next: { type: "follow_up", topic: "food and beverage programs", question: "How many covers?", why: "A number helps." },
+      },
+    ];
+    await act(user.id, rows.at(-1)!.id, "answer", "I led it and owned the budget, about $240k.");
+    expect((await facts(user.id)).filter((f) => f.source === "interview").map((f) => f.text).sort()).toEqual([
+      "My manager was skeptical of the series at first",
+      "Owned a budget of about $240k",
+      "Ran a 12-dinner touring supper series",
+    ]);
+    const prompt = completeJSON.mock.calls.at(-1)![0].user;
+    expect(prompt).toContain("A (facts already saved): I ran our touring supper series.");
+    expect(prompt).toContain("A (newest: read this one): I led it and owned the budget");
   });
 
   it("never sends pay to the interviewer", async () => {

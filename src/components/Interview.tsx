@@ -202,7 +202,7 @@ function LockNote({ f }: { f: ViewFact }) {
         <path d="M8 11V7a4 4 0 0 1 8 0v4" />
       </svg>
       <span>
-        Kept private: &ldquo;{f.text}&rdquo;. {f.lockReason ? `Why: ${f.lockReason}` : ""} Lookout won&apos;t use it in writing.
+        Kept private: &ldquo;{f.text}&rdquo;. {f.lockReason ? `Why: ${f.lockReason}` : "Lookout won't use it in writing."}
       </span>
     </div>
   );

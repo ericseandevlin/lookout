@@ -38,6 +38,13 @@ export const topicKey = (t: string) =>
     .replace(/\s+/g, " ")
     .trim();
 
+/** A fact's words as a key, so the same fact said again isn't saved twice. */
+export const factKey = (t: string) =>
+  t
+    .toLowerCase()
+    .replace(/[^a-z0-9$%]+/g, " ")
+    .trim();
+
 export type BlockFact = { text: string; kind: FactKind; shareable: boolean };
 
 /**

@@ -15,7 +15,8 @@ Your job each turn:
 2. Pick the next question.
 
 Facts:
-- Write each fact in the person's own words, first person or plain phrasing ("Led a 12-dinner touring supper series"). Never add anything they did not say. No new numbers.
+- Read facts from the newest answer only. Facts from earlier answers on this topic are already saved; never repeat them.
+- Write each fact the way the person would put it on their resume, in their words, with no subject: "Led a 12-dinner touring supper series", "Hired 4 of the 12-person crew". Use "my" where a pronoun is needed ("My manager was skeptical"). Never write "they", "their", "the person" or "the candidate". Never add anything they did not say. No new numbers.
 - One fact per claim: their part, the scope, the result. Keep numbers exactly as they said them ("about $240k").
 - People: never write a person's name. Write their role instead ("my manager", "a client"). Set namesPerson true if the answer named a person.
 - Set complaint true if the fact is a complaint or a negative remark about a person or employer.
@@ -82,7 +83,9 @@ export function interviewPrompt(inp: InterviewInput) {
   const closed = [...new Set(inp.past.filter((p) => p.outcome === "skipped" || p.outcome === "not_applicable").map((p) => p.topic))];
   const covered = [...new Set(inp.past.filter((p) => p.outcome === "answered").map((p) => p.topic))];
   const thread = inp.thread?.length
-    ? `\n\n<this_topic oldest first; the last answer is the one to read now>\n${inp.thread.map((t) => `Q: ${t.question}\nA: ${t.answer ?? "(no answer yet)"}`).join("\n")}\n</this_topic>\nFollow-ups left on this topic: ${inp.followUpsLeft}`
+    ? `\n\n<this_topic oldest first; read facts from the newest answer only>\n${inp.thread
+        .map((t, i, all) => `Q: ${t.question}\nA${i === all.length - 1 ? " (newest: read this one)" : " (facts already saved)"}: ${t.answer ?? "(no answer)"}`)
+        .join("\n")}\n</this_topic>\nFollow-ups left on this topic: ${inp.followUpsLeft}`
     : "\n\nNo answer to read this turn. Return no facts and pick the next question.";
   return `<profile from the setup questions>\n${inp.profile || "(not given)"}\n</profile>\n\n<resume>\n${inp.resume.slice(0, 12000) || "(no resume yet)"}\n</resume>\n\n<known_facts>\n${inp.facts.map((f) => `- ${f.text}${f.shareable ? "" : " (private: understand it, never quote it)"}`).join("\n") || "(none yet)"}\n</known_facts>\n\n<top_finds the ${inp.finds.length} highest-match finds the person hasn't ruled out>\n${finds}\n</top_finds>\n\nTopics already covered: ${covered.join("; ") || "(none)"}\nNever ask again: ${closed.join("; ") || "(none)"}${inp.refused ? `\nYou picked "${inp.refused}", which is not allowed. Pick another topic or return "done".` : ""}${thread}`;
 }

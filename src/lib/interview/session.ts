@@ -10,7 +10,7 @@ import { kindOf } from "@/lib/kinds";
 import { getActiveSearch } from "@/lib/searches";
 import type { FactKind, TurnOutcome } from "@/lib/db/schema";
 import { closedTopics, INTERVIEW_SYSTEM, interviewPrompt, InterviewTurnOut, type InterviewInput } from "./interviewer";
-import { lockReason, topicKey } from "./rules";
+import { factKey, lockReason, topicKey } from "./rules";
 import { isAnswered, readSetupAnswer, setupFact, setupQuestionText, SETUP_WHY } from "./setup";
 
 /**
@@ -131,9 +131,16 @@ async function interviewStep(userId: string, answered: { turn: Turn; root: Turn;
   const ask = (refused?: string) =>
     completeJSON({ name: "interview-turn", schema: InterviewTurnOut, system: INTERVIEW_SYSTEM, user: interviewPrompt({ ...ctx, thread: answered?.thread, followUpsLeft, refused }), maxTokens: 2000, usage });
   let out = await ask();
-  if (answered)
-    for (const f of out.facts.filter((f) => f.text.trim()))
+  if (answered) {
+    // A follow-up shows the model the earlier answers too; a fact it says again is not saved twice.
+    const seen = new Set((await db.select({ text: schema.profileFacts.text }).from(schema.profileFacts).where(eq(schema.profileFacts.userId, userId))).map((f) => factKey(f.text)));
+    for (const f of out.facts) {
+      const key = factKey(f.text);
+      if (!key || seen.has(key)) continue;
+      seen.add(key);
       await addFact(userId, { text: f.text.trim(), kind: f.kind, source: "interview", quote: answered.turn.answer ?? "", turnId: answered.turn.id, flags: f });
+    }
+  }
   const rootKey = answered ? topicKey(answered.root.topic) : "";
   const allowed = (n: InterviewTurnOut["next"]) => {
     if (n.type === "done" || !n.question.trim()) return true;
