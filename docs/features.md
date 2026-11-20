@@ -139,3 +139,4 @@ The public demo (`/demo`, #1317) also merged after v0.6.2; it is listed under sw
 | Staging traces and weekly bad-results review | Full prompt and reply text on staging only, reviewed weekly. Partly built: `/api/agent/bad-results` and [ai-review.md](ai-review.md) exist; the staging key and review loop do not. | #994 |
 | Grants and fellowships | A new kind of find. | #302 |
 | Speaking slots and calls for papers | A new kind of find. | #303 |
+
