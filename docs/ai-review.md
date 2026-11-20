@@ -15,7 +15,7 @@ Full text never leaves OpenRouter for production users. Staging holds Eric's and
 
 1. In OpenRouter, make a new API key named `lookout-staging`.
 2. Put it in staging's settings (Admin > AI on staging.lookout.ericdevlin.co, or `AI_API_KEY` in `/opt/lookout-staging/.env`). Prod keeps its key.
-3. In OpenRouter > Settings > Broadcast, add a second PostHog destination limited to the staging key, with Privacy Mode off. Keep the prod destination as it is.
+3. In OpenRouter > Settings > Observability, add a second PostHog destination with Privacy Mode off, and under its API keys select only `lookout-staging`. A destination with no keys selected gets every key's traffic, so the full-text one must have the staging key selected. The prod destination keeps Privacy Mode on; it may take all keys.
 4. Check: run a search on staging, then in PostHog find the trace whose id is the run id. It should show the prompt and reply.
 
 ## The weekly list
