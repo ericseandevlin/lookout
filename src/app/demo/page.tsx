@@ -28,7 +28,8 @@ export default async function Page() {
         </span>
         <a href="https://github.com/ericseandevlin/lookout" style={{ marginLeft: "auto", color: "#F8A865", fontWeight: 600 }}>Code on GitHub</a>
       </div>
-      <main>
+      {/* The detail pane sticks below the banner, not under it (#1331). */}
+      <main style={{ "--pane-top": "60px" } as React.CSSProperties}>
         <Finds />
       </main>
     </StoreProvider>

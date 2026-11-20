@@ -16,6 +16,8 @@ if (!opt.base || !opt.link?.includes("/auth/verify?token=")) {
 const base = new URL(opt.base).origin;
 const out = resolve(opt.out);
 const WIDTHS = [375, 1280];
+// A find's detail: the slide-in drawer, or the pane docked beside the list on wide screens (#1331).
+const FIND_DETAIL = '[role="dialog"], .find-pane[role="region"]';
 const PAGES = [
   ["finds", "/finds"],
   ["events", "/events"],
@@ -70,11 +72,11 @@ try {
       }
       await shot(name);
       if (name === "finds") {
-        // The drawer, opened from the first find: a table row on desktop, a card on a phone.
+        // The find's detail, opened from the first find: a drawer on a phone, the docked pane on a wide desktop (#1331).
         const first = page.getByRole("button", { name: / at / }).filter({ visible: true }).first();
         if (await first.count()) {
           await first.click();
-          await page.getByRole("dialog").first().waitFor();
+          await page.locator(FIND_DETAIL).first().waitFor();
           await shot("finds-drawer");
           await page.keyboard.press("Escape");
         }

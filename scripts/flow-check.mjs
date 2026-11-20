@@ -24,6 +24,8 @@ if (!opt.base || (opt.link && !opt.link.includes("/auth/verify?token="))) {
 }
 const base = new URL(opt.base).origin;
 const out = resolve(opt.out);
+// A find's detail: the slide-in drawer, or the pane docked beside the list on wide screens (#1331).
+const FIND_DETAIL = '[role="dialog"], .find-pane[role="region"]';
 mkdirSync(join(out, "pages"), { recursive: true });
 const startedAt = new Date().toISOString();
 
@@ -177,8 +179,9 @@ try {
     const firstFind = page.locator('[role="row"]').nth(1).getByRole("button", { name: / at / }).first();
     if (await firstFind.count()) {
       await firstFind.click();
-      await page.getByRole("dialog").first().waitFor();
-      await snap("A find, opened", { status: 200, scope: '[role="dialog"]' });
+      // A drawer on narrower screens, the docked pane beside the list at 1280px and up (#1331).
+      await page.locator(FIND_DETAIL).first().waitFor();
+      await snap("A find, opened", { status: 200, scope: FIND_DETAIL });
       await page.keyboard.press("Escape");
     } else findings.push({ kind: "dead-end", step: "Board", url: base + "/finds", detail: "The board has no find to open." });
 

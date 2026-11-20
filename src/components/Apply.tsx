@@ -179,7 +179,7 @@ export function ApplyPage() {
                           )}
                         </div>
                         <div style={{ fontSize: font.base, color: color.t2 }}>
-                          {a.company}
+                          <span style={{ color: color.ink, fontWeight: 700 }}>{a.company}</span>
                           {a.score ? ` · match ${a.score}/5` : ""}
                           {a.items > 0 ? ` · ${a.items} things to fill${a.ats ? ` on ${ATS_NAME[a.ats] ?? a.ats}` : ""}` : ""}
                         </div>
