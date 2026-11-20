@@ -158,6 +158,7 @@ export async function getState(user: SessionUser): Promise<AppState> {
       autoApply: canUseAutoApply(user),
       events: featureOn("EVENTS"),
       searches: featureOn("SEARCHES"),
+      interview: featureOn("INTERVIEW"),
     },
     settings: {
       freq: s?.freq ?? "Weekly",

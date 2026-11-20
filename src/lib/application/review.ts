@@ -12,6 +12,7 @@ import { stripHtml } from "@/lib/ai/entities";
 import { humanize, shapeResume } from "./resumeLayout";
 import { isCommon, upsert } from "./saved";
 import { notesBlock } from "./skills";
+import { draftFactsBlock } from "@/lib/interview/facts";
 import { getAutoApplySettings } from "@/lib/apply";
 import { bullets } from "./notes";
 import { resolve } from "./eeo";
@@ -60,7 +61,8 @@ export async function draftFacts(userId: string) {
   const [mat] = await db.select({ x: schema.materials.extracted }).from(schema.materials).where(and(eq(schema.materials.userId, userId), eq(schema.materials.kind, "resume")));
   const resume = masterForDrafts(p?.m) ?? mat?.x?.text ?? "";
   const notes = p?.notes ?? [];
-  return { resume, notes, facts: resume + notesBlock(notes) };
+  // Shareable interview facts count too (#1449); private ones never reach a draft.
+  return { resume, notes, facts: resume + notesBlock(notes) + (await draftFactsBlock(userId)) };
 }
 
 /**

@@ -7,7 +7,9 @@
  * - FEATURE_DEMO: the public, read-only /demo board of the made-up Maya Ortiz account, rebuilt at startup (#1317). Staging only.
  * - FEATURE_WAITLIST: the /jobs and /what-it-finds pages, the "what would you search for" question, and double opt-in
  *   (a confirm email) on the waitlist form (#9). Off in prod until Eric opens the waitlist.
+ * - FEATURE_INTERVIEW: the /interview page, What Lookout knows (/profile/knows), the Finds board card, and interview
+ *   facts in drafts (#1449). Staging only until Eric approves.
  */
-export type Feature = "EVENTS" | "SEARCHES" | "PREVIEW" | "DEMO" | "WAITLIST";
+export type Feature = "EVENTS" | "SEARCHES" | "PREVIEW" | "DEMO" | "WAITLIST" | "INTERVIEW";
 
 export const featureOn = (name: Feature) => process.env[`FEATURE_${name}`] === "on";

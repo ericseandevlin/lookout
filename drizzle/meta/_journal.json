@@ -253,6 +253,13 @@
       "when": 1795478400000,
       "tag": "0035_closed_from",
       "breakpoints": true
+    },
+    {
+      "idx": 36,
+      "version": "7",
+      "when": 1795564800000,
+      "tag": "0036_interview",
+      "breakpoints": true
     }
   ]
 }

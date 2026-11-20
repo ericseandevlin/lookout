@@ -51,11 +51,20 @@ export function Shell({ children }: { children: React.ReactNode }) {
   const PAGES = state.user.autoApply ? [...base, APPLY_PAGE] : base;
   // Profile to-dos live on subpages with a done/todo mark, not as text squeezed beside the link (#255).
   // What Lookout sees is a view, not a step, so it gets an eye instead of a mark (#266).
-  const subpages: { href: string; label: string; done?: boolean; on: boolean }[] = [
-    { href: "/profile", label: "Questions", done: answered >= total, on: path === "/profile" },
-    { href: "/profile/materials", label: "Resume and materials", done: state.materials.resume?.status === "done", on: path.startsWith("/profile/materials") },
-    { href: "/profile/sees", label: "What Lookout sees", on: path.startsWith("/profile/sees") },
-  ];
+  const materials = { href: "/profile/materials", label: "Resume and materials", done: state.materials.resume?.status === "done", on: path.startsWith("/profile/materials") };
+  // With the interview on (#1449), it takes the Questions page's place and What Lookout knows takes What Lookout sees'.
+  // The old pages stay at their addresses until Eric approves the new ones.
+  const subpages: { href: string; label: string; done?: boolean; on: boolean }[] = state.user.interview
+    ? [
+        { href: "/interview", label: "Interview", on: path.startsWith("/interview") },
+        materials,
+        { href: "/profile/knows", label: "What Lookout knows", on: path.startsWith("/profile/knows") },
+      ]
+    : [
+        { href: "/profile", label: "Questions", done: answered >= total, on: path === "/profile" },
+        materials,
+        { href: "/profile/sees", label: "What Lookout sees", on: path.startsWith("/profile/sees") },
+      ];
   const profileTodo = subpages.some((p) => p.done === false);
 
   return (
@@ -90,7 +99,7 @@ export function Shell({ children }: { children: React.ReactNode }) {
         </div>
         <nav style={{ display: "flex", flexDirection: "column", gap: 4 }}>
           {PAGES.map(({ href, label, Icon }) => {
-            const active = path.startsWith(href);
+            const active = path.startsWith(href) || (href === "/profile" && path.startsWith("/interview"));
             const isBoard = href === "/finds";
             const isProfile = href === "/profile";
             return (
@@ -203,7 +212,7 @@ export function Shell({ children }: { children: React.ReactNode }) {
       >
         <div className="mob-grid" style={{ display: "grid", gridTemplateColumns: `repeat(${PAGES.length},1fr)` }}>
           {PAGES.map(({ href, mob, Icon }) => {
-            const active = path.startsWith(href);
+            const active = path.startsWith(href) || (href === "/profile" && path.startsWith("/interview"));
             return (
               <Link
                 key={href}
