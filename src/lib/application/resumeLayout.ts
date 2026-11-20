@@ -11,7 +11,8 @@ export type Block =
   | { t: "role"; text: string; right?: string }
   /** A title under an employer heading: several titles at one company, or clients under a freelance umbrella (#137). */
   | { t: "subrole"; text: string; right?: string }
-  | { t: "bullet"; text: string }
+  /** `lead` is a bold label before the text, "Revenue Growth:" in Career Highlights (#1326). */
+  | { t: "bullet"; text: string; lead?: string }
   | { t: "text"; text: string };
 
 const DATE = /((jan|feb|mar|apr|may|jun|jul|aug|sep|sept|oct|nov|dec)[a-z]*\.?\s+)?(\d{1,2}\/)?\d{4}\s*(–|-|to)\s*((jan|feb|mar|apr|may|jun|jul|aug|sep|sept|oct|nov|dec)[a-z]*\.?\s+)?((\d{1,2}\/)?\d{4}|present|current|now)|\b(19|20)\d{2}\b$/i;
@@ -23,6 +24,14 @@ export function humanize(s: string) {
     .replace(/(\d)\s*—\s*(\d|present|current|now\b|(?:jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*\.?\s+\d)/gi, "$1 – $2")
     .replace(/\s+—\s+/g, ", ")
     .replace(/—/g, ", ");
+}
+
+/** A bullet that opens with a bold label ("**Revenue Growth:** grew...") keeps the label apart, so it can stay bold. */
+function bulletOf(raw: string): Block {
+  const m = /^\*\*([^*]{2,60}?:?)\*\*:?\s+(.+)$/.exec(raw.trim());
+  if (!m) return { t: "bullet", text: strip(raw) };
+  const lead = strip(m[1]).replace(/:?$/, ":");
+  return { t: "bullet", lead, text: strip(m[2]) };
 }
 
 const strip = (s: string) => humanize(s.replace(/\*\*(.+?)\*\*/g, "$1").replace(/(^|[^*])\*(?!\s)(.+?)\*/g, "$1$2").trim());
@@ -55,7 +64,7 @@ export function parseDraft(md: string): Block[] {
     } else if (!seenSection && out[0]?.t === "name" && !h && !/^[-*•]\s+/.test(line)) header.push({ t: CONTACTISH.test(line) ? "contact" : "headline", text: strip(line) });
     else if (h && h[1].length === 4) out.push({ t: "subrole", ...splitRole(strip(h[2])) });
     else if (h) out.push({ t: "role", ...splitRole(strip(h[2])) });
-    else if (/^[-*•]\s+/.test(line)) out.push({ t: "bullet", text: strip(line.replace(/^[-*•]\s+/, "")) });
+    else if (/^[-*•]\s+/.test(line)) out.push(bulletOf(line.replace(/^[-*•]\s+/, "")));
     else out.push({ t: "text", text: strip(line) });
   }
   if (!seenSection) out.push(...orderHeader(header));
@@ -170,7 +179,7 @@ export const isTemplate = (t: unknown): t is Template => typeof t === "string" &
 /** Plain text for pasting into a form's text box: the same structure, no markup. */
 export function toPlain(md: string) {
   return parseDraft(md)
-    .map((b) => (b.t === "section" ? `\n${b.text.toUpperCase()}` : b.t === "bullet" ? `• ${b.text}` : b.t === "role" ? `\n${b.text}${b.right ? `    ${b.right}` : ""}` : b.t === "subrole" ? `${b.text}${b.right ? `    ${b.right}` : ""}` : b.text))
+    .map((b) => (b.t === "section" ? `\n${b.text.toUpperCase()}` : b.t === "bullet" ? `• ${b.lead ? `${b.lead} ` : ""}${b.text}` : b.t === "role" ? `\n${b.text}${b.right ? `    ${b.right}` : ""}` : b.t === "subrole" ? `${b.text}${b.right ? `    ${b.right}` : ""}` : b.text))
     .join("\n")
     .replace(/\n{3,}/g, "\n\n")
     .trim();
@@ -188,6 +197,10 @@ export function letterHeaderFrom(resumeMd: string | undefined, fallbackName: str
 // --- Draft shape (#129): what a recruiter reads in 10 seconds, checked in code, not only asked of the model.
 
 // "Executive Summary", "Career Profile", "Summary of Qualifications" too: a missed heading put Experience above the summary (#767).
+/** Career Highlights takes the summary's place: bold posting skills, each with its proof (#1326). */
+export const HIGHLIGHTS_HEADING = /^(?:career|key)?\s*highlights$/i;
+export const MAX_HIGHLIGHTS = 4;
+
 export const SUMMARY_HEADING = /^(?:(?:professional|executive|career|personal|qualifications)\s+)?(?:summary|profile)(?:\s+summary)?(?:\s+of\s+qualifications)?$|^about(?:\s+me)?$/i;
 const EXPERIENCE = /^(experience|work experience|professional experience|employment|work history)$/i;
 
@@ -203,8 +216,9 @@ export function sentences(text: string): string[] {
 }
 
 /**
- * Hold a resume draft to the 10-second rules: the summary is one sentence, and Experience comes right
- * after it, so the most recent role and its dates sit in the top third. Returns what it changed.
+ * Hold a resume draft to the 10-second rules: the summary is one sentence (or Career Highlights is at most
+ * four bullets), and Experience comes right after it, so the most recent role and its dates sit in the top
+ * third. Returns what it changed.
  */
 export function shapeResume(md: string): { md: string; fixed: string[] } {
   const lines = md.replace(/\r/g, "").split("\n");
@@ -214,8 +228,16 @@ export function shapeResume(md: string): { md: string; fixed: string[] } {
   const secs = starts.map((s, j) => ({ title: lines[s].trim().replace(/^##\s+/, "").replace(/\*/g, "").trim(), lines: lines.slice(s, starts[j + 1] ?? lines.length) }));
   const fixed: string[] = [];
 
-  const sum = secs.find((x) => SUMMARY_HEADING.test(x.title));
-  if (sum) {
+  const hi = secs.find((x) => HIGHLIGHTS_HEADING.test(x.title));
+  if (hi) {
+    const bullets = hi.lines.slice(1).filter((l) => /^\s*[-*•]\s+/.test(l));
+    if (bullets.length > MAX_HIGHLIGHTS) {
+      hi.lines = [hi.lines[0], ...bullets.slice(0, MAX_HIGHLIGHTS), ""];
+      fixed.push(`Kept the first ${MAX_HIGHLIGHTS} career highlights. Left out: ${bullets.slice(MAX_HIGHLIGHTS).map((l) => `"${l.replace(/^\s*[-*•]\s+/, "").replace(/\*\*/g, "")}"`).join(", ")}`);
+    }
+  }
+  const sum = hi ?? secs.find((x) => SUMMARY_HEADING.test(x.title));
+  if (sum && sum !== hi) {
     const body = sum.lines.slice(1).map((l) => l.trim()).filter(Boolean);
     const text = body.map((l) => l.replace(/^[-*•]\s+/, "")).join(" ");
     const all = sentences(text);

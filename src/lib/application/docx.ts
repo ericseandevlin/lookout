@@ -92,7 +92,7 @@ export async function draftToDocx(md: string, title: string, opts: { letterHeade
           keepNext: true,
         }),
       );
-    else if (b.t === "bullet") kids.push(new Paragraph({ bullet: { level: 0 }, children: [run(b.text)], spacing: { after: 30 } }));
+    else if (b.t === "bullet") kids.push(new Paragraph({ bullet: { level: 0 }, children: [...(b.lead ? [run(`${b.lead} `, { bold: true })] : []), run(b.text)], spacing: { after: 30 } }));
     else kids.push(new Paragraph({ children: [run(b.text)], spacing: { after: header ? 200 : 80 } }));
   }
   const doc = new Document({
