@@ -21,7 +21,10 @@ const inputBase: React.CSSProperties = {
 export function ProfileTabs() {
   const path = usePathname();
   const { state } = useStore();
-  const tabs: [string, string][] = [["/profile", "Your answers"], ["/profile/materials", "Materials"], ["/profile/sees", "What Lookout sees"]];
+  // With the interview on (#1449): Interview, Materials, What Lookout knows, as in the design.
+  const tabs: [string, string][] = state.user.interview
+    ? [["/interview", "Interview"], ["/profile/materials", "Materials"], ["/profile/knows", "What Lookout knows"]]
+    : [["/profile", "Your answers"], ["/profile/materials", "Materials"], ["/profile/sees", "What Lookout sees"]];
   // Auto-apply beta: the answers it reuses on every application form (#108).
   if (state.user.autoApply) tabs.push(["/profile/application", "Application answers"]);
   // Each tab is its own page, so arrows move focus between tabs and Enter opens one (manual activation).

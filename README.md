@@ -129,6 +129,7 @@ AI and search settings can live in env or be set in Admin > AI settings (the dat
 | `FEATURE_PREVIEW` | `on` shows the `/next` page of features still being built, for demos. Turn it off after |
 | `FEATURE_DEMO` | `on` serves `/demo`: the made-up Maya Ortiz board, read only, no sign-in. The server rebuilds that account at startup. Staging only |
 | `FEATURE_WAITLIST` | `on` serves `/jobs` and `/what-it-finds`, links them from `/`, adds "What would you want it to look for?" to the waitlist form, and sends a confirm email (double opt-in) for each new request. Admin > People can download every request as CSV either way (#9). Off in prod until the waitlist opens |
+| `FEATURE_INTERVIEW` | `on` serves `/interview` (one question at a time, from what your top finds ask for), `/profile/knows` (What Lookout knows: every fact, Shareable or Private) and the interview card on Finds. Shareable interview facts then count in drafts; private ones never do (#1449). Staging only until approved |
 | `FEATURE_SEARCHES` | `on` allows more than one search per account and shows the kind picker at sign-up (staging only until released) |
 | `CHROMIUM_PATH` | Chromium used by auto-apply (default `/usr/bin/chromium-browser`, set in the Docker image) |
 | `MIGRATIONS_DIR` | Database migrations folder (default `./drizzle`, set in the Docker image) |

@@ -253,6 +253,20 @@
       "when": 1795478400000,
       "tag": "0035_closed_from",
       "breakpoints": true
+    },
+    {
+      "idx": 36,
+      "version": "7",
+      "when": 1795564800000,
+      "tag": "0036_interview",
+      "breakpoints": true
+    },
+    {
+      "idx": 37,
+      "version": "7",
+      "when": 1795651200000,
+      "tag": "0037_interview_paging",
+      "breakpoints": true
     }
   ]
 }
