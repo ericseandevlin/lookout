@@ -19,7 +19,7 @@ vi.mock("@/lib/db", () => ({ db, schema }));
  * A fake application form in place of Chromium (#385). It answers the Playwright calls submit.ts
  * makes: controls found by label or role, a Submit button, and what the page shows after Submit.
  */
-type El = { kind: "control" | "file" | "button" | "option" | "confirm" | "captcha" | "group" | "wrapper"; label: string; tag?: string; type?: string; role?: string; after?: boolean; options?: string[]; children?: El[]; multi?: boolean };
+type El = { kind: "control" | "file" | "button" | "option" | "confirm" | "captcha" | "group" | "wrapper"; label: string; tag?: string; type?: string; role?: string; after?: boolean; options?: string[]; children?: El[]; multi?: boolean; maxLength?: number };
 type Page = ReturnType<typeof fakePage>;
 
 /** The full text content of an element: its own label plus all descendants' labels. */
@@ -43,6 +43,7 @@ function fakePage(els: El[]) {
       n = {
         tagName: (e.tag ?? "input").toUpperCase(),
         getAttribute: (a) => (a === "type" ? (e.type ?? null) : a === "role" ? (e.role ?? null) : a === "aria-multiselectable" ? (e.multi ? "true" : null) : a === "multiple" ? (e.multi ? "" : null) : null),
+        maxLength: e.maxLength ?? -1,
         labels: [{ textContent: e.label }],
         ownerDocument: doc,
       };
@@ -136,7 +137,7 @@ function fakePage(els: El[]) {
   };
   return page;
 }
-type FakeNode = { tagName: string; getAttribute: (a: string) => string | null; labels: { textContent: string }[]; ownerDocument: { querySelectorAll: () => FakeNode[]; getElementById: () => null } };
+type FakeNode = { tagName: string; maxLength: number; getAttribute: (a: string) => string | null; labels: { textContent: string }[]; ownerDocument: { querySelectorAll: () => FakeNode[]; getElementById: () => null } };
 type Loc = {
   first(): Loc;
   last(): Loc;
@@ -716,6 +717,25 @@ describe("runFill controls (#567)", () => {
     expect(page.did).toContain("select Country=Canada");
     expect(page.did).toContain("click United States");
     expect(page.did).not.toContain("fill Country=Canada");
+  });
+
+  it("an answer over the field's maxlength is not typed, and says the limit (#1508)", async () => {
+    const id = await seed("approved", [
+      { kind: "answer", prompt: "Why Acme?", content: "x".repeat(30) },
+      { kind: "answer", prompt: "Anything else?", content: "Short.", required: false },
+    ]);
+    page = fakePage([
+      { kind: "control", label: "Why Acme?", tag: "textarea", maxLength: 20 },
+      { kind: "control", label: "Anything else?", tag: "textarea", maxLength: 20 },
+    ]);
+    const r = await runFill(id, "test");
+    expect(r.log.map((l) => [l.prompt, l.ok, l.how])).toEqual([
+      ["Why Acme?", false, "answer is 30 characters, the field takes 20"],
+      ["Anything else?", true, "typed"],
+    ]);
+    expect(r.missing).toEqual(["Why Acme?"]);
+    expect(page.did).not.toContain(`fill Why Acme?=${"x".repeat(30)}`);
+    expect(page.did).toContain("fill Anything else?=Short.");
   });
 
   it("an upload with nothing to upload counts as not filled", async () => {
