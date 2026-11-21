@@ -9,8 +9,7 @@ import { Seg, btn } from "./Settings";
 import { useConfirm } from "./Confirm";
 import { XIcon } from "./icons";
 import { api } from "./store";
-import { SubmitModeNote } from "./SubmitModeNote";
-import { ATS_NAME, type SubmitMode } from "@/lib/application/submitMode";
+import type { SubmitMode } from "@/lib/application/submitMode";
 import { useFocusTrap } from "./useFocusTrap";
 import { color, font } from "@/lib/tokens";
 
@@ -116,7 +115,7 @@ export function ApplyPage() {
   };
 
   const on = !!settings?.enabled;
-  const summary = !settings ? "" : on ? `Queues ${settings.threshold === 5 ? "level 5 matches" : "level 4 and 5 matches"} automatically, up to ${settings.dailyCap} a day` : "Only roles you queue yourself";
+  const summary = settings && on ? `Queues ${settings.threshold === 5 ? "level 5 matches" : "level 4 and 5 matches"} automatically, up to ${settings.dailyCap} a day` : "";
 
   return (
     <div className="page-pad lk-page w-page" style={{ display: "flex", flexDirection: "column", gap: 16 }}>
@@ -127,7 +126,7 @@ export function ApplyPage() {
           <span aria-hidden style={{ width: 10, height: 10, borderRadius: "50%", flex: "none", background: on ? "#427D33" : "#CFC6B9" }} />
           <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column" }}>
             <span style={{ fontSize: font.md, fontWeight: 700 }}>Auto-apply {on ? "on" : "off"}</span>
-            <span style={{ fontSize: font.base, color: color.t2, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{summary}</span>
+            {summary && <span style={{ fontSize: font.base, color: color.t2, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{summary}</span>}
           </div>
           <button onClick={() => setPanel(true)} style={{ ...btn("outline"), height: 38, flex: "none" }}>Settings</button>
           <Switch on={on} onToggle={() => save({ enabled: !on })} />
@@ -169,32 +168,17 @@ export function ApplyPage() {
                       style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap", padding: "12px 14px", borderRadius: 12, background: focusId === a.id ? "#FDF3E8" : "#fff", border: `1.5px solid ${focusId === a.id ? color.orange : color.border}`, transition: "background-color .4s ease, border-color .4s ease", scrollMarginTop: 120 }}
                     >
                       <div style={{ flex: "1 1 260px", minWidth: 0 }}>
-                        <div style={{ fontSize: font.md, fontWeight: 600, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                          {a.items > 0 ? (
-                            <Link href={`/apply/${a.id}`} style={{ color: color.ink }}>
-                              {a.role}
-                            </Link>
-                          ) : (
-                            a.role
-                          )}
-                        </div>
-                        <div style={{ fontSize: font.base, color: color.t2 }}>
-                          {a.company}
-                          {a.score ? ` · match ${a.score}/5` : ""}
-                          {a.items > 0 ? ` · ${a.items} things to fill${a.ats ? ` on ${ATS_NAME[a.ats] ?? a.ats}` : ""}` : ""}
+                        <div style={{ fontSize: font.md, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                          <span style={{ fontWeight: 700 }}>{a.company}</span> · {a.role}
                         </div>
                         {a.error && (
                           <div role="alert" style={{ fontSize: font.base, color: color.brick, marginTop: 4 }}>
                             {a.error}
                           </div>
                         )}
-                        {a.status !== "submitted" && a.status !== "canceled" && (
-                          <div style={{ marginTop: 6 }}>
-                            <SubmitModeNote submit={a.submit} compact />
-                          </div>
-                        )}
                       </div>
-                      <span style={{ padding: "5px 11px", borderRadius: 999, fontSize: font.base, fontWeight: 600, background: st.bg, color: st.ink }}>{st.label}</span>
+                      {/* "Ready for your review" would only repeat the Review button. */}
+                      {a.status !== "needs_review" && <span style={{ padding: "5px 11px", borderRadius: 999, fontSize: font.base, fontWeight: 600, background: st.bg, color: st.ink }}>{st.label}</span>}
                       {(a.status === "needs_review" || a.status === "manual" || a.status === "approved" || a.status === "submitted") && (
                         <Link href={`/apply/${a.id}`} style={{ ...btn(a.status === "submitted" ? "outline" : "solid"), height: 34, fontSize: font.base, display: "inline-flex", alignItems: "center", textDecoration: "none" }}>
                           {a.status === "submitted" ? "See what was sent" : a.status === "manual" || a.status === "approved" ? "Send it" : "Review"}
@@ -213,13 +197,6 @@ export function ApplyPage() {
             </section>
           );
         })}
-
-      {apps && apps.length > 0 && (
-        <p style={{ margin: "4px 0 0", fontSize: font.base, color: color.t2 }}>
-          To send, open the job in Firefox with the Lookout extension: it fills the form and you press Submit. No extension? Each application has a two-minute checklist.{" "}
-          <button onClick={() => setPanel(true)} style={{ ...btn("text"), height: "auto", padding: 0, fontSize: font.base }}>How it works</button>
-        </p>
-      )}
 
       {panel && settings && <SettingsPanel settings={settings} save={save} close={() => setPanel(false)} />}
     </div>
