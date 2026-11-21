@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useId, useLayoutEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import type { InterviewView, ViewFact, ViewTurn } from "@/lib/interview/session";
 import { PageHead, ProfileTabs } from "./Profile";
 import { btn } from "./Settings";
@@ -299,37 +300,77 @@ function Said({ who, children, id }: { who: "Lookout" | "You"; children: React.R
   );
 }
 
-/** The question bubble, with "Why this question?" as an icon in its corner. */
+/**
+ * The question bubble. The info icon in its corner shows the reason as a tooltip: on hover, on keyboard focus,
+ * and on tap (a tap pins it until the next tap, a tap outside, Escape or a scroll).
+ */
 function Question({ t }: { t: ViewTurn }) {
-  const [why, setWhy] = useState(false);
-  const whyId = useId();
+  const [hover, setHover] = useState(false);
+  const [pinned, setPinned] = useState(false);
+  const [at, setAt] = useState<{ x: number; y: number; below: boolean } | null>(null);
+  const btnRef = useRef<HTMLButtonElement>(null);
+  const tipId = useId();
+  const open = hover || pinned;
+  useLayoutEffect(() => {
+    if (!open || !btnRef.current) return setAt(null);
+    const b = btnRef.current.getBoundingClientRect();
+    const below = b.top < 140;
+    setAt({ x: Math.max(156, Math.min(window.innerWidth - 156, b.left + b.width / 2)), y: below ? b.bottom + 8 : b.top - 8, below });
+    const close = () => (setHover(false), setPinned(false));
+    const outside = (e: PointerEvent) => !btnRef.current?.contains(e.target as Node) && close();
+    document.addEventListener("pointerdown", outside);
+    window.addEventListener("scroll", close, true);
+    window.addEventListener("resize", close);
+    return () => {
+      document.removeEventListener("pointerdown", outside);
+      window.removeEventListener("scroll", close, true);
+      window.removeEventListener("resize", close);
+    };
+  }, [open]);
   return (
     <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-start", gap: 6 }}>
       <div style={{ ...bubble(false), ...(t.why && { paddingRight: 46 }) }}>
         <span className="sr-only">Lookout: </span>
         {t.question}
         {t.why && (
-          <button
-            onClick={() => setWhy(!why)}
-            aria-expanded={why}
-            aria-controls={whyId}
-            aria-label="Why this question?"
-            data-tip="Why this question?"
-            style={{ position: "absolute", right: 6, bottom: 6, width: 32, height: 32, padding: 0, border: 0, borderRadius: 999, background: why ? color.surface : "transparent", color: why ? color.ink : color.t2, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}
-          >
-            <svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-              <circle cx="12" cy="12" r="9.5" />
-              <path d="M12 11v5.5" />
-              <circle cx="12" cy="7.6" r="0.6" fill="currentColor" />
-            </svg>
-          </button>
+          <>
+            <button
+              ref={btnRef}
+              onClick={() => setPinned(!pinned)}
+              onPointerEnter={(e) => e.pointerType === "mouse" && setHover(true)}
+              onPointerLeave={(e) => e.pointerType === "mouse" && setHover(false)}
+              onFocus={(e) => e.currentTarget.matches(":focus-visible") && setHover(true)}
+              onBlur={() => (setHover(false), setPinned(false))}
+              onKeyDown={(e) => e.key === "Escape" && (setHover(false), setPinned(false))}
+              aria-label="Why this question?"
+              aria-describedby={tipId}
+              style={{ position: "absolute", right: 6, bottom: 6, width: 32, height: 32, padding: 0, border: 0, borderRadius: 999, background: open ? color.surface : "transparent", color: open ? color.ink : color.t2, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}
+            >
+              <svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+                <circle cx="12" cy="12" r="9.5" />
+                <path d="M12 11v5.5" />
+                <circle cx="12" cy="7.6" r="0.6" fill="currentColor" />
+              </svg>
+            </button>
+            <span id={tipId} className="sr-only">{t.why}</span>
+            {at &&
+              createPortal(
+                <div
+                  aria-hidden="true"
+                  data-interview-tip=""
+                  style={{
+                    position: "fixed", left: at.x, top: at.y, transform: at.below ? "translateX(-50%)" : "translate(-50%,-100%)",
+                    zIndex: 50, pointerEvents: "none", width: "max-content", maxWidth: 296, background: color.ink, color: "#fff",
+                    fontSize: font.base, fontWeight: 500, lineHeight: 1.4, padding: "8px 12px", borderRadius: 8, boxShadow: "0 6px 18px rgba(29,26,15,.22)", textWrap: "pretty",
+                  }}
+                >
+                  {t.why}
+                </div>,
+                document.body,
+              )}
+          </>
         )}
       </div>
-      {t.why && (
-        <div id={whyId} hidden={!why} style={{ fontSize: font.lg, lineHeight: 1.5, color: color.t2, maxWidth: 620, paddingLeft: 4 }}>
-          {t.why}
-        </div>
-      )}
     </div>
   );
 }

@@ -30,7 +30,7 @@ The next question:
 - When the topic has their part, the scope and a number, or follow-ups left is 0, move to a new topic with "new_topic".
 - Never ask about a topic in the "never ask again" list or one already covered. Never ask about pay, health, family, age or other protected traits.
 - If no real gap is left, return "done".
-- why: one line, the reason for the question, for example "It's asked by 3 of your top 5 finds, and nothing in your resume backs it."
+- why: one short sentence with the evidence only, for example "3 of your top 5 finds ask for food and beverage program experience." Do not add what the resume lacks ("and nothing in your resume shows it") or repeat the question.
 - topic: two to five plain words naming the skill or area, for example "food and beverage programs".
 - Short sentences, plain words, warm and direct. No em dashes. One question only.`;
 
