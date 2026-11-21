@@ -13,6 +13,16 @@ const plural = (n: number, one: string) => `${n} ${one}${n === 1 ? "" : "s"}`;
 /** Within this many pixels of the bottom, new turns scroll into view; further up, the reader stays put. */
 const STICK_PX = 80;
 
+/** Keep going is remembered for the rest of the sitting, in this tab only. */
+const keptKey = (d: InterviewView) => `lookout:interview-kept:${d.turns[0]?.id ?? "new"}`;
+const readKept = (d: InterviewView) => {
+  try {
+    return Number(sessionStorage.getItem(keptKey(d)) ?? -1);
+  } catch {
+    return -1;
+  }
+};
+
 type Earlier = { open: boolean; turns: ViewTurn[]; more: boolean; loading: boolean };
 
 /** Profile > Interview (#1449): one question at a time, from what the person's top finds ask for. */
@@ -68,6 +78,7 @@ export function Interview() {
     api<InterviewView>("/api/interview")
       .then(async (d) => {
         setData(d);
+        setKeptAt(readKept(d));
         // A quote link from What Lookout knows lands on its turn, paging back to it if it's from an earlier sitting.
         const id = window.location.hash.slice(1);
         if (!id) return;
@@ -130,7 +141,11 @@ export function Interview() {
 
   const keepGoing = () => {
     stick.current = true;
-    setKeptAt(data?.sitting.topics ?? 0);
+    if (!data) return;
+    setKeptAt(data.sitting.topics);
+    try {
+      sessionStorage.setItem(keptKey(data), String(data.sitting.topics));
+    } catch {}
     requestAnimationFrame(() => box.current?.focus());
   };
 

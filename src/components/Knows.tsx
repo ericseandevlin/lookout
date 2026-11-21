@@ -21,6 +21,8 @@ const KIND: Record<FactKind, [string, string]> = {
 };
 
 const card: React.CSSProperties = { background: "#fff", border: `1.5px solid ${color.border}`, borderRadius: 14, padding: 20 };
+/** Earlier facts show this many at a time. */
+const PAGE = 20;
 const day = (iso: string) => new Date(iso).toLocaleDateString("en-US", { month: "short", day: "numeric" });
 const isToday = (iso: string) => new Date(iso).toDateString() === new Date().toDateString();
 const short = (s: string, n = 60) => (s.length > n ? `${s.slice(0, n - 1).trimEnd()}…` : s);
@@ -69,6 +71,8 @@ export function Knows() {
     }
   };
 
+  // A long list shows 20 earlier facts at a time; a search shows every match.
+  const [earlierShown, setEarlierShown] = useState(PAGE);
   const shown = useMemo(() => {
     const needle = q.trim().toLowerCase();
     return (facts ?? []).filter(
@@ -123,9 +127,16 @@ export function Knows() {
             list.length ? (
               <section key={title} aria-label={title} style={{ display: "flex", flexDirection: "column", gap: 10 }}>
                 <h2 style={{ margin: "6px 0 0", fontSize: font.base, fontWeight: 700, letterSpacing: ".12em", textTransform: "uppercase", color: color.t2 }}>{title}</h2>
-                {list.map((f) => (
+                {(title === "Earlier" && !q.trim() ? list.slice(0, earlierShown) : list).map((f) => (
                   <Row key={f.id} f={f} onPatch={(p) => patch(f.id, p)} onDelete={() => remove(f)} />
                 ))}
+                {title === "Earlier" && !q.trim() && list.length > earlierShown && (
+                  <div>
+                    <button onClick={() => setEarlierShown((n) => n + PAGE)} style={{ ...btn("outline"), fontSize: font.base }}>
+                      Show {Math.min(PAGE, list.length - earlierShown)} more ({list.length - earlierShown} not shown)
+                    </button>
+                  </div>
+                )}
               </section>
             ) : null,
           )}
