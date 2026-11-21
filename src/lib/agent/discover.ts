@@ -106,6 +106,20 @@ const today = () => dayKey(new Date(), env.timezone);
 
 const Queries = z.object({ queries: z.array(z.string()).describe("4 to 6 web search queries") });
 
+/**
+ * Trimmed, blank ones out, and one of each: a repeat that differs only in case or spacing runs the same search again and
+ * takes a slot from a real query, so it goes before the cap (#1476).
+ */
+const distinct = (list: string[]) => {
+  const seen = new Set<string>();
+  return list
+    .map((q) => q.trim())
+    .filter((q) => {
+      const k = q.toLowerCase().replace(/\s+/g, " ");
+      return q && !seen.has(k) && !!seen.add(k);
+    });
+};
+
 async function makeQueries(ctx: Context, usage: Usage) {
   const out = await completeJSON({
     name: "queries",
@@ -120,10 +134,10 @@ Write 4 to 6 search queries for open roles that fit. Mix:
 - queries aimed at employer job pages, e.g. "Director of Events" New York site:greenhouse.io OR site:lever.co OR site:myworkdayjobs.com OR site:ashbyhq.com
 Use the candidate's target titles, close variants, and their city. Keep each under 120 characters.`,
   });
-  const queries = out.queries.map((q) => q.trim()).filter(Boolean).slice(0, MAX_QUERIES);
+  const queries = distinct(out.queries).slice(0, MAX_QUERIES);
   if (queries.length) return queries;
   // No usable queries from the model: search the profile's target titles instead (#609).
-  const titles = (ctx.searchProfile?.targetTitles ?? []).map((t) => t.trim()).filter(Boolean).slice(0, MAX_QUERIES);
+  const titles = distinct(ctx.searchProfile?.targetTitles ?? []).slice(0, MAX_QUERIES);
   if (!titles.length) throw new Error("Couldn't plan any searches from your profile. Try again, or add target titles to your profile.");
   return titles.map((t) => `${t} jobs`);
 }
