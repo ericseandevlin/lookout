@@ -577,6 +577,15 @@ describe("asks in thousands (#1188)", () => {
     ["What are your salary expectations? We offer a 401(k) match.", false],
     ["What are your salary expectations?", false],
     ["Tell us about your thousands of users", false],
+    // Other ways forms write the unit (#1488).
+    ["Salary expectations (in 1000s)", true],
+    ["Expected annual salary (thousands USD)", true],
+    ["Desired salary (USD, thousands)", true],
+    ["Salary expectation (£'000)", true],
+    ["Desired salary in thousand USD", true],
+    ["Desired salary ($ in thousands)", true],
+    ["Desired salary (USD)", false],
+    ["Do you have 401(k) experience?", false],
   ])("%j -> %s", (prompt, want) => expect(asksThousands(prompt)).toBe(want));
 
   it("gives a yearly ask in thousands", () => {

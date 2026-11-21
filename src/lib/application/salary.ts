@@ -199,8 +199,15 @@ function periodIn(prompt: string): "year" | Per | null {
  * The ask wants its number in thousands: "Desired salary (in thousands)", "Salary expectations in $K", "Base (000s)"
  * (#1188). "401(k)" is a retirement plan, not a unit.
  */
-export const asksThousands = (prompt: string) =>
-  /\bin (?:\$\s?|usd\s)?(?:thousands|k)\b|(?<![\d\w])\(\s*(?:in\s+)?(?:\$\s?)?(?:000s|000's|k|thousands)\s*\)|\bin 000s\b/i.test(prompt);
+export const asksThousands = (prompt: string) => THOUSANDS.test(prompt);
+
+// "(in 1000s)", "(thousands USD)", "(USD, thousands)", "(£'000)" and "in thousand USD" too (#1488).
+const CUR = String.raw`(?:usd|us\$|\$|£|€|eur|gbp|cad)`;
+const UNIT = String.raw`(?:000s|000's|'000s?|1,?000s|k|thousands?)`;
+const THOUSANDS = new RegExp(
+  String.raw`\bin (?:\$\s?|usd\s)?(?:thousands?|k|1,?000s)\b|(?<![\d\w])\(\s*(?:in\s+)?(?:${CUR}\s*,?\s*)?${UNIT}(?:\s*,?\s*${CUR})?\s*\)|\bin 000s\b`,
+  "i",
+);
 
 // 260 working days a year, the same rule discovery uses to read a day rate on a posting (#1187).
 const PER: Record<Per, { n: number; how: string }> = {
