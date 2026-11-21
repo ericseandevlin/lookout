@@ -36,7 +36,7 @@ const CLOSED = [
   // Built In's "Sorry, this job was removed at 3:14 a.m. ...": "was" with filled, closed or removed only, so "this role was
   // available to remote candidates" stays open (#1271). "Has been archived" and "was archived" too (#1279).
   // Deleted, withdrawn, unpublished, cancelled and taken down too, but not "taken down to three days a week" (#1451).
-  /(?<!\b(?:(?:until|till|til)(?: such time as)?|once|when|after|if|before|unless|for|of|to|on|with|in|about) (?:the |this |a |our )?)(job|position|posting|role|requisition|opening|vacancy|opportunity|listing)( ad)? ((is )?(no longer|has (?:already |now )?been) (available|filled|closed|removed|archived|deleted|withdrawn|unpublished|cancell?ed|taken down)|was (filled|closed|removed|archived|deleted|withdrawn|unpublished|cancell?ed|taken down)\b)(?! to\b)/i,
+  /(?<!\b(?:(?:until|till|til)(?: such time as)?|once|when|after|if|before|unless|for|of|to|on|with|in|about) (?:the |this |a |our )?)(?<!\b(?:each|every|any|all|no|which|whether) )(job|position|posting|role|requisition|opening|vacancy|opportunity|listing)( ad)? ((is )?(no longer|has (?:already |now )?been) (available|filled|closed|removed|archived|deleted|withdrawn|unpublished|cancell?ed|taken down)|was (filled|closed|removed|archived|deleted|withdrawn|unpublished|cancell?ed|taken down)\b)(?! to\b)/i,
   /(job|posting|position|page) (was )?not found/i,
   /(?<!\b(?:until|till|til|once|when|after|if|before|unless) )this (job|position|posting|role)( ad)? (is |has )?(now )?(expired|closed|been filled)\b(?! to\b|[- ]?date\b|-)/i,
   // More wordings careers sites use (#747).
@@ -60,7 +60,9 @@ const CLOSED = [
   // a live page's "Position Closed Date: 11/30" label or "closed-loop" (#832).
   // "This job post is closed" and "This job advert has now closed" too (#1279). "This job opening is closed" and
   // "This requisition is closed" (#1361).
-  /\b(job|posting|position|role|vacancy|opportunity|listing|advert|opening|requisition)( posting| post| ad| advert| opening)? (is |has )?(now )?closed\b(?! to\b|[- ]?date\b|-)/i,
+  // Not a duty about other jobs: "every requisition is closed out", "each role is closed in Greenhouse", "the opportunity is
+  // closed won" (#1493).
+  /(?<!\b(?:each|every|any|all|no|which|whether) )\b(job|posting|position|role|vacancy|opportunity|listing|advert|opening|requisition)( posting| post| ad| advert| opening)? (is |has )?(now )?closed\b(?! to\b|[- ]?date\b|-|\s+(?:out|won|lost)\b)/i,
   // Not "not accepting applications at this time from third-party recruiters" (#1083).
   /not accepting applications (for this (job|role|position)|at this time)(?!,? (from|via|by|through)\b)/i,
   /\bpage not found\b|\b404\b.{0,40}(not found|doesn.t exist)/i,
