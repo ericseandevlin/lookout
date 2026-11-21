@@ -69,7 +69,10 @@ export function DocPreview({ md, template, accent, header }: { md: string; templ
         ) : b.t === "bullet" ? (
           <div key={i} style={{ display: "grid", gridTemplateColumns: "14px 1fr", margin: "1px 0" }}>
             <span aria-hidden style={{ color: T.section === "bar" ? c(T.accent) : undefined }}>•</span>
-            <span>{b.text}</span>
+            <span>
+              {b.lead && <strong>{b.lead} </strong>}
+              {b.text}
+            </span>
           </div>
         ) : (
           <p key={i} style={{ margin: "0 0 8px" }}>{b.text}</p>
