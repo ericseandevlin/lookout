@@ -469,3 +469,19 @@ describe("classifyPage: duties about other jobs closing are not the posting clos
     expect(classifyPage(200, "TITLE: Acme\n\nTEXT:\nThis position has been filled.").state).toBe("gone");
   });
 });
+
+describe("classifyPage: a job that changed work mode or city is still open (#1494)", () => {
+  it.each([
+    "Update (Nov 3): This role is no longer available as fully remote. It is now hybrid, three days a week in our New York office.",
+    "Note: this position is no longer open as a remote role; candidates must be within commuting distance of Austin.",
+    "This position is no longer available in Austin and is now based in Denver.",
+    "This role is no longer available for remote candidates.",
+  ])("keeps %j open", (line) => {
+    expect(classifyPage(200, `TITLE: Designer - Acme\n\nTEXT:\n${line}\nWhat you'll do\nDesign things.`).state).toBe("open");
+  });
+
+  it("still reads a plain no longer available as gone", () => {
+    expect(classifyPage(200, "TITLE: Acme\n\nTEXT:\nThis role is no longer available.").state).toBe("gone");
+    expect(classifyPage(200, "TITLE: Acme\n\nTEXT:\nThis position is no longer available for applications.").state).toBe("gone");
+  });
+});
