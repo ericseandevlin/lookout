@@ -4,6 +4,7 @@ import { createPortal } from "react-dom";
 import { useEffect, useRef, useState } from "react";
 import { useStore } from "./store";
 import { color, font } from "@/lib/tokens";
+import { SearchIcon } from "./icons";
 
 /** What a new search can hunt for (#8); same two options as the request-access kind picker. */
 const KIND_OPTIONS = [
@@ -87,7 +88,10 @@ export function SearchSwitcher({ variant }: { variant: "rail" | "bar" }) {
     if (next && next !== state.searches.find((s) => s.id === id)?.name) await store.renameSearch(id, next);
   };
 
-  const label = (
+  // A collapsed rail is too narrow for the name ("Job s..."), so it shows an icon; the tooltip keeps the name.
+  const label = state.settings.railClosed && variant === "rail" ? (
+    <SearchIcon size={18} />
+  ) : (
     <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{active.name}</span>
   );
 

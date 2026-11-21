@@ -1,9 +1,10 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import {
-  cellQuiet, cellText, dueDays, isNewFind, postedDays, scoreStyle, shortDate, slugOf, stageStyle,
+  cellQuiet, cellText, dueDays, isNewFind, postedDays, scoreStyle, shortDate, stageStyle,
 } from "@/lib/board";
+import { findForHash, hashFor, SPLIT_QUERY, stepSelection } from "@/lib/findSelection";
 import { kindOf } from "@/lib/kinds";
 import type { Find } from "@/lib/types";
 import { CompCompare, useCurrentComp } from "./CurrentComp";
@@ -52,6 +53,18 @@ const sortValue = (f: Find, key: SortKey): string | number =>
   : key === "due" ? (dueDays(f) ?? 9999)
   : typeof f.attributes?.setAside === "string" ? f.attributes.setAside : "";
 
+/** Whether the viewport is wide enough for the side-by-side board (#1331). False on the server and before hydration. */
+const subscribeSplit = (cb: () => void) => {
+  const mq = window.matchMedia(SPLIT_QUERY);
+  mq.addEventListener("change", cb);
+  return () => mq.removeEventListener("change", cb);
+};
+const useSplit = () => useSyncExternalStore(subscribeSplit, () => window.matchMedia(SPLIT_QUERY).matches, () => false);
+
+/** Scrolls a desktop row into view only as far as needed, so the list otherwise keeps its scroll position. */
+const revealRow = (id: string, block: ScrollLogicalPosition = "nearest") =>
+  document.querySelector(`[data-find-row="${CSS.escape(id)}"]`)?.scrollIntoView({ block });
+
 export function Finds() {
   const store = useStore();
   const { state, patchFind } = store;
@@ -62,6 +75,9 @@ export function Finds() {
   const cfg = kindOf(state.profile.kind);
   const SORTS = sortsFor(cfg);
   const GRID = `82px 76px ${cfg.board.columns.map((c) => WIDTH[c.key]).join(" ")} ${WIDTH[cfg.board.preStage.key]} 156px ${WIDTH[cfg.board.tail.key]}`;
+  // Beside the detail pane the list keeps only what tells finds apart; the pane shows the rest (#1331).
+  const SPLIT_GRID = "82px 76px minmax(110px,1fr) minmax(150px,1.5fr) 140px";
+  const split = useSplit();
 
   const [filter, setFilter] = useState<Filter>("all");
   const [fit, setFit] = useState(0);
@@ -132,7 +148,7 @@ export function Finds() {
   const open = useCallback(
     (id: string | null) => {
       const f = finds.find((x) => x.id === id);
-      history.replaceState(null, "", location.pathname + location.search + (f ? "#" + slugOf(f) : ""));
+      history.replaceState(null, "", location.pathname + location.search + hashFor(f ?? null));
       if (!id) setSwitching(false);
       setOpenId(id);
       setFitMenu(false);
@@ -143,14 +159,15 @@ export function Finds() {
   );
   useEffect(() => {
     const read = () => {
-      const s = decodeURIComponent(location.hash.slice(1));
-      const f = s && finds.find((x) => slugOf(x) === s);
+      const f = findForHash(location.hash, finds);
       if (f) {
         setFilter(f.archived ? "archived" : "all");
         setFit(0);
         setQ("");
         setOpenId(f.id);
         if (!f.seen) patchFind(f.id, { seen: true });
+        // A shared link to a find far down the board lands with its row in view beside the pane.
+        requestAnimationFrame(() => revealRow(f.id, "center"));
       }
     };
     read();
@@ -188,6 +205,61 @@ export function Finds() {
     open(to.id);
   };
   const dense = settings.density === "Compact";
+  // Desktop split view (#1331): the list on the left, the selected find docked on the right. Phones keep the drawer.
+  const docked = split && (rows.length > 0 || !!openFind);
+  const shownCols = docked ? cfg.board.columns.slice(0, 2) : cfg.board.columns;
+
+  // Up and down move the selection in the split view. Read through a ref so the listener never goes stale.
+  const keys = useRef({ rows, openId, open, menus: false });
+  useEffect(() => {
+    keys.current = { rows, openId, open, menus: !!stageMenu || fitMenu || sheetOpen };
+  });
+  useEffect(() => {
+    if (!docked) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== "ArrowDown" && e.key !== "ArrowUp") return;
+      if (e.defaultPrevented || e.metaKey || e.ctrlKey || e.altKey || e.shiftKey) return;
+      if ((e.target as HTMLElement | null)?.closest("input, textarea, select, [contenteditable]")) return;
+      if (document.querySelector('[aria-modal="true"]')) return;
+      const k = keys.current;
+      if (k.menus) return;
+      const to = stepSelection(k.rows.map((f) => f.id), k.openId, e.key === "ArrowDown" ? 1 : -1);
+      if (!to) return;
+      e.preventDefault();
+      if (to !== k.openId) k.open(to);
+      // Keyboard focus on the list follows the selection; otherwise focus stays where it was.
+      if (document.activeElement?.closest(".find-list")) {
+        document.querySelector<HTMLElement>(`[data-find-row="${CSS.escape(to)}"] .cell-link`)?.focus({ preventScroll: true });
+      }
+      revealRow(to);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [docked]);
+
+  // The pane fills the window below wherever the board starts, so its footer is in view before the page scrolls;
+  // once the page scrolls it sticks at --pane-top and fills the rest.
+  const splitBox = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const box = splitBox.current;
+    if (!docked || !box) return;
+    let frame = 0;
+    const fit = () => {
+      cancelAnimationFrame(frame);
+      frame = requestAnimationFrame(() => {
+        const stick = parseFloat(getComputedStyle(box).getPropertyValue("--pane-top")) || 16;
+        box.style.setProperty("--pane-h", `${Math.max(320, innerHeight - Math.max(box.getBoundingClientRect().top, stick) - 16)}px`);
+      });
+    };
+    fit();
+    window.addEventListener("scroll", fit, { passive: true });
+    window.addEventListener("resize", fit);
+    return () => {
+      cancelAnimationFrame(frame);
+      window.removeEventListener("scroll", fit);
+      window.removeEventListener("resize", fit);
+    };
+  }, [docked]);
 
   const sub = state.running
     ? state.running === "url" ? "Reading the posting you added…" : `Lookout is searching for new ${cfg.noun.many}…`
@@ -231,6 +303,7 @@ export function Finds() {
         <SetupPanel answered={counts.answered} sources={counts.sources} />
         <FirstWeek ready={counts.answered === counts.total && state.materials.resume?.status === "done"} />
 
+        <div ref={splitBox} className={docked ? "board-split" : undefined}>
         <section className="board-sec" style={{ background: "#fff", overflow: "hidden" }}>
           {/* Desktop toolbar */}
           <div className="desk-only" style={{ display: "flex", alignItems: "center", gap: 8, padding: "18px 22px", flexWrap: "wrap", borderBottom: `1px solid ${color.border}` }}>
@@ -265,7 +338,7 @@ export function Finds() {
                 </Menu>
               )}
             </div>
-            <div className="wide-only" style={{ marginLeft: "auto", fontSize: font.base, color: color.t2 }}>Click a row for details · click a stage to change it</div>
+            <div className="wide-only" style={{ marginLeft: "auto", fontSize: font.base, color: color.t2 }}>{docked ? "↑ ↓ move between finds" : "Click a row for details · click a stage to change it"}</div>
           </div>
 
           {/* Mobile toolbar */}
@@ -298,11 +371,14 @@ export function Finds() {
           </div>
 
           {/* Desktop table */}
-          <div className="desk-only" style={{ overflowX: "auto" }}>
+          <div className="desk-only find-list" style={{ overflowX: "auto" }}>
             <div style={{ minWidth: "min-content" }} role="table" aria-label="Finds">
               <div role="rowgroup">
-              <div role="row" style={{ display: "grid", gridTemplateColumns: GRID, alignItems: "center", padding: "0 22px", height: 46, borderBottom: `1px solid ${color.border}` }}>
-                {([["", null], ["Match", "score" as SortKey], ...cfg.board.columns.map((c) => [c.label, c.key as SortKey] as [string, SortKey]), [cfg.board.preStage.label, cfg.board.preStage.key as SortKey], ["Stage", "stage" as SortKey], [cfg.board.tail.label, cfg.board.tail.key as SortKey]] as [string, SortKey | null][]).map(([label, key]) => {
+              <div role="row" style={{ display: "grid", gridTemplateColumns: docked ? SPLIT_GRID : GRID, alignItems: "center", padding: "0 22px", height: 46, borderBottom: `1px solid ${color.border}` }}>
+                {(docked
+                  ? [["", null], ["Match", "score"], ...shownCols.map((c) => [c.label, c.key]), ["Stage", "stage"]]
+                  : [["", null], ["Match", "score"], ...shownCols.map((c) => [c.label, c.key]), [cfg.board.preStage.label, cfg.board.preStage.key], ["Stage", "stage"], [cfg.board.tail.label, cfg.board.tail.key]]
+                ).map(([label, key]) => [label, key as SortKey | null] as const).map(([label, key]) => {
                   const on = key && sortKey === key;
                   return (
                     <div key={label} role="columnheader" style={{ display: "flex", alignItems: "center", gap: 8 }}>
@@ -324,13 +400,16 @@ export function Finds() {
               {rows.map((f, i) => {
                 const st = stageStyle(f.stage);
                 const sc = scoreStyle(f.score);
+                const selected = docked && f.id === openId;
                 return (
                   <div
                     key={f.id}
                     role="row"
+                    data-find-row={f.id}
+                    aria-current={selected || undefined}
                     className="h-row lk-in"
                     onClick={() => open(f.id)}
-                    style={{ animationDelay: `${Math.min(i, 14) * 28}ms`, position: "relative", zIndex: stageMenu === f.id ? 6 : undefined, display: "grid", gridTemplateColumns: GRID, alignItems: "center", padding: `${dense ? 9 : 16}px 22px`, borderBottom: `1px solid ${color.surface}`, cursor: "pointer", background: f.pinned ? "#FFFBF6" : "#fff" }}
+                    style={{ animationDelay: `${Math.min(i, 14) * 28}ms`, position: "relative", zIndex: stageMenu === f.id ? 6 : undefined, display: "grid", gridTemplateColumns: docked ? SPLIT_GRID : GRID, alignItems: "center", padding: `${dense ? 9 : 16}px 22px`, borderBottom: `1px solid ${color.surface}`, cursor: "pointer", background: selected ? color.surface : f.pinned ? "#FFFBF6" : "#fff", boxShadow: selected ? `inset 4px 0 0 ${color.brick}` : undefined }}
                   >
                     <div role="cell" style={{ display: "flex", gap: 6, alignItems: "center", position: "relative" }}>
                       {isNew(f) && <span data-tip="New this week" style={{ position: "absolute", left: -15, top: "50%", marginTop: -4, width: 8, height: 8, borderRadius: "50%", background: "#427D33" }} />}
@@ -344,7 +423,7 @@ export function Finds() {
                     <div role="cell" style={{ paddingLeft: 13, width: 60 }}>
                       <div style={{ width: 30, height: 30, borderRadius: "50%", background: sc.bg, color: sc.ink, border: `1.5px solid ${sc.border}`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: font.base, fontWeight: 700 }}>{f.score}</div>
                     </div>
-                    {cfg.board.columns.map((c, ci) =>
+                    {shownCols.map((c, ci) =>
                       ci === 0 ? (
                         <div role="rowheader" key={c.key} style={{ fontSize: font.base, fontWeight: 600, paddingRight: 16 }}>
                           {/* The keyboard and screen reader way into a find (#211); the row's click stays for pointers. */}
@@ -359,7 +438,7 @@ export function Finds() {
                         </div>
                       ),
                     )}
-                    <div role="cell" style={{ fontSize: font.base, color: color.t2, fontStyle: cellQuiet(f, cfg.board.preStage.key) ? "italic" : "normal" }}>{cellText(f, cfg.board.preStage.key)}</div>
+                    {!docked && <div role="cell" style={{ fontSize: font.base, color: color.t2, fontStyle: cellQuiet(f, cfg.board.preStage.key) ? "italic" : "normal" }}>{cellText(f, cfg.board.preStage.key)}</div>}
                     <div role="cell" style={{ position: "relative", paddingRight: 16 }}>
                       <button
                         data-tip="Change stage"
@@ -373,7 +452,7 @@ export function Finds() {
                         <StageMenu stages={kindOf(f.type).stages} ended={kindOf(f.type).endedStages} current={f.stage} style={{ ...menuAt, minWidth: 150 }} onPick={(s) => { setStage(f, s); setStageMenu(null); }} />
                       )}
                     </div>
-                    <div role="cell" style={{ fontSize: font.base, color: color.t2, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} data-tip={cellText(f, cfg.board.tail.key)}>{cellText(f, cfg.board.tail.key)}</div>
+                    {!docked && <div role="cell" style={{ fontSize: font.base, color: color.t2, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} data-tip={cellText(f, cfg.board.tail.key)}>{cellText(f, cfg.board.tail.key)}</div>}
                   </div>
                 );
               })}
@@ -424,6 +503,29 @@ export function Finds() {
             {rows.length === 0 && <Empty hasAny={finds.length > 0} running={!!state.running} />}
           </div>
         </section>
+        {docked && (openFind ? (
+          <Drawer
+            key={openFind.id}
+            docked
+            f={openFind}
+            currentComp={currentComp}
+            close={() => open(null)}
+            toggle={toggle}
+            setStage={setStage}
+            enter={false}
+            nav={{
+              index: openIndex,
+              total: rows.length,
+              prev: openIndex > 0 ? () => step(-1) : undefined,
+              next: openIndex >= 0 && openIndex < rows.length - 1 ? () => step(1) : undefined,
+            }}
+          />
+        ) : (
+          <div className="find-pane" style={{ background: "#fff", display: "flex", alignItems: "center", justifyContent: "center", padding: 32, textAlign: "center", fontSize: font.base, color: color.t2 }}>
+            Pick a find to see why it matched. ↑ and ↓ move between them.
+          </div>
+        ))}
+        </div>
       </div>
 
       {(stageMenu || fitMenu) && <div onClick={closeMenus} style={{ position: "fixed", inset: 0, zIndex: 4 }} />}
@@ -438,7 +540,7 @@ export function Finds() {
         />
       )}
 
-      {openFind && (
+      {openFind && !docked && (
         <Drawer
           key={openFind.id}
           f={openFind}

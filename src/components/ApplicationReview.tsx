@@ -131,11 +131,10 @@ export function ApplicationReview({ id }: { id: string }) {
       <Link href="/apply" style={{ fontSize: font.base, color: color.ink }}>← All applications</Link>
       <div style={{ display: "flex", alignItems: "flex-start", gap: 12, flexWrap: "wrap" }}>
         <div style={{ flex: "1 1 320px", minWidth: 0 }}>
+          <div style={{ fontSize: font.xl, fontWeight: 700, color: color.ink, marginBottom: 2 }}>{d.company}</div>
           <h1 style={{ margin: 0, fontSize: font["4xl"], fontWeight: 700, letterSpacing: "-0.02em" }}>{d.role}</h1>
           <div style={{ ...muted, marginTop: 4 }}>
-            {d.company}
-            {d.ats ? ` · ${d.ats === "other" ? "company site" : d.ats}` : ""}
-            {d.report.usd ? ` · AI cost $${d.report.usd.toFixed(3)}` : ""}
+            {[d.ats ? (d.ats === "other" ? "Company site" : d.ats) : "", d.report.usd ? `AI cost $${d.report.usd.toFixed(3)}` : ""].filter(Boolean).join(" · ")}
           </div>
         </div>
         <span style={{ padding: "6px 12px", borderRadius: 999, fontSize: font.base, fontWeight: 600, background: st.bg, color: st.ink }}>{st.label}</span>

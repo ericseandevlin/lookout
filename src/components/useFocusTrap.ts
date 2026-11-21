@@ -9,8 +9,9 @@ const FOCUSABLE = 'a[href], button:not([disabled]), input:not([disabled]), selec
  * focus goes back to whatever had it before. If the dialog doesn't move focus in itself (autoFocus
  * or a ref), the first focusable element gets it. Escape stays with each dialog.
  */
-export function useFocusTrap(ref: RefObject<HTMLElement | null>) {
+export function useFocusTrap(ref: RefObject<HTMLElement | null>, on = true) {
   useEffect(() => {
+    if (!on) return;
     const back = document.activeElement as HTMLElement | null;
     const box = ref.current;
     // Let the dialog's own autoFocus or focus() run first.
@@ -38,5 +39,5 @@ export function useFocusTrap(ref: RefObject<HTMLElement | null>) {
       document.removeEventListener("keydown", onKey);
       if (back?.isConnected) back.focus();
     };
-  }, [ref]);
+  }, [ref, on]);
 }

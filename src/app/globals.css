@@ -170,6 +170,11 @@ a[style*="border-radius"]:active { box-shadow: inset 0 0 0 999px rgb(128 120 108
   .drawer-panel, .drawer-panel.out, .drawer-scrim, .drawer-scrim.out { animation: none; }
 }
 
+/* Desktop split view (#1331): the list on the left, the selected find on the right, side by side. The pane sticks
+   below the top of the window and scrolls on its own; the page scroll belongs to the list. */
+.board-split { display: grid; grid-template-columns: minmax(0, 1fr) clamp(380px, 36%, 500px); gap: 20px; align-items: start; }
+.find-pane { position: sticky; top: var(--pane-top, 16px); height: var(--pane-h, calc(100vh - var(--pane-top, 16px) - 16px)); border-radius: 16px; overflow: hidden; }
+
 /* Previous/next sit just outside the drawer's left edge, centered, so the header stays calm. On phones the drawer
    is full width, so they become a row just above the footer buttons (a floating bar covered "Not a fit", #1217). */
 .drawer-nav { position: absolute; left: -60px; top: 50%; transform: translateY(-50%); display: flex; flex-direction: column; align-items: center; gap: 8px; }
