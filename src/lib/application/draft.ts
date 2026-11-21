@@ -64,7 +64,12 @@ export const PREFERRED_NAME = /preferred (first )?name/i;
 
 /** Name, email and profile links come straight from the account. Returns null when the model should handle it. */
 export function fillField(prompt: string, inp: DraftInputs): Drafted | null {
-  const p = prompt.toLowerCase();
+  // "Legal first name" is the account name, never a saved preferred name (#1489).
+  const p = prompt
+    .toLowerCase()
+    .replace(/^legal (?=(first |last |full )?name)/, "")
+    .replace(/^given name/, "first name")
+    .replace(/^(family name|surname)/, "last name");
   const [first, ...rest] = inp.name.trim().split(/\s+/);
   const fact = (content: string, source: string): Drafted => ({ content, note: `From your ${source}.`, sources: [source], question: null });
   if (PREFERRED_NAME.test(p)) return first ? fact(first, "account name") : null;

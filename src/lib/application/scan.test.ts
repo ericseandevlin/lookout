@@ -270,3 +270,16 @@ describe("kindFor: phone labels (#1412)", () => {
     expect(kindFor("Home phone: may we call you there?", "text")).toBe("answer");
   });
 });
+
+describe("kindFor: legal name, surname and postal code labels (#1489)", () => {
+  it("reads them as basic fields", () => {
+    for (const l of ["Legal First Name", "Legal Last Name *", "Legal Name", "Legal Full Name", "Given Name", "Family Name", "Surname", "Middle Name", "Zip Code", "Zip", "Postal Code", "Post Code"])
+      expect(kindFor(l, "text"), l).toBe("field");
+  });
+
+  it("keeps a question that starts with one of those words an answer", () => {
+    expect(kindFor("Legal name of your current employer", "text")).toBe("answer");
+    expect(kindFor("Surname: have you worked here under another name?", "text")).toBe("answer");
+    expect(kindFor("Legal first name", "textarea")).toBe("answer");
+  });
+});
