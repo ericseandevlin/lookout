@@ -51,6 +51,8 @@ export type Detail = {
   keywordsApproved: boolean;
   /** Up to three unbacked keywords worth adding experience for (#738). */
   keywordPicks: string[];
+  /** The keyword panel that uses the interview (#1485), behind FEATURE_INTERVIEW. */
+  interviewKeywords?: boolean;
   /** The cover letter's strategy (null on older letters) and Lookout's pick for this role (#738). */
   letter: { strategy: LetterStrategy | null; suggested: LetterStrategy; why: string } | null;
 };

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { ApplicationReport } from "@/lib/db/schema";
-import { approvedBlock, approvedFor, finalTerms, keywordPicks, keywordRows, planFrom, postingSnippet, supportFor, unapprovedIn, type KeywordRow } from "./evidence";
+import { approvedBlock, approvedFor, finalTerms, KEYWORD_CAP, keywordPicks, keywordRows, planFrom, postingSnippet, supportFor, trimRows, unapprovedIn, type KeywordRow } from "./evidence";
 import { upsertNote } from "./skills";
 
 const posting = `Role: Design Engineer
@@ -143,5 +143,29 @@ describe("keywordPicks: short skills count only as their own word (#1377)", () =
   it("Go named twice as its own word still is", () => {
     const posting = "You will build services in Go.\nWe write Go and some Python.";
     expect(keywordPicks([row("Go", "You will build services in Go.")], posting, "Backend Engineer")).toEqual(["Go"]);
+  });
+});
+
+describe("a shorter keyword list (#1485)", () => {
+  const row = (term: string, extra: Partial<KeywordRow> = {}): KeywordRow => ({ term, support: null, mine: false, removed: false, used: false, ...extra });
+  const posting = Array.from({ length: 20 }, (_, i) => `skill ${i}`).join(", ") + ", tools, craft, portfolio.";
+
+  it("caps a new plan at 12 and drops generic single words", () => {
+    const terms = ["tools", "craft", ...Array.from({ length: 20 }, (_, i) => `skill ${i}`), "portfolio"];
+    const plan = planFrom({ keywords: terms.map((term) => ({ term, experience: "" })) }, posting);
+    expect(plan).toHaveLength(KEYWORD_CAP);
+    expect(plan.map((p) => p.term)).toEqual(Array.from({ length: 12 }, (_, i) => `skill ${i}`));
+  });
+
+  it("trims an older long list to 12, keeping the person's own keywords and the starred picks", () => {
+    const rows = [row("tools"), ...Array.from({ length: 20 }, (_, i) => row(`skill ${i}`)), row("portfolio"), row("my own thing", { mine: true })];
+    const out = trimRows(rows, ["skill 18", "skill 19"], posting);
+    expect(out).toHaveLength(12);
+    expect(out.map((r) => r.term)).toEqual([...Array.from({ length: 9 }, (_, i) => `skill ${i}`), "skill 18", "skill 19", "my own thing"]);
+  });
+
+  it("leaves a short list alone", () => {
+    const rows = [row("Figma"), row("accessibility")];
+    expect(trimRows(rows, [], "Figma and accessibility")).toEqual(rows);
   });
 });

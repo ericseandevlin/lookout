@@ -48,9 +48,14 @@ const TOPIC = /scam|fraud|benefit|insurance|401\s?\(?k|\bpto\b|parental|privacy|
  * Keywords that describe the hiring process or the posting itself, not the job. With the posting, a topic word
  * still counts when the job text (boilerplate stripped) uses it.
  */
+// One generic word on its own says nothing an applicant tracking system screens for (#1485). Two words can: "design
+// tools", "craft beverages", "portfolio management" stay.
+const GENERIC =
+  /^(tools?|capabilit(y|ies)|craft|portfolio|skills?|experience|expertise|knowledge|abilit(y|ies)|work|teams?|quality|impact|excellence|passion|vision|results?|growth|success|solutions?|products?|initiatives?|process(es)?|projects?|business|environment|role|responsibilit(y|ies)|culture|values|mission|innovation|ownership|collaboration|detail|details|creativity|curiosity|drive|judgment|judgement|problems?|outcomes?|stakeholders?|customers?|users?|partners?)$/i;
+
 export const isJunkKeyword = (term: string, posting?: string) => {
   const t = term.trim();
-  if (JUNK.test(t)) return true;
+  if (JUNK.test(t) || GENERIC.test(t)) return true;
   if (!TOPIC.test(t)) return false;
   return !posting || !new RegExp(`(?<!\\w)${t.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}(?!\\w)`, "i").test(stripBoilerplate(posting));
 };

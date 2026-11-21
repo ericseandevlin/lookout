@@ -20,7 +20,7 @@ export const KeywordPlanDraft = z.object({
         experience: z.string().describe("One line copied word for word from the master resume or the experience notes that shows the person has this. Empty if nothing they wrote shows it; never reword, never stretch"),
       }),
     )
-    .describe("12 to 25 skills, tools, methods, domains and must-haves from the posting. Only from what the role does and requires (responsibilities, qualifications, experience). Never company, brand, product or team names; never words from company notices (fraud warnings, EEO, benefits, privacy) or the hiring process"),
+    .describe("8 to 12 skills, tools, methods, domains and must-haves from the posting, the most important first. Only from what the role does and requires (responsibilities, qualifications, experience). Never a generic single word (tools, capabilities, craft, portfolio). Never company, brand, product or team names; never words from company notices (fraud warnings, EEO, benefits, privacy) or the hiring process"),
 });
 
 export const KEYWORD_PLAN_SYSTEM = `You pick the keywords an applicant tracking system will screen this posting for, and for each one, the line of the person's own experience that backs it.
@@ -34,13 +34,17 @@ export const keywordPlanPrompt = (posting: string, resume: string, notes: string
 
 export type PlanEntry = NonNullable<ApplicationReport["keywordPlan"]>[number];
 
-/** The model's proposal, cleaned: posting terms only (#116), no junk, no repeats. */
+/** The most keywords one resume carries (#1485): a list the person can read and back in a few minutes. */
+export const KEYWORD_CAP = 12;
+
+/** The model's proposal, cleaned: posting terms only (#116), no junk, no repeats, at most KEYWORD_CAP. */
 export function planFrom(d: z.infer<typeof KeywordPlanDraft>, posting: string): PlanEntry[] {
   const seen = new Set<string>();
   return d.keywords
     .map((k) => ({ term: k.term.trim(), cite: k.experience.trim() }))
     .filter((k) => k.term && !isJunkKeyword(k.term, posting) && hasKeyword(posting, k.term) && !seen.has(k.term.toLowerCase()) && seen.add(k.term.toLowerCase()))
-    .map((k) => ({ term: k.term, ...(k.cite ? { cite: k.cite } : {}) }));
+    .map((k) => ({ term: k.term, ...(k.cite ? { cite: k.cite } : {}) }))
+    .slice(0, KEYWORD_CAP);
 }
 
 /**
@@ -153,6 +157,18 @@ export function keywordPicks(rows: KeywordRow[], posting: string, title: string,
     .sort((a, b) => b.score - a.score)
     .slice(0, max)
     .map((x) => x.term);
+}
+
+/**
+ * The shorter list (#1485), for drafts planned before the cap: no generic single words, at most KEYWORD_CAP. The
+ * person's own keywords and the starred picks always stay; the rest keep the plan's order.
+ */
+export function trimRows(rows: KeywordRow[], picks: string[], posting: string, max = KEYWORD_CAP): KeywordRow[] {
+  const isPick = (r: KeywordRow) => picks.some((p) => p.toLowerCase() === r.term.toLowerCase());
+  const real = rows.filter((r) => r.mine || isPick(r) || !isJunkKeyword(r.term, posting));
+  const keep = new Set(real.filter((r) => r.mine || isPick(r)));
+  for (const r of real) if (keep.size < max) keep.add(r);
+  return real.filter((r) => keep.has(r));
 }
 
 /** What the person says go to: the terms, in order. Any change to the list clears it. */

@@ -1,0 +1,193 @@
+"use client";
+
+import { useId, useLayoutEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
+import { color, font } from "@/lib/tokens";
+
+/**
+ * Chat pieces shared by the interview page and the keyword interview on the review page (#1449, #1485): bubbles,
+ * the question with its reason in a tooltip, and the answer box with Skip and Send inside it.
+ */
+
+export const bubble = (you: boolean): React.CSSProperties => ({
+  position: "relative", maxWidth: 620, padding: "11px 15px", borderRadius: 14, fontSize: font.lg, lineHeight: 1.5, textWrap: "pretty", whiteSpace: "pre-wrap",
+  background: you ? color.surface : "#fff", border: you ? "none" : `1.5px solid ${color.border}`,
+});
+
+export function Said({ who, children, id }: { who: "Lookout" | "You"; children: React.ReactNode; id?: string }) {
+  const you = who === "You";
+  return (
+    <div id={id} style={{ display: "flex", flexDirection: "column", alignItems: you ? "flex-end" : "flex-start", scrollMarginTop: 80 }}>
+      <div style={bubble(you)}>
+        <span className="sr-only">{you ? "You said: " : "Lookout: "}</span>
+        {children}
+      </div>
+    </div>
+  );
+}
+
+/**
+ * A button with a tooltip that opens on hover, on keyboard focus and on tap (a tap pins it until the next tap, a tap
+ * outside or Escape). The tip is drawn on document.body, so a scroll box or a dialog can't clip it, and it follows the
+ * button when a scroll box scrolls, closing once the button leaves it.
+ */
+export function TapTip({ tip, label, children, style, openStyle }: { tip: string; label?: string; children: React.ReactNode; style: React.CSSProperties; openStyle?: React.CSSProperties }) {
+  const [hover, setHover] = useState(false);
+  const [pinned, setPinned] = useState(false);
+  const [at, setAt] = useState<{ x: number; y: number; below: boolean } | null>(null);
+  const btnRef = useRef<HTMLButtonElement>(null);
+  const tipId = useId();
+  const open = hover || pinned;
+  useLayoutEffect(() => {
+    const el = btnRef.current;
+    if (!open || !el) return setAt(null);
+    const close = () => (setHover(false), setPinned(false));
+    const place = () => {
+      const b = el.getBoundingClientRect();
+      const box = el.closest("[data-chat-scroll]")?.getBoundingClientRect();
+      if (box && (b.bottom < box.top || b.top > box.bottom)) return close();
+      const below = b.top < 140;
+      setAt({ x: Math.max(156, Math.min(window.innerWidth - 156, b.left + b.width / 2)), y: below ? b.bottom + 8 : b.top - 8, below });
+    };
+    place();
+    const outside = (e: PointerEvent) => !el.contains(e.target as Node) && close();
+    document.addEventListener("pointerdown", outside);
+    window.addEventListener("scroll", place, true);
+    window.addEventListener("resize", place);
+    return () => {
+      document.removeEventListener("pointerdown", outside);
+      window.removeEventListener("scroll", place, true);
+      window.removeEventListener("resize", place);
+    };
+  }, [open]);
+  return (
+    <>
+      <button
+        type="button"
+        ref={btnRef}
+        onClick={() => setPinned(!pinned)}
+        onPointerEnter={(e) => e.pointerType === "mouse" && setHover(true)}
+        onPointerLeave={(e) => e.pointerType === "mouse" && setHover(false)}
+        onFocus={(e) => e.currentTarget.matches(":focus-visible") && setHover(true)}
+        onBlur={() => (setHover(false), setPinned(false))}
+        onKeyDown={(e) => e.key === "Escape" && (setHover(false), setPinned(false))}
+        aria-label={label}
+        aria-describedby={tipId}
+        style={{ ...style, ...(open && openStyle) }}
+      >
+        {children}
+      </button>
+      <span id={tipId} className="sr-only">{tip}</span>
+      {at &&
+        createPortal(
+          <div
+            aria-hidden="true"
+            data-interview-tip=""
+            style={{
+              position: "fixed", left: at.x, top: at.y, transform: at.below ? "translateX(-50%)" : "translate(-50%,-100%)",
+              zIndex: 50, pointerEvents: "none", width: "max-content", maxWidth: 296, background: color.ink, color: "#fff",
+              fontSize: font.base, fontWeight: 500, lineHeight: 1.4, padding: "8px 12px", borderRadius: 8, boxShadow: "0 6px 18px rgba(29,26,15,.22)", textWrap: "pretty", whiteSpace: "pre-line",
+            }}
+          >
+            {tip}
+          </div>,
+          document.body,
+        )}
+    </>
+  );
+}
+
+/** The question bubble. The info icon in its corner shows the reason as a tooltip. */
+export function QuestionBubble({ question, why }: { question: string; why: string }) {
+  return (
+    <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-start", gap: 6 }}>
+      <div style={{ ...bubble(false), ...(why && { paddingRight: 46 }) }}>
+        <span className="sr-only">Lookout: </span>
+        {question}
+        {why && (
+          <TapTip
+            tip={why}
+            label="Why this question?"
+            style={{ position: "absolute", right: 6, bottom: 6, width: 32, height: 32, padding: 0, border: 0, borderRadius: 999, background: "transparent", color: color.t2, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}
+            openStyle={{ background: color.surface, color: color.ink }}
+          >
+            <svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+              <circle cx="12" cy="12" r="9.5" />
+              <path d="M12 11v5.5" />
+              <circle cx="12" cy="7.6" r="0.6" fill="currentColor" />
+            </svg>
+          </TapTip>
+        )}
+      </div>
+    </div>
+  );
+}
+
+/** Skip and Send: 44px tap targets, so they work by touch. */
+const composerBtn: React.CSSProperties = { width: 44, height: 44, flex: "none", padding: 0, border: 0, borderRadius: 999, background: "transparent", color: color.t2, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" };
+
+/**
+ * One bordered box: the answer, then a row with Skip and Send, the way a chat composer looks. Enter sends and
+ * Shift+Enter makes a new line; on a touch keyboard Return makes a new line, and the Send button sends.
+ */
+export function Composer({ id, boxRef, value, onChange, onSend, onSkip, busy, placeholder = "Say it the way you'd tell a friend. Numbers help." }: {
+  id: string;
+  boxRef?: React.RefObject<HTMLTextAreaElement | null>;
+  value: string;
+  onChange: (v: string) => void;
+  onSend: () => void;
+  onSkip: () => void;
+  busy: null | "answer" | "skip";
+  placeholder?: string;
+}) {
+  const [focused, setFocused] = useState(false);
+  const ready = !busy && !!value.trim();
+  return (
+    <>
+      <label htmlFor={id} className="sr-only">Your answer</label>
+      <div
+        onFocus={() => setFocused(true)}
+        onBlur={() => setFocused(false)}
+        onClick={(e) => e.target === e.currentTarget && boxRef?.current?.focus()}
+        style={{ border: `1.5px solid ${focused ? color.ink : color.border}`, borderRadius: 14, background: "#fff", padding: "4px 6px 6px", display: "flex", flexDirection: "column", cursor: "text" }}
+      >
+        <textarea
+          id={id}
+          ref={boxRef}
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key !== "Enter" || e.shiftKey || e.nativeEvent.isComposing) return;
+            if (!(e.metaKey || e.ctrlKey) && window.matchMedia("(pointer: coarse)").matches) return;
+            e.preventDefault();
+            if (value.trim()) onSend();
+          }}
+          rows={3}
+          maxLength={4000}
+          disabled={!!busy}
+          placeholder={placeholder}
+          style={{ width: "100%", boxSizing: "border-box", padding: "8px 8px 4px", border: 0, outline: "none", fontSize: font.lg, lineHeight: 1.5, resize: "none", color: color.ink, background: "transparent" }}
+        />
+        <div style={{ display: "flex", alignItems: "center", gap: 2 }}>
+          <div aria-live="polite" style={{ flex: 1, paddingLeft: 8, fontSize: font.base, color: color.t2 }}>
+            {busy === "answer" ? "Reading your answer…" : busy === "skip" ? "Skipping…" : ""}
+          </div>
+          <button type="button" onClick={onSkip} disabled={!!busy} aria-label="Skip this question" data-tip="Skip this question" className="h-soft" style={composerBtn}>
+            <svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M6 5l9 7-9 7z" />
+              <path d="M18 5v14" />
+            </svg>
+          </button>
+          <button type="button" onClick={onSend} disabled={!ready} aria-label="Send" data-tip="Send" style={{ ...composerBtn, cursor: ready ? "pointer" : "default" }}>
+            <span style={{ width: 34, height: 34, borderRadius: 999, display: "flex", alignItems: "center", justifyContent: "center", background: ready ? color.brick : color.border, color: "#fff", transition: "background .15s" }}>
+              <svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M12 19V5" />
+                <path d="M6 11l6-6 6 6" />
+              </svg>
+            </span>
+          </button>
+        </div>
+      </div>
+    </>
+  );
+}
