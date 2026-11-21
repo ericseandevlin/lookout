@@ -16,9 +16,10 @@ const sentences = (t: string) => t.split(/(?<=[.?!])\s+|\n+/);
 const INCLUDES_BONUS = /\b(includ|reflect)\w*\b[^.?!]{0,40}?\b(bonus|commission|incentive)/i;
 const ABOUT_PAY = /\b(range|salary|pay|compensation|amount|figure)\b/i;
 // "In addition to", "on top of" and "separate" put the bonus outside the range only when they are about the bonus:
-// "includes base and bonus, in addition to equity" is still total cash (#937).
+// "includes base and bonus, in addition to equity" is still total cash (#937). "Base salary only, not bonus" and "bonus and
+// equity are separate" leave it out too (#1487).
 const NEGATED =
-  /(\bnot|n't)\s+(includ|reflect)|\bexclud|\b(in addition to|on top of|separate(ly)? from)\b[^.?!]{0,60}?\b(bonus|commission|incentive)|\b(bonus|commission|incentive)\w*\s+(is|are)\s+(\w+\s+)?separate/i;
+  /(\bnot|n't)\s+(includ|reflect)|\bexclud|\b(in addition to|on top of|separate(ly)? from)\b[^.?!]{0,60}?\b(bonus|commission|incentive)|\b(only|solely)\b[^.?!]{0,20}?\b(not|excluding|without)\b[^.?!]{0,30}?\b(bonus|commission|incentive)|\b(bonus|commission|incentive)\w*(?:,?\s+(?:and|or|&)\s+\w+|,\s*\w+)*\s+(is|are)\s+(\w+\s+)?separate/i;
 // Other ways a posting says its range is total cash (#690): "base pay plus bonus", "on-target earnings",
 // "Total compensation range: $200,000 - $250,000". A bonus added after an amount sits on top of it, so the range is base:
 // "Base salary range: $150K - $180K + bonus" or "$150k-$180k base + bonus + equity" (#1425).
