@@ -8,7 +8,7 @@ import { channelOf } from "@/lib/metrics";
 export const dynamic = "force-dynamic";
 export const metadata = {
   title: "Lookout · job search that reads the postings for you",
-  description: "Answer five questions. Twice a week Lookout searches, reads every posting, and puts the roles that fit on your board, each with a score and a plain reason.",
+  description: "You answer five questions about what you want. On the days you pick, Lookout searches job boards and company sites, reads each posting, and puts the jobs that fit on your board, each with a score from 1 to 5 and the reasons.",
   openGraph: { images: ["/landing/product.jpg"] },
 };
 
