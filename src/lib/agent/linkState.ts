@@ -28,7 +28,9 @@ const CLOSED = [
   // available for this role" is about the visa, not the job (#933).
   // Not "Visa sponsorship for this position is no longer available": there the job is the object of "for" (#980).
   // Not "the opportunity to work fully remote is no longer available": the noun leads into something else (#1007).
-  /(?<!\b(?:for|of|to|on|with|in|about) (?:this |the |a |our )?)\b(job|position|posting|role|opening|requisition|listing|vacancy|opportunity|page)\b(?!\s+to\b)[^.!?\n]{0,30}?\bno longer (available|active|posted|live|open(?! to\b))\b/i,
+  // Not "This role is no longer available as fully remote" or "no longer available in Austin": the job changed, it did not
+  // end (#1494).
+  /(?<!\b(?:for|of|to|on|with|in|about) (?:this |the |a |our )?)\b(job|position|posting|role|opening|requisition|listing|vacancy|opportunity|page)\b(?!\s+to\b)[^.!?\n]{0,30}?\bno longer (available|active|posted|live|open(?! to\b))\b(?!\s+(?:as|in|at)\b|\s+(?:fully\s+)?(?:remote|hybrid|on-?site)\b|\s+for\s+(?:fully\s+)?(?:remote|hybrid|on-?site)\b)/i,
   // "Open" likewise: "Our San Francisco office is no longer open" is about the office (#1298).
   // A colon starts one only after a status label: "Visa sponsorship: No longer available" is about the visa (#1007).
   /(?:^|[.!?\n]\s*|\b(?:text|status|job status|posting status|job|posting|position|role):\s*)(?:sorry[,!]?\s*)?no longer (available|active|posted|live|open(?! to\b))\b/im,
@@ -36,7 +38,7 @@ const CLOSED = [
   // Built In's "Sorry, this job was removed at 3:14 a.m. ...": "was" with filled, closed or removed only, so "this role was
   // available to remote candidates" stays open (#1271). "Has been archived" and "was archived" too (#1279).
   // Deleted, withdrawn, unpublished, cancelled and taken down too, but not "taken down to three days a week" (#1451).
-  /(?<!\b(?:(?:until|till|til)(?: such time as)?|once|when|after|if|before|unless|for|of|to|on|with|in|about) (?:the |this |a |our )?)(?<!\b(?:each|every|any|all|no|which|whether) )(job|position|posting|role|requisition|opening|vacancy|opportunity|listing)( ad)? ((is )?(no longer|has (?:already |now )?been) (available|filled|closed|removed|archived|deleted|withdrawn|unpublished|cancell?ed|taken down)|was (filled|closed|removed|archived|deleted|withdrawn|unpublished|cancell?ed|taken down)\b)(?! to\b)/i,
+  /(?<!\b(?:(?:until|till|til)(?: such time as)?|once|when|after|if|before|unless|for|of|to|on|with|in|about) (?:the |this |a |our )?)(?<!\b(?:each|every|any|all|no|which|whether) )(job|position|posting|role|requisition|opening|vacancy|opportunity|listing)( ad)? ((is )?no longer (available|filled|closed|removed|archived|deleted|withdrawn|unpublished|cancell?ed|taken down)(?!\s+(?:as|in|at)\b|\s+(?:fully\s+)?(?:remote|hybrid|on-?site)\b|\s+for\s+(?:fully\s+)?(?:remote|hybrid|on-?site)\b)|(is )?has (?:already |now )?been (available|filled|closed|removed|archived|deleted|withdrawn|unpublished|cancell?ed|taken down)|was (filled|closed|removed|archived|deleted|withdrawn|unpublished|cancell?ed|taken down)\b)(?! to\b)/i,
   /(job|posting|position|page) (was )?not found/i,
   /(?<!\b(?:until|till|til|once|when|after|if|before|unless) )this (job|position|posting|role)( ad)? (is |has )?(now )?(expired|closed|been filled)\b(?! to\b|[- ]?date\b|-)/i,
   // More wordings careers sites use (#747).
