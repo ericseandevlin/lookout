@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useId, useRef, useState } from "react";
+import { useEffect, useId, useLayoutEffect, useRef, useState } from "react";
 import type { InterviewView, ViewFact, ViewTurn } from "@/lib/interview/session";
 import { PageHead, ProfileTabs } from "./Profile";
 import { btn } from "./Settings";
@@ -9,7 +9,11 @@ import { api, useStore } from "./store";
 import { color, font } from "@/lib/tokens";
 
 const card: React.CSSProperties = { background: "#fff", border: `1.5px solid ${color.border}`, borderRadius: 14, padding: 20 };
-const isToday = (iso: string) => new Date(iso).toDateString() === new Date().toDateString();
+const plural = (n: number, one: string) => `${n} ${one}${n === 1 ? "" : "s"}`;
+/** Within this many pixels of the bottom, new turns scroll into view; further up, the reader stays put. */
+const STICK_PX = 80;
+
+type Earlier = { open: boolean; turns: ViewTurn[]; more: boolean; loading: boolean };
 
 /** Profile > Interview (#1449): one question at a time, from what the person's top finds ask for. */
 export function Interview() {
@@ -18,19 +22,87 @@ export function Interview() {
   const [err, setErr] = useState<string | null>(null);
   const [text, setText] = useState("");
   const [busy, setBusy] = useState<null | "answer" | "skip" | "not_applicable">(null);
+  const [early, setEarly] = useState<Earlier>({ open: false, turns: [], more: true, loading: false });
+  // The topic count at which the person last pressed Keep going: the soft stop comes back 5 topics later.
+  const [keptAt, setKeptAt] = useState(-1);
+  const [height, setHeight] = useState<number | null>(null);
   const box = useRef<HTMLTextAreaElement>(null);
+  const frame = useRef<HTMLElement>(null);
+  const scroller = useRef<HTMLDivElement>(null);
+  const stick = useRef(true);
+  const anchor = useRef<{ h: number; top: number } | null>(null);
   const first = state.user.name.trim().split(/\s+/)[0];
+  const loaded = !!data;
+
+  // The chat fills the window under the header; the input sits at its foot.
+  useLayoutEffect(() => {
+    const fit = () => {
+      const el = frame.current;
+      if (!el) return;
+      const top = el.getBoundingClientRect().top + window.scrollY;
+      const bar = document.querySelector<HTMLElement>("nav.mob-only")?.offsetHeight ?? 0;
+      setHeight(Math.max(420, window.innerHeight - top - bar - 16));
+    };
+    fit();
+    window.addEventListener("resize", fit);
+    return () => window.removeEventListener("resize", fit);
+  }, [loaded]);
+
+  const loadEarlier = async (before: string | null) => {
+    setEarly((e) => ({ ...e, open: true, loading: true }));
+    try {
+      const page = await api<{ turns: ViewTurn[]; more: boolean }>(`/api/interview?earlier=1${before ? `&before=${before}` : ""}`);
+      const el = scroller.current;
+      if (el) anchor.current = { h: el.scrollHeight, top: el.scrollTop };
+      setEarly((e) => ({ open: true, turns: [...page.turns, ...e.turns], more: page.more, loading: false }));
+      return page;
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : "Couldn't load earlier answers");
+      setEarly((x) => ({ ...x, loading: false }));
+      return null;
+    }
+  };
 
   useEffect(() => {
     api<InterviewView>("/api/interview")
-      .then((d) => {
+      .then(async (d) => {
         setData(d);
-        // A quote link from What Lookout knows lands on its turn.
+        // A quote link from What Lookout knows lands on its turn, paging back to it if it's from an earlier sitting.
         const id = window.location.hash.slice(1);
-        if (id) requestAnimationFrame(() => document.getElementById(id)?.scrollIntoView({ block: "center" }));
+        if (!id) return;
+        stick.current = false;
+        let before = d.earlierBefore;
+        for (let i = 0; i < 10 && !d.turns.some((t) => `turn-${t.id}` === id) && d.earlier > 0; i++) {
+          const page = await loadEarlier(before);
+          if (!page || page.turns.some((t) => `turn-${t.id}` === id) || !page.more) break;
+          before = page.turns[0]?.id ?? null;
+        }
+        requestAnimationFrame(() => document.getElementById(id)?.scrollIntoView({ block: "center" }));
       })
       .catch((e) => setErr(e instanceof Error ? e.message : "Couldn't load the interview"));
   }, []);
+
+  // Earlier answers open above the reader: keep what they were reading in the same place.
+  useLayoutEffect(() => {
+    const el = scroller.current;
+    if (el && anchor.current) {
+      el.scrollTop = el.scrollHeight - anchor.current.h + anchor.current.top;
+      anchor.current = null;
+    }
+  }, [early.turns]);
+
+  const softStop = !!data?.softStop && data.sitting.topics >= keptAt + 5;
+
+  // New turns scroll into view, unless the person scrolled up to read.
+  useLayoutEffect(() => {
+    const el = scroller.current;
+    if (el && stick.current) el.scrollTop = el.scrollHeight;
+  }, [data, softStop, busy, height]);
+
+  const onScroll = () => {
+    const el = scroller.current;
+    if (el) stick.current = el.scrollHeight - el.scrollTop - el.clientHeight < STICK_PX;
+  };
 
   const send = async (action: "answer" | "skip" | "not_applicable") => {
     if (!data?.current || busy) return;
@@ -39,6 +111,8 @@ export function Interview() {
       box.current?.focus();
       return;
     }
+    // The person just acted, so their turn and the reply come into view.
+    stick.current = true;
     setBusy(action);
     setErr(null);
     try {
@@ -53,8 +127,15 @@ export function Interview() {
     }
   };
 
-  const today = data?.turns.flatMap((t) => t.facts).filter((f) => isToday(f.createdAt)) ?? [];
+  const keepGoing = () => {
+    stick.current = true;
+    setKeptAt(data?.sitting.topics ?? 0);
+    requestAnimationFrame(() => box.current?.focus());
+  };
+
   const cur = data?.current;
+  const ask = cur && !softStop;
+  const earlierRows = early.open ? early.turns : [];
 
   return (
     <div className="page-pad lk-page w-wide" style={{ display: "flex", flexDirection: "column", gap: 16 }}>
@@ -65,19 +146,53 @@ export function Interview() {
         intro="Lookout asks one question at a time, about what your top finds want and your profile doesn't show yet. Stop whenever you like; pick up where you left off."
       />
       <div style={{ display: "flex", gap: 20, alignItems: "flex-start", flexWrap: "wrap" }}>
-        <section aria-label="Interview" style={{ ...card, flex: "1 1 480px", minWidth: 0, display: "flex", flexDirection: "column", gap: 18 }}>
-          {!data && !err && <div style={{ fontSize: font.lg, color: color.t2 }}>Getting your next question…</div>}
-          {data && (
-            <>
-              <Said who="Lookout">
-                {data.turns.length ? `Welcome back${first ? `, ${first}` : ""}.` : `Hi${first ? ` ${first}` : ""}.`} Got five minutes? Stop whenever you want. Every answer saves as you go.
-              </Said>
-              {data.turns.map((t) => (
-                <Past key={t.id} t={t} />
-              ))}
-              {cur && (
-                <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-                  <Question t={cur} />
+        <section
+          ref={frame}
+          aria-label="Interview"
+          style={{ ...card, padding: 0, flex: "1 1 480px", minWidth: 0, display: "flex", flexDirection: "column", height: height ?? 560, overflow: "hidden" }}
+        >
+          <div ref={scroller} onScroll={onScroll} style={{ flex: 1, minHeight: 0, overflowY: "auto", padding: 20, display: "flex", flexDirection: "column", gap: 18 }}>
+            {!data && !err && <div style={{ fontSize: font.lg, color: color.t2 }}>Getting your next question…</div>}
+            {data && (
+              <>
+                {data.earlier > 0 && (
+                  <EarlierRow
+                    count={data.earlier}
+                    early={early}
+                    onToggle={() => (early.open || early.turns.length ? setEarly((e) => ({ ...e, open: !e.open })) : loadEarlier(data.earlierBefore))}
+                    onMore={() => loadEarlier(early.turns[0]?.id ?? data.earlierBefore)}
+                  />
+                )}
+                {earlierRows.map((t) => (
+                  <Past key={t.id} t={t} />
+                ))}
+                <Said who="Lookout">
+                  {data.earlier || data.turns.length ? `Welcome back${first ? `, ${first}` : ""}.` : `Hi${first ? ` ${first}` : ""}.`} Got five minutes? Stop whenever you want. Every answer saves as you go.
+                </Said>
+                {data.turns.map((t) => (
+                  <Past key={t.id} t={t} />
+                ))}
+                {ask && <Question t={cur} />}
+                {cur && softStop && (
+                  <Said who="Lookout">
+                    Good place to stop. {plural(data.sitting.facts, "fact")} saved today. Your next question will be here when you come back.
+                  </Said>
+                )}
+                {!cur && data.note && <Said who="Lookout">{data.note}</Said>}
+              </>
+            )}
+          </div>
+
+          {(ask || (cur && softStop) || err) && (
+            <div style={{ borderTop: `1.5px solid ${color.border}`, padding: "14px 20px 16px", display: "flex", flexDirection: "column", gap: 10, background: "#fff" }}>
+              {err && <div role="alert" style={{ fontSize: font.lg, color: color.brick }}>{err}</div>}
+              {cur && softStop && (
+                <div>
+                  <button onClick={keepGoing} style={btn("solid")}>Keep going</button>
+                </div>
+              )}
+              {ask && (
+                <>
                   <label htmlFor="iv-answer" className="sr-only">Your answer</label>
                   <textarea
                     id="iv-answer"
@@ -85,11 +200,11 @@ export function Interview() {
                     value={text}
                     onChange={(e) => setText(e.target.value)}
                     onKeyDown={(e) => { if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) { e.preventDefault(); send("answer"); } }}
-                    rows={4}
+                    rows={3}
                     maxLength={4000}
                     disabled={!!busy}
                     placeholder="Say it the way you'd tell a friend. Numbers help."
-                    style={{ width: "100%", boxSizing: "border-box", padding: "12px 14px", borderRadius: 10, border: `1.5px solid ${color.border}`, fontSize: font.lg, lineHeight: 1.5, resize: "vertical", color: color.ink, background: "#fff" }}
+                    style={{ width: "100%", boxSizing: "border-box", padding: "12px 14px", borderRadius: 10, border: `1.5px solid ${color.border}`, fontSize: font.lg, lineHeight: 1.5, resize: "none", color: color.ink, background: "#fff" }}
                   />
                   <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
                     <button onClick={() => send("answer")} disabled={!!busy} style={btn("solid")}>{busy === "answer" ? "Reading your answer…" : "Send"}</button>
@@ -97,26 +212,22 @@ export function Interview() {
                     <button onClick={() => send("not_applicable")} disabled={!!busy} style={btn("outline")}>{busy === "not_applicable" ? "Saving…" : "Doesn't apply to me"}</button>
                   </div>
                   <div style={{ fontSize: font.sm, color: color.t2 }}>Skip and Doesn&apos;t apply are saved too. Lookout won&apos;t ask that one again.</div>
-                </div>
+                </>
               )}
-              {!cur && data.note && <Said who="Lookout">{data.note}</Said>}
-            </>
+            </div>
           )}
-          {err && <div role="alert" style={{ fontSize: font.lg, color: color.brick }}>{err}</div>}
         </section>
 
         <aside style={{ flex: "0 1 300px", display: "flex", flexDirection: "column", gap: 16 }}>
           <div style={{ ...card, display: "flex", flexDirection: "column", gap: 8 }}>
             <h2 style={{ margin: 0, fontSize: font.base, fontWeight: 700, letterSpacing: ".12em", textTransform: "uppercase", color: color.t2 }}>Saved from today</h2>
-            <div style={{ fontSize: font.xl, fontWeight: 700 }}>
-              {today.length} {today.length === 1 ? "fact" : "facts"} saved
-            </div>
-            {today.some((f) => !f.shareable) && <div style={{ fontSize: font.base, color: color.t2 }}>{today.filter((f) => !f.shareable).length} kept private</div>}
+            <div style={{ fontSize: font.xl, fontWeight: 700 }}>{plural(data?.sitting.facts ?? 0, "fact")} saved</div>
+            {!!data?.sitting.private && <div style={{ fontSize: font.base, color: color.t2 }}>{data.sitting.private} kept private</div>}
           </div>
           {data && (
             <div style={{ ...card, display: "flex", flexDirection: "column", gap: 10, fontSize: font.base, lineHeight: 1.45 }}>
               <div>
-                Lookout knows {data.knows} {data.knows === 1 ? "fact" : "facts"} about you.{" "}
+                Lookout knows {plural(data.knows, "fact")} about you.{" "}
                 {data.private > 0 && `${data.private} ${data.private === 1 ? "is" : "are"} private and never used in writing.`}
               </div>
               <Link href="/profile/knows" style={{ fontWeight: 600, color: color.brick, textDecoration: "none" }}>See and edit what Lookout knows →</Link>
@@ -124,6 +235,31 @@ export function Interview() {
           )}
         </aside>
       </div>
+    </div>
+  );
+}
+
+/** Earlier sittings, folded into one row. Opening it loads one page; older pages load on request. */
+function EarlierRow({ count, early, onToggle, onMore }: { count: number; early: Earlier; onToggle: () => void; onMore: () => void }) {
+  return (
+    <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 8 }}>
+      <button
+        onClick={onToggle}
+        aria-expanded={early.open}
+        disabled={early.loading && !early.turns.length}
+        style={{ border: 0, background: "transparent", padding: "4px 2px", display: "flex", alignItems: "center", gap: 6, fontSize: font.lg, color: color.t2, cursor: "pointer" }}
+      >
+        Earlier answers ({count})
+        <svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ transform: early.open ? "rotate(180deg)" : "none", transition: "transform .15s ease" }}>
+          <path d="m6 9 6 6 6-6" />
+        </svg>
+      </button>
+      {early.open && early.more && early.turns.length > 0 && (
+        <button onClick={onMore} disabled={early.loading} style={{ ...btn("outline"), fontSize: font.base }}>
+          {early.loading ? "Loading…" : "Show older answers"}
+        </button>
+      )}
+      {early.loading && !early.turns.length && <div style={{ fontSize: font.base, color: color.t2 }}>Loading…</div>}
     </div>
   );
 }

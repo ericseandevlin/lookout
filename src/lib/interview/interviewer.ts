@@ -54,6 +54,14 @@ export const InterviewTurnOut = z.object({
 });
 export type InterviewTurnOut = z.infer<typeof InterviewTurnOut>;
 
+/**
+ * What one turn sends stays the same size however long the interview runs: the topic being dug into (at most
+ * 1 + MAX_FOLLOW_UPS questions), the newest facts and the newest topic names. Older topics are still refused in code.
+ */
+export const FACTS_IN_PROMPT = 60;
+export const TOPICS_IN_PROMPT = 60;
+const FACT_CHARS = 300;
+
 export type TopFind = { company: string; title: string; gaps: string[]; matches: string[]; text: string };
 export type KnownFact = { text: string; shareable: boolean };
 export type PastTurn = { topic: string; outcome: string };
@@ -80,12 +88,15 @@ export function interviewPrompt(inp: InterviewInput) {
         .map((f, i) => `${i + 1}. ${f.title} at ${f.company}\n   Gaps Lookout saw: ${f.gaps.join("; ") || "(none listed)"}\n   Matches: ${f.matches.join("; ") || "(none listed)"}\n   Posting excerpt: ${f.text.replace(/\s+/g, " ").slice(0, 900)}`)
         .join("\n")
     : "(no finds yet)";
-  const closed = [...new Set(inp.past.filter((p) => p.outcome === "skipped" || p.outcome === "not_applicable").map((p) => p.topic))];
-  const covered = [...new Set(inp.past.filter((p) => p.outcome === "answered").map((p) => p.topic))];
+  // Newest first, so a cap keeps the topics nearest in time.
+  const newest = [...inp.past].reverse();
+  const closed = [...new Set(newest.filter((p) => p.outcome === "skipped" || p.outcome === "not_applicable").map((p) => p.topic))].slice(0, TOPICS_IN_PROMPT);
+  const covered = [...new Set(newest.filter((p) => p.outcome === "answered").map((p) => p.topic))].slice(0, TOPICS_IN_PROMPT);
+  const facts = inp.facts.slice(-FACTS_IN_PROMPT);
   const thread = inp.thread?.length
     ? `\n\n<this_topic oldest first; read facts from the newest answer only>\n${inp.thread
         .map((t, i, all) => `Q: ${t.question}\nA${i === all.length - 1 ? " (newest: read this one)" : " (facts already saved)"}: ${t.answer ?? "(no answer)"}`)
         .join("\n")}\n</this_topic>\nFollow-ups left on this topic: ${inp.followUpsLeft}`
     : "\n\nNo answer to read this turn. Return no facts and pick the next question.";
-  return `<profile from the setup questions>\n${inp.profile || "(not given)"}\n</profile>\n\n<resume>\n${inp.resume.slice(0, 12000) || "(no resume yet)"}\n</resume>\n\n<known_facts>\n${inp.facts.map((f) => `- ${f.text}${f.shareable ? "" : " (private: understand it, never quote it)"}`).join("\n") || "(none yet)"}\n</known_facts>\n\n<top_finds the ${inp.finds.length} highest-match finds the person hasn't ruled out>\n${finds}\n</top_finds>\n\nTopics already covered: ${covered.join("; ") || "(none)"}\nNever ask again: ${closed.join("; ") || "(none)"}${inp.refused ? `\nYou picked "${inp.refused}", which is not allowed. Pick another topic or return "done".` : ""}${thread}`;
+  return `<profile from the setup questions>\n${inp.profile || "(not given)"}\n</profile>\n\n<resume>\n${inp.resume.slice(0, 12000) || "(no resume yet)"}\n</resume>\n\n<known_facts>\n${facts.map((f) => `- ${f.text.slice(0, FACT_CHARS)}${f.shareable ? "" : " (private: understand it, never quote it)"}`).join("\n") || "(none yet)"}\n</known_facts>\n\n<top_finds the ${inp.finds.length} highest-match finds the person hasn't ruled out>\n${finds}\n</top_finds>\n\nTopics already covered: ${covered.join("; ") || "(none)"}\nNever ask again: ${closed.join("; ") || "(none)"}${inp.refused ? `\nYou picked "${inp.refused}", which is not allowed. Pick another topic or return "done".` : ""}${thread}`;
 }

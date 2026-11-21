@@ -23,7 +23,8 @@ const completeJSON = vi.fn(async (c: Call) => {
 vi.mock("@/lib/ai/llm", async (orig) => ({ ...(await orig<typeof import("@/lib/ai/llm")>()), completeJSON }));
 vi.mock("@/lib/ai/runs", async (orig) => ({ ...(await orig<typeof import("@/lib/ai/runs")>()), assertBudget: async () => {} }));
 
-const { act, openInterview } = await import("./session");
+const { act, earlierTurns, interviewView, openInterview, EARLIER_PAGE, SITTING_GAP_MS } = await import("./session");
+const { FACTS_IN_PROMPT, TOPICS_IN_PROMPT } = await import("./interviewer");
 const { LOCK } = await import("./rules");
 
 const ALL_ANSWERS: schema.ProfileAnswers = { q1: "Director of Events", floor: "140000", target: "180000", modes: ["Hybrid"], area: "New York", q4: "Grew revenue 38%", q5: "No relocation" };
@@ -195,5 +196,105 @@ describe("gap questions (#1449)", () => {
     const r = await act(user.id, v.current!.id, "answer", "Yes, for three years.");
     expect(r.note).toMatch(/Your answer is saved/);
     expect((await turns(user.id)).find((t) => t.id === v.current!.id)).toMatchObject({ outcome: "answered", answer: "Yes, for three years." });
+  });
+});
+
+/** A long history, written straight to the tables: `n` topics (every other one skipped), `per` facts per answer, `daysAgo` days back. */
+async function seedHistory(userId: string, n: number, per: number, daysAgo: number) {
+  const base = Date.now() - daysAgo * 86_400_000;
+  for (let i = 0; i < n; i++) {
+    const at = new Date(base + i * 60_000);
+    const pad = String(i).padStart(4, "0");
+    const outcome: schema.TurnOutcome = i % 2 === 0 ? "skipped" : "answered";
+    const [t] = await db
+      .insert(schema.interviewTurns)
+      .values({ userId, topic: `topic ${pad}`, question: `Question ${pad}?`, outcome, answer: outcome === "answered" ? `Answer ${pad}.` : null, createdAt: at, answeredAt: at })
+      .returning();
+    if (per && outcome === "answered")
+      await db.insert(schema.profileFacts).values(Array.from({ length: per }, (_, k) => ({ userId, text: `Fact ${pad}-${k}`, kind: "result" as const, source: "interview" as const, turnId: t.id, createdAt: at })));
+  }
+}
+
+describe("a long interview (#1449)", () => {
+  it("sends the model the same size prompt at answer 100 as at answer 200: newest facts and topics only, this topic's turns only", async () => {
+    const prompts: string[] = [];
+    for (const n of [120, 240]) {
+      const { user } = await seedUser(ALL_ANSWERS);
+      await seedHistory(user.id, n, 1, 3);
+      // The newest topic, open now, with one follow-up answered.
+      replies = [ask("event CRM")];
+      let v = await openInterview(user.id);
+      replies = [{ facts: [], next: { type: "follow_up", topic: "event CRM", question: "Which tool?", why: "A name helps." } }];
+      await act(user.id, v.current!.id, "answer", "I ran the CRM for 3 venues.");
+      v = await interviewView(user.id);
+      replies = [ask("topic 0000")];
+      replies.push(ask("vendor contracts"));
+      await act(user.id, v.current!.id, "answer", "Salesforce.");
+      const calls = completeJSON.mock.calls.slice(-2).map((c) => c[0].user);
+      prompts.push(calls[0]);
+      // topic 0000 was skipped long ago and is past the prompt's cap, but code still refuses it.
+      expect(calls[1]).toContain('You picked "topic 0000"');
+    }
+    const [a, b] = prompts;
+    expect(b.length).toBe(a.length);
+    const facts = b.slice(b.indexOf("<known_facts>"), b.indexOf("</known_facts>")).split("\n").filter((l) => l.startsWith("- "));
+    expect(facts).toHaveLength(FACTS_IN_PROMPT);
+    expect(b).toContain("Fact 0239-0");
+    expect(b).not.toContain("Fact 0001-0");
+    const covered = b.match(/Topics already covered: (.*)/)![1].split("; ");
+    expect(covered.length).toBeLessThanOrEqual(TOPICS_IN_PROMPT);
+    // The thread is this topic only: two questions, no older answers.
+    expect(b).toContain("A (facts already saved): I ran the CRM for 3 venues.");
+    expect(b).toContain("A (newest: read this one): Salesforce.");
+    expect(b).not.toContain("Answer 0239.");
+  });
+
+  it("shows only this sitting and pages Earlier answers 20 at a time, with each page's facts", async () => {
+    const { user } = await seedUser(ALL_ANSWERS);
+    await seedHistory(user.id, 45, 2, 3);
+    replies = [ask("event CRM")];
+    let v = await openInterview(user.id);
+    expect(v.turns).toHaveLength(0);
+    expect(v.earlier).toBe(45);
+    replies = [ask("vendor contracts")];
+    await act(user.id, v.current!.id, "answer", "Yes.");
+    v = await interviewView(user.id);
+    expect(v.turns.map((t) => t.question)).toEqual(["Tell me about event CRM."]);
+    expect(v.earlier).toBe(45);
+
+    const seen: string[] = [];
+    let before = v.earlierBefore;
+    for (const want of [EARLIER_PAGE, EARLIER_PAGE, 5]) {
+      const page = await earlierTurns(user.id, before);
+      expect(page.turns).toHaveLength(want);
+      expect(page.more).toBe(want === EARLIER_PAGE);
+      seen.unshift(...page.turns.map((t) => t.question));
+      before = page.turns[0].id;
+      const answered = page.turns.find((t) => t.outcome === "answered")!;
+      expect(answered.facts).toHaveLength(2);
+    }
+    expect(seen).toEqual(Array.from({ length: 45 }, (_, i) => `Question ${String(i).padStart(4, "0")}?`));
+    expect(SITTING_GAP_MS).toBe(2 * 60 * 60_000);
+  });
+
+  it("offers a good place to stop after 5 topics in a sitting, only before a new topic, with the sitting's real fact count", async () => {
+    const { user } = await seedUser(ALL_ANSWERS);
+    await seedHistory(user.id, 4, 2, 0.01);
+    replies = [ask("event CRM")];
+    let v = await openInterview(user.id);
+    expect(v.sitting.topics).toBe(4);
+    expect(v.softStop).toBe(false);
+    replies = [{ facts: [], next: { type: "follow_up", topic: "event CRM", question: "Which tool?", why: "A name helps." } }];
+    await act(user.id, v.current!.id, "answer", "Yes.");
+    v = await interviewView(user.id);
+    // Five topics, but the waiting question is a follow-up: no stop in the middle of a topic.
+    expect(v.sitting.topics).toBe(5);
+    expect(v.softStop).toBe(false);
+    replies = [ask("vendor contracts")];
+    await act(user.id, v.current!.id, "answer", "Salesforce.");
+    v = await interviewView(user.id);
+    expect(v.softStop).toBe(true);
+    // Of the 4 seeded topics, 2 were answered with 2 facts each.
+    expect(v.sitting.facts).toBe(4);
   });
 });

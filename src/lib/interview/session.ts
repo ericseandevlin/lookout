@@ -1,5 +1,5 @@
 import "server-only";
-import { and, asc, desc, eq, isNull, ne } from "drizzle-orm";
+import { and, asc, count, desc, eq, inArray, isNotNull, isNull, lt, ne, or } from "drizzle-orm";
 import { db, schema } from "@/lib/db";
 import { AiConfigError, completeJSON, emptyUsage, type Usage } from "@/lib/ai/llm";
 import { assertBudget, BudgetError } from "@/lib/ai/runs";
@@ -9,7 +9,7 @@ import { masterForDrafts } from "@/lib/application/masterCheck";
 import { kindOf } from "@/lib/kinds";
 import { getActiveSearch } from "@/lib/searches";
 import type { FactKind, TurnOutcome } from "@/lib/db/schema";
-import { closedTopics, INTERVIEW_SYSTEM, interviewPrompt, InterviewTurnOut, type InterviewInput } from "./interviewer";
+import { closedTopics, FACTS_IN_PROMPT, INTERVIEW_SYSTEM, interviewPrompt, InterviewTurnOut, type InterviewInput } from "./interviewer";
 import { factKey, lockReason, topicKey } from "./rules";
 import { isAnswered, readSetupAnswer, setupFact, setupQuestionText, SETUP_WHY } from "./setup";
 
@@ -28,11 +28,17 @@ export const TOP_FINDS = 5;
 
 export const DONE_NOTE = "That's every gap Lookout sees for now. It asks again when new finds come in.";
 
-const str = (v: unknown) => (typeof v === "string" ? v.trim() : "");
+/** A sitting ends after this long with no answer; the next visit starts a new one. */
+export const SITTING_GAP_MS = 2 * 60 * 60_000;
+/** The most turns one sitting shows; anything older folds into Earlier answers. */
+export const SITTING_MAX = 60;
+/** Earlier answers load this many turns at a time. */
+export const EARLIER_PAGE = 20;
+/** After this many topics in one sitting, Lookout offers a good place to stop. */
+export const SOFT_STOP_TOPICS = 5;
 
-async function turnsOf(userId: string) {
-  return db.select().from(schema.interviewTurns).where(eq(schema.interviewTurns.userId, userId)).orderBy(asc(schema.interviewTurns.createdAt));
-}
+const str = (v: unknown) => (typeof v === "string" ? v.trim() : "");
+const T = schema.interviewTurns;
 
 async function addFact(userId: string, f: { text: string; kind: FactKind; source: "interview" | "setup"; quote: string; turnId: string; setupKey?: string; flags?: Parameters<typeof lockReason>[2] }) {
   const reason = lockReason(f.text, f.kind, f.flags);
@@ -97,21 +103,31 @@ async function context(userId: string): Promise<Omit<InterviewInput, "followUpsL
         .orderBy(desc(schema.userOpportunities.score), desc(schema.userOpportunities.addedAt))
         .limit(TOP_FINDS)
     : [];
-  const facts = await db
-    .select({ text: schema.profileFacts.text, shareable: schema.profileFacts.shareable })
-    .from(schema.profileFacts)
-    .where(and(eq(schema.profileFacts.userId, userId), ne(schema.profileFacts.kind, "pay")))
-    .orderBy(asc(schema.profileFacts.createdAt));
-  const past = (await turnsOf(userId)).filter((t) => !t.setupKey && t.outcome !== "pending").map((t) => ({ topic: t.topic, outcome: t.outcome }));
+  // Only the newest facts go to the model, so the prompt doesn't grow with the interview.
+  const facts = (
+    await db
+      .select({ text: schema.profileFacts.text, shareable: schema.profileFacts.shareable })
+      .from(schema.profileFacts)
+      .where(and(eq(schema.profileFacts.userId, userId), ne(schema.profileFacts.kind, "pay")))
+      .orderBy(desc(schema.profileFacts.createdAt))
+      .limit(FACTS_IN_PROMPT)
+  ).reverse();
+  // Every topic name, for the code checks; the prompt itself lists only the newest (TOPICS_IN_PROMPT).
+  const past = await db
+    .select({ topic: T.topic, outcome: T.outcome })
+    .from(T)
+    .where(and(eq(T.userId, userId), isNull(T.setupKey), ne(T.outcome, "pending")))
+    .orderBy(asc(T.createdAt));
   return { profile, resume, finds, facts, past };
 }
 
 /** The next setup question the search lacks and the interview hasn't asked yet. */
-async function nextSetup(userId: string, turns: Turn[]) {
+async function nextSetup(userId: string) {
   const search = await getActiveSearch(userId);
   if (!search) return null;
+  const asked = new Set((await db.select({ k: T.setupKey }).from(T).where(and(eq(T.userId, userId), isNotNull(T.setupKey)))).map((r) => r.k));
   const cfg = kindOf(search.kind);
-  return cfg.questions.find((q) => !isAnswered(cfg, q, search.answers) && !turns.some((t) => t.setupKey === q.key)) ?? null;
+  return cfg.questions.find((q) => !isAnswered(cfg, q, search.answers) && !asked.has(q.key)) ?? null;
 }
 
 const addUsd = (u: Usage) => (u.usd ? u.usd.toFixed(4) : undefined);
@@ -131,6 +147,7 @@ async function interviewStep(userId: string, answered: { turn: Turn; root: Turn;
   const ask = (refused?: string) =>
     completeJSON({ name: "interview-turn", schema: InterviewTurnOut, system: INTERVIEW_SYSTEM, user: interviewPrompt({ ...ctx, thread: answered?.thread, followUpsLeft, refused }), maxTokens: 2000, usage });
   let out = await ask();
+  console.info("[interview] step", { input: usage.input, output: usage.output, usd: Number(usage.usd.toFixed(4)) });
   if (answered) {
     // A follow-up shows the model the earlier answers too; a fact it says again is not saved twice.
     const seen = new Set((await db.select({ text: schema.profileFacts.text }).from(schema.profileFacts).where(eq(schema.profileFacts.userId, userId))).map((f) => factKey(f.text)));
@@ -183,9 +200,9 @@ async function safeStep(userId: string, answered: Parameters<typeof interviewSte
 
 /** Make sure there is a question waiting, unless there is nothing left to ask. */
 async function ensureNext(userId: string): Promise<{ note: string | null }> {
-  const turns = await turnsOf(userId);
-  if (turns.some((t) => t.outcome === "pending")) return { note: null };
-  const q = await nextSetup(userId, turns);
+  const [waiting] = await db.select({ id: T.id }).from(T).where(and(eq(T.userId, userId), eq(T.outcome, "pending"))).limit(1);
+  if (waiting) return { note: null };
+  const q = await nextSetup(userId);
   if (q) {
     await db.insert(schema.interviewTurns).values({ userId, topic: `setup: ${q.key}`, question: setupQuestionText(q), why: SETUP_WHY, setupKey: q.key });
     return { note: null };
@@ -225,7 +242,13 @@ export async function act(userId: string, turnId: string, action: Action, text =
   }
   if (action !== "answer") return ensureNext(userId);
   const root = turn.parentId ? ((await db.select().from(schema.interviewTurns).where(eq(schema.interviewTurns.id, turn.parentId)))[0] ?? turn) : turn;
-  const thread = (await turnsOf(userId)).filter((t) => t.id === root.id || t.parentId === root.id).map((t) => ({ question: t.question, answer: t.answer }));
+  const thread = (
+    await db
+      .select({ question: T.question, answer: T.answer })
+      .from(T)
+      .where(and(eq(T.userId, userId), or(eq(T.id, root.id), eq(T.parentId, root.id))))
+      .orderBy(asc(T.createdAt))
+  ).map((t) => ({ question: t.question, answer: t.answer }));
   return safeStep(userId, { turn, root, thread });
 }
 
@@ -241,33 +264,95 @@ export type ViewTurn = {
   at: string;
   facts: ViewFact[];
 };
-export type InterviewView = { turns: ViewTurn[]; current: ViewTurn | null; note: string | null; knows: number; private: number };
+export type InterviewView = {
+  /** This sitting's turns, oldest first. Older ones are behind Earlier answers. */
+  turns: ViewTurn[];
+  current: ViewTurn | null;
+  note: string | null;
+  /** How many answered turns sit behind Earlier answers, and the turn to page back from. */
+  earlier: number;
+  earlierBefore: string | null;
+  /** This sitting: topics asked (setup questions count) and facts saved. */
+  sitting: { topics: number; facts: number; private: number };
+  /** True when the waiting question starts a new topic after SOFT_STOP_TOPICS topics this sitting. */
+  softStop: boolean;
+  knows: number;
+  private: number;
+};
 
-/** What the interview page shows: the conversation so far, the waiting question, and how much Lookout knows. */
+const viewOf = (t: Turn, facts: (typeof schema.profileFacts.$inferSelect)[]): ViewTurn => ({
+  id: t.id,
+  question: t.question,
+  why: t.why,
+  setup: !!t.setupKey,
+  followUp: !!t.parentId,
+  outcome: t.outcome,
+  answer: t.answer,
+  at: (t.answeredAt ?? t.createdAt).toISOString(),
+  facts: facts
+    .filter((f) => f.turnId === t.id)
+    .map((f) => ({ id: f.id, text: f.text, shareable: f.shareable, lockReason: f.lockReason, createdAt: f.createdAt.toISOString() })),
+});
+
+const factsFor = (userId: string, ids: string[]) =>
+  ids.length ? db.select().from(schema.profileFacts).where(and(eq(schema.profileFacts.userId, userId), inArray(schema.profileFacts.turnId, ids))) : Promise.resolve([]);
+
+/**
+ * The turns of this sitting: answered turns, newest back, each within SITTING_GAP_MS of the one after it, the newest
+ * within SITTING_GAP_MS of now. Reads at most SITTING_MAX + 1 rows, through the (user_id, created_at) index.
+ */
+function sittingOf(recent: Turn[], now = Date.now()) {
+  const out: Turn[] = [];
+  let after = now;
+  for (const t of recent) {
+    const at = (t.answeredAt ?? t.createdAt).getTime();
+    if (after - at > SITTING_GAP_MS) break;
+    out.push(t);
+    after = at;
+  }
+  return out.reverse();
+}
+
+/** What the interview page shows: this sitting, the waiting question, and how much Lookout knows. */
 export async function interviewView(userId: string, note: string | null = null): Promise<InterviewView> {
-  const turns = (await turnsOf(userId)).slice(-40);
-  const facts = await db.select().from(schema.profileFacts).where(eq(schema.profileFacts.userId, userId));
-  const view = (t: Turn): ViewTurn => ({
-    id: t.id,
-    question: t.question,
-    why: t.why,
-    setup: !!t.setupKey,
-    followUp: !!t.parentId,
-    outcome: t.outcome,
-    answer: t.answer,
-    at: (t.answeredAt ?? t.createdAt).toISOString(),
-    facts: facts
-      .filter((f) => f.turnId === t.id)
-      .map((f) => ({ id: f.id, text: f.text, shareable: f.shareable, lockReason: f.lockReason, createdAt: f.createdAt.toISOString() })),
-  });
-  const pending = turns.filter((t) => t.outcome === "pending").at(-1);
+  const [pending] = await db.select().from(T).where(and(eq(T.userId, userId), eq(T.outcome, "pending"))).orderBy(desc(T.createdAt)).limit(1);
+  const recent = await db.select().from(T).where(and(eq(T.userId, userId), ne(T.outcome, "pending"))).orderBy(desc(T.createdAt), desc(T.id)).limit(SITTING_MAX);
+  const sitting = sittingOf(recent);
+  const [{ n: answered }] = await db.select({ n: count() }).from(T).where(and(eq(T.userId, userId), ne(T.outcome, "pending")));
+  const [{ n: knows }] = await db.select({ n: count() }).from(schema.profileFacts).where(eq(schema.profileFacts.userId, userId));
+  const [{ n: priv }] = await db.select({ n: count() }).from(schema.profileFacts).where(and(eq(schema.profileFacts.userId, userId), eq(schema.profileFacts.shareable, false)));
+  const facts = await factsFor(userId, [...sitting.map((t) => t.id), ...(pending ? [pending.id] : [])]);
+  const topics = sitting.filter((t) => !t.parentId).length;
+  const sittingFacts = facts.filter((f) => f.turnId !== pending?.id);
   return {
-    turns: turns.filter((t) => t.outcome !== "pending").map(view),
-    current: pending ? view(pending) : null,
+    turns: sitting.map((t) => viewOf(t, facts)),
+    current: pending ? viewOf(pending, facts) : null,
     note: pending ? null : note,
-    knows: facts.length,
-    private: facts.filter((f) => !f.shareable).length,
+    earlier: answered - sitting.length,
+    earlierBefore: sitting[0]?.id ?? null,
+    sitting: { topics, facts: sittingFacts.length, private: sittingFacts.filter((f) => !f.shareable).length },
+    softStop: !!pending && !pending.parentId && topics >= SOFT_STOP_TOPICS,
+    knows,
+    private: priv,
   };
+}
+
+/**
+ * One page of Earlier answers: the EARLIER_PAGE answered turns just before `before` (or the newest, without it),
+ * oldest first. Keyset paging on (created_at, id), so page 5 costs what page 1 does.
+ */
+export async function earlierTurns(userId: string, before: string | null, limit = EARLIER_PAGE) {
+  const [cur] = before ? await db.select({ at: T.createdAt, id: T.id }).from(T).where(and(eq(T.id, before), eq(T.userId, userId))) : [];
+  if (before && !cur) throw new HttpError(404, "That turn isn't there anymore. Reload the page.");
+  const rows = await db
+    .select()
+    .from(T)
+    .where(and(eq(T.userId, userId), ne(T.outcome, "pending"), cur ? or(lt(T.createdAt, cur.at), and(eq(T.createdAt, cur.at), lt(T.id, cur.id))) : undefined))
+    .orderBy(desc(T.createdAt), desc(T.id))
+    .limit(limit + 1);
+  const page = rows.slice(0, limit).reverse();
+  const facts = await factsFor(userId, page.map((t) => t.id));
+  return { turns: page.map((t) => viewOf(t, facts)), more: rows.length > limit };
 }
 
 /** Opening the interview: copy setup answers in once, and have a question waiting. */

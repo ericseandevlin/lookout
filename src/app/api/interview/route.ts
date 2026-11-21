@@ -2,15 +2,24 @@ import { z } from "zod";
 import { authed, body, HttpError, json } from "@/lib/api";
 import { featureOn } from "@/lib/features";
 import { rateLimit } from "@/lib/ratelimit";
-import { act, interviewView, openInterview } from "@/lib/interview/session";
+import { act, earlierTurns, interviewView, openInterview } from "@/lib/interview/session";
 
 /** The interview (#1449): the conversation so far and the waiting question. Behind FEATURE_INTERVIEW. */
 const gate = () => {
   if (!featureOn("INTERVIEW")) throw new HttpError(404, "Not found");
 };
 
-export const GET = authed(async (_req, { user }) => {
+const Uuid = z.string().uuid();
+
+/** GET: the page. GET ?earlier=1[&before=<turn id>]: one page of Earlier answers, older than that turn. */
+export const GET = authed(async (req, { user }) => {
   gate();
+  const q = new URL(req.url).searchParams;
+  if (q.get("earlier")) {
+    const before = q.get("before");
+    if (before && !Uuid.safeParse(before).success) throw new HttpError(400, "Bad turn id");
+    return json(await earlierTurns(user.id, before || null));
+  }
   return json(await openInterview(user.id));
 });
 

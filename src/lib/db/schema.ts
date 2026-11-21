@@ -726,7 +726,7 @@ export const profileFacts = pgTable(
     createdAt: createdAt(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
   },
-  (t) => [index("profile_facts_user_idx").on(t.userId, t.createdAt)],
+  (t) => [index("profile_facts_user_idx").on(t.userId, t.createdAt), index("profile_facts_turn_idx").on(t.turnId)],
 );
 
 export type TurnOutcome = "pending" | "answered" | "skipped" | "not_applicable";
