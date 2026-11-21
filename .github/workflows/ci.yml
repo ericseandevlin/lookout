@@ -1,22 +1,19 @@
 # Checks on every pull request, every push to main and prod, and every release build (release.yml).
 # "checks" (typecheck, lint, tests) must pass before a PR can merge. See README > How we work.
 # Actions minutes are billed per job, rounded up to a minute (#473), so the short scans share one job
-# and pull requests that only touch docs skip CI. README.md still runs it: envDocs.test.ts reads it.
+# and a pull request that only touches docs skips the heavy steps. It still reports both checks, green,
+# so main can require them (#1468). README.md runs everything: envDocs.test.ts reads it.
 name: CI
 
 on:
   pull_request:
-    paths:
-      - "**"
-      - "!**.md"
-      - "!docs/**"
-      - "README.md"
   push:
     branches: [main, prod]
   workflow_call:
 
 permissions:
   contents: read
+  pull-requests: read
 
 concurrency:
   group: ci-${{ github.ref }}
@@ -28,25 +25,44 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
+      # Docs-only pull request (Markdown or docs/, but not README.md): skip the heavy steps, still end green.
+      - name: What changed
+        id: changes
+        if: github.event_name == 'pull_request'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR: ${{ github.event.pull_request.number }}
+        run: |
+          if ! files=$(gh pr diff "$PR" --name-only --repo "$GITHUB_REPOSITORY"); then
+            echo "code=true" >> "$GITHUB_OUTPUT"; exit 0
+          fi
+          code=$( { echo "$files" | grep -vE '\.md$|^docs/' ; echo "$files" | grep -x 'README.md' ; } | grep . || true)
+          if [ -n "$code" ]; then echo "code=true"; else echo "code=false"; echo "Docs only: checks skipped." >> "$GITHUB_STEP_SUMMARY"; fi >> "$GITHUB_OUTPUT"
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        if: steps.changes.outputs.code != 'false'
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        if: steps.changes.outputs.code != 'false'
         with:
           node-version: 22
           cache: npm
       - run: npm ci
+        if: steps.changes.outputs.code != 'false'
       - run: npm run typecheck
+        if: steps.changes.outputs.code != 'false'
       - run: npm run lint
+        if: steps.changes.outputs.code != 'false'
       # Fails if coverage drops below the floor in vitest.config.mts (#291).
       - run: npm run test:coverage
+        if: steps.changes.outputs.code != 'false'
       # Code quality report, informational only: every ESLint finding plus complexity hotspots.
       # Runs on the runner; no third-party service sees the code.
       - name: Quality report
-        if: ${{ !cancelled() }}
+        if: ${{ !cancelled() && steps.changes.outputs.code != 'false' }}
         run: |
           npx eslint --rule '{"complexity": ["warn", 15]}' -f json -o eslint-report.json . || true
           node scripts/ci-report.mjs coverage/coverage-summary.json eslint-report.json >> "$GITHUB_STEP_SUMMARY"
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
-        if: ${{ !cancelled() }}
+        if: ${{ !cancelled() && steps.changes.outputs.code != 'false' }}
         with:
           name: coverage
           path: coverage/
@@ -57,22 +73,38 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
+      # Docs-only pull request (Markdown or docs/, but not README.md): skip the heavy steps, still end green.
+      - name: What changed
+        id: changes
+        if: github.event_name == 'pull_request'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR: ${{ github.event.pull_request.number }}
+        run: |
+          if ! files=$(gh pr diff "$PR" --name-only --repo "$GITHUB_REPOSITORY"); then
+            echo "code=true" >> "$GITHUB_OUTPUT"; exit 0
+          fi
+          code=$( { echo "$files" | grep -vE '\.md$|^docs/' ; echo "$files" | grep -x 'README.md' ; } | grep . || true)
+          if [ -n "$code" ]; then echo "code=true"; else echo "code=false"; echo "Docs only: checks skipped." >> "$GITHUB_STEP_SUMMARY"; fi >> "$GITHUB_OUTPUT"
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        if: steps.changes.outputs.code != 'false'
         with:
           fetch-depth: 0
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        if: steps.changes.outputs.code != 'false'
         with:
           node-version: 22
       # Fails on high or critical advisories in packages that ship to production.
       - name: Dependency audit
+        if: steps.changes.outputs.code != 'false'
         run: npm audit --omit=dev --audit-level=high
       # Each scan runs even if an earlier one failed, so one run shows every finding.
       - name: Semgrep (code security)
-        if: ${{ !cancelled() }}
+        if: ${{ !cancelled() && steps.changes.outputs.code != 'false' }}
         run: |
           docker run --rm -v "$PWD:/src" -w /src semgrep/semgrep:1.179.0 \
             semgrep scan --config p/ci --config p/typescript --metrics=off --error --exclude node_modules --exclude .next
       - name: Secret scan (gitleaks)
-        if: ${{ !cancelled() }}
+        if: ${{ !cancelled() && steps.changes.outputs.code != 'false' }}
         run: |
           docker run --rm -v "$PWD:/repo" zricethezav/gitleaks:v8.29.1 git /repo --no-banner --redact --exit-code 1

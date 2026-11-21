@@ -106,6 +106,20 @@ const today = () => dayKey(new Date(), env.timezone);
 
 const Queries = z.object({ queries: z.array(z.string()).describe("4 to 6 web search queries") });
 
+/**
+ * Trimmed, blank ones out, and one of each: a repeat that differs only in case or spacing runs the same search again and
+ * takes a slot from a real query, so it goes before the cap (#1476).
+ */
+const distinct = (list: string[]) => {
+  const seen = new Set<string>();
+  return list
+    .map((q) => q.trim())
+    .filter((q) => {
+      const k = q.toLowerCase().replace(/\s+/g, " ");
+      return q && !seen.has(k) && !!seen.add(k);
+    });
+};
+
 async function makeQueries(ctx: Context, usage: Usage) {
   const out = await completeJSON({
     name: "queries",
@@ -120,10 +134,10 @@ Write 4 to 6 search queries for open roles that fit. Mix:
 - queries aimed at employer job pages, e.g. "Director of Events" New York site:greenhouse.io OR site:lever.co OR site:myworkdayjobs.com OR site:ashbyhq.com
 Use the candidate's target titles, close variants, and their city. Keep each under 120 characters.`,
   });
-  const queries = out.queries.map((q) => q.trim()).filter(Boolean).slice(0, MAX_QUERIES);
+  const queries = distinct(out.queries).slice(0, MAX_QUERIES);
   if (queries.length) return queries;
   // No usable queries from the model: search the profile's target titles instead (#609).
-  const titles = (ctx.searchProfile?.targetTitles ?? []).map((t) => t.trim()).filter(Boolean).slice(0, MAX_QUERIES);
+  const titles = distinct(ctx.searchProfile?.targetTitles ?? []).slice(0, MAX_QUERIES);
   if (!titles.length) throw new Error("Couldn't plan any searches from your profile. Try again, or add target titles to your profile.");
   return titles.map((t) => `${t} jobs`);
 }
@@ -285,10 +299,13 @@ export async function scorePages(ctx: Context, pages: Page[], usage: Usage, repo
       });
       // One entry per page: small models sometimes repeat an index, which would count the posting twice (#612).
       const seen = new Set<number>();
+      // Pages go out as [0] to [n-1]. A reply with an entry at [n] and none at [0] counted from 1, and read as written it
+      // put each score on the posting before its own (#1477).
+      const shift = !res.finds.some((f) => f.index === 0) && res.finds.some((f) => f.index === batch.length) ? 1 : 0;
       for (const f of res.finds) {
         if (seen.has(f.index)) continue;
         seen.add(f.index);
-        const page = batch[f.index];
+        const page = batch[f.index - shift];
         // The model sometimes misses pay even when it's on the page, or gives the hourly rate of a part-time role (#702);
         // the deterministic read fills the gap. It also replaces a range missing one end: a lone low end read as the top
         // and cut the find as below the floor (#851).
@@ -416,6 +433,26 @@ async function reopenReposted(searchId: string, opportunityId: string, url: stri
 
 /** A link's URL text and, on a known ATS, its job key: both say "already on the board" (#670, #1146). */
 const keysOf = (u: string) => [normUrl(u), atsKey(u)].filter((k): k is string => !!k);
+
+/**
+ * One page per address the reads landed on, and none that landed on a find already on the board. Search results are
+ * deduped before reading, but a redirect can send two of them to one page (closed postings that all go to the careers
+ * home) or one to a find already saved, and each was scored again (#1475). onBoard counts the second kind.
+ */
+export function uniquePages<P extends { url: string }>(pages: P[], knownUrls: string[]) {
+  const known = new Set(knownUrls.flatMap(keysOf));
+  const seen = new Set<string>();
+  const out: P[] = [];
+  let onBoard = 0;
+  for (const p of pages) {
+    const keys = keysOf(p.url);
+    if (keys.some((k) => seen.has(k))) continue;
+    for (const k of keys) seen.add(k);
+    if (keys.some((k) => known.has(k))) onBoard++;
+    else out.push(p);
+  }
+  return { pages: out, onBoard };
+}
 
 export async function save(ctx: Context, finds: ScoredT[], via: "agent" | "manual"): Promise<RunTally & { newFinds: { id: string; score: number }[] }> {
   // Same check as gatherHits: in agent mode this is the only one, so a board job sent back at another link for the same
@@ -598,12 +635,13 @@ export async function discover(searchId: string, trigger: "scheduled" | "manual"
     const { hits, onBoard } = await gatherHits(ctx, queries, usage, report);
     await report(37, `Found ${hits.length} new results. Picking the most promising`);
     const picks = await pickHits(ctx, hits, usage);
-    const pages = await fetchAll(picks.map((h) => h.url), report);
+    const landed = uniquePages(await fetchAll(picks.map((h) => h.url), report), ctx.knownUrls);
+    const pages = landed.pages;
     await report(75, `Read ${pages.length} postings`);
     const scored = await scorePages(ctx, pages, usage, report);
     await report(97, "Saving new finds");
     const { newFinds, ...tally } = await save(ctx, scored, "agent");
-    tally.known += onBoard;
+    tally.known += onBoard + landed.onBoard;
     // Pages a failed batch or the model skipped have no entry. They aren't saved, so the next search reads them again,
     // but this run says so rather than calling everything "already on your board" (#1456).
     tally.unscored = unscoredCount(pages, scored);
