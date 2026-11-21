@@ -136,6 +136,15 @@ const withPlace = (p: string) => {
   return known(t) ? t : p;
 };
 
+// A coast, part of the country or time zone after a known place: "US - East Coast", "United States, Eastern Time",
+// "US (PST)" (#1510). Whole trailing words only, so "North Carolina" and "West Virginia" stay the states they are.
+const ZONE =
+  /^(.+?) (?:(?:east(?:ern)?|west(?:ern)?|central|mountain|pacific|atlantic|midwest(?:ern)?|(?:north|south)(?:east|west)?(?:ern)?)(?: (?:coast|time(?: ?zones?)?|time ?zones?|region|states|us))?|[ecmp][sd]?t)$/;
+const withoutZone = (p: string) => {
+  const m = p.match(ZONE);
+  return m && known(m[1]) ? m[1] : p;
+};
+
 /**
  * The state and country after a location's first comma: "Portland, OR" is { state: "us-or", country: "us" }, "Remote,
  * Canada" is { country: "ca" }. A country not known here stands as its own text, so "Remote, Mexico" still differs from
@@ -160,7 +169,7 @@ export function region(location: string) {
       .replace(/\b([a-z]) (?=[a-z]\b)/g, "$1");
     if (!p) continue;
     // A work mode or "metro area" after a known place is not part of it: "NY - Hybrid", "IL Metro Area", "US-based" (#1374).
-    const q = known(p) ? p : withPlace(withoutQualifier(p));
+    const q = known(p) ? p : withoutZone(withPlace(withoutQualifier(p)));
     // A work mode on its own ("New York, Remote") or after an unknown country ("Germany - Hybrid") is not a place (#1385).
     if (!q || (paren && !known(q))) continue;
     const s = STATES.get(q);

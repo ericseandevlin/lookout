@@ -221,3 +221,26 @@ describe("placesDiffer: a work mode after an unknown country, or on its own (#13
     expect(placesDiffer(a, b)).toBe(true);
   });
 });
+
+describe("placesDiffer: a coast or time zone after the place (#1510)", () => {
+  it.each([
+    ["Remote, US", "Remote, US - East Coast"],
+    ["Remote, United States", "Remote, United States - Eastern Time"],
+    ["Remote (US)", "Remote (US East Coast)"],
+    ["Remote, USA", "Remote, USA (PST)"],
+    ["Remote, Canada", "Remote, Canada - Pacific Time Zone"],
+    ["Remote, US", "Remote, US Midwest"],
+  ])("%s and %s are one place", (a, b) => {
+    expect(placesDiffer(a, b)).toBe(false);
+    expect(placeId(b)).toBe(placeId(a));
+  });
+
+  it.each([
+    ["Remote, US - East Coast", "Remote, Canada"],
+    ["Raleigh, North Carolina", "Raleigh, NY"],
+    ["Charleston, West Virginia", "Charleston, SC"],
+    ["Remote, Europe - Central Time", "Remote, US"],
+  ])("%s and %s are still two places", (a, b) => {
+    expect(placesDiffer(a, b)).toBe(true);
+  });
+});
