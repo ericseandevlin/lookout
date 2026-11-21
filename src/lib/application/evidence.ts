@@ -43,9 +43,24 @@ export function planFrom(d: z.infer<typeof KeywordPlanDraft>, posting: string): 
     .map((k) => ({ term: k.term, ...(k.cite ? { cite: k.cite } : {}) }));
 }
 
+/**
+ * Some boards hand back the posting as JSON-escaped HTML ("\\u003cli\\u003e", "\\n"), and older postings were stored
+ * that way, so the quote showed raw escapes (#1481). Decode the escapes and turn tags into line breaks.
+ */
+export function cleanPostingText(posting: string) {
+  if (!/\\u00[0-9a-f]{2}|\\n/i.test(posting)) return posting;
+  return posting
+    .replace(/\\u([0-9a-f]{4})/gi, (_, h) => String.fromCharCode(parseInt(h, 16)))
+    .replace(/\\[nr]/g, "\n")
+    .replace(/\\t/g, " ")
+    .replace(/<\/?(li|p|div|br|ul|ol|h[1-6])\b[^>]*>/gi, "\n")
+    .replace(/<[^>]+>/g, "")
+    .replace(/\n\s*\n+/g, "\n");
+}
+
 /** The posting sentence a keyword came from. */
 export function postingSnippet(posting: string, term: string) {
-  const hit = posting
+  const hit = cleanPostingText(posting)
     .split(/\n+|(?<=[.!?])\s+/)
     .map((s) => s.trim().replace(/^[•·*-]\s*/, ""))
     .find((s) => s && !/^(Role|Company|Location|Work mode|Pay range on file):/.test(s) && hasKeyword(s, term));

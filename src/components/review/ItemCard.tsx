@@ -222,7 +222,6 @@ export function ItemCard({ appId, item, locked, act, analysis, template, accent,
 /** Three ways to write the letter (#738). Lookout marks its pick for the role; a different pick redrafts the letter. */
 function StrategyPicker({ letter, busy, onPick }: { letter: NonNullable<Detail["letter"]>; busy: boolean; onPick: (s: (typeof LETTER_STRATEGIES)[number]) => void }) {
   const current = letter.strategy;
-  const shown = current ?? letter.suggested;
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
       <div role="group" aria-label="Cover letter strategy" style={{ display: "flex", gap: 6, flexWrap: "wrap", alignItems: "center" }}>
@@ -245,9 +244,8 @@ function StrategyPicker({ letter, busy, onPick }: { letter: NonNullable<Detail["
         })}
       </div>
       <div style={muted}>
-        {STRATEGY[shown].blurb}
-        {current !== letter.suggested && ` Lookout suggests ${STRATEGY[letter.suggested].label.toLowerCase()} here: ${letter.why.charAt(0).toLowerCase()}${letter.why.slice(1)}`}
-        {current === letter.suggested && ` ${letter.why}`}
+        {current !== letter.suggested && `Lookout suggests ${STRATEGY[letter.suggested].label.toLowerCase()} here: ${letter.why.charAt(0).toLowerCase()}${letter.why.slice(1)}`}
+        {current === letter.suggested && letter.why}
       </div>
     </div>
   );
