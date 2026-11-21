@@ -449,3 +449,23 @@ describe("no longer hiring and stopped accepting applications (#1458)", () => {
     expect(classifyPage(200, `TITLE: Product Designer\nTEXT: ${text}`).state).toBe("open");
   });
 });
+
+describe("classifyPage: duties about other jobs closing are not the posting closing (#1493)", () => {
+  const page = (duty: string) => `TITLE: Recruiting Coordinator - Acme\n\nTEXT:\nAcme builds tools for teams.\nWhat you'll do\n${duty}`;
+  it.each([
+    "Confirm every requisition is closed out in Workday at offer acceptance.",
+    "Make sure each requisition is closed in Greenhouse and the hiring team is told.",
+    "Keep Salesforce clean: every opportunity is closed won or closed lost within 90 days.",
+    "Report monthly on how quickly each role is closed.",
+    "Make sure every role has been filled before the quarter ends.",
+  ])("keeps %j open", (duty) => {
+    expect(classifyPage(200, page(duty)).state).toBe("open");
+  });
+
+  it("still reads the posting's own closed line as gone", () => {
+    expect(classifyPage(200, "TITLE: Acme\n\nTEXT:\nThis requisition is closed.").state).toBe("gone");
+    expect(classifyPage(200, "TITLE: Acme\n\nTEXT:\nThis job is closed in all locations.").state).toBe("gone");
+    expect(classifyPage(200, "TITLE: Acme\n\nTEXT:\nJob Closed").state).toBe("gone");
+    expect(classifyPage(200, "TITLE: Acme\n\nTEXT:\nThis position has been filled.").state).toBe("gone");
+  });
+});
