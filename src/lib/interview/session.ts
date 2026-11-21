@@ -9,7 +9,7 @@ import { masterForDrafts } from "@/lib/application/masterCheck";
 import { kindOf } from "@/lib/kinds";
 import { getActiveSearch } from "@/lib/searches";
 import type { FactKind, TurnOutcome } from "@/lib/db/schema";
-import { closedTopics, FACTS_IN_PROMPT, INTERVIEW_SYSTEM, interviewPrompt, InterviewTurnOut, type InterviewInput } from "./interviewer";
+import { closedTopics, FACTS_IN_PROMPT, INTERVIEW_SYSTEM, interviewPrompt, InterviewTurnOut, shortWhy, type InterviewInput } from "./interviewer";
 import { factKey, lockReason, topicKey } from "./rules";
 import { isAnswered, readSetupAnswer, setupFact, setupQuestionText, SETUP_WHY } from "./setup";
 
@@ -179,7 +179,7 @@ async function interviewStep(userId: string, answered: { turn: Turn; root: Turn;
     userId,
     topic: follow ? answered.root.topic : n.topic.trim().slice(0, 120) || "general",
     question: n.question.trim().slice(0, 600),
-    why: n.why.trim().slice(0, 300),
+    why: shortWhy(n.why).slice(0, 300),
     parentId: follow ? answered.root.id : null,
     ...(!answered && { costUsd: addUsd(usage) }),
   });
@@ -283,7 +283,7 @@ export type InterviewView = {
 const viewOf = (t: Turn, facts: (typeof schema.profileFacts.$inferSelect)[]): ViewTurn => ({
   id: t.id,
   question: t.question,
-  why: t.why,
+  why: shortWhy(t.why),
   setup: !!t.setupKey,
   followUp: !!t.parentId,
   outcome: t.outcome,

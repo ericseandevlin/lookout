@@ -30,7 +30,9 @@ The next question:
 - When the topic has their part, the scope and a number, or follow-ups left is 0, move to a new topic with "new_topic".
 - Never ask about a topic in the "never ask again" list or one already covered. Never ask about pay, health, family, age or other protected traits.
 - If no real gap is left, return "done".
-- why: one short sentence with the evidence only, for example "3 of your top 5 finds ask for food and beverage program experience." Do not add what the resume lacks ("and nothing in your resume shows it") or repeat the question.
+- why: the evidence only, in one short clause: which finds ask for it. The person already knows the resume doesn't show it; that is why you ask. Never say what the resume or profile lacks, and never repeat the question.
+  Bad: "4 of your top 5 finds ask for B2B SaaS or enterprise product experience, and nothing in your resume clearly shows it."
+  Good: "4 of your top 5 finds ask for B2B SaaS or enterprise product experience."
 - topic: two to five plain words naming the skill or area, for example "food and beverage programs".
 - Short sentences, plain words, warm and direct. No em dashes. One question only.`;
 
@@ -61,6 +63,33 @@ export type InterviewTurnOut = z.infer<typeof InterviewTurnOut>;
 export const FACTS_IN_PROMPT = 60;
 export const TOPICS_IN_PROMPT = 60;
 const FACT_CHARS = 300;
+
+const BOUNDARY = /(?:,\s*(?:and|but|while|yet|though)?|;|\s(?:and|but|while|yet|though)|\s[-\u2013\u2014])\s/gi;
+const LACKS = /\b(?:nothing|no|not|never|lacks?|lacking|missing|without|thin|silent|unclear)\b|n't\b/i;
+
+/**
+ * The reason, cut to its evidence (#1449). Drops a clause about what the resume lacks ("..., and nothing in your
+ * resume clearly shows it", "but your resume doesn't show it", "Nothing in your resume backs it."). Run when a reason
+ * is saved and when it is shown, so reasons written before the prompt changed read short too.
+ */
+export function shortWhy(why: string): string {
+  const sentences = why.trim().match(/[^.!?]+[.!?]*/g) ?? [];
+  const kept: string[] = [];
+  for (const raw of sentences) {
+    const t = raw.trim();
+    const at = t.search(/\b(?:resume|cv|profile)\b/i);
+    if (at < 0) {
+      kept.push(t);
+      continue;
+    }
+    let cut = 0;
+    for (const m of t.slice(0, at).matchAll(BOUNDARY)) cut = m.index;
+    if (!LACKS.test(t.slice(cut))) kept.push(t);
+    else if (cut > 0) kept.push(`${t.slice(0, cut).trim()}.`);
+  }
+  const out = kept.join(" ").trim();
+  return out || why.trim();
+}
 
 export type TopFind = { company: string; title: string; gaps: string[]; matches: string[]; text: string };
 export type KnownFact = { text: string; shareable: boolean };
