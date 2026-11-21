@@ -285,10 +285,13 @@ export async function scorePages(ctx: Context, pages: Page[], usage: Usage, repo
       });
       // One entry per page: small models sometimes repeat an index, which would count the posting twice (#612).
       const seen = new Set<number>();
+      // Pages go out as [0] to [n-1]. A reply with an entry at [n] and none at [0] counted from 1, and read as written it
+      // put each score on the posting before its own (#1477).
+      const shift = !res.finds.some((f) => f.index === 0) && res.finds.some((f) => f.index === batch.length) ? 1 : 0;
       for (const f of res.finds) {
         if (seen.has(f.index)) continue;
         seen.add(f.index);
-        const page = batch[f.index];
+        const page = batch[f.index - shift];
         // The model sometimes misses pay even when it's on the page, or gives the hourly rate of a part-time role (#702);
         // the deterministic read fills the gap. It also replaces a range missing one end: a lone low end read as the top
         // and cut the find as below the floor (#851).

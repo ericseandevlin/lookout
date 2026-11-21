@@ -285,6 +285,26 @@ describe("discover (#379)", () => {
     expect((await runRow()).report?.tally).toMatchObject({ postings: 1, notPostings: 0, known: 0, added: 1 });
   });
 
+  it("puts each score on its own posting when the scorer numbers its reply from 1 (#1477)", async () => {
+    const urls = ["a", "b", "c"].map((x) => `https://jobs.example.com/${x}`);
+    results.set("design systems lead", urls.map(hit));
+    results.set("design systems lead site:greenhouse.io", []);
+    for (const u of urls) pages.set(u, posting());
+    replies.score = (c) => ({ finds: scoreReply(c).finds.map((f) => ({ ...f, index: f.index + 1 })) });
+    await expect(discover(searchId)).resolves.toMatchObject({ found: 3, added: 3 });
+    expect((await board()).map((f) => [f.url, f.company]).sort()).toEqual(urls.map((u) => [u, `Co ${u.split("/").pop()}`]));
+  });
+
+  it("reads a reply that counts from 0 as written, even when it skips the first page (#1477)", async () => {
+    const urls = ["a", "b", "c"].map((x) => `https://jobs.example.com/${x}`);
+    results.set("design systems lead", urls.map(hit));
+    results.set("design systems lead site:greenhouse.io", []);
+    for (const u of urls) pages.set(u, posting());
+    replies.score = (c) => ({ finds: scoreReply(c).finds.slice(1) });
+    await discover(searchId);
+    expect((await board()).map((f) => [f.url, f.company]).sort()).toEqual(urls.slice(1).map((u) => [u, `Co ${u.split("/").pop()}`]));
+  });
+
   it("keeps going when one search fails, and fails the run only when every search does", async () => {
     results.set("design systems lead", [hit("https://jobs.example.com/a")]);
     pages.set("https://jobs.example.com/a", posting());
