@@ -5,15 +5,21 @@
  */
 
 const BOILERPLATE = [
-  // recruiting-fraud notices
-  /never (ask|request).*(payment|money|bank|fee)|official (company )?email|do not hire (someone )?through|verify (the|that the) (opportunity|recruiter)|real human connection|live conversations? with/i,
-  // EEO, accommodation, legal
-  /equal (employment )?opportunity|\beeo\b|reasonable accommodation|affirmative action|e-verify|protected (veteran|class)|without regard to (race|sex|age)|fair chance|arrest (and|or) conviction|background check (is|will be)|pay transparency (act|law)/i,
-  // privacy and legal links
-  /california residents|personal (information|data) (we|that we) collect|employeerights@/i,
   // tracking tags and link stubs
   /^#\S+$|^(click|learn more) here\.?$|curious how .* fits into/i,
+  /employeerights@/i,
 ];
+
+// Each notice below uses words that are also the job for some roles: user research ("live conversations with
+// customers"), payments ("never request payment details twice"), HR ops (E-Verify, accommodation requests, affirmative
+// action plans) and health plans ("California residents"). A line is the notice only with words that speak to applicants
+// (#1495), the same way fraud needs hiring words (#509) and privacy law needs a notice (#651).
+const FRAUD_NOTICE = /never (ask|request).*(payment|money|bank|fee)|official (company )?email|do not hire (someone )?through|verify (the|that the) (opportunity|recruiter)|real human connection|live conversations? with/i;
+const EEO = /equal (employment )?opportunity|\beeo\b|reasonable accommodation|affirmative action|e-verify|protected (veteran|class)|without regard to (race|sex|age)|fair chance|arrest (and|or) conviction|background check (is|will be)|pay transparency (act|law)/i;
+const EEO_NOTICE = /\b(is|are) (an?|proud)\b|applicant|candidate|\bapplying\b|\bapply\b|qualified|employer\b|employment|on the basis of|because of|regardless of|without regard|committed to|participat|https?:\/\/|\bcontact\b|please|if you (need|require)|(request|need)(s|ing)? (an?|for|for an?) (reasonable )?accommodation|hiring process|offer of employment|we (are|will|do)\b/i;
+const FRAUD_AUDIENCE = /\byou(r)?\b|communicat|contact|legitimate|personal (information|details)|sensitive|beware|caution/i;
+const PRIVACY = /california residents|personal (information|data) (we|that we) collect/i;
+const PRIVACY_NOTICE = /privacy|personal (information|data)|\bnotice\b|\bccpa\b|\bcpra\b|collect|https?:\/\//i;
 
 // Privacy law and discrimination are the job for privacy, compliance and ML fairness roles; they're a notice only
 // when the line speaks to applicants or links out (#651), the same way fraud needs hiring words (#509).
@@ -24,7 +30,16 @@ const NOTICE = /applicant|candidate|employee|employer|\bapplying\b|we collect|yo
 const FRAUD = /scam|fraud|phishing|impersonat/i;
 const HIRING = /recruit|candidate|applicant|job (offer|seeker|opening|posting)|offer letter|hiring process|\binterviews?\b|employment (offer|opportunit)|on (our )?behalf/i;
 
-const isBoilerplate = (p: string) => BOILERPLATE.some((re) => re.test(p)) || (FRAUD.test(p) && HIRING.test(p)) || (LEGAL.test(p) && NOTICE.test(p));
+// A short heading ("EEO Statement", "Equal Opportunity Employer") is the notice itself.
+const short = (p: string) => p.split(/\s+/).length <= 5;
+
+const isBoilerplate = (p: string) =>
+  BOILERPLATE.some((re) => re.test(p)) ||
+  (FRAUD.test(p) && HIRING.test(p)) ||
+  (FRAUD_NOTICE.test(p) && (HIRING.test(p) || FRAUD_AUDIENCE.test(p))) ||
+  (EEO.test(p) && (short(p) || EEO_NOTICE.test(p))) ||
+  (PRIVACY.test(p) && PRIVACY_NOTICE.test(p)) ||
+  (LEGAL.test(p) && NOTICE.test(p));
 
 /** Drop boilerplate paragraphs, keep everything that describes the job and the company. */
 export function stripBoilerplate(text: string) {
