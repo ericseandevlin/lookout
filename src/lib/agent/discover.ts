@@ -434,6 +434,26 @@ async function reopenReposted(searchId: string, opportunityId: string, url: stri
 /** A link's URL text and, on a known ATS, its job key: both say "already on the board" (#670, #1146). */
 const keysOf = (u: string) => [normUrl(u), atsKey(u)].filter((k): k is string => !!k);
 
+/**
+ * One page per address the reads landed on, and none that landed on a find already on the board. Search results are
+ * deduped before reading, but a redirect can send two of them to one page (closed postings that all go to the careers
+ * home) or one to a find already saved, and each was scored again (#1475). onBoard counts the second kind.
+ */
+export function uniquePages<P extends { url: string }>(pages: P[], knownUrls: string[]) {
+  const known = new Set(knownUrls.flatMap(keysOf));
+  const seen = new Set<string>();
+  const out: P[] = [];
+  let onBoard = 0;
+  for (const p of pages) {
+    const keys = keysOf(p.url);
+    if (keys.some((k) => seen.has(k))) continue;
+    for (const k of keys) seen.add(k);
+    if (keys.some((k) => known.has(k))) onBoard++;
+    else out.push(p);
+  }
+  return { pages: out, onBoard };
+}
+
 export async function save(ctx: Context, finds: ScoredT[], via: "agent" | "manual"): Promise<RunTally & { newFinds: { id: string; score: number }[] }> {
   // Same check as gatherHits: in agent mode this is the only one, so a board job sent back at another link for the same
   // ATS job (boards.greenhouse.io for job-boards, a company ?gh_jid= page) is known, not a second find (#1146).
@@ -615,12 +635,13 @@ export async function discover(searchId: string, trigger: "scheduled" | "manual"
     const { hits, onBoard } = await gatherHits(ctx, queries, usage, report);
     await report(37, `Found ${hits.length} new results. Picking the most promising`);
     const picks = await pickHits(ctx, hits, usage);
-    const pages = await fetchAll(picks.map((h) => h.url), report);
+    const landed = uniquePages(await fetchAll(picks.map((h) => h.url), report), ctx.knownUrls);
+    const pages = landed.pages;
     await report(75, `Read ${pages.length} postings`);
     const scored = await scorePages(ctx, pages, usage, report);
     await report(97, "Saving new finds");
     const { newFinds, ...tally } = await save(ctx, scored, "agent");
-    tally.known += onBoard;
+    tally.known += onBoard + landed.onBoard;
     // Pages a failed batch or the model skipped have no entry. They aren't saved, so the next search reads them again,
     // but this run says so rather than calling everything "already on your board" (#1456).
     tally.unscored = unscoredCount(pages, scored);
