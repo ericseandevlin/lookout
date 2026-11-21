@@ -222,6 +222,15 @@ const labelIs = (text: string) => new RegExp(`^\\s*${pattern(text)}\\s*(\\*|✱|
 /** A label that holds this text as whole words: "City" is in "Current City", not in "Ethnicity" (#1253). */
 const labelHas = (text: string) => new RegExp(`(?:^|[^\\p{L}\\p{N}])${pattern(text)}(?![\\p{L}\\p{N}])`, "iu");
 
+/**
+ * Why an answer can't go in a field with a maxlength, or null. Chromium's fill stops at the limit, so the answer went
+ * out cut off while the step said typed. The person shortens it instead, as in the extension (#1421, #1508).
+ */
+async function overMax(field: ReturnType<Page["getByLabel"]>, text: string) {
+  const max = await field.evaluate((e) => (e as HTMLInputElement).maxLength).catch(() => -1);
+  return typeof max === "number" && max > 0 && text.length > max ? `answer is ${text.length} characters, the field takes ${max}` : null;
+}
+
 /** The text box labeled with a cover letter prompt, or null: a textarea or a plain text input, never an upload. */
 async function letterBox(page: Page, prompt: string) {
   const exact = page.getByLabel(labelIs(prompt)).first();
@@ -276,6 +285,8 @@ async function fillOne(page: Page, s: FillStep): Promise<{ ok: boolean; how: str
         // A cover letter asked for as text, not a file: type it into the box labeled with the prompt (#860).
         const text = letter && s.content.trim() ? await letterBox(page, s.prompt) : null;
         if (!text) return { ok: false, how: "upload field not found" };
+        const long = await overMax(text, s.content);
+        if (long) return { ok: false, how: long };
         await text.fill(s.content);
         return { ok: true, how: "typed the letter" };
       }
@@ -411,6 +422,8 @@ async function fillOne(page: Page, s: FillStep): Promise<{ ok: boolean; how: str
       await field.fill(d);
       return { ok: true, how: "typed" };
     }
+    const long = await overMax(field, s.content);
+    if (long) return { ok: false, how: long };
     await field.fill(s.content);
     return { ok: true, how: "typed" };
   } catch (e) {
