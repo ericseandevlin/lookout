@@ -106,6 +106,16 @@ describe("sameJob", () => {
     // The search list isn't one job.
     expect(jobKey("https://careers-acme.icims.com/jobs/search?ss=1")).toMatch(/^url:/);
   });
+  it("matches Taleo and UltiPro forms to their postings (#1497)", () => {
+    const taleo = "https://acme.taleo.net/careersection/2/jobdetail.ftl?job=12345&lang=en";
+    expect(jobKey(taleo)).toBe("taleo:acme.taleo.net:12345");
+    expect(sameJob(["https://acme.taleo.net/careersection/2/jobapply.ftl?job=12345&lang=en"], [taleo])).toBe(true);
+    expect(sameJob(["https://acme.taleo.net/careersection/2/jobapply.ftl?job=99999&lang=en"], [taleo])).toBe(false);
+    const ulti = "https://recruiting.ultipro.com/ACM1000ACME/JobBoard/0b6b7c8e-1a2b-4c3d-9e8f-123456789abc/OpportunityDetail?opportunityId=1f2e3d4c-5b6a-4789-8abc-def012345678";
+    expect(sameJob([ulti.replace("OpportunityDetail", "OpportunityApply")], [ulti])).toBe(true);
+    expect(sameJob([ulti.replace("OpportunityDetail", "OpportunityApply").replace("1f2e3d4c", "aaaaaaaa")], [ulti])).toBe(false);
+  });
+
   it("matches a Paylocity form to its posting by job ID (#1435)", () => {
     const job = "https://recruiting.paylocity.com/Recruiting/Jobs/Details/1234567";
     expect(jobKey(job)).toBe("paylocity:1234567");

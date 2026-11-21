@@ -43,8 +43,13 @@ export function jobKey(raw: string | null | undefined): string | null {
   // site-wide; the URL names no employer.
   const paylocity = /(^|\.)paylocity\.com$/.test(host) && u.pathname.match(/\/jobs\/(?:details|apply)\/(\d+)(?:\/|$)/i)?.[1];
   if (paylocity) return `paylocity:${paylocity}`;
+  // Taleo (#1497): the posting is /careersection/<section>/jobdetail.ftl?job=<id> and its form jobapply.ftl?job=<id>.
+  const taleo = /(^|\.)taleo\.net$/.test(host) && /\/job(detail|apply)\.ftl$/i.test(u.pathname) && u.searchParams.get("job");
+  if (taleo) return `taleo:${host}:${taleo.toLowerCase()}`;
   // Recruitee's form is at /o/<job>/c/new and Teamtailor's at /jobs/<id>-<title>/applications/new: apply steps too (#1200).
-  const path = u.pathname.replace(/\/(apply|application|c\/new|applications\/new)\/?$/i, "").replace(/\/+$/, "");
+  // UltiPro's posting is .../JobBoard/<board>/OpportunityDetail?opportunityId=<id> and its form OpportunityApply (#1497).
+  const step = /(^|\.)ultipro\.com$/.test(host) ? /\/(opportunitydetail|opportunityapply)\/?$/i : /\/(apply|application|c\/new|applications\/new)\/?$/i;
+  const path = u.pathname.replace(step, "").replace(/\/+$/, "");
   return `url:${host.replace(/^www\./, "")}${path.toLowerCase()}${idQuery(u.searchParams)}${hashRoute(u)}`;
 }
 
