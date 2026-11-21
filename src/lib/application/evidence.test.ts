@@ -27,6 +27,9 @@ describe("keyword evidence (#121)", () => {
   it("shows the posting sentence each keyword came from, never the facts header", () => {
     expect(postingSnippet(posting, "React")).toBe("You will build design systems with React and TypeScript.");
     expect(postingSnippet(posting, "accessibility audits")).toBe("Partner with product on accessibility audits.");
+    // A posting stored as JSON-escaped HTML quotes as clean text (#1481).
+    const escaped = "end-to-end ownership, and product excellence.\\u003c/li\\u003e\\n\\u003cli\\u003eStrong customer advocacy, with design decisions grounded in data.\\u003c/li\\u003e";
+    expect(postingSnippet(escaped, "customer advocacy")).toBe("Strong customer advocacy, with design decisions grounded in data.");
     expect(postingSnippet(posting, "Design Engineer")).toBeUndefined();
   });
 
