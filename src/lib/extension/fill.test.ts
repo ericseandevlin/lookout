@@ -748,6 +748,19 @@ describe("extension fill: custom dropdowns", () => {
     expect(p.value("#cc")).toBe("us");
   });
 
+  it("puts a Country answer in the question, not the phone's picker of the same name (#1498)", async () => {
+    const opts = `<option value="">Select</option><option value="us">United States</option><option value="ca">Canada</option>`;
+    const p = page(`<label for="ph">Phone</label>
+      <label for="pcc">Country</label><select id="pcc">${opts}</select>
+      <input id="ph" type="tel">
+      <label for="loc">Location (City)</label><input id="loc">
+      <label for="q1">Country</label><select id="q1">${opts}</select>`);
+    const log = await p.fill({ steps: [text("Phone", "555-0100"), { prompt: "Country", kind: "choice", content: "Canada", options: ["United States", "Canada"], required: true }] });
+    expect(p.value("#q1")).toBe("ca");
+    expect(p.value("#pcc")).toBe("us");
+    expect(log.find((r) => r.prompt === "Phone country")).toEqual({ prompt: "Phone country", ok: true, how: "selected" });
+  });
+
   it("leaves the country alone when the form asks Country as its own question", async () => {
     const p = page(`<label for="ph">Phone</label><input id="ph"><label for="cc">Country</label><input id="cc">`);
     const log = await p.fill({ steps: [text("Phone", "555-0100"), text("Country", "Canada")] });
