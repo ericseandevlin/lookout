@@ -15,8 +15,8 @@ import { isAnswered, readSetupAnswer, setupFact, setupQuestionText, SETUP_WHY } 
 
 /**
  * The interview's flow (#1449): one pending question at a time. The first turns are the setup questions the search
- * still lacks; after that, each question comes from a gap in the person's top finds. Skip and Doesn't apply close a
- * topic for good.
+ * still lacks; after that, each question comes from a gap in the person's top finds. Skip closes a topic for good.
+ * Rows from before #1449's single Skip may say not_applicable; they read and close topics the same way.
  */
 
 type Turn = typeof schema.interviewTurns.$inferSelect;
@@ -223,11 +223,11 @@ async function saveSetupAnswer(userId: string, turn: Turn, text: string) {
   await addFact(userId, { text: r.fact.text, kind: r.fact.kind, source: "setup", quote: text, turnId: turn.id, setupKey: q.key });
 }
 
-export type Action = "answer" | "skip" | "not_applicable";
+export type Action = "answer" | "skip";
 
-/** Answer, skip or rule out the waiting question, then line up the next one. */
+/** Answer or skip the waiting question, then line up the next one. */
 export async function act(userId: string, turnId: string, action: Action, text = "") {
-  const outcome: TurnOutcome = action === "answer" ? "answered" : action === "skip" ? "skipped" : "not_applicable";
+  const outcome: TurnOutcome = action === "answer" ? "answered" : "skipped";
   if (action === "answer" && !text.trim()) throw new HttpError(400, "Type an answer first, or press Skip.");
   // Only a waiting question can be answered, so a double press doesn't save twice.
   const [turn] = await db

@@ -73,7 +73,7 @@ describe("setup questions as the first turns (#1449)", () => {
     await act(user.id, v.current!.id, "skip");
     v = await openInterview(user.id);
     expect(v.current?.question).toMatch(/Where and how/);
-    await act(user.id, v.current!.id, "not_applicable");
+    await act(user.id, v.current!.id, "skip");
 
     // q4 was answered on the Questions page; q5 is next. Then the setup is done and the model asks.
     v = await openInterview(user.id);
@@ -85,7 +85,7 @@ describe("setup questions as the first turns (#1449)", () => {
 
     const rows = await turns(user.id);
     expect(rows.find((t) => t.setupKey === "comp")?.outcome).toBe("skipped");
-    expect(rows.find((t) => t.setupKey === "where")?.outcome).toBe("not_applicable");
+    expect(rows.find((t) => t.setupKey === "where")?.outcome).toBe("skipped");
     // Each setup question was asked once, whatever happened to it.
     expect(rows.filter((t) => t.setupKey === "comp")).toHaveLength(1);
     expect(rows.filter((t) => t.setupKey === "where")).toHaveLength(1);
@@ -106,7 +106,7 @@ describe("setup questions as the first turns (#1449)", () => {
 });
 
 describe("gap questions (#1449)", () => {
-  it("stores Skip and Doesn't apply and never asks those topics again, even when the model picks them", async () => {
+  it("stores Skip and never asks a skipped topic again, even when the model picks it", async () => {
     const { user } = await seedUser(ALL_ANSWERS);
     replies = [ask("stakeholder management")];
     let v = await openInterview(user.id);
@@ -121,16 +121,16 @@ describe("gap questions (#1449)", () => {
     expect(retry.user).toContain("Never ask again: stakeholder management");
     expect(retry.user).toContain('You picked "Stakeholder  Management"');
 
-    // Doesn't apply closes a topic the same way; a refused retry ends the interview for now.
+    // A refused retry ends the interview for now.
     replies = [ask("event crm"), ask("Event CRM")];
-    await act(user.id, v.current!.id, "not_applicable");
+    await act(user.id, v.current!.id, "skip");
     v = await openInterview(user.id);
     expect(v.current).toBeNull();
 
     const rows = await turns(user.id);
     expect(rows.filter((t) => !t.setupKey).map((t) => [t.topic, t.outcome])).toEqual([
       ["stakeholder management", "skipped"],
-      ["event CRM", "not_applicable"],
+      ["event CRM", "skipped"],
     ]);
   });
 

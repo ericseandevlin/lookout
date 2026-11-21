@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { INTERVIEW_SYSTEM, shortWhy } from "./interviewer";
+import { closedTopics, INTERVIEW_SYSTEM, interviewPrompt, shortWhy } from "./interviewer";
 
 describe("shortWhy (#1449)", () => {
   it.each([
@@ -32,5 +32,18 @@ describe("shortWhy (#1449)", () => {
     expect(INTERVIEW_SYSTEM).toContain("Never say what the resume or profile lacks");
     expect(INTERVIEW_SYSTEM).toMatch(/Bad: ".*nothing in your resume clearly shows it\."/);
     expect(INTERVIEW_SYSTEM).toContain('Good: "4 of your top 5 finds ask for B2B SaaS or enterprise product experience."');
+  });
+});
+
+describe("old Doesn't apply rows (#1449)", () => {
+  it("still close a topic after Skip and Doesn't apply were merged", () => {
+    const past = [
+      { topic: "Event CRM", outcome: "not_applicable" },
+      { topic: "budgets", outcome: "skipped" },
+      { topic: "catering", outcome: "answered" },
+    ];
+    expect([...closedTopics(past)].sort()).toEqual(["budgets", "event crm"]);
+    const p = interviewPrompt({ profile: "", resume: "", finds: [], facts: [], past, followUpsLeft: 0 });
+    expect(p).toContain("Never ask again: budgets; Event CRM");
   });
 });

@@ -32,7 +32,8 @@ export function Interview() {
   const [data, setData] = useState<InterviewView | null>(null);
   const [err, setErr] = useState<string | null>(null);
   const [text, setText] = useState("");
-  const [busy, setBusy] = useState<null | "answer" | "skip" | "not_applicable">(null);
+  const [busy, setBusy] = useState<null | "answer" | "skip">(null);
+  const [focused, setFocused] = useState(false);
   const [early, setEarly] = useState<Earlier>({ open: false, turns: [], more: true, loading: false });
   // The topic count at which the person last pressed Keep going: the soft stop comes back 5 topics later.
   const [keptAt, setKeptAt] = useState(-1);
@@ -118,7 +119,7 @@ export function Interview() {
     if (el) stick.current = el.scrollHeight - el.scrollTop - el.clientHeight < STICK_PX;
   };
 
-  const send = async (action: "answer" | "skip" | "not_applicable") => {
+  const send = async (action: "answer" | "skip") => {
     if (!data?.current || busy) return;
     if (action === "answer" && !text.trim()) {
       setErr("Type an answer first, or press Skip.");
@@ -212,24 +213,51 @@ export function Interview() {
               {ask && (
                 <>
                   <label htmlFor="iv-answer" className="sr-only">Your answer</label>
-                  <textarea
-                    id="iv-answer"
-                    ref={box}
-                    value={text}
-                    onChange={(e) => setText(e.target.value)}
-                    onKeyDown={(e) => { if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) { e.preventDefault(); send("answer"); } }}
-                    rows={3}
-                    maxLength={4000}
-                    disabled={!!busy}
-                    placeholder="Say it the way you'd tell a friend. Numbers help."
-                    style={{ width: "100%", boxSizing: "border-box", padding: "12px 14px", borderRadius: 10, border: `1.5px solid ${color.border}`, fontSize: font.lg, lineHeight: 1.5, resize: "none", color: color.ink, background: "#fff" }}
-                  />
-                  <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
-                    <button onClick={() => send("answer")} disabled={!!busy} style={btn("solid")}>{busy === "answer" ? "Reading your answer…" : "Send"}</button>
-                    <button onClick={() => send("skip")} disabled={!!busy} style={btn("outline")}>{busy === "skip" ? "Skipping…" : "Skip this one"}</button>
-                    <button onClick={() => send("not_applicable")} disabled={!!busy} style={btn("outline")}>{busy === "not_applicable" ? "Saving…" : "Doesn't apply to me"}</button>
+                  {/* One bordered box: the answer, then a row with Skip and Send, the way a chat composer looks. */}
+                  <div
+                    onFocus={() => setFocused(true)}
+                    onBlur={() => setFocused(false)}
+                    onClick={(e) => e.target === e.currentTarget && box.current?.focus()}
+                    style={{ border: `1.5px solid ${focused ? color.ink : color.border}`, borderRadius: 14, background: "#fff", padding: "4px 6px 6px", display: "flex", flexDirection: "column", cursor: "text" }}
+                  >
+                    <textarea
+                      id="iv-answer"
+                      ref={box}
+                      value={text}
+                      onChange={(e) => setText(e.target.value)}
+                      onKeyDown={(e) => {
+                        // Enter sends; Shift+Enter makes a new line. On a touch keyboard Return makes a new line, and the Send button sends.
+                        if (e.key !== "Enter" || e.shiftKey || e.nativeEvent.isComposing) return;
+                        if (!(e.metaKey || e.ctrlKey) && window.matchMedia("(pointer: coarse)").matches) return;
+                        e.preventDefault();
+                        if (text.trim()) send("answer");
+                      }}
+                      rows={3}
+                      maxLength={4000}
+                      disabled={!!busy}
+                      placeholder="Say it the way you'd tell a friend. Numbers help."
+                      style={{ width: "100%", boxSizing: "border-box", padding: "8px 8px 4px", border: 0, outline: "none", fontSize: font.lg, lineHeight: 1.5, resize: "none", color: color.ink, background: "transparent" }}
+                    />
+                    <div style={{ display: "flex", alignItems: "center", gap: 2 }}>
+                      <div aria-live="polite" style={{ flex: 1, paddingLeft: 8, fontSize: font.base, color: color.t2 }}>
+                        {busy === "answer" ? "Reading your answer…" : busy === "skip" ? "Skipping…" : ""}
+                      </div>
+                      <button onClick={() => send("skip")} disabled={!!busy} aria-label="Skip this question" data-tip="Skip this question" className="h-soft" style={composerBtn}>
+                        <svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                          <path d="M6 5l9 7-9 7z" />
+                          <path d="M18 5v14" />
+                        </svg>
+                      </button>
+                      <button onClick={() => send("answer")} disabled={!!busy || !text.trim()} aria-label="Send" data-tip="Send" style={{ ...composerBtn, cursor: !busy && text.trim() ? "pointer" : "default" }}>
+                        <span style={{ width: 34, height: 34, borderRadius: 999, display: "flex", alignItems: "center", justifyContent: "center", background: !busy && text.trim() ? color.brick : color.border, color: "#fff", transition: "background .15s" }}>
+                          <svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
+                            <path d="M12 19V5" />
+                            <path d="M6 11l6-6 6 6" />
+                          </svg>
+                        </span>
+                      </button>
+                    </div>
                   </div>
-                  <div style={{ fontSize: font.sm, color: color.t2 }}>Skip and Doesn&apos;t apply are saved too. Lookout won&apos;t ask that one again.</div>
                 </>
               )}
             </div>
@@ -283,6 +311,9 @@ function EarlierRow({ count, early, onToggle, onMore }: { count: number; early: 
 }
 
 // Chat bubbles: the side says who is talking, so there is no name above them. Screen readers still hear it.
+/** Skip and Send: 44px tap targets, so they work by touch. */
+const composerBtn: React.CSSProperties = { width: 44, height: 44, flex: "none", padding: 0, border: 0, borderRadius: 999, background: "transparent", color: color.t2, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" };
+
 const bubble = (you: boolean): React.CSSProperties => ({
   position: "relative", maxWidth: 620, padding: "11px 15px", borderRadius: 14, fontSize: font.lg, lineHeight: 1.5, textWrap: "pretty", whiteSpace: "pre-wrap",
   background: you ? color.surface : "#fff", border: you ? "none" : `1.5px solid ${color.border}`,
@@ -387,7 +418,7 @@ function Past({ t }: { t: ViewTurn }) {
     <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
       <Question t={t} />
       <Said who="You" id={`turn-${t.id}`}>
-        {t.outcome === "answered" ? t.answer : t.outcome === "skipped" ? <em>Skipped</em> : <em>Doesn&apos;t apply to me</em>}
+        {t.outcome === "answered" ? t.answer : <em>Skipped</em>}
       </Said>
       {t.facts.length > 0 && <Saved facts={t.facts} />}
     </div>

@@ -25,7 +25,8 @@ export const GET = authed(async (req, { user }) => {
 
 const Input = z.object({
   turnId: z.string().uuid(),
-  action: z.enum(["answer", "skip", "not_applicable"]),
+  // "not_applicable" is from before Skip and Doesn't apply were merged; it saves as a skip.
+  action: z.enum(["answer", "skip", "not_applicable"]).transform((a) => (a === "not_applicable" ? "skip" : a)),
   text: z.string().max(4000).default(""),
 });
 
