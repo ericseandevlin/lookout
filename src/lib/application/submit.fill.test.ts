@@ -34,6 +34,22 @@ function fakePage(els: El[]) {
   /** All descendant elements, flat for discovery. */
   const allEls = (el: El): El[] => [el, ...(el.children ?? []).flatMap(allEls)];
   const shown = () => els.flatMap(allEls).filter((e) => !e.after || submitted);
+  // One stand-in DOM element per El, the same object each time, so in-page code can compare them (#1505).
+  const nodes = new Map<El, FakeNode>();
+  const doc = { querySelectorAll: () => shown().filter((c) => c.kind === "control" || c.kind === "file").map(node), getElementById: () => null };
+  function node(e: El): FakeNode {
+    let n = nodes.get(e);
+    if (!n) {
+      n = {
+        tagName: (e.tag ?? "input").toUpperCase(),
+        getAttribute: (a) => (a === "type" ? (e.type ?? null) : a === "role" ? (e.role ?? null) : a === "aria-multiselectable" ? (e.multi ? "true" : null) : a === "multiple" ? (e.multi ? "" : null) : null),
+        labels: [{ textContent: e.label }],
+        ownerDocument: doc,
+      };
+      nodes.set(e, n);
+    }
+    return n;
+  }
   const loc = (find: () => El[]): Loc => {
     const one = () => {
       const e = find()[0];
@@ -67,10 +83,7 @@ function fakePage(els: El[]) {
       isVisible: async () => find().length > 0,
       // Present: resolves now. Absent: fails a moment later, like a Playwright timeout.
       waitFor: () => (find().length ? Promise.resolve() : new Promise((_, no) => setTimeout(() => no(new Error("timeout")), 20))),
-      evaluate: async (fn) => {
-        const e = one();
-        return fn({ tagName: (e.tag ?? "input").toUpperCase(), getAttribute: (a) => (a === "type" ? (e.type ?? null) : a === "role" ? (e.role ?? null) : a === "aria-multiselectable" ? (e.multi ? "true" : null) : a === "multiple" ? (e.multi ? "" : null) : null) });
-      },
+      evaluate: async (fn) => fn(node(one())),
       innerText: async () => one().label,
       allTextContents: async () => find().map((e) => e.label),
       click: async () => {
@@ -123,6 +136,7 @@ function fakePage(els: El[]) {
   };
   return page;
 }
+type FakeNode = { tagName: string; getAttribute: (a: string) => string | null; labels: { textContent: string }[]; ownerDocument: { querySelectorAll: () => FakeNode[]; getElementById: () => null } };
 type Loc = {
   first(): Loc;
   last(): Loc;
@@ -135,7 +149,8 @@ type Loc = {
   count(): Promise<number>;
   isVisible(): Promise<boolean>;
   waitFor(o?: unknown): Promise<unknown>;
-  evaluate(fn: (e: { tagName: string; getAttribute: (a: string) => string | null }) => string): Promise<string>;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  evaluate<T>(fn: (e: any) => T): Promise<T>;
   innerText(): Promise<string>;
   allTextContents(): Promise<string[]>;
   click(): Promise<void>;
@@ -678,6 +693,29 @@ describe("runFill controls (#567)", () => {
     expect(r.log.map((l) => l.prompt)).toEqual(["Phone", "Country"]);
     expect(page.did).toContain("click Canada");
     expect(page.did).not.toContain("click United States");
+  });
+
+  it("a Country question goes to its own field, and the phone's picker still gets United States (#1505)", async () => {
+    const id = await seed("approved", [
+      { kind: "field", prompt: "Phone", content: "555-0100" },
+      { kind: "field", prompt: "Country", content: "Canada", options: ["Canada", "United States"] },
+    ]);
+    page = fakePage([
+      { kind: "control", label: "Country", role: "combobox" },
+      { kind: "control", label: "Phone", type: "tel" },
+      { kind: "control", label: "Email" },
+      { kind: "control", label: "Country", tag: "select", options: ["Canada", "United States"] },
+      { kind: "option", label: "United States", role: "option" },
+    ]);
+    const r = await runFill(id, "test");
+    expect(r.log.map((l) => [l.prompt, l.ok])).toEqual([
+      ["Phone", true],
+      ["Country", true],
+      ["Phone country", true],
+    ]);
+    expect(page.did).toContain("select Country=Canada");
+    expect(page.did).toContain("click United States");
+    expect(page.did).not.toContain("fill Country=Canada");
   });
 
   it("an upload with nothing to upload counts as not filled", async () => {

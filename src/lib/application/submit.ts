@@ -105,8 +105,8 @@ export async function runFill(appId: string, mode: "test" | "submit"): Promise<F
       if (!r.ok && s.required) report.missing.push(s.prompt);
     }
     const phone = steps.find((s) => /^phone\b/i.test(s.prompt));
-    if (phone && !steps.some((s) => /^country\b/i.test(s.prompt))) {
-      const r = await phoneCountry(page);
+    if (phone) {
+      const r = await phoneCountry(page, steps.filter((s) => /^country\b/i.test(s.prompt)));
       if (r) report.log.push({ prompt: "Phone country", ok: r.ok, how: r.how });
     }
     const dir = shotDir(appId);
@@ -154,11 +154,52 @@ export async function runFill(appId: string, mode: "test" | "submit"): Promise<F
 type Page = import("playwright-core").Page;
 
 /**
- * Greenhouse's phone input carries its own required "Country" picker that isn't one of the API questions (#167).
- * Pick United States. Returns null when the page has no such picker.
+ * In the page: is this the "Country" picker beside a phone input? Greenhouse's phone field has its own, which is not a
+ * question the employer asked (#1498, #1505). Same rule as isPhoneCountry in the extension. Runs in the browser, so it
+ * uses nothing from this file.
  */
-async function phoneCountry(page: Page): Promise<{ ok: boolean; how: string } | null> {
-  const box = page.getByRole("combobox", { name: /^country\*?$/i }).first();
+const isPhoneCountry = (e: Element) => {
+  const all = Array.from(e.ownerDocument.querySelectorAll("input:not([type=hidden]):not([type=submit]):not([type=button]):not([type=reset]):not([type=image]), select, textarea, [role=combobox]"));
+  const i = all.indexOf(e);
+  if (i < 0) return false;
+  const names: string[] = [];
+  for (const c of [e, all[i - 1], all[i + 1]]) {
+    const by = c?.getAttribute("aria-labelledby");
+    const text = !c ? "" : ((c as HTMLInputElement).labels?.[0]?.textContent ?? (by ? c.ownerDocument.getElementById(by.split(" ")[0])?.textContent : null) ?? c.getAttribute("aria-label") ?? "");
+    names.push(text.replace(/\s+/g, " ").trim().toLowerCase());
+  }
+  if (!/^country\s*\*?$/.test(names[0])) return false;
+  return [all[i - 1], all[i + 1]].some((c, k) => !!c && (c.getAttribute("type") === "tel" || /^(?:(?:mobile|cell(?:ular)?|home|primary) )?phone\b/.test(names[k + 1])));
+};
+
+/** The control whose label is the question. Of two "Country" controls, the one that isn't the phone's picker (#1505). */
+async function exactControl(page: Page, prompt: string) {
+  const exact = page.getByLabel(labelIs(prompt));
+  const n = /^\s*country\s*$/i.test(prompt) ? await exact.count() : 0;
+  for (let i = 0; n > 1 && i < n; i++) if (!(await exact.nth(i).evaluate(isPhoneCountry).catch(() => false))) return exact.nth(i);
+  return exact.first();
+}
+
+/**
+ * Greenhouse's phone input carries its own required "Country" picker that isn't one of the API questions (#167).
+ * Pick United States. Returns null when the page has no such picker. With a "Country" question on the form too, only
+ * the picker beside the phone, and only if the question went to another control (#1505).
+ */
+async function phoneCountry(page: Page, country: FillStep[]): Promise<{ ok: boolean; how: string } | null> {
+  const boxes = page.getByRole("combobox", { name: /^country\*?$/i });
+  let box = boxes.first();
+  if (country.length) {
+    const n = await boxes.count();
+    let i = 0;
+    while (i < n && !(await boxes.nth(i).evaluate(isPhoneCountry).catch(() => false))) i++;
+    if (i >= n) return null;
+    box = boxes.nth(i);
+    for (const s of country) {
+      const exact = await exactControl(page, s.prompt);
+      const field = (await exact.count()) ? exact : page.getByLabel(labelHas(s.prompt)).first();
+      if ((await field.count()) && (await field.evaluate(isPhoneCountry).catch(() => false))) return null;
+    }
+  }
   if (!(await box.count())) return null;
   try {
     await box.click();
@@ -243,7 +284,7 @@ async function fillOne(page: Page, s: FillStep): Promise<{ ok: boolean; how: str
       return { ok: true, how: "uploaded .docx" };
     }
     // The label that is the question first, then any label holding it: "Website" is not the earlier "Portfolio Website" (#698).
-    const exact = page.getByLabel(labelIs(s.prompt)).first();
+    const exact = await exactControl(page, s.prompt);
     // "Select any that apply" (#165) and one-of radio questions (#694) are a group of boxes under one legend, with no single labeled control.
     const boxes = page.locator("input[type=checkbox], input[type=radio]");
     // The group named by the question itself first: "Do you require sponsorship?" is not the later group
