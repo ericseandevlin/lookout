@@ -24,8 +24,8 @@ export function Landing({ inviteOnly, channel, pages = false }: { inviteOnly: bo
               <div className={s.eyebrow}>In testing · {inviteOnly ? "invite only" : "free"}</div>
               <h1 className={s.h1}>{BRAND.name} searches for jobs so you don&apos;t have to.</h1>
               <p className={s.lede}>
-                You answer five questions about what you want. Twice a week, {BRAND.name} searches job boards and company sites, reads each posting, and
-                adds the good matches to your board. Each one has a score from 1 to 5 and the reasons.
+                You answer five questions about what you want. On the days you pick, {BRAND.name} searches job boards and company sites, reads each
+                posting, and puts the jobs that fit on your board. Every job gets a score from 1 to 5, and you see the reasons.
               </p>
               <div className={s.ctas}>
                 <Link href={join} className={s.btn}>{cta}</Link>
@@ -53,16 +53,16 @@ export function Landing({ inviteOnly, channel, pages = false }: { inviteOnly: bo
             <h2 className={s.h2}>Set it up once, and it keeps searching.</h2>
             <div className={s.steps}>
               <Step n={1} title="Five questions" media={<FiveQuestions />}>
-                The questions cover the role you want next, the lowest pay you&apos;d take, where you want to work, your best result at work, and your
-                dealbreakers. You can add your resume too.
+                The questions cover the role you want next, the lowest pay you&apos;d take, where and how you want to work, the win you&apos;d lead with
+                in an interview, and your dealbreakers. You can add your resume, a LinkedIn PDF and links too.
               </Step>
               <Step n={2} title="It searches" media={<Clip src="/landing/how-looking.mp4" poster="/landing/how-looking.jpg" label="The board filling with new finds, best match first." />}>
-                Twice a week, {BRAND.name} searches job boards and company career pages. It reads the whole posting. After each search it shows you what
-                it looked at and what it skipped.
+                {BRAND.name} reads the whole posting, top to bottom, and scores it against your answers. After each search you get a report of what it
+                looked at, what it left off, and why.
               </Step>
               <Step n={3} title="You decide" media={<Clip src="/landing/how-decide.mp4" poster="/landing/how-decide.jpg" label="Turning on the pay filter, archiving two low matches and pinning a strong one." />}>
-                Each job gets a score from 1 to 5 with the reasons. Jobs that hit a dealbreaker never show up. Jobs below your pay floor still show up with
-                a lower score, so you can decide.
+                A dealbreaker never makes the board, and neither does a posting whose pay tops out under the floor you set. Everything else gets a score
+                from 1 to 5 with the reasons, and you decide.
               </Step>
             </div>
           </section>
@@ -76,7 +76,7 @@ export function Landing({ inviteOnly, channel, pages = false }: { inviteOnly: bo
                 <div className={s.eyebrow}>It learns</div>
                 <h2 className={s.h2}>Tell it why a job is wrong, and it adjusts.</h2>
                 <ul className={s.list}>
-                  <li>When you mark a job &ldquo;not a fit&rdquo; and say why, the next search uses that.</li>
+                  <li>Mark a job &ldquo;not a fit&rdquo; and say why. The next search uses that.</li>
                   <li>Notes you leave on a job change how it scores.</li>
                   <li>You can see what {BRAND.name} thinks you want, and edit it.</li>
                 </ul>
@@ -90,8 +90,8 @@ export function Landing({ inviteOnly, channel, pages = false }: { inviteOnly: bo
                 <div className={s.eyebrow}>Applying <span className={s.beta}>Beta</span></div>
                 <h2 className={s.h2}>{BRAND.name} drafts your application, and you send it.</h2>
                 <ul className={s.list}>
-                  <li>For the jobs you pick, {BRAND.name} writes a resume and cover letter from your own resume and the posting.</li>
-                  <li>A built-in recruiter review points out gaps before you send it.</li>
+                  <li>For the jobs you pick, {BRAND.name} writes a resume and cover letter from what you&apos;ve actually done and what the posting asks for.</li>
+                  <li>A Recruiter Analysis reads the draft the way a recruiter would, scores it out of 100, and points out what to fix.</li>
                   <li>You review every line and press Submit yourself.</li>
                 </ul>
               </div>
@@ -115,8 +115,8 @@ export function Landing({ inviteOnly, channel, pages = false }: { inviteOnly: bo
           <section className={s.section}>
             <div className={s.eyebrow}>Why I built it</div>
             <p className={s.lede}>
-              I built {BRAND.name} for my own job search. I had an AI agent read job postings and score them against my resume, and it worked well
-              enough that friends asked to use it. So I turned it into an app where everyone gets their own search. - Eric
+              I built {BRAND.name} for my own job search. An agent read the postings and scored them against me, and it worked well enough that friends
+              asked if they could use it too. So it turned into an app where each person gets their own profile and their own search. - Eric
             </p>
           </section>
 
