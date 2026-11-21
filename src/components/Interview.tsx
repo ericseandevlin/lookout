@@ -41,7 +41,8 @@ export function Interview() {
       if (!el) return;
       const top = el.getBoundingClientRect().top + window.scrollY;
       const bar = document.querySelector<HTMLElement>("nav.mob-only")?.offsetHeight ?? 0;
-      setHeight(Math.max(420, window.innerHeight - top - bar - 16));
+      const pad = parseFloat(getComputedStyle(el.closest(".page-pad") ?? el).paddingBottom) || 16;
+      setHeight(Math.max(420, window.innerHeight - top - bar - pad));
     };
     fit();
     window.addEventListener("resize", fit);
