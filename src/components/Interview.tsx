@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import type { InterviewView, ViewFact, ViewTurn } from "@/lib/interview/session";
 import { PageHead, ProfileTabs } from "./Profile";
 import { btn } from "./Settings";
@@ -18,7 +18,6 @@ export function Interview() {
   const [err, setErr] = useState<string | null>(null);
   const [text, setText] = useState("");
   const [busy, setBusy] = useState<null | "answer" | "skip" | "not_applicable">(null);
-  const [stopped, setStopped] = useState(false);
   const box = useRef<HTMLTextAreaElement>(null);
   const first = state.user.name.trim().split(/\s+/)[0];
 
@@ -67,7 +66,7 @@ export function Interview() {
       />
       <div style={{ display: "flex", gap: 20, alignItems: "flex-start", flexWrap: "wrap" }}>
         <section aria-label="Interview" style={{ ...card, flex: "1 1 480px", minWidth: 0, display: "flex", flexDirection: "column", gap: 18 }}>
-          {!data && !err && <div style={{ fontSize: font.base, color: color.t2 }}>Getting your next question…</div>}
+          {!data && !err && <div style={{ fontSize: font.lg, color: color.t2 }}>Getting your next question…</div>}
           {data && (
             <>
               <Said who="Lookout">
@@ -76,10 +75,10 @@ export function Interview() {
               {data.turns.map((t) => (
                 <Past key={t.id} t={t} />
               ))}
-              {cur && !stopped && (
+              {cur && (
                 <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
                   <Question t={cur} />
-                  <label htmlFor="iv-answer" style={{ fontSize: font.base, fontWeight: 600 }}>Your answer</label>
+                  <label htmlFor="iv-answer" className="sr-only">Your answer</label>
                   <textarea
                     id="iv-answer"
                     ref={box}
@@ -90,27 +89,20 @@ export function Interview() {
                     maxLength={4000}
                     disabled={!!busy}
                     placeholder="Say it the way you'd tell a friend. Numbers help."
-                    style={{ width: "100%", boxSizing: "border-box", padding: "12px 14px", borderRadius: 10, border: `1.5px solid ${color.border}`, fontSize: font.md, lineHeight: 1.5, resize: "vertical", color: color.ink, background: "#fff" }}
+                    style={{ width: "100%", boxSizing: "border-box", padding: "12px 14px", borderRadius: 10, border: `1.5px solid ${color.border}`, fontSize: font.lg, lineHeight: 1.5, resize: "vertical", color: color.ink, background: "#fff" }}
                   />
                   <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
                     <button onClick={() => send("answer")} disabled={!!busy} style={btn("solid")}>{busy === "answer" ? "Reading your answer…" : "Send"}</button>
                     <button onClick={() => send("skip")} disabled={!!busy} style={btn("outline")}>{busy === "skip" ? "Skipping…" : "Skip this one"}</button>
                     <button onClick={() => send("not_applicable")} disabled={!!busy} style={btn("outline")}>{busy === "not_applicable" ? "Saving…" : "Doesn't apply to me"}</button>
-                    <button onClick={() => setStopped(true)} disabled={!!busy} style={{ ...btn("text"), marginLeft: "auto" }}>Stop for today</button>
                   </div>
                   <div style={{ fontSize: font.sm, color: color.t2 }}>Skip and Doesn&apos;t apply are saved too. Lookout won&apos;t ask that one again.</div>
                 </div>
               )}
-              {cur && stopped && (
-                <Said who="Lookout">
-                  Saved. Your next question waits here for next time.{" "}
-                  <button onClick={() => setStopped(false)} style={{ ...btn("text"), height: "auto", padding: 0, fontSize: font.base }}>Keep going</button>
-                </Said>
-              )}
               {!cur && data.note && <Said who="Lookout">{data.note}</Said>}
             </>
           )}
-          {err && <div role="alert" style={{ fontSize: font.base, color: color.brick }}>{err}</div>}
+          {err && <div role="alert" style={{ fontSize: font.lg, color: color.brick }}>{err}</div>}
         </section>
 
         <aside style={{ flex: "0 1 300px", display: "flex", flexDirection: "column", gap: 16 }}>
@@ -136,29 +128,53 @@ export function Interview() {
   );
 }
 
+// Chat bubbles: the side says who is talking, so there is no name above them. Screen readers still hear it.
+const bubble = (you: boolean): React.CSSProperties => ({
+  position: "relative", maxWidth: 620, padding: "11px 15px", borderRadius: 14, fontSize: font.lg, lineHeight: 1.5, textWrap: "pretty", whiteSpace: "pre-wrap",
+  background: you ? color.surface : "#fff", border: you ? "none" : `1.5px solid ${color.border}`,
+});
+
 function Said({ who, children, id }: { who: "Lookout" | "You"; children: React.ReactNode; id?: string }) {
   const you = who === "You";
   return (
-    <div id={id} style={{ display: "flex", flexDirection: "column", gap: 4, alignItems: you ? "flex-end" : "flex-start", scrollMarginTop: 80 }}>
-      <div style={{ fontSize: font.xs, fontWeight: 700, letterSpacing: ".1em", textTransform: "uppercase", color: color.t2 }}>{who}</div>
-      <div style={{ maxWidth: 620, padding: "10px 14px", borderRadius: 12, fontSize: font.base, lineHeight: 1.5, textWrap: "pretty", background: you ? color.surface : "#fff", border: you ? "none" : `1.5px solid ${color.border}`, whiteSpace: "pre-wrap" }}>
+    <div id={id} style={{ display: "flex", flexDirection: "column", alignItems: you ? "flex-end" : "flex-start", scrollMarginTop: 80 }}>
+      <div style={bubble(you)}>
+        <span className="sr-only">{you ? "You said: " : "Lookout: "}</span>
         {children}
       </div>
     </div>
   );
 }
 
+/** The question bubble, with "Why this question?" as an icon in its corner. */
 function Question({ t }: { t: ViewTurn }) {
   const [why, setWhy] = useState(false);
+  const whyId = useId();
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-      <Said who="Lookout">{t.question}</Said>
-      {t.why && (
-        <div>
-          <button onClick={() => setWhy(!why)} aria-expanded={why} style={{ border: 0, background: "transparent", padding: 0, fontSize: font.sm, fontWeight: 600, color: color.brick, cursor: "pointer", textDecoration: "underline", textUnderlineOffset: 3 }}>
-            Why this question?
+    <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-start", gap: 6 }}>
+      <div style={{ ...bubble(false), ...(t.why && { paddingRight: 46 }) }}>
+        <span className="sr-only">Lookout: </span>
+        {t.question}
+        {t.why && (
+          <button
+            onClick={() => setWhy(!why)}
+            aria-expanded={why}
+            aria-controls={whyId}
+            aria-label="Why this question?"
+            data-tip="Why this question?"
+            style={{ position: "absolute", right: 6, bottom: 6, width: 32, height: 32, padding: 0, border: 0, borderRadius: 999, background: why ? color.surface : "transparent", color: why ? color.ink : color.t2, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}
+          >
+            <svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+              <circle cx="12" cy="12" r="9.5" />
+              <path d="M12 11v5.5" />
+              <circle cx="12" cy="7.6" r="0.6" fill="currentColor" />
+            </svg>
           </button>
-          {why && <div style={{ fontSize: font.sm, color: color.t2, marginTop: 4, maxWidth: 620 }}>{t.why}</div>}
+        )}
+      </div>
+      {t.why && (
+        <div id={whyId} hidden={!why} style={{ fontSize: font.lg, lineHeight: 1.5, color: color.t2, maxWidth: 620, paddingLeft: 4 }}>
+          {t.why}
         </div>
       )}
     </div>
@@ -166,44 +182,58 @@ function Question({ t }: { t: ViewTurn }) {
 }
 
 function Past({ t }: { t: ViewTurn }) {
-  const shared = t.facts.filter((f) => f.shareable);
-  const kept = t.facts.filter((f) => !f.shareable);
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
       <Question t={t} />
       <Said who="You" id={`turn-${t.id}`}>
         {t.outcome === "answered" ? t.answer : t.outcome === "skipped" ? <em>Skipped</em> : <em>Doesn&apos;t apply to me</em>}
       </Said>
-      {kept.map((f) => (
-        <LockNote key={f.id} f={f} />
-      ))}
-      {shared.length > 0 && (
-        <div style={{ alignSelf: "stretch", padding: "12px 14px", borderRadius: 12, background: "#F1F7EE", border: "1.5px solid #CFE3C6", display: "flex", flexDirection: "column", gap: 6 }}>
-          <div style={{ fontSize: font.sm, fontWeight: 700, color: color.greenText }}>
-            Saved {shared.length} {shared.length === 1 ? "fact" : "facts"}
-          </div>
-          <ul style={{ margin: 0, paddingLeft: 18, display: "flex", flexDirection: "column", gap: 4, fontSize: font.base, lineHeight: 1.45 }}>
-            {shared.map((f) => (
-              <li key={f.id}>{f.text}</li>
-            ))}
-          </ul>
-          <Link href="/profile/knows" style={{ fontSize: font.sm, fontWeight: 600, color: color.brick, textDecoration: "none", alignSelf: "flex-start" }}>Edit these</Link>
-        </div>
-      )}
+      {t.facts.length > 0 && <Saved facts={t.facts} />}
     </div>
   );
 }
 
-function LockNote({ f }: { f: ViewFact }) {
+/**
+ * What an answer saved, as one quiet line that opens on click, so the conversation stays in front (Eric, 2026-11-21).
+ * Private facts sit in the same list with their lock and the reason.
+ */
+function Saved({ facts }: { facts: ViewFact[] }) {
+  const [open, setOpen] = useState(false);
+  const listId = useId();
+  const kept = facts.filter((f) => !f.shareable).length;
   return (
-    <div style={{ alignSelf: "flex-end", maxWidth: 620, display: "flex", gap: 8, alignItems: "flex-start", fontSize: font.sm, lineHeight: 1.45, color: color.peachInk, background: "#FDF1E6", borderRadius: 10, padding: "8px 12px" }}>
-      <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ flex: "none", marginTop: 2 }}>
-        <rect x="5" y="11" width="14" height="10" rx="2" />
-        <path d="M8 11V7a4 4 0 0 1 8 0v4" />
-      </svg>
-      <span>
-        Kept private: &ldquo;{f.text}&rdquo;. {f.lockReason ? `Why: ${f.lockReason}` : "Lookout won't use it in writing."}
-      </span>
+    <div style={{ alignSelf: "flex-end", maxWidth: 620, display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 6 }}>
+      <button
+        onClick={() => setOpen(!open)}
+        aria-expanded={open}
+        aria-controls={listId}
+        style={{ border: 0, background: "transparent", padding: "4px 2px", display: "flex", alignItems: "center", gap: 6, fontSize: font.lg, color: color.t2, cursor: "pointer" }}
+      >
+        Saved {facts.length} {facts.length === 1 ? "fact" : "facts"}
+        {kept > 0 && `, ${kept} kept private`}
+        <svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ transform: open ? "rotate(180deg)" : "none", transition: "transform .15s ease" }}>
+          <path d="m6 9 6 6 6-6" />
+        </svg>
+      </button>
+      <div id={listId} hidden={!open} style={{ alignSelf: "stretch", textAlign: "left", color: color.t2, fontSize: font.lg, lineHeight: 1.5 }}>
+        <ul style={{ margin: 0, paddingLeft: 20, display: "flex", flexDirection: "column", gap: 4 }}>
+          {facts.map((f) => (
+            <li key={f.id}>
+              {f.text}
+              {!f.shareable && (
+                <span style={{ display: "inline-flex", alignItems: "center", gap: 4, marginLeft: 6 }}>
+                  <svg aria-hidden="true" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <rect x="5" y="11" width="14" height="10" rx="2" />
+                    <path d="M8 11V7a4 4 0 0 1 8 0v4" />
+                  </svg>
+                  Kept private{f.lockReason ? `: ${f.lockReason}` : "."}
+                </span>
+              )}
+            </li>
+          ))}
+        </ul>
+        <Link href="/profile/knows" style={{ display: "inline-block", marginTop: 6, color: color.t2, textDecoration: "underline", textUnderlineOffset: 3 }}>Edit these</Link>
+      </div>
     </div>
   );
 }
