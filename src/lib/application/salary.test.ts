@@ -630,6 +630,28 @@ describe("askPer: 'per mo' and 'per wk' (#1395)", () => {
   });
 });
 
+describe("rangeBasis: base only, not bonus, is base (#1487)", () => {
+  it.each([
+    "The salary range for this role is $150,000 - $180,000. This range includes base salary only, not bonus or equity.",
+    "This range reflects base pay only, not commission or bonus.",
+    "Base salary range: $150,000 - $180,000. The range reflects base pay only and not bonus or equity.",
+    "The pay range includes base salary; bonus and equity are separate.",
+    "The pay range covers base salary; bonus, equity and benefits are separate.",
+  ])("reads %s as base", (posting) => {
+    expect(rangeBasis(posting)).toBe("base");
+  });
+
+  it("still reads a range that includes the bonus as total", () => {
+    expect(rangeBasis("This range includes base salary and target bonus; equity is granted separately.")).toBe("total");
+    expect(rangeBasis("The range includes base salary and bonus only, not equity.")).toBe("total");
+  });
+
+  it("gives a base question an amount on a base-only range", () => {
+    const basis = rangeBasis("The salary range for this role is $150,000 - $180,000. This range includes base salary only, not bonus or equity.");
+    expect(suggestSalary({ min: 150_000, max: 180_000, basis, asksBase: asksBase("What is your desired base salary?") })?.amount).not.toBeNull();
+  });
+});
+
 describe("rangeBasis: a range that leaves the bonus out is base (#1411)", () => {
   it("reads a range that does not include or excludes bonus as base", () => {
     expect(rangeBasis("The salary range for this role is $150,000 to $180,000 and does not include bonus or equity.")).toBe("base");
