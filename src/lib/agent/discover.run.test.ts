@@ -305,6 +305,22 @@ describe("discover (#379)", () => {
     expect(webSearch.mock.calls.map((c) => c[0])).toEqual(["Design Systems Lead jobs"]);
   });
 
+  it("runs a query the model wrote twice once, and the repeat doesn't take a real query's slot (#1476)", async () => {
+    const qs = ["Design Systems Lead jobs", "design systems  lead JOBS", " Design Systems Lead jobs ", "a", "b", "c", "d", "e"];
+    replies.queries = () => ({ queries: qs });
+    for (const q of ["Design Systems Lead jobs", "a", "b", "c", "d", "e"]) results.set(q, []);
+    await discover(searchId);
+    expect(webSearch.mock.calls.map((c) => c[0])).toEqual(["Design Systems Lead jobs", "a", "b", "c", "d", "e"]);
+  });
+
+  it("searches a target title listed twice once (#1476)", async () => {
+    replies.queries = () => ({ queries: [] });
+    searchProfile = { summary: "", targetTitles: ["Design Systems Lead", "design systems lead"], seniority: "", industries: [], strengths: [], proof: [], where: "", pay: "", avoid: [], searchTerms: [] };
+    results.set("Design Systems Lead jobs", []);
+    await discover(searchId);
+    expect(webSearch.mock.calls.map((c) => c[0])).toEqual(["Design Systems Lead jobs"]);
+  });
+
   it("fails with a plain message when there are no queries and no target titles (#609)", async () => {
     replies.queries = () => ({ queries: [] });
     await expect(discover(searchId)).rejects.toThrow("Couldn't plan any searches from your profile");
