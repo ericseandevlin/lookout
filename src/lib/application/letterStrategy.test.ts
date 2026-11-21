@@ -55,3 +55,17 @@ describe("cover letter strategies (#738)", () => {
     expect(answersPrompt(inp, [{ index: 0, kind: "answer", prompt: "Why us?", required: false }])).not.toContain("Cover letter strategy");
   });
 });
+
+describe("tech words are not a story's theme (#1496)", () => {
+  it("does not read familiarity, investigate, streaming data or media queries as a theme", () => {
+    expect(fittingStory([story("family")], "Senior Frontend Engineer. Familiarity with design systems. Familiarity with GraphQL is a plus. Familiar with React.")).toBeNull();
+    expect(fittingStory([story("finance")], "You will investigate production incidents and lead investigations into outages.")).toBeNull();
+    expect(fittingStory([story("entertainment")], "CSS media queries. Streaming data pipelines (Kafka streaming) and streaming APIs.")).toBeNull();
+  });
+
+  it("still fits a company that works in the theme", () => {
+    expect(fittingStory([story("family")], "We help families find childcare. Parents and families use our app every day.")?.id).toBe("s1");
+    expect(fittingStory([story("finance")], "An investment platform for everyday investors. Investing made simple.")?.id).toBe("s1");
+    expect(fittingStory([story("entertainment")], "A music streaming service. Music and games for millions.")?.id).toBe("s1");
+  });
+});
