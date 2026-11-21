@@ -169,7 +169,7 @@ export function Interview() {
           aria-label="Interview"
           style={{ ...card, padding: 0, flex: "1 1 480px", minWidth: 0, display: "flex", flexDirection: "column", height: height ?? 560, overflow: "hidden" }}
         >
-          <div ref={scroller} onScroll={onScroll} style={{ flex: 1, minHeight: 0, overflowY: "auto", padding: 20, display: "flex", flexDirection: "column", gap: 18 }}>
+          <div ref={scroller} data-chat-scroll="" onScroll={onScroll} style={{ flex: 1, minHeight: 0, overflowY: "auto", padding: 20, display: "flex", flexDirection: "column", gap: 18 }}>
             {!data && !err && <div style={{ fontSize: font.lg, color: color.t2 }}>Getting your next question…</div>}
             {data && (
               <>
@@ -302,7 +302,7 @@ function Said({ who, children, id }: { who: "Lookout" | "You"; children: React.R
 
 /**
  * The question bubble. The info icon in its corner shows the reason as a tooltip: on hover, on keyboard focus,
- * and on tap (a tap pins it until the next tap, a tap outside, Escape or a scroll).
+ * and on tap (a tap pins it until the next tap, a tap outside or Escape).
  */
 function Question({ t }: { t: ViewTurn }) {
   const [hover, setHover] = useState(false);
@@ -312,19 +312,26 @@ function Question({ t }: { t: ViewTurn }) {
   const tipId = useId();
   const open = hover || pinned;
   useLayoutEffect(() => {
-    if (!open || !btnRef.current) return setAt(null);
-    const b = btnRef.current.getBoundingClientRect();
-    const below = b.top < 140;
-    setAt({ x: Math.max(156, Math.min(window.innerWidth - 156, b.left + b.width / 2)), y: below ? b.bottom + 8 : b.top - 8, below });
+    const el = btnRef.current;
+    if (!open || !el) return setAt(null);
     const close = () => (setHover(false), setPinned(false));
-    const outside = (e: PointerEvent) => !btnRef.current?.contains(e.target as Node) && close();
+    // Follows the icon when the chat scrolls (focus can scroll it), and closes once the icon leaves the chat box.
+    const place = () => {
+      const b = el.getBoundingClientRect();
+      const box = el.closest("[data-chat-scroll]")?.getBoundingClientRect();
+      if (box && (b.bottom < box.top || b.top > box.bottom)) return close();
+      const below = b.top < 140;
+      setAt({ x: Math.max(156, Math.min(window.innerWidth - 156, b.left + b.width / 2)), y: below ? b.bottom + 8 : b.top - 8, below });
+    };
+    place();
+    const outside = (e: PointerEvent) => !el.contains(e.target as Node) && close();
     document.addEventListener("pointerdown", outside);
-    window.addEventListener("scroll", close, true);
-    window.addEventListener("resize", close);
+    window.addEventListener("scroll", place, true);
+    window.addEventListener("resize", place);
     return () => {
       document.removeEventListener("pointerdown", outside);
-      window.removeEventListener("scroll", close, true);
-      window.removeEventListener("resize", close);
+      window.removeEventListener("scroll", place, true);
+      window.removeEventListener("resize", place);
     };
   }, [open]);
   return (
