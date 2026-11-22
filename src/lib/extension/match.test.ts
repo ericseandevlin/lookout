@@ -152,6 +152,24 @@ describe("Recruitee and Teamtailor apply steps (#1200)", () => {
     expect(sameJob(["https://career.acme.com/jobs/9999999-staff-designer/applications/new"], [tt])).toBe(false);
   });
 
+  it("keys a Workable job by its shortcode and a Teamtailor job by its ID, slug or not (#1522)", () => {
+    const wk = "https://apply.workable.com/acme/j/1A2B3C4D5E/";
+    expect(jobKey(wk)).toBe("workable:1a2b3c4d5e");
+    expect(sameJob(["https://apply.workable.com/j/1A2B3C4D5E"], [wk])).toBe(true);
+    expect(sameJob(["https://acme.workable.com/j/1A2B3C4D5E"], [wk])).toBe(true);
+    expect(sameJob(["https://apply.workable.com/acme/j/1A2B3C4D5E/apply/"], [wk])).toBe(true);
+    expect(sameJob(["https://apply.workable.com/acme/j/9Z8Y7X6W5V/"], [wk])).toBe(false);
+    // The company's job list isn't one job.
+    expect(jobKey("https://apply.workable.com/acme/")).toMatch(/^url:/);
+    const tt = "https://acme.teamtailor.com/jobs/4521337-senior-product-designer";
+    expect(jobKey(tt)).toBe("teamtailor:acme.teamtailor.com:4521337");
+    expect(sameJob(["https://acme.teamtailor.com/jobs/4521337"], [tt])).toBe(true);
+    expect(sameJob(["https://acme.teamtailor.com/en/jobs/4521337-lead-product-designer/applications/new"], [tt])).toBe(true);
+    expect(sameJob(["https://acme.teamtailor.com/jobs/9999999-senior-product-designer"], [tt])).toBe(false);
+    expect(sameJob(["https://other.teamtailor.com/jobs/4521337-senior-product-designer"], [tt])).toBe(false);
+    expect(jobKey("https://acme.teamtailor.com/jobs")).toMatch(/^url:/);
+  });
+
   it("keeps a path that only ends in new", () => {
     expect(jobKey("https://acme.com/careers/new")).toBe("url:acme.com/careers/new");
   });

@@ -39,6 +39,13 @@ export function jobKey(raw: string | null | undefined): string | null {
   // iCIMS (#852): careers-acme.icims.com/jobs/1234/<title>/job, then .../login and .../candidate on the way to the form.
   const icims = /(^|\.)icims\.com$/.test(host) && u.pathname.match(/^\/jobs\/(\d+)(?:\/|$)/i)?.[1];
   if (icims) return `icims:${host}:${icims}`;
+  // Workable (#1522): the shortcode after /j/ names the job alone, on apply.workable.com/<company>/j/, the /j/ short link
+  // and the old <company>.workable.com/j/.
+  const workable = /(^|\.)workable\.com$/.test(host) && u.pathname.match(/\/j\/([0-9a-z]{6,})(?:\/|$)/i)?.[1];
+  if (workable) return `workable:${workable.toLowerCase()}`;
+  // Teamtailor (#1522): /jobs/<id>-<title> with or without the title, the form at .../applications/new.
+  const teamtailor = /(^|\.)teamtailor\.com$/.test(host) && u.pathname.match(/^(?:\/[a-z]{2}(?:-[a-z]{2})?)?\/jobs\/(\d+)(?:-[^/]*)?(?:\/applications\/new)?\/?$/i)?.[1];
+  if (teamtailor) return `teamtailor:${host}:${teamtailor}`;
   // Paylocity (#1435): the posting is /Recruiting/Jobs/Details/<id> and its form /Recruiting/Jobs/Apply/<id>. The ID is
   // site-wide; the URL names no employer.
   const paylocity = /(^|\.)paylocity\.com$/.test(host) && u.pathname.match(/\/jobs\/(?:details|apply)\/(\d+)(?:\/|$)/i)?.[1];
@@ -50,6 +57,7 @@ export function jobKey(raw: string | null | undefined): string | null {
   const taleo = /(^|\.)taleo\.net$/.test(host) && /\/job(detail|apply)\.ftl$/i.test(u.pathname) && u.searchParams.get("job");
   if (taleo) return `taleo:${host}:${taleo.toLowerCase()}`;
   // Recruitee's form is at /o/<job>/c/new and Teamtailor's at /jobs/<id>-<title>/applications/new: apply steps too (#1200).
+  // Teamtailor on its own host is keyed by ID above; a company's own domain still comes here.
   // UltiPro's posting is .../JobBoard/<board>/OpportunityDetail?opportunityId=<id> and its form OpportunityApply (#1497).
   const step = /(^|\.)ultipro\.com$/.test(host) ? /\/(opportunitydetail|opportunityapply)\/?$/i : /\/(apply|application|c\/new|applications\/new)\/?$/i;
   const path = u.pathname.replace(step, "").replace(/\/+$/, "");
