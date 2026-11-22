@@ -11,6 +11,7 @@ import { kinds } from "@/lib/kinds";
 import { humanize, shapeResume } from "./resumeLayout";
 import { match, savedBlock } from "./saved";
 import { notesBlock } from "./skills";
+import { draftFactsBlock } from "@/lib/interview/facts";
 import { checkStory } from "./stories";
 import { STRATEGY, suggestStrategy, type LetterStrategy } from "./letterStrategy";
 import { HttpError } from "@/lib/api";
@@ -248,13 +249,15 @@ async function loadInputs(userId: string, opp: typeof schema.opportunities.$infe
   const pay = compLabel(opp.compMin, opp.compMax, opp.currency) ?? "";
   const facts = [`Role: ${opp.title}`, `Company: ${opp.company}`, opp.location && `Location: ${opp.location}`, opp.workMode && `Work mode: ${opp.workMode}`, pay && `Pay range on file: ${pay}`].filter(Boolean).join("\n");
   text = `${facts}\n\n${text}`;
+  // What the interview learned (#1449): shareable facts only; private ones are never read here.
+  const interviewFacts = await draftFactsBlock(userId);
   return {
     name: user?.name ?? "",
     email: user?.email ?? "",
     linkedinUrl: li?.url ? linkedinUrl(li.url) : null,
     links: mats.filter((m) => m.kind === "link" && m.url).map((m) => ({ url: m.url!, text: m.extracted?.text ?? "" })),
-    brief: (kinds[search?.kind ?? "job"]?.brief(search?.answers ?? {}) ?? "") + savedBlock(profile?.applyAnswers ?? []) + notesBlock(profile?.skillNotes ?? []),
-    notes: notesBlock(profile?.skillNotes ?? []),
+    brief: (kinds[search?.kind ?? "job"]?.brief(search?.answers ?? {}) ?? "") + savedBlock(profile?.applyAnswers ?? []) + notesBlock(profile?.skillNotes ?? []) + interviewFacts,
+    notes: notesBlock(profile?.skillNotes ?? []) + interviewFacts,
     saved: profile?.applyAnswers ?? [],
     stories: profile?.personalStories ?? [],
     pay: { floor: search?.answers?.floor, target: search?.answers?.target },

@@ -10,7 +10,7 @@ A test (`src/app/screensDoc.test.ts`) fails when a page under `src/app` has no r
 
 - **Who sees it.** *Anyone*: no sign-in. *Signed in*: has an account, finished the welcome step and agreed to the current Terms and Privacy (`src/app/(app)/layout.tsx` sends everyone else away). *Admin*: an email in `ADMIN_EMAILS` (`src/app/(app)/admin/layout.tsx` shows everyone else a 404).
 - **Switch.** A feature switch is an env var on the server (`FEATURE_...=on`), read in `src/lib/features.ts`. Off means the page answers 404. Every switch is off unless the server's `.env` turns it on (`deploy/env.example`).
-- **Production switches today:** `FEATURE_PREVIEW` on, `FEATURE_AUTO_APPLY` on (admins only, by code), `FEATURE_AUTO_SUBMIT` off, `FEATURE_EVENTS` off, `FEATURE_SEARCHES` off, `FEATURE_WAITLIST` off, `FEATURE_DEMO` off. The server's `.env` is the final word.
+- **Production switches today:** `FEATURE_PREVIEW` on, `FEATURE_AUTO_APPLY` on (admins only, by code), `FEATURE_AUTO_SUBMIT` off, `FEATURE_EVENTS` off, `FEATURE_SEARCHES` off, `FEATURE_WAITLIST` off, `FEATURE_DEMO` off, `FEATURE_INTERVIEW` off. The server's `.env` is the final word.
 - **Code** is the page file under `src/app` and the component that draws it, under `src/components`.
 
 ## Public pages
@@ -50,6 +50,8 @@ All of these sit inside the app shell: the sidebar on desktop, the bottom bar on
 | `/profile` | Signed in | Search profile, Questions tab: the five profile questions that steer every search. | None | `src/app/(app)/profile/page.tsx`, `src/components/Profile.tsx` |
 | `/profile/materials` | Signed in | Resume upload, LinkedIn PDF, links, and the master resume Lookout builds from them. | None | `src/app/(app)/profile/materials/page.tsx`, `src/components/Materials.tsx` |
 | `/profile/sees` | Signed in | "What Lookout sees": the short summary of you that searches actually use. | None | `src/app/(app)/profile/sees/page.tsx`, `src/components/SearchProfileView.tsx` |
+| `/profile/knows` | Signed in | "What Lookout knows": every fact from the interview, setup answers and resume, with its source and quote, a Shareable or Private switch, Edit and Delete. Facts that name a person or a complaint start Private and say why. | `FEATURE_INTERVIEW`. Off. Staging only (#1449). | `src/app/(app)/profile/knows/page.tsx`, `src/components/Knows.tsx` |
+| `/interview` | Signed in | The interview: one question at a time, typed answers, Skip, Doesn't apply and Stop for today. The first turns are the setup questions still unanswered; then each question comes from a gap in the top 5 finds. Saved facts show inline. | `FEATURE_INTERVIEW`. Off. Staging only (#1449). | `src/app/(app)/interview/page.tsx`, `src/components/Interview.tsx` |
 | `/profile/application` | Admin, with `FEATURE_AUTO_APPLY` on. Everyone else gets a 404. | Application answers: saved answers, personal stories, current pay and voluntary EEO answers that auto-apply reuses. | `FEATURE_AUTO_APPLY`. On, so admins see it. | `src/app/(app)/profile/application/page.tsx`, `src/components/SavedAnswers.tsx` |
 | `/materials` | Signed in | Old address. Sends you to `/profile/materials`. | None | `src/app/(app)/materials/page.tsx` |
 | `/apply` | Admin, with `FEATURE_AUTO_APPLY` on. | Auto-apply list: every application Lookout is drafting or has drafted, plus the Firefox extension setup. | `FEATURE_AUTO_APPLY`. On, admins only. | `src/app/(app)/apply/page.tsx`, `src/components/Apply.tsx` |
