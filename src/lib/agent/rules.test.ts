@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { applyRules, fingerprint, legacyFingerprint, normUrl, placeId, placesDiffer, remoteFirst } from "./rules";
+import { applyRules, fingerprint, legacyFingerprint, listPage, normUrl, placeId, placesDiffer, remoteFirst } from "./rules";
 
 const base = { score: 5, reasonsMatch: ["Director title"], reasonsGap: [], locationFit: true, dealbreaker: false, compMin: 140000, compMax: 160000 };
 
@@ -284,5 +284,51 @@ describe("no em dashes in match reasons (#1531)", () => {
     const r = applyRules({ score: 4, reasonsMatch: ["Design systems — your core strength"], reasonsGap: ["Heavy mobile focus – check fit"], locationFit: true, dealbreaker: false, compMin: 150000, compMax: 180000 }, null)!;
     expect(r.reasonsMatch).toEqual(["Design systems, your core strength"]);
     expect(r.reasonsGap).toEqual(["Heavy mobile focus, check fit"]);
+describe("listPage: search and board pages are not jobs (#1537)", () => {
+  it("drops job board search pages, on any country site", () => {
+    for (const u of [
+      "https://www.glassdoor.com/Job/new-york-ny-ux-director-jobs-SRCH_IL.0,11_IC1132348_KO12,23.htm",
+      "https://www.glassdoor.co.uk/Job/london-ux-director-jobs-SRCH_IL.0,6_IC2671300.htm",
+      "https://www.indeed.com/l-New-York,-NY-jobs.html",
+      "https://www.indeed.com/q-UX-Director-jobs.html",
+      "https://uk.indeed.com/jobs?q=ux+director",
+      "https://www.indeed.co.uk/jobs?q=ux+director",
+      "https://ca.linkedin.com/jobs/ux-director-jobs",
+      "https://www.ziprecruiter.com/Jobs/UX-Director",
+      "https://www.simplyhired.com/search?q=ux+director",
+      "https://careers.acme.com/jobs/",
+    ])
+      expect(listPage(u), u).toBe(true);
+  });
+
+  it("drops an ATS board home that names no job", () => {
+    for (const u of [
+      "https://jobs.lever.co/acme",
+      "https://jobs.eu.lever.co/acme?team=Design",
+      "https://job-boards.greenhouse.io/acme",
+      "https://boards.greenhouse.io/embed/job_board?for=acme",
+      "https://jobs.ashbyhq.com/acme",
+      "https://acme.wd1.myworkdayjobs.com/External",
+      "https://acme.wd1.myworkdayjobs.com/en-US/External?q=design",
+      "https://wd3.myworkdaysite.com/recruiting/acme/External",
+    ])
+      expect(listPage(u), u).toBe(true);
+  });
+
+  it("keeps single postings, on those sites too", () => {
+    for (const u of [
+      "https://www.glassdoor.com/job-listing/ux-director-acme-JV_IC1132348_KO0,11_KE12,16.htm?jl=1009",
+      "https://www.indeed.com/viewjob?jk=abc123",
+      "https://jobs.lever.co/acme/0c3f1a2b-4d5e-6f70-8a9b-0c1d2e3f4a5b",
+      "https://jobs.lever.co/acme/0c3f1a2b-4d5e-6f70-8a9b-0c1d2e3f4a5b/apply",
+      "https://job-boards.greenhouse.io/acme/jobs/4001234005",
+      "https://boards.greenhouse.io/embed/job_app?for=acme&token=4001234005",
+      "https://jobs.ashbyhq.com/acme/0c3f1a2b-4d5e-6f70-8a9b-0c1d2e3f4a5b",
+      "https://acme.wd1.myworkdayjobs.com/en-US/External/job/New-York-NY/UX-Director_R12345",
+      "https://wd3.myworkdaysite.com/recruiting/acme/External/job/New-York/UX-Director_R12345",
+      "https://careers.acme.com/jobs/101-ux-director",
+      "not a url",
+    ])
+      expect(listPage(u), u).toBe(false);
   });
 });

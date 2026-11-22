@@ -15,7 +15,7 @@ import { traceAs } from "@/lib/ai/trace";
 import { startBudgetedRun, finishRun, progress, startRun } from "@/lib/ai/runs";
 import { webSearch, type SearchHit } from "@/lib/ai/search";
 import { getAiConfig } from "@/lib/config";
-import { applyRules, fingerprint, fullTitle, legacyFingerprint, normUrl, placeId, placesDiffer } from "./rules";
+import { applyRules, fingerprint, fullTitle, legacyFingerprint, listPage, normUrl, placeId, placesDiffer } from "./rules";
 import { closeGonePostings } from "./linkCheck";
 import { findEventsIfDue } from "./networking";
 import { featureOn } from "@/lib/features";
@@ -146,8 +146,6 @@ Use the candidate's target titles, close variants, and their city. Keep each und
 
 // --- 2+3. search and pick ----------------------------------------------------
 
-const AGGREGATOR = /(indeed|linkedin|glassdoor|ziprecruiter|simplyhired|monster|careerbuilder)\.com\/(jobs|q-|m\/jobs)|\/search\?|\/jobs\/?$/i;
-
 type Report = (pct: number, step: string) => Promise<void>;
 
 /**
@@ -175,7 +173,7 @@ async function gatherHits(ctx: Context, queries: string[], usage: Usage, report:
     if (r.status !== "fulfilled") continue;
     for (const h of r.value) {
       const keys = [normUrl(h.url), atsKey(h.url)].filter((k): k is string => !!k);
-      if (AGGREGATOR.test(h.url) || keys.some((k) => seen.has(k))) continue;
+      if (listPage(h.url) || keys.some((k) => seen.has(k))) continue;
       if (keys.some((k) => known.has(k))) {
         for (const k of keys) seen.add(k);
         onBoard.add(keys[0]);
