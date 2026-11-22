@@ -55,6 +55,21 @@ describe("jobKey (#169)", () => {
     expect(jobKey("https://www.linkedin.com/jobs/search/?currentJobId=abc")).toMatch(/^url:/);
     expect(jobKey("https://example.com/jobs?currentJobId=3812345678")).toMatch(/^url:/);
   });
+  it("keys a Glassdoor job by its listing ID, and keeps ?jobRequisitionId= (#1605)", () => {
+    for (const u of [
+      "https://www.glassdoor.com/partner/jobListing.htm?pos=101&ao=1136043&guid=abc&jobListingId=1009012345678&jrtk=xyz",
+      "https://www.glassdoor.com/job-listing/senior-designer-acme-JV_IC1132348_KO0,15_KE16,20.htm?jl=1009012345678",
+      "https://www.glassdoor.com/Job/new-york-ny-designer-jobs-SRCH_IL.0,11_IC1132348_KO12,20.htm?jl=1009012345678",
+      "https://www.glassdoor.co.uk/partner/jobListing.htm?jobListingId=1009012345678",
+    ])
+      expect(jobKey(u), u).toBe("glassdoor:1009012345678");
+    expect(jobKey("https://www.glassdoor.com/partner/jobListing.htm?jobListingId=1009000000001")).not.toBe(jobKey("https://www.glassdoor.com/partner/jobListing.htm?jobListingId=1009000000002"));
+    expect(jobKey("https://www.glassdoor.com/Job/new-york-ny-designer-jobs-SRCH_IL.0,11.htm")).toMatch(/^url:/);
+    expect(jobKey("https://example.com/jobs?jl=1009012345678")).toMatch(/^url:/);
+    const req = (id: string) => jobKey(`https://careers.acme.com/jobs/job-details?jobRequisitionId=${id}&utm_source=x`);
+    expect(req("R-12345")).toBe("url:careers.acme.com/jobs/job-details?jobrequisitionid=r-12345");
+    expect(req("R-12345")).not.toBe(req("R-67890"));
+  });
   it("keys a Workday job by tenant and job slug, ignoring locale and the apply steps (#622)", () => {
     const post = "https://acme.wd5.myworkdayjobs.com/en-US/External/job/New-York-NY/Senior-Designer_R12345";
     const key = "workday:acme.wd5.myworkdayjobs.com:senior-designer_r12345";

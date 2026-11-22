@@ -64,6 +64,11 @@ export function jobKey(raw: string | null | undefined): string | null {
   const linkedin =
     /(^|\.)linkedin\.com$/.test(host) && (u.pathname.match(/^\/jobs\/view\/(?:[^/]*-)?(\d{6,})\/?$/i)?.[1] ?? u.searchParams.get("currentJobId")?.match(/^\d{6,}$/)?.[0]);
   if (linkedin) return `linkedin:${linkedin}`;
+  // Glassdoor (#1605): partner/jobListing.htm?jobListingId=<id>, and ?jl=<id> on a listing page or beside a search. The
+  // path alone is the same for every job, so without the ID all of them would be one job.
+  const glassdoor =
+    /(^|\.)glassdoor\.[a-z]{2,3}(\.[a-z]{2})?$/.test(host) && (u.searchParams.get("jobListingId") ?? u.searchParams.get("jl"))?.match(/^\d{6,}$/)?.[0];
+  if (glassdoor) return `glassdoor:${glassdoor}`;
   // Recruitee's form is at /o/<job>/c/new and Teamtailor's at /jobs/<id>-<title>/applications/new: apply steps too (#1200).
   // Teamtailor on its own host is keyed by ID above; a company's own domain still comes here.
   // UltiPro's posting is .../JobBoard/<board>/OpportunityDetail?opportunityId=<id> and its form OpportunityApply (#1497).
@@ -86,8 +91,8 @@ export function hashRoute(u: URL) {
 }
 
 // Query params that name the job itself (indeed.com/viewjob?jk=..., careers pages with ?jobId=, UltiPro ?opportunityId=,
-// SuccessFactors ?career_job_req_id= (#840), Phenom's apply page ?jobSeqNo= (#1584)). Tracking params stay out (#508).
-const ID_PARAM = /^(v?jk|id|jid|job|jobs?id|jobreqid|careerjobreqid|req|reqid|requisitionid|postingid|openingid|opportunityid|positionid|currentjobid|pid|jobseqno)$/;
+// SuccessFactors ?career_job_req_id= (#840), Phenom's apply page ?jobSeqNo= (#1584), ?jobRequisitionId= (#1605)). Tracking params stay out (#508).
+const ID_PARAM = /^(v?jk|id|jid|job|jobs?id|jobreqid|careerjobreqid|req|reqid|requisitionid|jobrequisitionid|postingid|openingid|opportunityid|positionid|currentjobid|pid|jobseqno)$/;
 // Params that name the employer on a host many employers share: SuccessFactors ?company=, Brassring ?partnerid= (#895).
 // Req IDs there are small per-employer numbers, so they join the key whenever a job ID does.
 const TENANT_PARAM = /^(company|partnerid)$/;
