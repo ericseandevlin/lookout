@@ -239,7 +239,7 @@ export const AnswersDraft = z.object({
       index: z.number().int(),
       content: z.string().describe("The answer, ready to paste. For a choice question, exactly one of the options; for a select-any question, one option per line. Empty if you need to ask"),
       sources: z.array(z.string()).describe("Where each fact came from: 'resume: <role or line>', 'profile: <field>', 'posting', 'LinkedIn'"),
-      question: z.string().describe("If you can't answer from the materials, the one question to ask the person. Else empty"),
+      question: z.string().describe("If you can't answer from the materials, the one question to ask the person, in a few words. Say what the materials don't include (\"Your materials don't include a LinkedIn URL\"), never that the person doesn't have it. Else empty"),
       note: z.string().describe("One short sentence on how you approached it, speaking to the person as 'you'"),
       storyId: z.string().describe("Cover letter only: the id of the personal story its opening line comes from. Empty if none fits").optional(),
       storyAsk: z.string().describe("Cover letter only, when no story fits: one question about this company that could draw out a real personal connection. Else empty").optional(),
@@ -273,7 +273,7 @@ export function answersPrompt(inp: DraftInputs, items: DraftItem[]) {
   const letter = items.some((i) => i.kind === "cover_letter");
   const stories = letter ? storiesBlock(inp.stories ?? []) : "";
   const strategy = letter ? `\n\n${STRATEGY[inp.letterStrategy ?? suggestStrategy(inp.posting, inp.stories ?? []).strategy].rule}` : "";
-  return `Person: ${inp.name || "(no name on file)"}, ${inp.email}\nLinkedIn: ${inp.linkedinUrl ?? "(none)"}\n\n<profile>\n${inp.brief}\n</profile>\n\n<resume>\n${inp.resume}\n</resume>${stories}\n\n<links>\n${links}\n</links>\n\nPosting: ${inp.posting.title} at ${inp.posting.company}\n<posting>\n${inp.posting.text}\n</posting>\n\nDraft each of these, by index:\n${list}${strategy}`;
+  return `Person: ${inp.name || "(no name on file)"}, ${inp.email}\nLinkedIn: ${inp.linkedinUrl ?? "(not in their materials)"}\n\n<profile>\n${inp.brief}\n</profile>\n\n<resume>\n${inp.resume}\n</resume>${stories}\n\n<links>\n${links}\n</links>\n\nPosting: ${inp.posting.title} at ${inp.posting.company}\n<posting>\n${inp.posting.text}\n</posting>\n\nDraft each of these, by index:\n${list}${strategy}`;
 }
 
 /** Keep a model answer only if it's usable: choice answers must be real options; otherwise it becomes a question. */
