@@ -126,3 +126,39 @@ describe("testModel (Admin > AI settings, Test)", () => {
     await expect(testModel(cfg)).rejects.toThrow(/ping: model API 401: bad key/);
   });
 });
+
+describe("the writing model (#1532)", () => {
+  afterEach(() => vi.unstubAllGlobals());
+  const schema = z.object({ ok: z.boolean() });
+  const writing = { ...cfg, writing: { model: "w", priceIn: 3, priceOut: 15, jsonMode: "object" as const } };
+  const call = async (name: string, c: AiConfig) => {
+    const f = vi.fn().mockResolvedValue(reply('{"ok":true}'));
+    vi.stubGlobal("fetch", f);
+    const usage = emptyUsage();
+    await completeJSON({ name, schema, system: "s", user: "u", usage, cfg: c });
+    return { body: JSON.parse(f.mock.calls[0][1].body), usd: usage.usd };
+  };
+
+  it("writes what people read: resumes, letters, answers, outreach and the interview", async () => {
+    for (const name of ["apply-resume", "master-resume", "apply-letter", "apply-answers", "apply-outreach", "apply-revise", "apply-recruiter", "interview-turn", "interview-keyword-groups", "interview-keyword-answer"]) {
+      const { body, usd } = await call(name, writing);
+      expect(body.model).toBe("w");
+      // Charged at the writing model's own prices, with its own output format.
+      expect(usd).toBeCloseTo((1000 * 3 + 500 * 15) / 1e6);
+      expect(body.response_format.type).toBe("json_object");
+    }
+  });
+
+  it("leaves background work on the main model", async () => {
+    for (const name of ["score", "queries", "picks", "search", "events", "apply-scan", "apply-keywords"]) {
+      const { body, usd } = await call(name, writing);
+      expect(body.model).toBe("m");
+      expect(usd).toBeCloseTo((1000 * 1 + 500 * 2) / 1e6);
+    }
+  });
+
+  it("uses the main model for everything when no writing model is set", async () => {
+    expect((await call("apply-letter", cfg)).body.model).toBe("m");
+    expect((await call("apply-letter", { ...cfg, writing: { model: "  ", priceIn: 3, priceOut: 15, jsonMode: "schema" } })).body.model).toBe("m");
+  });
+});
