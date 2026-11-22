@@ -208,8 +208,25 @@ describe("discover (#379)", () => {
     const sent = scored.flatMap((c) => [...c.user.matchAll(/^\[\d+\] URL: (\S+)/gm)].map((m) => m[1].replace(/\/$/, ""))).sort();
     expect(sent).toEqual(["https://jobs.example.com/b", "https://jobs.example.com/careers"]);
     const run = await runRow();
-    expect(run.report).toMatchObject({ read: 2 });
+    // Three different pages opened: two scored, one on the board (#1649).
+    expect(run.report).toMatchObject({ read: 3 });
     expect(run.report?.tally).toMatchObject({ postings: 2, known: 1, added: 2, unscored: 0 });
+  });
+
+  it("counts a page that opens onto a find on the board as read, so the report doesn't say no page opened (#1649)", async () => {
+    const [old] = await db.insert(schema.opportunities).values({ company: "Old Co", title: "Lead", fingerprint: "old", sourceUrl: "https://jobs.example.com/old" }).returning();
+    await db.insert(schema.userOpportunities).values({ userId, searchId, opportunityId: old.id, score: 4, addedVia: "agent" });
+    results.set("design systems lead", [hit("https://go.example.com/old"), hit("https://careers.example.com/role?gh_jid=1")]);
+    redirects.set("https://go.example.com/old", "https://jobs.example.com/old");
+    redirects.set("https://careers.example.com/role?gh_jid=1", "https://jobs.example.com/old");
+    pages.set("https://jobs.example.com/old", posting());
+
+    await discover(searchId);
+
+    const run = await runRow();
+    expect(run.report).toMatchObject({ picked: 2, read: 1 });
+    expect(run.report?.tally).toMatchObject({ postings: 0, known: 1, added: 0 });
+    expect(run.report?.tips.map((t) => t.text).join(" ")).not.toMatch(/couldn't open/);
   });
 
   it("fills pay from the page when the model misses it", async () => {
