@@ -58,6 +58,17 @@ const normChoice = (t: string) =>
 const compactChoice = (t: string) => normChoice(t).replace(/[\s'".-]+/g, "");
 
 /**
+ * The form option an answer names, compared whole the way the filler does: case, a required mark, curly quotes, dashes
+ * and "Full time" vs "Full-time" aside. No prefix match, so "No" is never "None". The drafter and saved answers use it,
+ * so an answer the filler would land isn't thrown away first (#1524).
+ */
+export const sameOption = (answer: string, options: string[]): string | undefined => {
+  const a = normChoice(answer);
+  if (!a) return undefined;
+  return options.find((o) => normChoice(o) === a) ?? options.find((o) => !!compactChoice(o) && compactChoice(o) === compactChoice(answer));
+};
+
+/**
  * Which option labels to tick on a "select any that apply" question (#165). One answer per line.
  * Exact text first, then the same text spelled with or without hyphens and spaces (#1518), then a prefix match either way, so a long label cut short in the answer still lands.
  * Prefixes stop at a word boundary and the closest length wins, so "None" is "None of the above", not "No" (#632).
