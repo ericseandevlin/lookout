@@ -73,7 +73,7 @@ export function SearchPanel({ ready, reportOpen = false }: { ready: boolean; rep
       <Shell>
         <Eyebrow>You&apos;re all set</Eyebrow>
         <Title>Lookout is ready to start looking</Title>
-        <Body>Your profile and resume are in. The first search reads job boards and company sites and takes a few minutes. You can leave this page; new finds show up here with a green dot.</Body>
+        <Body>It takes a few minutes. New finds show up here with a green dot.</Body>
         <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap", marginTop: 4 }}>
           <button onClick={start} disabled={starting} style={primaryBtn}>{starting ? "Starting…" : "Start first search"}</button>
           {err && <span role="alert" style={{ fontSize: font.base, color: color.orange }}>{err}</span>}
