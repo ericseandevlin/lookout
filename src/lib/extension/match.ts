@@ -43,6 +43,9 @@ export function jobKey(raw: string | null | undefined): string | null {
   // site-wide; the URL names no employer.
   const paylocity = /(^|\.)paylocity\.com$/.test(host) && u.pathname.match(/\/jobs\/(?:details|apply)\/(\d+)(?:\/|$)/i)?.[1];
   if (paylocity) return `paylocity:${paylocity}`;
+  // SmartRecruiters (#1520): /<company>/<15-digit id>, with or without the title slug after it, on jobs. or careers.
+  const sr = /(^|\.)smartrecruiters\.com$/.test(host) && u.pathname.match(/^\/([^/]+)\/(\d{10,})(?:-[^/]*)?\/?$/);
+  if (sr) return `smartrecruiters:${safeDecode(sr[1]).toLowerCase()}:${sr[2]}`;
   // Taleo (#1497): the posting is /careersection/<section>/jobdetail.ftl?job=<id> and its form jobapply.ftl?job=<id>.
   const taleo = /(^|\.)taleo\.net$/.test(host) && /\/job(detail|apply)\.ftl$/i.test(u.pathname) && u.searchParams.get("job");
   if (taleo) return `taleo:${host}:${taleo.toLowerCase()}`;
