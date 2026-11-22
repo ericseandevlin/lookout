@@ -164,3 +164,17 @@ describe("saved answers that depend on where the job is (#1227)", () => {
     expect(isCommon("Will you now or in the future require visa sponsorship for this role?", "No")).toBe(true);
   });
 });
+
+describe("expected start and notice questions (#1595)", () => {
+  it("keeps an expected start or notice period", () => {
+    expect(isCommon("What is your expected start date?", "2 weeks after an offer")).toBe(true);
+    expect(isCommon("Expected notice period?", "2 weeks")).toBe(true);
+  });
+  it("still keeps an expected start date that is a calendar date with one application", () => {
+    expect(isCommon("What is your expected start date?", "12/1")).toBe(false);
+  });
+  it("still never keeps the expected pay", () => {
+    expect(isCommon("Expected salary?", "$150k")).toBe(false);
+    expect(isCommon("Expected start salary in your country?", "$150k")).toBe(false);
+  });
+});
