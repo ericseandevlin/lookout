@@ -39,12 +39,15 @@ const CLOSED = [
   // available to remote candidates" stays open (#1271). "Has been archived" and "was archived" too (#1279).
   // Deleted, withdrawn, unpublished, cancelled and taken down too, but not "taken down to three days a week" (#1451).
   /(?<!\b(?:(?:until|till|til)(?: such time as)?|once|when|after|if|before|unless|for|of|to|on|with|in|about) (?:the |this |a |our )?)(?<!\b(?:each|every|any|all|no|which|whether) )(job|position|posting|role|requisition|opening|vacancy|opportunity|listing)( ad)? ((is )?no longer (available|filled|closed|removed|archived|deleted|withdrawn|unpublished|cancell?ed|taken down)(?!\s+(?:as|in|at)\b|\s+(?:fully\s+)?(?:remote|hybrid|on-?site)\b|\s+for\s+(?:fully\s+)?(?:remote|hybrid|on-?site)\b)|(is )?has (?:already |now )?been (available|filled|closed|removed|archived|deleted|withdrawn|unpublished|cancell?ed|taken down)|was (filled|closed|removed|archived|deleted|withdrawn|unpublished|cancell?ed|taken down)\b)(?! to\b)/i,
-  /(job|posting|position|page) (was )?not found/i,
+  // Ending there too, as below (#1516).
+  /(job|posting|position|page) (was )?not found(?=\s*(?:[.!?,;:|)\n-]|$))/i,
   /(?<!\b(?:until|till|til|once|when|after|if|before|unless) )this (job|position|posting|role)( ad)? (is |has )?(now )?(expired|closed|been filled)\b(?! to\b|[- ]?date\b|-)/i,
   // More wordings careers sites use (#747).
   // Not a live page's "Job Posting Expired Date: 12/31" label (#1083).
   // "This job post has expired", "This advert has expired" (#1279). "This job posting is expired", "This job opening has expired" (#1361).
-  /\b(job|posting|position|listing|vacancy|opportunity|role|advert|opening|requisition)( ad| advert| post| posting| opening)? (is |has )?(now )?expired\b(?![- ]?date\b)/i,
+  // The phrase must end there, or go on to a date: "customers whose job posting expired renew it" and "the listing has
+  // expired items" are duties (#1516).
+  /\b(job|posting|position|listing|vacancy|opportunity|role|advert|opening|requisition)( ad| advert| post| posting| opening)? (is |has )?(now )?expired\b(?![- ]?date\b)(?=\s*(?:[.!?,;:|)\n-]|$)|\s+(?:on|as of|since|and|or)\b)/i,
   // "The job you are trying to apply for is no longer available", "attempting to view" too (#1251). "Apply to" too (#1441).
   /(job|position|posting|role|page) you(['’]re| are) (looking for|(trying|attempting) to (apply (for|to)|access|view|reach|open)) ((has|is|was|might have|may have) (been )?(filled|removed|closed|deleted|expired)|is no longer (available|active|open))\b/i,
   /(job|position|posting|role|opening) is not available anymore/i,
@@ -67,7 +70,9 @@ const CLOSED = [
   /(?<!\b(?:each|every|any|all|no|which|whether) )\b(job|posting|position|role|vacancy|opportunity|listing|advert|opening|requisition)( posting| post| ad| advert| opening)? (is |has )?(now )?closed\b(?! to\b|[- ]?date\b|-|\s+(?:out|won|lost)\b)/i,
   // Not "not accepting applications at this time from third-party recruiters" (#1083).
   /not accepting applications (for this (job|role|position)|at this time)(?!,? (from|via|by|through)\b)/i,
-  /\bpage not found\b|\b404\b.{0,40}(not found|doesn.t exist)/i,
+  // Only as the page's own message, ending the line, sentence or title: "Own our 404 page not found experience" and "Page
+  // not found errors are something you'll debug" are duties (#1516).
+  /(?:\bpage not found|\b404\b.{0,40}(not found|doesn.t exist))(?=\s*(?:[.!?,;:|)\n-]|$))/i,
   // Stock closed-job pages (#1427): "This job no longer exists", "The job you are looking for does not exist", "Sorry, this
   // job is not available". Only as the end of the sentence, so "a role that doesn't exist yet" or "this role is not
   // available for visa sponsorship" stay open.

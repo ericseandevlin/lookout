@@ -485,3 +485,28 @@ describe("classifyPage: a job that changed work mode or city is still open (#149
     expect(classifyPage(200, "TITLE: Acme\n\nTEXT:\nThis position is no longer available for applications.").state).toBe("gone");
   });
 });
+
+describe("duties about a 404 screen or an expired posting (#1516)", () => {
+  it.each([
+    "Product Designer. Own our 404 page not found experience and empty states.",
+    "Software Engineer\nPage not found errors are something you'll debug daily.",
+    "Senior Designer. You will help fix 404 errors that are not found by crawlers.",
+    "Customer Success. Help customers whose job posting expired renew it.",
+    "Ops Manager. Make sure the listing has expired items cleaned up.",
+  ])("keeps %s open", (text) => {
+    expect(classifyPage(200, text).state).toBe("open");
+  });
+
+  it.each([
+    "Page not found",
+    "Page Not Found | Acme Careers",
+    "404 - Page not found",
+    "Oops! Page not found.\nGo back to all jobs",
+    "Error 404: the page you requested doesn't exist.",
+    "This job posting expired on 10/12/2026.",
+    "This job has expired and is no longer accepting applications.",
+    "Job posting expired",
+  ])("still reads %s as closed", (text) => {
+    expect(classifyPage(200, text).state).toBe("gone");
+  });
+});
