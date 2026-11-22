@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { closedTopics, INTERVIEW_SYSTEM, interviewPrompt, plainQuestion, shortWhy } from "./interviewer";
+import { closedTopics, INTERVIEW_SYSTEM, interviewPrompt, noDashes, plainQuestion, shortWhy } from "./interviewer";
 import { isQuestionBack } from "./rules";
 
 describe("shortWhy (#1449)", () => {
@@ -77,5 +77,13 @@ describe("the question only (#1449)", () => {
   it("knows a question back from an answer", () => {
     for (const a of ["Why do you ask?", "what do you mean?", "How is that relevant?", "Sorry, which part?"]) expect(isQuestionBack(a)).toBe(true);
     for (const a of ["Yes, I ran F&B for 3 venues.", "I led it. Why? Because nobody else would.", "", "No"]) expect(isQuestionBack(a)).toBe(false);
+  });
+});
+
+describe("no dashes in what Lookout writes (#1531)", () => {
+  it("turns em and en dashes into commas in reasons and questions", () => {
+    expect(noDashes("3 of your top 5 finds ask for it — twice")).toBe("3 of your top 5 finds ask for it, twice");
+    expect(shortWhy("Asked by 3 finds – all senior.")).toBe("Asked by 3 finds, all senior.");
+    expect(plainQuestion("Quick one—have you led a team?")).toBe("Quick one, have you led a team?");
   });
 });

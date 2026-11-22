@@ -700,7 +700,7 @@ export const serverErrors = pgTable(
 /** Where a fact came from: the resume, an interview answer, or one of the five setup questions. */
 export type FactSource = "resume" | "interview" | "setup";
 /** What a fact is, for the filters on What Lookout knows. "pay" is always private and never reaches a model. */
-export type FactKind = "result" | "skill" | "project" | "background" | "next_role" | "pay";
+export type FactKind = "result" | "skill" | "project" | "background" | "next_role" | "dealbreaker" | "pay";
 
 /**
  * What Lookout knows about a person (#1449), one fact per row, in their words. Shareable facts may go into resumes,

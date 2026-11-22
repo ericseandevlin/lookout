@@ -6,7 +6,7 @@ import type { FactKind, FactSource } from "@/lib/db/schema";
 import { PageHead, ProfileTabs } from "./Profile";
 import { btn } from "./Settings";
 import { useConfirm } from "./Confirm";
-import { api } from "./store";
+import { api, useStore } from "./store";
 import { color, font } from "@/lib/tokens";
 
 type Fact = { id: string; text: string; kind: FactKind; source: FactSource; quote: string; turnId: string | null; shareable: boolean; lockReason: string | null; createdAt: string };
@@ -17,6 +17,7 @@ const KIND: Record<FactKind, [string, string]> = {
   project: ["Project", "Projects"],
   background: ["Background", "Background"],
   next_role: ["Next role", "Next role"],
+  dealbreaker: ["Dealbreaker", "Dealbreakers"],
   pay: ["Pay", "Pay"],
 };
 
@@ -30,14 +31,15 @@ const short = (s: string, n = 60) => (s.length > n ? `${s.slice(0, n - 1).trimEn
 const RULES: [string, string][] = [
   ["People you mention", "stored by role, never by name. A name becomes \"my manager\"."],
   ["Complaints about people or employers", "kept as background so Lookout understands you. Never used in writing."],
-  ["Your employer's confidential details", "private: targets, client names, unreleased plans."],
-  ["Personal life", "private: health, family, pay, political or religious beliefs."],
+  ["Your employer's confidential details", "kept private (targets, client names, unreleased plans)."],
+  ["Personal life", "kept private (health, family, pay, political or religious beliefs)."],
   ["Skills, projects and results", "shareable and usable in drafts. You can still make any one private."],
 ];
 
 /** Profile > What Lookout knows (#1449): every fact, its source, and who can see it. */
 export function Knows() {
   const ask = useConfirm();
+  const resume = useStore().state.materials.resume;
   const [facts, setFacts] = useState<Fact[] | null>(null);
   const [err, setErr] = useState<string | null>(null);
   const [q, setQ] = useState("");
@@ -93,8 +95,19 @@ export function Knows() {
       <PageHead
         eyebrow="Search profile"
         title="What Lookout knows about you"
-        intro="Every fact Lookout uses, in your words, with where it came from. Edit or delete any of them. Shareable facts can go into resumes, letters and answers. Private ones help Lookout understand you and never leave it."
+        intro="Every fact Lookout uses, in your words. Shareable facts can go into your drafts; private ones never leave Lookout."
       />
+      {/* The resume is read too, so say so: a short list of facts alone looked like it wasn't (#1531). */}
+      {resume?.status === "done" && (
+        <div style={{ ...card, padding: "12px 20px", display: "flex", alignItems: "center", gap: 12, fontSize: font.base }}>
+          <span style={{ flex: 1, minWidth: 0 }}>
+            <strong>Your resume</strong> <span style={{ color: color.t2 }}>· {resume.name} · read in full</span>
+          </span>
+          <Link href="/profile/materials" style={{ color: color.brick, fontWeight: 600, flex: "none" }}>
+            View
+          </Link>
+        </div>
+      )}
       {err && <div role="alert" style={{ fontSize: font.base, color: color.brick }}>{err}</div>}
       {!facts && !err && <div style={{ fontSize: font.base, color: color.t2 }}>Loading what Lookout knows…</div>}
       {facts && facts.length === 0 && (
@@ -151,7 +164,6 @@ export function Knows() {
             </li>
           ))}
         </ul>
-        <div style={{ fontSize: font.base, color: color.t2 }}>When a rule makes something private, the interview says so right away. You can switch any fact back, except pay.</div>
       </section>
     </div>
   );

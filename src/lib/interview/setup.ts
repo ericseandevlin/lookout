@@ -61,8 +61,11 @@ export function readSetupAnswer(q: Question, text: string): SetupResult {
       .trim();
     return { answers: { [q.modesKey]: modes, [q.areaKey]: area }, fact: { text: t, kind: "next_role" } };
   }
-  return { answers: { [q.key]: t }, fact: { text: t, kind: q.key === "q4" ? "result" : "next_role" } };
+  return { answers: { [q.key]: t }, fact: { text: t, kind: factKind(q) } };
 }
+
+/** What a setup answer is: the lead win is a result, what's off the table a dealbreaker (#1531), the rest the next role. */
+const factKind = (q: Question): FactKind => (q.key === "q4" ? "result" : q.key === "q5" ? "dealbreaker" : "next_role");
 
 /** An answer already on the search, as a fact, for the one-time copy when the interview first opens. */
 export function setupFact(q: Question, a: ProfileAnswers): { text: string; kind: FactKind } | null {
@@ -80,5 +83,5 @@ export function setupFact(q: Question, a: ProfileAnswers): { text: string; kind:
   }
   const v = str(a[q.key]);
   if (!v) return null;
-  return { text: v, kind: q.key === "q4" ? "result" : "next_role" };
+  return { text: v, kind: factKind(q) };
 }
