@@ -141,6 +141,18 @@ describe("sentences", () => {
     expect(sentences("Leads platform work, i.e. Design tokens and components. Mentors 6 designers.")).toHaveLength(2);
     expect(sentences("Ships tools for regulated teams. E.g. Banking apps.")).toHaveLength(2);
   });
+
+  it('keeps "Bros." and "Mt." and other name abbreviations inside the sentence (#1656)', () => {
+    for (const s of [
+      "Product designer at Warner Bros. Discovery with 8 years shipping streaming apps.",
+      "Nurse informaticist at Mt. Sinai Health System, leading 3 rollouts.",
+      "Engineer at Acme Mfg. Group and Globex Intl. Holdings.",
+      "Researcher at the Dept. Of Energy, working with Prof. Lee for 4 years.",
+    ])
+      expect(sentences(s), s).toHaveLength(1);
+    expect(sentences("Led design at Warner Bros. Leads 12 designers.")).toHaveLength(1);
+    expect(sentences("Shipped the redesign at Warner. Leads 12 designers.")).toHaveLength(2);
+  });
 });
 
 describe("shapeResume (#129)", () => {
