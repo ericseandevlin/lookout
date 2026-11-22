@@ -2,8 +2,8 @@
 
 import Link from "next/link";
 import { useEffect, useId, useLayoutEffect, useRef, useState } from "react";
-import { createPortal } from "react-dom";
 import type { InterviewView, ViewFact, ViewTurn } from "@/lib/interview/session";
+import { Composer, QuestionBubble, Said, Thinking } from "./chat";
 import { PageHead, ProfileTabs } from "./Profile";
 import { btn } from "./Settings";
 import { api, useStore } from "./store";
@@ -33,7 +33,7 @@ export function Interview() {
   const [err, setErr] = useState<string | null>(null);
   const [text, setText] = useState("");
   const [busy, setBusy] = useState<null | "answer" | "skip">(null);
-  const [focused, setFocused] = useState(false);
+  const [pending, setPending] = useState<{ text: string | null } | null>(null);
   const [early, setEarly] = useState<Earlier>({ open: false, turns: [], more: true, loading: false });
   // The topic count at which the person last pressed Keep going: the soft stop comes back 5 topics later.
   const [keptAt, setKeptAt] = useState(-1);
@@ -126,18 +126,23 @@ export function Interview() {
       box.current?.focus();
       return;
     }
-    // The person just acted, so their turn and the reply come into view.
+    // The person just acted, so their turn and the reply come into view. The answer moves into the chat right away and
+    // Lookout's thinking shows under it until the reply comes back.
     stick.current = true;
+    const said = text;
     setBusy(action);
+    setPending({ text: action === "answer" ? said.trim() : null });
+    setText("");
     setErr(null);
     try {
-      const d = await api<InterviewView>("/api/interview", { method: "POST", json: { turnId: data.current.id, action, text } });
+      const d = await api<InterviewView>("/api/interview", { method: "POST", json: { turnId: data.current.id, action, text: said } });
       setData(d);
-      setText("");
       requestAnimationFrame(() => box.current?.focus());
     } catch (e) {
+      setText(said);
       setErr(e instanceof Error ? e.message : "Couldn't save that");
     } finally {
+      setPending(null);
       setBusy(null);
     }
   };
@@ -192,6 +197,14 @@ export function Interview() {
                   <Past key={t.id} t={t} />
                 ))}
                 {ask && <Question t={cur} />}
+                {pending && (
+                  <>
+                    <Said who="You" rise>
+                      {pending.text ?? <em>Skipped</em>}
+                    </Said>
+                    <Thinking />
+                  </>
+                )}
                 {cur && softStop && (
                   <Said who="Lookout">
                     Good place to stop. {plural(data.sitting.facts, "fact")} saved today. Your next question will be here when you come back.
@@ -212,52 +225,7 @@ export function Interview() {
               )}
               {ask && (
                 <>
-                  <label htmlFor="iv-answer" className="sr-only">Your answer</label>
-                  {/* One bordered box: the answer, then a row with Skip and Send, the way a chat composer looks. */}
-                  <div
-                    onFocus={() => setFocused(true)}
-                    onBlur={() => setFocused(false)}
-                    onClick={(e) => e.target === e.currentTarget && box.current?.focus()}
-                    style={{ border: `1.5px solid ${focused ? color.ink : color.border}`, borderRadius: 14, background: "#fff", padding: "4px 6px 6px", display: "flex", flexDirection: "column", cursor: "text" }}
-                  >
-                    <textarea
-                      id="iv-answer"
-                      ref={box}
-                      value={text}
-                      onChange={(e) => setText(e.target.value)}
-                      onKeyDown={(e) => {
-                        // Enter sends; Shift+Enter makes a new line. On a touch keyboard Return makes a new line, and the Send button sends.
-                        if (e.key !== "Enter" || e.shiftKey || e.nativeEvent.isComposing) return;
-                        if (!(e.metaKey || e.ctrlKey) && window.matchMedia("(pointer: coarse)").matches) return;
-                        e.preventDefault();
-                        if (text.trim()) send("answer");
-                      }}
-                      rows={3}
-                      maxLength={4000}
-                      disabled={!!busy}
-                      placeholder="Say it the way you'd tell a friend. Numbers help."
-                      style={{ width: "100%", boxSizing: "border-box", padding: "8px 8px 4px", border: 0, outline: "none", fontSize: font.lg, lineHeight: 1.5, resize: "none", color: color.ink, background: "transparent" }}
-                    />
-                    <div style={{ display: "flex", alignItems: "center", gap: 2 }}>
-                      <div aria-live="polite" style={{ flex: 1, paddingLeft: 8, fontSize: font.base, color: color.t2 }}>
-                        {busy === "answer" ? "Reading your answer…" : busy === "skip" ? "Skipping…" : ""}
-                      </div>
-                      <button onClick={() => send("skip")} disabled={!!busy} aria-label="Skip this question" data-tip="Skip this question" className="h-soft" style={composerBtn}>
-                        <svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                          <path d="M6 5l9 7-9 7z" />
-                          <path d="M18 5v14" />
-                        </svg>
-                      </button>
-                      <button onClick={() => send("answer")} disabled={!!busy || !text.trim()} aria-label="Send" data-tip="Send" style={{ ...composerBtn, cursor: !busy && text.trim() ? "pointer" : "default" }}>
-                        <span style={{ width: 34, height: 34, borderRadius: 999, display: "flex", alignItems: "center", justifyContent: "center", background: !busy && text.trim() ? color.brick : color.border, color: "#fff", transition: "background .15s" }}>
-                          <svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
-                            <path d="M12 19V5" />
-                            <path d="M6 11l6-6 6 6" />
-                          </svg>
-                        </span>
-                      </button>
-                    </div>
-                  </div>
+                  <Composer id="iv-answer" boxRef={box} value={text} onChange={setText} onSend={() => send("answer")} onSkip={() => send("skip")} busy={busy} />
                 </>
               )}
             </div>
@@ -311,108 +279,7 @@ function EarlierRow({ count, early, onToggle, onMore }: { count: number; early: 
 }
 
 // Chat bubbles: the side says who is talking, so there is no name above them. Screen readers still hear it.
-/** Skip and Send: 44px tap targets, so they work by touch. */
-const composerBtn: React.CSSProperties = { width: 44, height: 44, flex: "none", padding: 0, border: 0, borderRadius: 999, background: "transparent", color: color.t2, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" };
-
-// The person's answers sit in a light gray bubble; Lookout's lines are plain text, like a chat with Claude.
-const bubble = (you: boolean): React.CSSProperties => ({
-  position: "relative", maxWidth: 620, fontSize: font.lg, lineHeight: 1.5, textWrap: "pretty", whiteSpace: "pre-wrap",
-  ...(you ? { padding: "11px 15px", borderRadius: 14, background: color.surface } : { padding: "2px 0" }),
-});
-
-function Said({ who, children, id }: { who: "Lookout" | "You"; children: React.ReactNode; id?: string }) {
-  const you = who === "You";
-  return (
-    <div id={id} style={{ display: "flex", flexDirection: "column", alignItems: you ? "flex-end" : "flex-start", scrollMarginTop: 80 }}>
-      <div style={bubble(you)}>
-        <span className="sr-only">{you ? "You said: " : "Lookout: "}</span>
-        {children}
-      </div>
-    </div>
-  );
-}
-
-/**
- * The question bubble. The info icon in its corner shows the reason as a tooltip: on hover, on keyboard focus,
- * and on tap (a tap pins it until the next tap, a tap outside or Escape).
- */
-function Question({ t }: { t: ViewTurn }) {
-  const [hover, setHover] = useState(false);
-  const [pinned, setPinned] = useState(false);
-  const [at, setAt] = useState<{ x: number; y: number; below: boolean } | null>(null);
-  const btnRef = useRef<HTMLButtonElement>(null);
-  const tipId = useId();
-  const open = hover || pinned;
-  useLayoutEffect(() => {
-    const el = btnRef.current;
-    if (!open || !el) return setAt(null);
-    const close = () => (setHover(false), setPinned(false));
-    // Follows the icon when the chat scrolls (focus can scroll it), and closes once the icon leaves the chat box.
-    const place = () => {
-      const b = el.getBoundingClientRect();
-      const box = el.closest("[data-chat-scroll]")?.getBoundingClientRect();
-      if (box && (b.bottom < box.top || b.top > box.bottom)) return close();
-      const below = b.top < 140;
-      setAt({ x: Math.max(156, Math.min(window.innerWidth - 156, b.left + b.width / 2)), y: below ? b.bottom + 8 : b.top - 8, below });
-    };
-    place();
-    const outside = (e: PointerEvent) => !el.contains(e.target as Node) && close();
-    document.addEventListener("pointerdown", outside);
-    window.addEventListener("scroll", place, true);
-    window.addEventListener("resize", place);
-    return () => {
-      document.removeEventListener("pointerdown", outside);
-      window.removeEventListener("scroll", place, true);
-      window.removeEventListener("resize", place);
-    };
-  }, [open]);
-  return (
-    <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-start", gap: 6 }}>
-      <div style={bubble(false)}>
-        <span className="sr-only">Lookout: </span>
-        {t.question}
-        {t.why && (
-          <>
-            <button
-              ref={btnRef}
-              onClick={() => setPinned(!pinned)}
-              onPointerEnter={(e) => e.pointerType === "mouse" && setHover(true)}
-              onPointerLeave={(e) => e.pointerType === "mouse" && setHover(false)}
-              onFocus={(e) => e.currentTarget.matches(":focus-visible") && setHover(true)}
-              onBlur={() => (setHover(false), setPinned(false))}
-              onKeyDown={(e) => e.key === "Escape" && (setHover(false), setPinned(false))}
-              aria-label="Why this question?"
-              aria-describedby={tipId}
-              style={{ display: "inline-flex", verticalAlign: "middle", margin: "-6px 0 -4px 4px", width: 32, height: 32, padding: 0, border: 0, borderRadius: 999, background: open ? color.surface : "transparent", color: open ? color.ink : color.t2, cursor: "pointer", alignItems: "center", justifyContent: "center" }}
-            >
-              <svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-                <circle cx="12" cy="12" r="9.5" />
-                <path d="M12 11v5.5" />
-                <circle cx="12" cy="7.6" r="0.6" fill="currentColor" />
-              </svg>
-            </button>
-            <span id={tipId} className="sr-only">{t.why}</span>
-            {at &&
-              createPortal(
-                <div
-                  aria-hidden="true"
-                  data-interview-tip=""
-                  style={{
-                    position: "fixed", left: at.x, top: at.y, transform: at.below ? "translateX(-50%)" : "translate(-50%,-100%)",
-                    zIndex: 50, pointerEvents: "none", width: "max-content", maxWidth: 296, background: color.ink, color: "#fff",
-                    fontSize: font.base, fontWeight: 500, lineHeight: 1.4, padding: "8px 12px", borderRadius: 8, boxShadow: "0 6px 18px rgba(29,26,15,.22)", textWrap: "pretty",
-                  }}
-                >
-                  {t.why}
-                </div>,
-                document.body,
-              )}
-          </>
-        )}
-      </div>
-    </div>
-  );
-}
+const Question = ({ t }: { t: ViewTurn }) => <QuestionBubble question={t.question} why={t.why} />;
 
 function Past({ t }: { t: ViewTurn }) {
   return (
