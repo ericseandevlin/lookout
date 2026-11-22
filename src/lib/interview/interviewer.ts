@@ -28,7 +28,9 @@ Facts:
 ${FACT_RULES}
 
 The next question:
-- Questions come from gaps: things the person's top finds ask for that their resume and known facts don't show yet.
+- Questions come from gaps: things the person's top finds ask for that their resume and known facts don't show yet. Read the resume and the known facts first. Never ask for something they already state: if the resume says "Led a team of 3 designers", don't ask how big the team was.
+- closest: the resume line or known fact closest to your question, copied exactly. Empty if none. If it already answers your question, pick another question.
+- If there are no finds yet, gaps come from the next role they want and their resume. Then why cites that, and never mentions finds.
 - question: one short, plain question, the way a friend would ask it in a chat. No evidence, no preamble, no "your finds" or "your resume". The evidence goes in why, which the person sees only if they ask.
   Bad: "4 of your top 5 finds are B2B SaaS companies, and your resume shows fashion, media and agency work. Have you worked on B2B or enterprise SaaS products?"
   Good: "Have you worked on B2B or enterprise SaaS products?"
@@ -59,6 +61,7 @@ export const InterviewTurnOut = z.object({
     topic: z.string(),
     question: z.string(),
     why: z.string(),
+    closest: z.string().describe("The resume line or known fact closest to the question, copied exactly; empty if none"),
   }),
 });
 export type InterviewTurnOut = z.infer<typeof InterviewTurnOut>;
@@ -79,10 +82,26 @@ const LACKS = /\b(?:nothing|no|not|never|lacks?|lacking|missing|without|thin|sil
  * resume clearly shows it", "but your resume doesn't show it", "Nothing in your resume backs it."). Run when a reason
  * is saved and when it is shown, so reasons written before the prompt changed read short too.
  */
+/** Em and en dashes become a comma, so a generated line never carries one (#1531). */
+export const noDashes = (s: string) => s.replace(/\s*[\u2014\u2013]\s*/g, ", ").replace(/,\s*,/g, ",");
+
+/**
+ * A question for a number the resume or a known fact already gives (#1531): "How many designers were on that team?"
+ * when the resume says "Led a team of 3 designers". The model names the closest line; code checks that line is
+ * really there and holds a number.
+ */
+export function asksWhatIsKnown(question: string, closest: string, known: string) {
+  const c = closest.trim();
+  if (c.length < 8 || !/\d/.test(c) || !/\b(how (many|much|big|large|long)|what (size|number|budget|percent))\b/i.test(question)) return false;
+  const flat = (s: string) => s.toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
+  return flat(known).includes(flat(c));
+}
+
 // The prompt's own examples and field names, when a model runs on past the reason into them.
 const LEAK = /\s*(?:\b(?:Bad|Good):\s*["\u201c]|\s-\s(?:topic|question|why|facts|backs):)/;
 
 export function shortWhy(why: string): string {
+  why = noDashes(why);
   const leak = why.search(LEAK);
   if (leak > 0) why = why.slice(0, leak);
   const sentences = why.trim().match(/[^.!?]+[.!?]*/g) ?? [];
@@ -110,6 +129,7 @@ export function shortWhy(why: string): string {
  */
 const EVIDENCE = /\b(finds?|resume|profile|postings?)\b/i;
 export function plainQuestion(q: string): string {
+  q = noDashes(q);
   const parts = q.trim().match(/[^.!?]+[.!?]*/g) ?? [];
   const first = parts.findIndex((p) => p.trim().endsWith("?"));
   if (first > 0) return parts.slice(first).join("").trim();
@@ -132,8 +152,9 @@ export type InterviewInput = {
   /** The topic being dug into: its questions and answers so far, oldest first, the last answer included. */
   thread?: { question: string; answer: string | null }[];
   followUpsLeft: number;
-  /** Set on a retry: the topic the model picked that it may not ask. */
+  /** Set on a retry: the topic the model picked that it may not ask, and why when it is not just the topic. */
   refused?: string;
+  refusedWhy?: string;
 };
 
 /** Topics never to ask again: skipped or doesn't apply. */
@@ -155,5 +176,5 @@ export function interviewPrompt(inp: InterviewInput) {
         .map((t, i, all) => `Q: ${t.question}\nA${i === all.length - 1 ? " (newest: read this one)" : " (facts already saved)"}: ${t.answer ?? "(no answer)"}`)
         .join("\n")}\n</this_topic>\nFollow-ups left on this topic: ${inp.followUpsLeft}`
     : "\n\nNo answer to read this turn. Return no facts and pick the next question.";
-  return `<profile from the setup questions>\n${inp.profile || "(not given)"}\n</profile>\n\n<resume>\n${inp.resume.slice(0, 12000) || "(no resume yet)"}\n</resume>\n\n<known_facts>\n${facts.map((f) => `- ${f.text.slice(0, FACT_CHARS)}${f.shareable ? "" : " (private: understand it, never quote it)"}`).join("\n") || "(none yet)"}\n</known_facts>\n\n<top_finds the ${inp.finds.length} highest-match finds the person hasn't ruled out>\n${finds}\n</top_finds>\n\nTopics already covered: ${covered.join("; ") || "(none)"}\nNever ask again: ${closed.join("; ") || "(none)"}${inp.refused ? `\nYou picked "${inp.refused}", which is not allowed. Pick another topic or return "done".` : ""}${thread}`;
+  return `<profile from the setup questions>\n${inp.profile || "(not given)"}\n</profile>\n\n<resume>\n${inp.resume.slice(0, 12000) || "(no resume yet)"}\n</resume>\n\n<known_facts>\n${facts.map((f) => `- ${f.text.slice(0, FACT_CHARS)}${f.shareable ? "" : " (private: understand it, never quote it)"}`).join("\n") || "(none yet)"}\n</known_facts>\n\n<top_finds the ${inp.finds.length} highest-match finds the person hasn't ruled out>\n${finds}\n</top_finds>\n\nTopics already covered: ${covered.join("; ") || "(none)"}\nNever ask again: ${closed.join("; ") || "(none)"}${inp.refused ? `\nYou picked "${inp.refused}", which is not allowed${inp.refusedWhy ? `: ${inp.refusedWhy}` : ""}. Pick another question or return "done".` : ""}${thread}`;
 }

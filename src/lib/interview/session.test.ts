@@ -28,7 +28,7 @@ const { FACTS_IN_PROMPT, TOPICS_IN_PROMPT } = await import("./interviewer");
 const { LOCK } = await import("./rules");
 
 const ALL_ANSWERS: schema.ProfileAnswers = { q1: "Director of Events", floor: "140000", target: "180000", modes: ["Hybrid"], area: "New York", q4: "Grew revenue 38%", q5: "No relocation" };
-const ask = (topic: string, question = `Tell me about ${topic}.`, type: InterviewTurnOut["next"]["type"] = "new_topic"): InterviewTurnOut => ({ facts: [], next: { type, topic, question, why: "Asked by 3 of your top 5 finds." } });
+const ask = (topic: string, question = `Tell me about ${topic}.`, type: InterviewTurnOut["next"]["type"] = "new_topic"): InterviewTurnOut => ({ facts: [], next: { type, topic, question, why: "Asked by 3 of your top 5 finds.", closest: "" } });
 
 let seq = 0;
 async function seedUser(answers: schema.ProfileAnswers) {
@@ -144,7 +144,7 @@ describe("gap questions (#1449)", () => {
           { text: "Ran a 12-dinner touring supper series", kind: "project", namesPerson: false, complaint: false, confidential: false, personal: false },
           { text: "My manager was skeptical of the series at first", kind: "background", namesPerson: true, complaint: true, confidential: false, personal: false },
         ],
-        next: { type: "follow_up", topic: "food and beverage programs", question: "What was your exact part?", why: "Recruiters ask for your part." },
+        next: { type: "follow_up", topic: "food and beverage programs", question: "What was your exact part?", why: "Recruiters ask for your part.", closest: "" },
       },
     ];
     const after = await act(user.id, v.current!.id, "answer", "I ran our touring supper series. Dana, my boss, hated the idea at first.");
@@ -165,7 +165,7 @@ describe("gap questions (#1449)", () => {
           { text: "ran a 12-dinner touring supper series.", kind: "project", namesPerson: false, complaint: false, confidential: false, personal: false },
           { text: "Owned a budget of about $240k", kind: "skill", namesPerson: false, complaint: false, confidential: false, personal: false },
         ],
-        next: { type: "follow_up", topic: "food and beverage programs", question: "How many covers?", why: "A number helps." },
+        next: { type: "follow_up", topic: "food and beverage programs", question: "How many covers?", why: "A number helps.", closest: "" },
       },
     ];
     await act(user.id, rows.at(-1)!.id, "answer", "I led it and owned the budget, about $240k.");
@@ -224,7 +224,7 @@ describe("a long interview (#1449)", () => {
       // The newest topic, open now, with one follow-up answered.
       replies = [ask("event CRM")];
       let v = await openInterview(user.id);
-      replies = [{ facts: [], next: { type: "follow_up", topic: "event CRM", question: "Which tool?", why: "A name helps." } }];
+      replies = [{ facts: [], next: { type: "follow_up", topic: "event CRM", question: "Which tool?", why: "A name helps.", closest: "" } }];
       await act(user.id, v.current!.id, "answer", "I ran the CRM for 3 venues.");
       v = await interviewView(user.id);
       replies = [ask("topic 0000")];
@@ -284,7 +284,7 @@ describe("a long interview (#1449)", () => {
     let v = await openInterview(user.id);
     expect(v.sitting.topics).toBe(4);
     expect(v.softStop).toBe(false);
-    replies = [{ facts: [], next: { type: "follow_up", topic: "event CRM", question: "Which tool?", why: "A name helps." } }];
+    replies = [{ facts: [], next: { type: "follow_up", topic: "event CRM", question: "Which tool?", why: "A name helps.", closest: "" } }];
     await act(user.id, v.current!.id, "answer", "Yes.");
     v = await interviewView(user.id);
     // Five topics, but the waiting question is a follow-up: no stop in the middle of a topic.
@@ -314,5 +314,46 @@ describe("a plain question, and a question back (#1449)", () => {
     expect(v.current?.question).toBe("Most of your top finds sell software to businesses. Have you worked on B2B SaaS products?");
     expect(v.current?.followUp).toBe(true);
     expect(completeJSON.mock.calls.at(-1)![0].user).toContain("Follow-ups left on this topic: 2");
+  });
+});
+
+describe("the walkthrough faults (#1531)", () => {
+  it("never asks for a number the resume already gives", async () => {
+    const { user } = await seedUser(ALL_ANSWERS);
+    await db.insert(schema.materials).values({ userId: user.id, kind: "resume", extracted: { text: "Senior Product Designer\nLed a team of 3 designers on the booking product" } });
+    replies = [
+      { facts: [], next: { type: "new_topic", topic: "team size", question: "How many designers were on that booking product team?", why: "It shows scope.", closest: "Led a team of 3 designers on the booking product" } },
+      ask("design systems"),
+    ];
+    const v = await openInterview(user.id);
+    expect(v.current?.question).toBe("Tell me about design systems.");
+    const retry = completeJSON.mock.calls.at(-1)![0];
+    expect(retry.user).toContain('they already told you: "Led a team of 3 designers on the booking product"');
+  });
+
+  it("keeps a question whose closest line is not really in the resume", async () => {
+    const { user } = await seedUser(ALL_ANSWERS);
+    replies = [{ facts: [], next: { type: "new_topic", topic: "team size", question: "How many people did you manage?", why: "It shows scope.", closest: "Led a team of 3 designers" } }];
+    const v = await openInterview(user.id);
+    expect(v.current?.question).toBe("How many people did you manage?");
+  });
+
+  it("drops a reason that cites finds when there are none yet", async () => {
+    const { user } = await seedUser(ALL_ANSWERS);
+    await db.delete(schema.userOpportunities).where(eq(schema.userOpportunities.userId, user.id));
+    replies = [{ facts: [], next: { type: "new_topic", topic: "staff scope", question: "Have you led work across teams?", why: "Top finds ask for staff-level scope.", closest: "" } }];
+    const v = await openInterview(user.id);
+    expect(v.current?.question).toBe("Have you led work across teams?");
+    expect(v.current?.why).toBe("");
+  });
+
+  it("copies what's off the table as a dealbreaker, which never goes into drafts", async () => {
+    const { user } = await seedUser(ALL_ANSWERS);
+    replies = [ask("food and beverage programs")];
+    await openInterview(user.id);
+    expect((await facts(user.id)).find((f) => f.setupKey === "q5")?.kind).toBe("dealbreaker");
+    process.env.FEATURE_INTERVIEW = "on";
+    const { draftableFacts } = await import("./facts");
+    expect((await draftableFacts(user.id)).map((f) => f.text)).not.toContain("No relocation");
   });
 });

@@ -1,5 +1,5 @@
 import "server-only";
-import { and, desc, eq, ne } from "drizzle-orm";
+import { and, desc, eq, notInArray } from "drizzle-orm";
 import { db, schema } from "@/lib/db";
 import { featureOn } from "@/lib/features";
 import { HttpError } from "@/lib/api";
@@ -12,7 +12,8 @@ export const listFacts = (userId: string) =>
   db.select().from(schema.profileFacts).where(eq(schema.profileFacts.userId, userId)).orderBy(desc(schema.profileFacts.createdAt));
 
 /**
- * The facts a drafting step may use (#1449): shareable, never pay. Private facts are filtered in the query, so they
+ * The facts a drafting step may use (#1449): shareable, never pay, never a dealbreaker (it is what the person won't
+ * take, not something to say). Private facts are filtered in the query, so they
  * are never even read into a draft's inputs. Off with the feature, so prod drafts stay as they were.
  */
 export async function draftableFacts(userId: string) {
@@ -20,7 +21,7 @@ export async function draftableFacts(userId: string) {
   return db
     .select({ text: schema.profileFacts.text, kind: schema.profileFacts.kind, shareable: schema.profileFacts.shareable })
     .from(schema.profileFacts)
-    .where(and(eq(schema.profileFacts.userId, userId), eq(schema.profileFacts.shareable, true), ne(schema.profileFacts.kind, "pay")))
+    .where(and(eq(schema.profileFacts.userId, userId), eq(schema.profileFacts.shareable, true), notInArray(schema.profileFacts.kind, ["pay", "dealbreaker"])))
     .orderBy(schema.profileFacts.createdAt);
 }
 

@@ -9,7 +9,7 @@ import { masterForDrafts } from "@/lib/application/masterCheck";
 import { kindOf } from "@/lib/kinds";
 import { getActiveSearch } from "@/lib/searches";
 import type { FactKind, TurnOutcome } from "@/lib/db/schema";
-import { closedTopics, FACTS_IN_PROMPT, INTERVIEW_SYSTEM, interviewPrompt, InterviewTurnOut, plainQuestion, shortWhy, type InterviewInput } from "./interviewer";
+import { closedTopics, FACTS_IN_PROMPT, INTERVIEW_SYSTEM, interviewPrompt, asksWhatIsKnown, InterviewTurnOut, plainQuestion, shortWhy, type InterviewInput } from "./interviewer";
 import { factKey, isQuestionBack, lockReason, topicKey } from "./rules";
 import { isAnswered, readSetupAnswer, setupFact, setupQuestionText, SETUP_WHY } from "./setup";
 
@@ -147,8 +147,10 @@ async function interviewStep(userId: string, answered: { turn: Turn; root: Turn;
   const followUpsLeft = answered ? Math.max(askedBack ? 1 : 0, MAX_FOLLOW_UPS - (answered.thread.length - 1)) : 0;
   const closed = closedTopics(ctx.past);
   const covered = new Set(ctx.past.filter((p) => p.outcome === "answered").map((p) => topicKey(p.topic)));
-  const ask = (refused?: string) =>
-    completeJSON({ name: "interview-turn", schema: InterviewTurnOut, system: INTERVIEW_SYSTEM, user: interviewPrompt({ ...ctx, thread: answered?.thread, followUpsLeft, refused }), maxTokens: 2000, usage });
+  const ask = (refused?: string, refusedWhy?: string) =>
+    completeJSON({ name: "interview-turn", schema: InterviewTurnOut, system: INTERVIEW_SYSTEM, user: interviewPrompt({ ...ctx, thread: answered?.thread, followUpsLeft, refused, refusedWhy }), maxTokens: 2000, usage });
+  // What the person already told Lookout: a question must not ask for it again (#1531).
+  const known = [ctx.resume, ...ctx.facts.map((f) => f.text)].join("\n");
   let out = await ask();
   console.info("[interview] step", { input: usage.input, output: usage.output, usd: Number(usage.usd.toFixed(4)) });
   if (answered) {
@@ -166,13 +168,15 @@ async function interviewStep(userId: string, answered: { turn: Turn; root: Turn;
     if (n.type === "done" || !n.question.trim()) return true;
     const k = topicKey(n.topic);
     if (closed.has(k)) return false;
+    if (asksWhatIsKnown(n.question, n.closest ?? "", known)) return false;
     // A follow-up stays on its topic; a new topic must be new.
     if (n.type === "follow_up") return followUpsLeft > 0 && !!answered;
     return k !== rootKey && !covered.has(k);
   };
   if (!allowed(out.next)) {
-    const retry = await ask(out.next.topic);
-    out = { facts: out.facts, next: allowed(retry.next) ? retry.next : { type: "done", topic: "", question: "", why: "" } };
+    const n0 = out.next;
+    const retry = await ask(n0.topic, asksWhatIsKnown(n0.question, n0.closest ?? "", known) ? `they already told you: "${n0.closest.trim()}"` : undefined);
+    out = { facts: out.facts, next: allowed(retry.next) ? retry.next : { type: "done", topic: "", question: "", why: "", closest: "" } };
   }
   if (answered) await db.update(schema.interviewTurns).set({ costUsd: addUsd(usage) ?? answered.turn.costUsd }).where(eq(schema.interviewTurns.id, answered.turn.id));
   const n = out.next;
@@ -183,7 +187,8 @@ async function interviewStep(userId: string, answered: { turn: Turn; root: Turn;
     topic: follow ? answered.root.topic : n.topic.trim().slice(0, 120) || "general",
     // After a question back, the line that answers it stays in front of the question.
     question: (askedBack ? n.question.trim() : plainQuestion(n.question)).slice(0, 600),
-    why: shortWhy(n.why).slice(0, 300),
+    // With no finds yet, a reason that cites finds is made up; no reason beats a wrong one (#1531).
+    why: (!ctx.finds.length && /\bfinds?\b/i.test(n.why) ? "" : shortWhy(n.why)).slice(0, 300),
     parentId: follow ? answered.root.id : null,
     ...(!answered && { costUsd: addUsd(usage) }),
   });
