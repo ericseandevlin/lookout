@@ -280,18 +280,29 @@ async function fillOne(page: Page, s: FillStep): Promise<{ ok: boolean; how: str
       const alone = !letter || !hasBox || (await box.locator("input[type=file]").count()) <= 1 && (await box.locator("input:not([type=file]):not([type=hidden]),textarea,select").count()) === 0;
       // Unlabeled, only the resume takes the first upload; a writing sample or portfolio there replaced it (#1030).
       const fallback = letter ? 1 : s.itemKind === "resume" ? 0 : -1;
-      const input = hasBox && alone ? box.locator("input[type=file]").first() : fallback >= 0 ? page.locator("input[type=file]").nth(fallback) : null;
-      if (!input || !(await input.count())) {
-        // A cover letter asked for as text, not a file: type it into the box labeled with the prompt (#860).
+      const own = hasBox && alone;
+      // A cover letter asked for as text, not a file: type it into the box labeled with the prompt (#860). Its own text
+      // box beats an unlabeled upload, which may be a Portfolio or Transcript (#1635).
+      const typeLetter = async () => {
         const text = letter && s.content.trim() ? await letterBox(page, s.prompt) : null;
-        if (!text) return { ok: false, how: "upload field not found" };
+        if (!text) return null;
         const long = await overMax(text, s.content);
         if (long) return { ok: false, how: long };
         await text.fill(s.content);
         return { ok: true, how: "typed the letter" };
+      };
+      if (!own) {
+        const typed = await typeLetter();
+        if (typed) return typed;
       }
+      const found = own ? box.locator("input[type=file]").first() : fallback >= 0 ? page.locator("input[type=file]").nth(fallback) : null;
+      // An upload this fill already put a file in is taken: a combined "Resume/Cover Letter" box would get the letter
+      // over the resume (#1633). The extension's fileInputFor does the same.
+      const input = found && (await found.count()) && !(await found.evaluate((e) => e.hasAttribute("data-lookout-filled"))) ? found : null;
+      if (!input) return (own && (await typeLetter())) || { ok: false, how: "upload field not found" };
       if (!s.file) return { ok: false, how: "no file" };
       await input.setInputFiles(s.file);
+      await input.evaluate((e) => e.setAttribute("data-lookout-filled", ""));
       return { ok: true, how: "uploaded .docx" };
     }
     // The label that is the question first, then any label holding it: "Website" is not the earlier "Portfolio Website" (#698).
@@ -433,14 +444,15 @@ async function fillOne(page: Page, s: FillStep): Promise<{ ok: boolean; how: str
 
 /**
  * The answer's first number for a number field. A k or M right after it counts: "$165k" is 165000, not 165 (#1168). In a
- * range the second end's k or M covers a bare first end below 1,000: "$120-150k" is 120000 (#1254).
+ * range the second end's k or M covers a bare first end below 1,000: "$120-150k" is 120000 (#1254). So do "$120 K",
+ * "165 thousand" and "1.2 million"; a lone lowercase m after a space ("5 m") is left alone, as months or minutes (#1585).
  */
 export const numberAnswer = (t: string) => {
-  const m = t.match(/(\d[\d,]*(?:\.\d+)?)([km]\b)?(?:\s*(?:-|–|—|to)\s*\$?\d[\d,]*(?:\.\d+)?([km]\b))?/i);
+  const m = t.match(/(\d[\d,]*(?:\.\d+)?)((?:\s?(?:[kK]|[tT]housand|[mM]illion)|[mM]|\sM)\b)?(?:\s*(?:-|–|—|to|To|TO)\s*\$?\d[\d,]*(?:\.\d+)?((?:\s?(?:[kK]|[tT]housand|[mM]illion)|[mM]|\sM)\b))?/);
   if (!m) return "";
   const n = m[1].replace(/,/g, "");
   const unit = m[2] ?? (Number(n) < 1000 ? m[3] : undefined);
-  return unit ? String(Math.round(Number(n) * (unit.toLowerCase() === "k" ? 1e3 : 1e6))) : n;
+  return unit ? String(Math.round(Number(n) * (unit.trim()[0].toLowerCase() === "m" ? 1e6 : 1e3))) : n;
 };
 
 const MONTHS = ["jan", "feb", "mar", "apr", "may", "jun", "jul", "aug", "sep", "oct", "nov", "dec"];

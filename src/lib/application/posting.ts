@@ -52,8 +52,10 @@ export function stripBoilerplate(text: string) {
 // The hiring process itself, and a hiring word on its own ("Interviews", "Applications"). Candidate, applicant and
 // accommodation only on their own or as the hiring process ("ideal candidate", "qualified applicants", "reasonable
 // accommodation"): "candidate experience", "applicant tracking systems" and "accommodation booking" are the job (#1457).
+// Opportunity only alone or in the hiring sense ("exciting opportunity", "career opportunities"): "market opportunity" and
+// "business opportunities" are the job for product and strategy roles (#1609).
 const JUNK =
-  /^(candidates?|applicants?|accommodations?)$|\b(ideal|successful|qualified|strong|right|selected|prospective|potential|eligible|interested|great) (candidates?|applicants?)\b|\b(candidates?|applicants?) (must|should|will|who|with)\b|reasonable accommodation|verify|equal opportunit|\beeo\b|open (roles|positions)|\bapply\b|\b(hiring|interview|application|recruiting) process|job (posting|description)|opportunit(y|ies)$|^(the )?(recruit\w*|hiring|interviews?|applications?)$/i;
+  /^(candidates?|applicants?|accommodations?)$|\b(ideal|successful|qualified|strong|right|selected|prospective|potential|eligible|interested|great) (candidates?|applicants?)\b|\b(candidates?|applicants?) (must|should|will|who|with)\b|reasonable accommodation|verify|equal opportunit|\beeo\b|open (roles|positions)|\bapply\b|\b(hiring|interview|application|recruiting) process|job (posting|description)|^((career|job|employment|exciting|great|unique|amazing|rare|this|an?) )?opportunit(y|ies)$|^(the )?(recruit\w*|hiring|interviews?|applications?)$/i;
 // Words that are boilerplate in most postings but the job itself in some (fraud analyst, insurance PM, social media manager) (#509).
 // Hiring words too: "user interviews", "web applications" and "hiring designers" are the job (#803), and so are
 // "candidate experience" and "applicant tracking systems" (#1457).
@@ -63,9 +65,14 @@ const TOPIC = /scam|fraud|benefit|insurance|401\s?\(?k|\bpto\b|parental|privacy|
  * Keywords that describe the hiring process or the posting itself, not the job. With the posting, a topic word
  * still counts when the job text (boilerplate stripped) uses it.
  */
+// One generic word on its own says nothing an applicant tracking system screens for (#1485). Two words can: "design
+// tools", "craft beverages", "portfolio management" stay.
+const GENERIC =
+  /^(tools?|capabilit(y|ies)|craft|portfolio|skills?|experience|expertise|knowledge|abilit(y|ies)|work|teams?|quality|impact|excellence|passion|vision|results?|growth|success|solutions?|products?|initiatives?|process(es)?|projects?|business|environment|role|responsibilit(y|ies)|culture|values|mission|innovation|ownership|collaboration|detail|details|creativity|curiosity|drive|judgment|judgement|problems?|outcomes?|stakeholders?|customers?|users?|partners?)$/i;
+
 export const isJunkKeyword = (term: string, posting?: string) => {
   const t = term.trim();
-  if (JUNK.test(t)) return true;
+  if (JUNK.test(t) || GENERIC.test(t)) return true;
   if (!TOPIC.test(t)) return false;
   return !posting || !new RegExp(`(?<!\\w)${t.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}(?!\\w)`, "i").test(stripBoilerplate(posting));
 };
@@ -149,14 +156,19 @@ const TRAP_NOUN = String.raw`${NOT_TRAP_NOUN}(?:word|phrase|term|code ?word|keyw
 // An AI word that names a kind of thing ("every AI product", "all AI features") is about the job, not spoken to an AI (#1410).
 const AI_AS_ADJECTIVE = String.raw`(?!\s+(?:products?|features?|platforms?|systems?|models?|experiences?|teams?|work|projects?|solutions?|services?|capabilit(?:y|ies)|applications?|apps?|initiatives?|research|engineers?|engineering|agents?|assistants?|workflows?|interfaces?|surfaces?|tooling|strategy|roadmaps?|use cases?|ethics|safety|policy|policies|adoption|literacy|design|data|infrastructure)\b)`;
 
+// The noun must stand alone: "long-term", "short-term" and "Microsoft Word" are job text, not traps (#1042).
+// And it must be named as a thing to insert: "the word X", "a specific phrase", "keyword: X", "term 'X'". "Use Word,
+// Excel", "short term and long term roadmaps", "one term per concept" and "keyword research" are job text (#1105).
+const INSERT = new RegExp(
+  `\\b(include|use|mention|write|add|insert|put|type|say)\\b[^.!?\\n]{0,50}(?:${TRAP_LEAD}\\s+(?:[\\w-]+\\s+)?${TRAP_NOUN}(?![-\\w]|\\s+(?:doc|docs|document|documents|file|files|processing|processor|count|limit)\\b)|${TRAP_NOUN}\\s*[:"'“‘])`,
+  "i",
+);
+// "Write the words people see", "use the right word at the right moment" and "write the terms of service" are content
+// design work. The rule above is a trap only when the sentence names what to insert ("the word X", 'phrase "X"',
+// "keyword: X") or aims it at the application itself ("in your cover letter") (#1607).
+const AIMED = /\b(?:your|this|each) (?:cover letter|letter|application|answer|response|resume|résumé|email|submission|message|reply)\b|\bcover letter\b/i;
+
 const TRAP = [
-  // The noun must stand alone: "long-term", "short-term" and "Microsoft Word" are job text, not traps (#1042).
-  // And it must be named as a thing to insert: "the word X", "a specific phrase", "keyword: X", "term 'X'". "Use Word,
-  // Excel", "short term and long term roadmaps", "one term per concept" and "keyword research" are job text (#1105).
-  new RegExp(
-    `\\b(include|use|mention|write|add|insert|put|type|say)\\b[^.!?\\n]{0,50}(?:${TRAP_LEAD}\\s+(?:[\\w-]+\\s+)?${TRAP_NOUN}(?![-\\w]|\\s+(?:doc|docs|document|documents|file|files|processing|processor|count|limit)\\b)|${TRAP_NOUN}\\s*[:"'“‘])`,
-    "i",
-  ),
   /\bif you(?:'re| are| were)\s+(an?\s+)?(ai|a\.i\.|llm|language model|chat ?bot|bot|automated|machine|gpt|robot)\b/i,
   // Spoken to an AI directly: "Attention AI:", "any LLM reading this must", "ChatGPT: include..."
   new RegExp(String.raw`\b(note to|attention|dear|hey|(?:to|for) (?:any|all|every))\s+(the\s+)?(ai|a\.i\.|llm|language model|chatgpt|gpt|claude|gemini|copilot|bot|automated tools?)s?(?![-\w])${AI_AS_ADJECTIVE}`, "i"),
@@ -172,14 +184,20 @@ const TRAP = [
 
 // A quote mark inside a word is an apostrophe, not a quote: "you're" must not pair with the quote before the word (#1394).
 const quoted = (s: string) => [...s.matchAll(/(?<![\p{L}\p{N}])["'“‘]([^"'”’\n]{1,40})["'”’](?![\p{L}\p{N}])/gu)].map((m) => m[1].trim()).filter(Boolean);
-const afterWord = (s: string) => [...s.matchAll(new RegExp(String.raw`${NOT_TRAP_NOUN}(?:word|phrase|term)\s+([A-Za-z][\w-]{2,30})`, "gi"))].map((m) => m[1]).filter((w) => !/^(in|on|at|to|that|somewhere|anywhere|into|within|the|your)$/i.test(w));
+// The words that follow are the sentence going on, not a planted word: "the phrase you use", "the word for it" (#1607).
+const afterWord = (s: string) =>
+  [...s.matchAll(new RegExp(String.raw`${NOT_TRAP_NOUN}(?:word|phrase|term)\s+([A-Za-z][\w-]{2,30})`, "gi"))]
+    .map((m) => m[1])
+    .filter((w) => !/^(in|on|at|to|that|somewhere|anywhere|into|within|the|your|you|we|they|people|users|customers|our|their|of|for|with|and|or|from|is|are|was|an|it|this|these|those|when|which|who)$/i.test(w));
+const NAMED = new RegExp(String.raw`${TRAP_NOUN}\s*:`, "i");
+const insertTrap = (s: string) => INSERT.test(s) && (AIMED.test(s) || NAMED.test(s) || quoted(s).length > 0 || afterWord(s).length > 0);
 
 /** Each trap with its whole sentence. Trap.text is cut to 300 characters for the review page; removal needs all of it (#965). */
 function trapSentences(text: string, hidden: boolean): { sentence: string; trap: Trap }[] {
   const out: { sentence: string; trap: Trap }[] = [];
   for (const sentence of text.split(/(?<=[.!?])\s+|\n+/)) {
     const s = sentence.trim();
-    if (!s || !TRAP.some((re) => re.test(s))) continue;
+    if (!s || !(insertTrap(s) || TRAP.some((re) => re.test(s)))) continue;
     out.push({ sentence: s, trap: { text: s.slice(0, 300), words: [...new Set([...quoted(s), ...afterWord(s)])], hidden } });
   }
   return out;
@@ -221,6 +239,28 @@ export type PostingBlock = { t: "facts"; rows: [string, string][] } | { t: "head
 
 const FACT = /^(Role|Company|Location|Work mode|Pay range on file|Title|Job Title|Reports to|Exemption Status|Employment type|Department|[A-Za-z ]*Compensation Range|PAY ON PAGE \(text\)|Pay)\s*:\s*(.+)$/i;
 const NOISE = /^(apply|back to jobs|apply now|share|save|job application for .+)$/i;
+
+/**
+ * The posting's own text (#1531): without the fact lines Lookout puts on top (Role, Company, Location, Work mode,
+ * Pay) and without the title line. Keywords come from here, so "Remote" from "Work mode: Remote" or the job title
+ * itself never count as something the posting asks for.
+ */
+export function postingBody(text: string): string {
+  let role = "";
+  const lines = text
+    .replace(/^STRUCTURED DATA:[\s\S]*?(?=^TEXT:)/m, "")
+    .split("\n")
+    .map((l) => l.trim())
+    .filter((l) => {
+      const m = l.match(FACT);
+      if (m && /^(role|title|job title)$/i.test(m[1])) role = m[2].trim().toLowerCase();
+      return l && !(m && m[2].length < 120) && !/^(TITLE:|TEXT:)/.test(l) && !NOISE.test(l);
+    });
+  return lines.filter((l) => !role || l.toLowerCase().replace(/[^a-z0-9 ]+/g, "").trim() !== role.replace(/[^a-z0-9 ]+/g, "").trim()).join("\n");
+}
+
+/** The job title from the fact lines on top, for context. */
+export const postingTitle = (text: string) => text.match(/^(?:Role|Title|Job Title)\s*:\s*(.+)$/im)?.[1].trim() ?? "";
 
 export function postingBlocks(text: string): PostingBlock[] {
   const lines = text

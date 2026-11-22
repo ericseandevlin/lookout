@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
-import { checksBox, CONFIRMATION, pickOne, pickOptions, planFill, uploadLabels } from "./fillPlan";
+import { checksBox, CONFIRMATION, pickOne, pickOptions, planFill, sameOption, uploadLabels } from "./fillPlan";
 
 const item = (o: Partial<Parameters<typeof planFill>[0][number]>) => ({ id: "i", kind: "answer" as const, prompt: "Q", required: true, fieldType: "text", options: null, approvedVersionId: null, ...o });
 
@@ -145,6 +145,16 @@ describe("pickOne (#695)", () => {
     // Whole text only: "No" is still not "None".
     expect(pickOne("No", ["None", "Yes"])).toBe(-1);
   });
+  it("never joins two numbers into one: '12' is not the '1-2' range (#1549)", () => {
+    expect(pickOne("12 years", ["Less than 1 year", "1-2 years", "3-5 years", "6-10 years", "10+ years"])).toBe(-1);
+    expect(sameOption("12", ["0-1", "1-2", "3-5", "6-10", "10+"])).toBeUndefined();
+    expect(sameOption("12 weeks", ["Immediately", "1-2 weeks", "1 month"])).toBeUndefined();
+    expect(sameOption("15", ["1.5", "2"])).toBeUndefined();
+    expect(pickOptions("15 years", ["1-5 years", "6-10 years", "11-15 years", "15+ years"])).not.toContain("1-5 years");
+    // A range still lands on itself however it's spaced.
+    expect(pickOne("1 - 2 years", ["Less than 1 year", "1-2 years", "3-5 years"])).toBe(1);
+    expect(pickOne("3–5 years", ["1-2 years", "3-5 years"])).toBe(1);
+  });
   it("is -1 when no option fits", () => {
     expect(pickOne("They/them", ["She/her", "He/him"])).toBe(-1);
     expect(pickOne("Maybe", ["Yes", "No"])).toBe(-1);
@@ -191,6 +201,17 @@ describe("CONFIRMATION (#692, #748, #762)", () => {
       "You have submitted your application",
       "You've submitted your application for Senior Designer.",
       "You’ve submitted your application.",
+      // #1621
+      "Success! Your application is complete.",
+      "Application complete",
+      "Your application is complete. We'll be in touch.",
+      "Thank you! Your application has been completed.",
+      // #1647
+      "Submission complete",
+      "Your submission is complete.",
+      "Your submission has been completed.",
+      "Your application has been successfully completed.",
+      "Applied successfully!",
     ])
       expect(CONFIRMATION.test(t), t).toBe(true);
   });
@@ -232,6 +253,19 @@ describe("CONFIRMATION (#692, #748, #762)", () => {
       "Once you have submitted your application, we will email you.",
       "Have you submitted your application yet?",
       "You have not submitted your application.",
+      // #1621
+      "Once your application is complete, click Submit.",
+      "Your application is incomplete.",
+      "Make sure your application is complete before you submit.",
+      "Please check that your application is complete.",
+      "Application complete: 80%",
+      "Your application is not complete.",
+      // #1647
+      "Your submission is not complete.",
+      "Please complete your submission.",
+      "Make sure your submission is complete.",
+      "Submission complete: 2 of 5 steps",
+      "You have not applied successfully.",
     ])
       expect(CONFIRMATION.test(t), t).toBe(false);
   });

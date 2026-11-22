@@ -83,6 +83,9 @@ describe("kindFor", () => {
     expect(kindFor("Attach an updated CV *", "file")).toBe("resume");
     expect(kindFor("Please upload your resume", "text")).toBe("answer");
     expect(kindFor("Please attach your cover letter, not your resume", "file")).toBe("cover_letter");
+    // One upload for both is the resume's slot, so the resume goes in it, not the letter (#1633).
+    for (const l of ["Resume/Cover Letter", "Resume and Cover Letter", "Resume & Cover Letter *", "CV / Cover Letter", "Upload your resume and cover letter", "Cover letter and résumé"]) expect(kindFor(l, "file")).toBe("resume");
+    expect(kindFor("Resume/Cover Letter", "text")).toBe("cover_letter");
     expect(kindFor("Anything in your resume to explain?", "file")).toBe("answer");
     expect(kindFor("Cover Letter", "file")).toBe("cover_letter");
     expect(kindFor("LinkedIn Profile", "text")).toBe("field");
@@ -236,6 +239,11 @@ describe("fromPage and withBasics", () => {
     expect(items.map((i) => i.kind)).toEqual(["resume", "cover_letter", "field", "answer"]);
     expect(items[0].required).toBe(true);
     expect(items[1].required).toBe(false);
+  });
+
+  it("adds the letter right after a resume asked for late in the form (#1633)", () => {
+    const items = withBasics(fromPage({ hasForm: true, hasEeo: false, howToApply: "", items: [{ prompt: "Email", required: true, fieldType: "text", options: [] }, { prompt: "Resume/Cover Letter", required: true, fieldType: "file", options: [] }] }).items);
+    expect(items.map((i) => `${i.kind}:${i.prompt}`)).toEqual(["field:Email", "resume:Resume/Cover Letter", "cover_letter:Cover letter"]);
   });
 
   it("routes the big three to the browser worker and the rest to a checklist", () => {

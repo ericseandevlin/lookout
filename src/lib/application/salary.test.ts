@@ -106,6 +106,14 @@ describe("rangeBasis", () => {
     expect(rangeBasis("Salary: $100,000 - $140,000")).toBeNull();
   });
 
+  it("reads 'Bonus is included in this range' as total cash (#1566)", () => {
+    expect(rangeBasis("Salary range: $150,000 - $180,000. Bonus is included in this range.")).toBe("total");
+    expect(rangeBasis("The pay range is $150,000 - $180,000. Commission is included in the range.")).toBe("total");
+    expect(rangeBasis("$150k-$180k. Incentive pay is also reflected in the posted pay range.")).toBe("total");
+    expect(rangeBasis("Base salary range: $150,000 - $180,000. Bonus is not included in this range.")).toBe("base");
+    expect(rangeBasis("Base salary range: $150,000 - $180,000. Bonus is included in our total rewards package.")).toBe("base");
+  });
+
   it("reads a range that doesn't include bonus as base, not total cash (#650)", () => {
     expect(rangeBasis("The base salary range is $150,000-$180,000. This range does not include bonus or equity.")).toBe("base");
     expect(rangeBasis("Base pay: $150k-$180k. The pay range doesn't include a bonus.")).toBe("base");
@@ -171,6 +179,12 @@ describe("rangeBasis", () => {
     "Pay: $150k-$180k plus commission.",
     "Compensation: $150k - $180k + annual bonus + equity",
     "$150,000-$180,000 plus a performance bonus",
+    // A comma, a period word or a currency code between the amount and the plus (#1602).
+    "The salary range for this role is $150,000 - $180,000 per year, plus bonus and equity.",
+    "Pay: $150k-$180k, plus bonus.",
+    "$150,000 - $180,000 annually + bonus",
+    "$150,000 - $180,000 USD + annual bonus",
+    "$150k-$180k/yr + commission",
   ])("reads %s as base: the bonus is added after the amount, word base or not (#1528)", (posting) => {
     expect(rangeBasis(posting)).toBe("base");
   });
@@ -178,6 +192,8 @@ describe("rangeBasis", () => {
   it("still reads total cash wording first, and a bonus in a benefits list says nothing (#1528)", () => {
     expect(rangeBasis("On-target earnings: $150k + commission")).toBe("total");
     expect(rangeBasis("Salary: $150k-$180k. Benefits include a bonus plus 401(k).")).toBeNull();
+    expect(rangeBasis("Salary: $150k-$180k per year. Plus bonus eligibility is reviewed later.")).toBeNull();
+    expect(rangeBasis("Salary: $150k-$180k, plus great benefits.")).toBeNull();
   });
 
   it("keeps a bonus the role is also eligible for as base (#1074)", () => {
@@ -435,6 +451,15 @@ describe("hourly and monthly salary questions (#949)", () => {
     ["Desired salary", null],
     ["Desired annual salary (paid monthly)", null],
     ["Salary expectations, paid bi-weekly", null],
+    // "Annual" on a bonus, 13th month or hours is not the pay period (#1565).
+    ["What is your expected monthly salary (excluding annual bonus)?", "month"],
+    ["Expected monthly gross salary, including annual 13th month?", "month"],
+    ["Desired hourly rate (W2, about 2,000 hours annually)", "hour"],
+    ["Expected monthly salary? We also pay an annual bonus.", "month"],
+    ["Hourly rate expected (1,800 annual hours)", "hour"],
+    ["Expected salary per month, before the annual raise", "month"],
+    ["Annual salary expectation (we pay monthly)", null],
+    ["Expected salary, including annual bonus", null],
   ])("%s asks per %s", (q, per) => {
     expect(askPer(q)).toBe(per);
   });
@@ -576,6 +601,13 @@ describe("askPer reads the period from the ask, not a side sentence (#1136)", ()
     ["Desired salary? Monthly, before tax.", "month"],
     ["What are your salary expectations? Hourly is fine.", "hour"],
     ["What are your salary expectations? We review applications weekly and reply to everyone.", null],
+    // "Per month" in an answer instruction (#1601).
+    ["What is your expected salary? Please answer in USD per month.", "month"],
+    ["What are your salary expectations? Answer per hour.", "hour"],
+    ["What are your salary expectations? Enter the number in USD/month.", "month"],
+    ["What are your salary expectations? Please answer in USD per year.", null],
+    ["What are your salary expectations? The team meets once per week.", null],
+    ["What are your salary expectations? Expect to work 20 hours per week.", null],
   ] as const)("%s", (q, per) => {
     expect(askPer(q)).toBe(per);
   });
@@ -600,6 +632,11 @@ describe("asks in thousands (#1188)", () => {
     ["Desired salary ($ in thousands)", true],
     ["Desired salary (USD)", false],
     ["Do you have 401(k) experience?", false],
+    // "K-12" is school grades, not thousands (#1557).
+    ["What are your salary expectations for this role in K-12 education?", false],
+    ["Desired salary for a teaching role in K–12", false],
+    ["Salary expectations in K12 schools", false],
+    ["Salary expectations in K, please", true],
   ])("%j -> %s", (prompt, want) => expect(asksThousands(prompt)).toBe(want));
 
   it("gives a yearly ask in thousands", () => {
@@ -687,5 +724,30 @@ describe("rangeBasis: a range that leaves the bonus out is base (#1411)", () => 
     expect(rangeBasis("Salary: $150,000 - $180,000.")).toBe(null);
     // A bonus left out of a benefits list, not the pay, says nothing about the range.
     expect(rangeBasis("Salary: $150,000 - $180,000. Our perks don't include a company car.")).toBe(null);
+  });
+});
+
+describe("rangeBasis: a total compensation package heading over benefits is not total cash (#1556)", () => {
+  const base = "The base salary range for this position is $150,000 - $180,000.";
+  it.each([
+    "Our total compensation package: medical, dental, 401(k) match and paid time off.",
+    "Total compensation package: medical, dental, vision.",
+    "Total rewards and benefits: medical, dental.",
+    "Total compensation: our package covers medical and dental.",
+  ])("reads base when a benefits line says %s", (benefits) => {
+    expect(rangeBasis(`${base}\n${benefits}`)).toBe("base");
+    expect(rangeBasis(`${benefits}\n${base}`)).toBe("base");
+  });
+  it("still reads a total heading that gives the amount", () => {
+    expect(rangeBasis("Total compensation package: $200,000 - $250,000")).toBe("total");
+    expect(rangeBasis("Total compensation range: $200,000 - $250,000")).toBe("total");
+    expect(rangeBasis(`Total compensation: $200,000 - $250,000.\n${base}`)).toBe("total");
+    expect(rangeBasis("Total compensation:\n$200,000 - $250,000")).toBe("total");
+  });
+  it("fills a base-salary question from the base range", () => {
+    const posting = `${base}\nOur total compensation package: medical, dental, 401(k).`;
+    const r = suggestSalary({ floor: "140,000", min: 150000, max: 180000, basis: rangeBasis(posting), asksBase: asksBase("Desired base salary") })!;
+    expect(r.amount).not.toBeNull();
+    expect(r.note).not.toMatch(/total cash/);
   });
 });

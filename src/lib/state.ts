@@ -10,6 +10,7 @@ import type { AppState, Find, Resume, RunInfo } from "@/lib/types";
 import { pickBoardRun } from "@/lib/runState";
 import { listSearches, pickActiveSearch } from "@/lib/searches";
 import { searchOn } from "@/lib/sources";
+import { hasOpenQuestion } from "@/lib/interview/session";
 
 function toFind(
   o: typeof schema.opportunities.$inferSelect,
@@ -158,6 +159,8 @@ export async function getState(user: SessionUser): Promise<AppState> {
       autoApply: canUseAutoApply(user),
       events: featureOn("EVENTS"),
       searches: featureOn("SEARCHES"),
+      interview: featureOn("INTERVIEW"),
+      interviewOpen: featureOn("INTERVIEW") && !s?.interviewBannerClosed && canUseAutoApply(user) ? await hasOpenQuestion(user.id) : false,
     },
     settings: {
       freq: s?.freq ?? "Weekly",
@@ -168,6 +171,7 @@ export async function getState(user: SessionUser): Promise<AppState> {
       setup: s?.setupMode ?? "Until complete",
       newDays: s?.newDays ?? 7,
       railClosed: s?.railClosed ?? false,
+      interviewBannerClosed: s?.interviewBannerClosed ?? false,
     },
     searches: searches.map(({ id, name, kind }) => ({ id, name, kind })),
     searchId: active?.id ?? "",

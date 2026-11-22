@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { dueLabel, pickDueSoon } from "./digestDue";
+import { dueLabel, pickDueSoon, stillDue } from "./digestDue";
 
 const now = new Date("2026-11-07T09:00:00").getTime();
 const row = (id: string, due?: unknown) => ({ id, attributes: due === undefined ? {} : { due } });
@@ -30,5 +30,14 @@ describe("due soon (#304)", () => {
   });
   it("labels the day", () => {
     expect([0, 1, 4].map(dueLabel)).toEqual(["Due today", "Due tomorrow", "Due in 4 days"]);
+  });
+});
+
+describe("stillDue (#1539)", () => {
+  it("is false once a job is applied to or an RFP is submitted", () => {
+    for (const s of ["Applied", "Interview", "Offer", "Submitted", "Awarded"]) expect(stillDue(s), s).toBe(false);
+  });
+  it("is true before that, and for a stage no kind knows", () => {
+    for (const s of ["Not applied", "Auto-applying", "Reviewing", "Bid", "Something new", "", null]) expect(stillDue(s), String(s)).toBe(true);
   });
 });

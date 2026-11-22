@@ -6,24 +6,27 @@ import { sameOption } from "./fillPlan";
  * nearly the same words. Job-specific essays and salary are never saved; they change per role.
  */
 
+// "Are you 18 or older?" and "over 18" too (#1576). "Legally able", "eligible" and "right to work" are work authorization (#1597), and so is a work permit (#1619).
 // Short words need \b: "city" sits inside "ethnicity", which saved an ethnicity answer for the drafting model (#1059).
 const COMMON =
-  /authori[sz]ed to work|work authori[sz]ation|legally (authorized|eligible)|sponsor|\bvisa\b|\bzip\b|postal|state of residence|^state$|\bcity\b|address|phone|mobile|country|relocat|notice period|start date|earliest.*start|when can you start|previously (worked|employed)|ever (been )?employed by|criminal|background check|\bdrug|18 years|\bage of\b|security clearance|how did you hear|referr|pronoun|preferred (first )?name/i;
+  /authori[sz]ed to work|work authori[sz]ation|legally (authorized|eligible|able|permitted)|(eligible|permitted) to work|right to work|work permit|sponsor|\bvisa\b|\bzip\b|postal|state of residence|^state$|\bcity\b|address|phone|mobile|country|relocat|notice period|start date|earliest.*start|when can you start|availab(le|ility) to start|previously (worked|employed)|ever (been )?employed by|criminal|background check|\bdrug|18 years|\bage of\b|\b(over|at least) 18\b|\b18 (or|and) (older|over|above)\b|\b18\+|security clearance|how did you hear|referr|pronoun|preferred (first )?name/i;
 // Never kept: salary and essays change per role; commute and office questions depend on where each job is.
-// "years of" is experience, not "18 years of age" (#1059).
-const NEVER = /salary|compensation|pay|expected|why|describe|tell us|cover letter|portfolio|years of(?! age)|commut|in.?office|hybrid|remote|location (listed|of the)|this (role|position|location)/i;
+// "years of" is experience, not "18 years of age" (#1059). "Expected" is the pay ask, not an expected start or notice period (#1595).
+const NEVER = /salary|compensation|pay|expected(?!\s+(start|notice|availability))|why|describe|tell us|cover letter|portfolio|years of(?! age)|commut|in.?office|hybrid|remote|location (listed|of the)|this (role|position|location)/i;
 // Voluntary self-identification is never kept or shown to a model, even when a form asks it as a plain question (#1059).
 const EEO = /ethnic|\brace\b|racial|hispanic|latin[oax]|gender|\bsex\b|sexual orientation|transgender|veteran|disabilit|self[- ]identif/i;
 
 // Questions about one employer: a No is true almost everywhere, but a Yes or a referrer's name is about that company only.
 // \b: "referr" sits inside "preferred", which made every preferred name a referrer's (#1048).
 const ONE_EMPLOYER = /previously (worked|employed)|ever (been )?employed by|worked (here|for us)|\breferr/i;
-const START = /start date|earliest.*start|when can you start/i;
+// "When would you be available to start?" and "availability to start" too (#1596).
+const START = /start date|earliest.*start|when can you start|availab(le|ility) to start/i;
 // A calendar date ("12/1", "2026-12-01", "Dec 1", "June 1st", "1st December", "January 2027") passes;
 // "2 weeks after an offer" stays true (#1079).
 // Whole month names only: "dec" must not match "decision". "May" alone is a verb too, so it needs a day or year beside it.
 const MONTH = /\b(jan(uary)?|feb(ruary)?|mar(ch)?|apr(il)?|june?|july?|aug(ust)?|sept?(ember)?|oct(ober)?|nov(ember)?|dec(ember)?)\b\.?/i;
-const DATE_FORMS = /\b\d{1,2}[/.-]\d{1,2}([/.-]\d{2,4})?\b|\b\d{4}-\d{2}-\d{2}\b|\bmay,?\s+(\d{1,2}|(19|20)\d{2})\b|\b\d{1,2}(st|nd|rd|th)?\s+(of\s+)?may\b|\b\d{1,2}(st|nd|rd|th)\b|\b(19|20)\d{2}\b/i;
+// "2-3 weeks" and "4-6 weeks after an offer" are a span, not a day and month (#1575).
+const DATE_FORMS = /\b\d{1,2}[/.-]\d{1,2}([/.-]\d{2,4})?\b(?!\s*(?:business\s+|working\s+)?(?:days?|weeks?|wks?|months?|mos?)\b)|\b\d{4}-\d{2}-\d{2}\b|\bmay,?\s+(\d{1,2}|(19|20)\d{2})\b|\b\d{1,2}(st|nd|rd|th)?\s+(of\s+)?may\b|\b\d{1,2}(st|nd|rd|th)\b|\b(19|20)\d{2}\b/i;
 const DATE = { test: (a: string) => MONTH.test(a) || DATE_FORMS.test(a) };
 
 // "How did you hear about us?" answered with a referral, a friend or a recruiter is about that company; "LinkedIn" travels (#1097).
@@ -55,11 +58,17 @@ const qualifier = (q: string) =>
 /** Is this question one we should remember the answer to? */
 // Work authorization and sponsorship don't change with the role: "authorized to work in the United States for this
 // position?" is the same fact everywhere, so "this role" or "this position" doesn't rule it out. "This location" still does (#1123).
-const AUTH = /authori[sz]ed to work|work authori[sz]ation|legally (authorized|eligible)|sponsor|\bvisa\b/i;
+const AUTH = /authori[sz]ed to work|work authori[sz]ation|legally (authorized|eligible|able|permitted)|(eligible|permitted) to work|right to work|work permit|sponsor|\bvisa\b/i;
 // Where the job is, not where the person is: a US job's "No" to sponsorship "in the country where this role is based" is the
 // wrong answer for a London job. Checked before "this role" is removed; "the country where you live" is still kept (#1227).
-const JOB_PLACE = /\b(role|job|position|opportunity) (is|will be) (based|located)\b|\b(role|job|position)'?s (country|location)\b/i;
-const neverKept = (question: string) => JOB_PLACE.test(question) || NEVER.test(AUTH.test(question) ? question.replace(/\bthis (role|position)\b/gi, " ") : question);
+// "The country for which you are applying", "the country you're applying to" and "the location of this role" too (#1572).
+// "The country of employment", "the country this role is in", "the country where you will be working" and "the hiring
+// country" too (#1590).
+const JOB_PLACE =
+  /\b(role|job|position|opportunity) (is|will be) (based|located)\b|\b(role|job|position)'?s (country|location)\b|\b(country|location|place|region)\s+(?:(?:for|in|to) which\s+)?(you are|you're|you['’]re) applying\b|\b(country|location) of (this|the) (role|job|position|opportunity|posting)\b|\b(country|location|place) of (employment|hire)\b|\b(country|location|region|place)\s+(?:(?:where|that|which)\s+)?(this|the) (role|job|position|opportunity) is in\b|\b(country|location|region|place)\s+(?:where|in which)\s+you(?:['’]ll| will| would)\s+(?:be\s+)?work(?:ing)?\b|\bhiring (country|location)\b/i;
+// "How did you hear about this position?" is the same question as "...this job?", so it travels the same way (#1545).
+const neverKept = (question: string) =>
+  JOB_PLACE.test(question) || NEVER.test(AUTH.test(question) || HEARD.test(question) ? question.replace(/\bthis (role|position|job|opportunity)\b/gi, " ") : question);
 
 export function isCommon(question: string, answer: string) {
   return COMMON.test(question) && !neverKept(question) && !EEO.test(question) && answer.trim().length > 0 && answer.length <= 300 && !onlyThisOne(question, answer);

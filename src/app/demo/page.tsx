@@ -18,7 +18,7 @@ export default async function Page() {
   const person = await demoUser();
   if (!person) notFound();
   const state = await getState(person);
-  const viewState = { ...state, user: { ...state.user, isAdmin: false, autoApply: false, events: false, searches: false }, running: null, run: null };
+  const viewState = { ...state, user: { ...state.user, isAdmin: false, autoApply: false, events: false, searches: false, interview: false }, running: null, run: null };
   return (
     <StoreProvider initial={viewState} readOnly>
       <div role="status" style={{ position: "sticky", top: 0, zIndex: 19, display: "flex", flexWrap: "wrap", alignItems: "center", gap: 12, padding: "10px 20px", background: "#1D1A0F", color: "#fff", fontSize: font.base }}>

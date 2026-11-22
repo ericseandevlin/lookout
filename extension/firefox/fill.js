@@ -3,7 +3,7 @@
   if (window.__lookoutFill) return;
   window.__lookoutFill = true;
 
-  const THANKS = /(?<!\b(?:once|after|when|if|before|until|upon)\b[^.!?\n]{0,40})(?:thank(?:s| you) for (?:applying|your application|submitting|your submission)|(?<!\bno\s+)(?:application|submission|candidacy) (?:has been |was )?(?:successfully )?(?:received|submitted|sent)\b|application (?:for|to|with) [^.!?\n]{1,80}? (?:has been|was) (?:successfully )?(?:received|submitted|sent)\b|we(?:'ve|’ve| have)? (?:successfully )?(?:received|got) your (?:application|submission)|you(?:'ve|’ve| have) (?:successfully )?submitted your (?:application|submission)\b|(?<!(?:\bnot|\bnever|n't|n’t)\s+(?:(?:be|been|yet)\s+){0,2})\bsuccessfully (?:applied|submitted)\b)/i;
+  const THANKS = /(?<!\b(?:once|after|when|if|before|until|upon)\b[^.!?\n]{0,40})(?:thank(?:s| you) for (?:applying|your application|submitting|your submission)|(?<!\bno\s+)(?:application|submission|candidacy) (?:has been |was )?(?:successfully )?(?:received|submitted|sent)\b|application (?:for|to|with) [^.!?\n]{1,80}? (?:has been|was) (?:successfully )?(?:received|submitted|sent)\b|we(?:'ve|’ve| have)? (?:successfully )?(?:received|got) your (?:application|submission)|you(?:'ve|’ve| have) (?:successfully )?submitted your (?:application|submission)\b|(?<!(?:\bnot|\bnever|n't|n’t)\s+(?:(?:be|been|yet)\s+){0,2})\bsuccessfully (?:applied|submitted)\b|(?<!\b(?:sure|ensure|check|confirm|verify)\s+(?:that\s+)?(?:your\s+|the\s+)?)\b(?:application|submission) (?:is |has been |was )?(?:now |successfully )?completed?(?=\s*(?:[.!\n]|$))|(?<!(?:\bnot|\bnever|n't|n’t)\s+(?:(?:be|been|yet)\s+){0,2})\bapplied successfully\b)/i;
   // Lever marks required questions with "✱", others with "*": neither is part of the question (#1150). Curly quotes
   // match straight ones: "I don't wish to answer" is "I don’t wish to answer" (#1255). An en or em dash, spaced or not, is
   // a hyphen: "Yes - I am authorized" is "Yes – I am authorized" (#ISSUE).
@@ -231,8 +231,13 @@
     return false;
   }
 
-  function fileInputFor(prompt, itemKind) {
+  // Uploads this fill already put a file in. A later step that finds the same input (a combined "Resume/Cover Letter"
+  // box, a label both prompts hold) would replace that file, so it reports not found instead (#1633).
+  let filledUploads = new WeakSet();
+
+  function fileInputFor(prompt, itemKind, labeledOnly = false) {
     const inputs = [...document.querySelectorAll("input[type=file]")];
+    const pick = (input) => (input && !filledUploads.has(input) ? input : null);
     const key = norm(prompt).slice(0, 40);
     // Nearest labeled box wins, one level at a time: a section holding both uploads holds both labels (#590).
     // A cover letter's prompt must not match a resume input whose outer ancestor happens to hold the text
@@ -241,13 +246,14 @@
       for (const input of inputs) {
         let n = input.parentElement;
         for (let i = 0; n && i < depth; i++) n = n.parentElement;
-        if (!n || !norm(n.textContent).includes(key)) continue;
+        if (!n || filledUploads.has(input) || !norm(n.textContent).includes(key)) continue;
         if (depth > 0 && (itemKind === "cover_letter" ? siblingHas(n, input, key) : otherBoxHas(n, input, key))) continue;
         return input;
       }
+    if (labeledOnly) return null;
     // Unlabeled, only the resume takes the first upload and the letter the second. Any other upload (writing sample,
     // portfolio) would replace the resume there, so it reports not found instead (#1030).
-    return itemKind === "cover_letter" ? inputs[1] || null : itemKind === "resume" ? inputs[0] || null : null;
+    return itemKind === "cover_letter" ? pick(inputs[1]) : itemKind === "resume" ? pick(inputs[0]) : null;
   }
 
   /** a starts b and ends on a word boundary there: "no" starts "no, thanks" but not "none" (#632). A blank option starts nothing (#722). */
@@ -258,8 +264,8 @@
    * text with or without hyphens and spaces (#1518), then a prefix
    * either way, at a word boundary, closest length first.
    */
-  /** Same as compactChoice in fillPlan.ts: "Full time" is "Full-time", "Onsite" is "On-site", whole text only (#1518). */
-  const compact = (t) => norm(t).replace(/[\s'".-]+/g, "");
+  /** Same as compactChoice in fillPlan.ts: "Full time" is "Full-time", "Onsite" is "On-site", whole text only (#1518). "1-2" is never "12" (#1549). */
+  const compact = (t) => norm(t).replace(/(\d)[\s'".-]+(?=\d)/g, "$1~").replace(/[\s'".-]+/g, "");
 
   function pickOptions(content, options) {
     const out = [];
@@ -296,13 +302,13 @@
     return labels.findIndex((l) => Math.min(a.length, norm(l).length) >= 80 && sameText(l, answer));
   }
 
-  /** The answer's first number, same as the worker: "$165k" is 165000 (#1168), "$120-150k" is 120000 (#1254). */
+  /** The answer's first number, same as the worker: "$165k" is 165000 (#1168), "$120-150k" is 120000 (#1254), "$120 K" is 120000 (#1585). */
   function numberAnswer(t) {
-    const m = String(t || "").match(/(\d[\d,]*(?:\.\d+)?)([km]\b)?(?:\s*(?:-|–|—|to)\s*\$?\d[\d,]*(?:\.\d+)?([km]\b))?/i);
+    const m = String(t || "").match(/(\d[\d,]*(?:\.\d+)?)((?:\s?(?:[kK]|[tT]housand|[mM]illion)|[mM]|\sM)\b)?(?:\s*(?:-|–|—|to|To|TO)\s*\$?\d[\d,]*(?:\.\d+)?((?:\s?(?:[kK]|[tT]housand|[mM]illion)|[mM]|\sM)\b))?/);
     if (!m) return "";
     const n = m[1].replace(/,/g, "");
     const unit = m[2] || (Number(n) < 1000 ? m[3] : undefined);
-    return unit ? String(Math.round(Number(n) * (unit.toLowerCase() === "k" ? 1e3 : 1e6))) : n;
+    return unit ? String(Math.round(Number(n) * (unit.trim()[0].toLowerCase() === "m" ? 1e6 : 1e3))) : n;
   }
 
   /**
@@ -398,7 +404,8 @@
   }
 
   async function fillFile(step) {
-    const input = fileInputFor(step.prompt, step.itemKind);
+    // A letter's own text box beats an unlabeled upload: the second upload may be a Portfolio or Transcript (#1635).
+    let input = fileInputFor(step.prompt, step.itemKind, true);
     if (!input && step.itemKind === "cover_letter" && (step.content || "").trim()) {
       // A cover letter asked for as text, not a file: type it into the box labeled with the prompt, same as the worker (#860, #1292).
       const box = controlFor(step.prompt);
@@ -407,12 +414,14 @@
         return { ok: true, how: "typed the letter" };
       }
     }
+    if (!input) input = fileInputFor(step.prompt, step.itemKind);
     if (!input || !step.file) return { ok: false, how: step.file ? "upload field not found" : "no file" };
     const bytes = Uint8Array.from(atob(step.file.base64), (c) => c.charCodeAt(0));
     const file = new File([bytes], step.file.name, { type: "application/vnd.openxmlformats-officedocument.wordprocessingml.document" });
     const dt = new DataTransfer();
     dt.items.add(file);
     input.files = dt.files;
+    filledUploads.add(input);
     input.dispatchEvent(new Event("input", { bubbles: true }));
     input.dispatchEvent(new Event("change", { bubbles: true }));
     await sleep(300);
@@ -613,6 +622,7 @@
     if (msg.type === "lookout-probe") return probe(msg.packet);
     if (msg.type === "lookout-fill") {
       const log = [];
+      filledUploads = new WeakSet();
       for (const step of msg.packet.steps) {
         const r = await fillOne(step);
         log.push({ prompt: step.prompt, required: step.required, ok: r.ok, how: r.how });

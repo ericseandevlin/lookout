@@ -46,6 +46,13 @@ function fakePage(els: El[]) {
         maxLength: e.maxLength ?? -1,
         labels: [{ textContent: e.label }],
         ownerDocument: doc,
+        attrs: new Set<string>(),
+        hasAttribute(a) {
+          return this.attrs.has(a);
+        },
+        setAttribute(a) {
+          this.attrs.add(a);
+        },
       };
       nodes.set(e, n);
     }
@@ -137,7 +144,7 @@ function fakePage(els: El[]) {
   };
   return page;
 }
-type FakeNode = { tagName: string; maxLength: number; getAttribute: (a: string) => string | null; labels: { textContent: string }[]; ownerDocument: { querySelectorAll: () => FakeNode[]; getElementById: () => null } };
+type FakeNode = { tagName: string; maxLength: number; getAttribute: (a: string) => string | null; attrs: Set<string>; hasAttribute(a: string): boolean; setAttribute(a: string, v?: string): void; labels: { textContent: string }[]; ownerDocument: { querySelectorAll: () => FakeNode[]; getElementById: () => null } };
 type Loc = {
   first(): Loc;
   last(): Loc;
@@ -331,6 +338,12 @@ describe("runFill (#385)", () => {
 
   it("a range's k covers its bare first end (#1254)", () => {
     expect(["$120-150k", "120 to 150K", "$120 – $150k", "$1-1.5M", "$120,000 - 150k", "5 - 10 years"].map(numberAnswer)).toEqual(["120000", "120000", "120000", "1000000", "120000", "5"]);
+  });
+
+  it("a k or M after a space, or spelled out, still counts (#1585)", () => {
+    expect(["$120 K", "$120 K - $150 K", "120 - 150 k", "165 thousand", "1.2 million", "$2 M"].map(numberAnswer)).toEqual(["120000", "120000", "120000", "165000", "1200000", "2000000"]);
+    // A lone lowercase m after a space reads as months or minutes, not millions.
+    expect(["5 m", "5 months", "2 Months", "3 mo"].map(numberAnswer)).toEqual(["5", "5", "2", "3"]);
   });
 
   it("a date field gets the answer as yyyy-mm-dd, not \"12/01/2026\" (#1242)", async () => {
@@ -760,6 +773,14 @@ describe("runFill controls (#567)", () => {
     const RESUME = ITEMS[0];
     const uploads = () => page.did.filter((d) => d.startsWith("upload "));
 
+    it("never goes over the resume in a combined Resume/Cover Letter upload (#1633)", async () => {
+      const id = await seed("approved", [{ ...RESUME, prompt: "Resume/Cover Letter" }, LETTER]);
+      page = fakePage([{ kind: "file", label: "Resume/Cover Letter", type: "file" }]);
+      const r = await runFill(id, "test");
+      expect(uploads()).toEqual(["upload Resume/Cover Letter=Pat Lee - Acme Inc. Resume.docx"]);
+      expect(r.log.find((l) => l.prompt === "Cover Letter")).toMatchObject({ ok: false });
+    });
+
     it("goes in its own upload box", async () => {
       const id = await seed("approved", [RESUME, LETTER]);
       page = fakePage([{ kind: "file", label: "Resume", type: "file" }, { kind: "file", label: "Cover Letter", type: "file" }]);
@@ -776,6 +797,14 @@ describe("runFill controls (#567)", () => {
       expect(r.log.find((l) => l.prompt === "Cover Letter")).toMatchObject({ ok: true, how: "typed the letter" });
       expect(uploads()).toEqual(["upload Resume=Pat Lee - Acme Inc. Resume.docx"]);
       expect(page.did).toContain(`fill Cover Letter=${LETTER.content}`);
+    });
+
+    it("is typed into its own text box, not a Portfolio upload, when the form has two uploads (#1635)", async () => {
+      const id = await seed("approved", [RESUME, LETTER]);
+      page = fakePage([{ kind: "file", label: "Resume", type: "file" }, { kind: "file", label: "Portfolio", type: "file" }, { kind: "control", label: "Cover Letter", tag: "textarea" }]);
+      const r = await runFill(id, "test");
+      expect(r.log.find((l) => l.prompt === "Cover Letter")).toMatchObject({ ok: true, how: "typed the letter" });
+      expect(uploads()).toEqual(["upload Resume=Pat Lee - Acme Inc. Resume.docx"]);
     });
 
     it("takes the second upload when no box names it", async () => {

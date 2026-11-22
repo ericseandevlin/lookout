@@ -11,6 +11,7 @@ import { ArchiveIcon, ChevronDown, PinIcon, SearchIcon, SlidersIcon } from "./ic
 import { useCounts } from "./Shell";
 import { LastReport, SearchPanel } from "./SearchPanel";
 import { useStore } from "./store";
+import { useHydratedNow } from "./useHydratedNow";
 import { NextStep } from "./Profile";
 import { trackClient } from "./track";
 import { sortsFor, chip, seg, type SortKey } from "./finds/shared";
@@ -28,15 +29,16 @@ export { Switch } from "./finds/Controls";
 type Filter = "all" | "new" | "archived";
 
 /** Column widths (#8), keyed by column key so the grid follows the kind config. */
+// Minimums that fit the board beside the sidebar at 1280 px; long text ends in an ellipsis (#1531).
 const WIDTH: Record<string, string> = {
-  company: "minmax(170px,1.2fr)",
-  role: "minmax(210px,1.6fr)",
-  comp: "minmax(170px,1fr)",
+  company: "minmax(120px,1.2fr)",
+  role: "minmax(150px,1.6fr)",
+  comp: "minmax(130px,1fr)",
   listed: "100px",
-  location: "minmax(160px,1.1fr)",
-  value: "minmax(150px,1fr)",
+  location: "minmax(110px,1.1fr)",
+  value: "minmax(120px,1fr)",
   due: "110px",
-  setAside: "minmax(130px,1fr)",
+  setAside: "minmax(110px,1fr)",
 };
 
 /** One column's sort value for a find (#8): from the find itself, or its kind's stage order. */
@@ -105,7 +107,8 @@ export function Finds() {
   const [showReport, setShowReport] = useState(false);
 
   const finds = state.finds;
-  const isNew = useCallback((f: Find) => isNewFind(f, settings.newDays), [settings.newDays]);
+  const now = useHydratedNow();
+  const isNew = useCallback((f: Find) => isNewFind(f, settings.newDays, now), [settings.newDays, now]);
   const active = finds.filter((f) => !f.archived);
   const tally = { all: active.length, new: active.filter(isNew).length, archived: finds.length - active.length };
 
@@ -314,7 +317,7 @@ export function Finds() {
                         {label}
                         <span style={{ color: on ? color.brick : "#CFC6B9", marginRight: 16 }}>{key ? (on ? arrow : "↕") : ""}</span>
                       </button>
-                      {key === "comp" && <Switch small on={compOnly} onClick={() => setCompOnly((v) => !v)} tip={compOnly ? "Showing only roles with posted comp. Click to show all." : "Hide roles with no comp posted"} />}
+                      {key === "comp" && <Switch small on={compOnly} onClick={() => setCompOnly((v) => !v)} tip={compOnly ? "Only roles with comp posted (on)" : "Only roles with comp posted"} />}
                     </div>
                   );
                 })}

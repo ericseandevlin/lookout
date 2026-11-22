@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { ApplicationReport } from "@/lib/db/schema";
-import { approvedBlock, approvedFor, finalTerms, keywordPicks, keywordRows, planFrom, postingSnippet, supportFor, unapprovedIn, type KeywordRow } from "./evidence";
+import { approvedBlock, approvedFor, finalTerms, KEYWORD_CAP, keywordPicks, keywordPlanPrompt, keywordRows, planFrom, postingSnippet, supportFor, trimRows, unapprovedIn, type KeywordRow } from "./evidence";
 import { upsertNote } from "./skills";
 
 const posting = `Role: Design Engineer
@@ -45,6 +45,14 @@ describe("keyword evidence (#121)", () => {
   it("only trusts a cited line that is really in the resume or notes", () => {
     expect(supportFor("Kubernetes", "Ran Kubernetes clusters for 5 years", resume, [])).toBeNull();
     expect(supportFor("people leadership", "Ran WCAG accessibility audits across 12 products", resume, [])).toEqual({ line: "Ran WCAG accessibility audits across 12 products", from: "resume" });
+  });
+
+  it("a short resume line inside a made-up cite is not backing (#1627)", () => {
+    const skills = "## Skills\n- User research\n- Figma";
+    expect(supportFor("accessibility audits", "Ran accessibility audits and user research across three products", skills, [])).toBeNull();
+    // A cite that is the line plus a little extra still counts.
+    expect(supportFor("people leadership", "- Ran WCAG accessibility audits across 12 products.", resume, [])).toEqual({ line: "Ran WCAG accessibility audits across 12 products", from: "resume" });
+    expect(supportFor("people leadership", "Acme: Ran WCAG accessibility audits across 12 products", resume, [])).toEqual({ line: "Ran WCAG accessibility audits across 12 products", from: "resume" });
   });
 
   it("a note without details is not evidence; a note with details is", () => {
@@ -143,5 +151,56 @@ describe("keywordPicks: short skills count only as their own word (#1377)", () =
   it("Go named twice as its own word still is", () => {
     const posting = "You will build services in Go.\nWe write Go and some Python.";
     expect(keywordPicks([row("Go", "You will build services in Go.")], posting, "Backend Engineer")).toEqual(["Go"]);
+  });
+});
+
+describe("a shorter keyword list (#1485)", () => {
+  const row = (term: string, extra: Partial<KeywordRow> = {}): KeywordRow => ({ term, support: null, mine: false, removed: false, used: false, ...extra });
+  const posting = Array.from({ length: 20 }, (_, i) => `skill ${i}`).join(", ") + ", tools, craft, portfolio.";
+
+  it("caps a new plan at 12 and drops generic single words", () => {
+    const terms = ["tools", "craft", ...Array.from({ length: 20 }, (_, i) => `skill ${i}`), "portfolio"];
+    const plan = planFrom({ keywords: terms.map((term) => ({ term, experience: "" })) }, posting);
+    expect(plan).toHaveLength(KEYWORD_CAP);
+    expect(plan.map((p) => p.term)).toEqual(Array.from({ length: 12 }, (_, i) => `skill ${i}`));
+  });
+
+  it("trims an older long list to 12, keeping the person's own keywords and the starred picks", () => {
+    const rows = [row("tools"), ...Array.from({ length: 20 }, (_, i) => row(`skill ${i}`)), row("portfolio"), row("my own thing", { mine: true })];
+    const out = trimRows(rows, ["skill 18", "skill 19"], posting);
+    expect(out).toHaveLength(12);
+    expect(out.map((r) => r.term)).toEqual([...Array.from({ length: 9 }, (_, i) => `skill ${i}`), "skill 18", "skill 19", "my own thing"]);
+  });
+
+  it("leaves a short list alone", () => {
+    const rows = [row("Figma"), row("accessibility")];
+    expect(trimRows(rows, [], "Figma and accessibility")).toEqual(rows);
+  });
+});
+
+describe("keywords come from the posting's own text (#1531)", () => {
+  const posting = "Role: Senior Product Designer\nCompany: Acme\nLocation: New York\nWork mode: Remote\n\nSenior Product Designer\nYou will own the booking flow on iOS and Android.\nMust have design systems experience and user research.";
+  const row = (term: string, extra: Partial<KeywordRow> = {}): KeywordRow => ({ term, support: null, mine: false, removed: false, used: false, ...extra });
+
+  it("drops the title and the fact lines from a new plan", () => {
+    const plan = planFrom({ keywords: ["Senior Product Designer", "Product Designer", "Remote", "design systems", "user research", "iOS"].map((term) => ({ term, experience: "" })) }, posting);
+    expect(plan.map((p) => p.term)).toEqual(["design systems", "user research", "iOS"]);
+  });
+
+  it("drops them from an older list too, even when starred, but keeps the person's own", () => {
+    const rows = [row("Remote"), row("Product Designer"), row("design systems"), row("Remote work", { mine: true })];
+    expect(trimRows(rows, ["Remote"], posting).map((r) => r.term)).toEqual(["design systems", "Remote work"]);
+  });
+
+  it("gives the model the title as context and the posting body to pick from", () => {
+    const p = keywordPlanPrompt(posting, "resume", "");
+    expect(p).toContain("<job_title context only, not a keyword>\nSenior Product Designer\n</job_title>");
+    expect(p).not.toContain("Work mode: Remote");
+    expect(p).toContain("Must have design systems experience");
+  });
+
+  it("lets a fact the interview saved back a keyword", () => {
+    expect(supportFor("design systems", undefined, "Resume without it", [], ["Built the design systems library for 3 apps"])).toEqual({ line: "Built the design systems library for 3 apps", from: "notes" });
+    expect(supportFor("Kubernetes", undefined, "Resume", [], ["Built the design systems library"])).toBeNull();
   });
 });

@@ -24,21 +24,24 @@ const CLOSED = [
   // or "no longer accepting applications via email; apply on this page" (#1027).
   /no longer (accepting (applications|applicants|candidates)\b(?! (from|via|by (e-?mail|mail|post|phone|fax)|through (e-?mail|mail|linkedin|indeed|recruiters?|agencies))\b))/i,
   // "Live" too: "This job is no longer live" (#1451).
+  // Not "no longer available to candidates outside the US" or "for applicants who need a visa": who may apply changed, the
+  // job did not end (#1589). "No longer available to apply" still closes.
   // "Available", "active" and "posted" need the job as the subject, or start a sentence: "Visa sponsorship is no longer
   // available for this role" is about the visa, not the job (#933).
-  // Not "Visa sponsorship for this position is no longer available": there the job is the object of "for" (#980).
+  // Not "Visa sponsorship for this position is no longer available": there the job is the object of "for" (#980). "For
+  // this job posting" too: the guard skips one leading job noun (#1569).
   // Not "the opportunity to work fully remote is no longer available": the noun leads into something else (#1007).
   // Not "This role is no longer available as fully remote" or "no longer available in Austin": the job changed, it did not
   // end (#1494).
-  /(?<!\b(?:for|of|to|on|with|in|about) (?:this |the |a |our )?)\b(job|position|posting|role|opening|requisition|listing|vacancy|opportunity|page)\b(?!\s+to\b)[^.!?\n]{0,30}?\bno longer (available|active|posted|live|open(?! to\b))\b(?!\s+(?:as|in|at)\b|\s+(?:fully\s+)?(?:remote|hybrid|on-?site)\b|\s+for\s+(?:fully\s+)?(?:remote|hybrid|on-?site)\b)/i,
+  /(?<!\b(?:for|of|to|on|with|in|about) (?:this |the |a |our )?(?:(?:job|role|position) )?)\b(job|position|posting|role|opening|requisition|listing|vacancy|opportunity|page)\b(?!\s+to\b)[^.!?\n]{0,30}?\bno longer (available|active|posted|live|open(?! to\b))\b(?!\s+(?:as|in|at)\b|\s+(?:fully\s+)?(?:remote|hybrid|on-?site)\b|\s+for\s+(?:fully\s+)?(?:remote|hybrid|on-?site)\b|\s+(?:to|for)\s+(?:[\w’'-]+\s+){0,3}?(?:candidates|applicants|people|persons|residents|anyone|those|individuals|workers|contractors|students|graduates|citizens|employees)\b)/i,
   // "Open" likewise: "Our San Francisco office is no longer open" is about the office (#1298).
   // A colon starts one only after a status label: "Visa sponsorship: No longer available" is about the visa (#1007).
-  /(?:^|[.!?\n]\s*|\b(?:text|status|job status|posting status|job|posting|position|role):\s*)(?:sorry[,!]?\s*)?no longer (available|active|posted|live|open(?! to\b))\b/im,
+  /(?:^|[.!?\n]\s*|\b(?:text|status|job status|posting status|job|posting|position|role):\s*)(?:sorry[,!]?\s*)?no longer (available|active|posted|live|open(?! to\b))\b(?!\s+(?:to|for)\s+(?:[\w’'-]+\s+){0,3}?(?:candidates|applicants|people|persons|residents|anyone|those|individuals|workers|contractors|students|graduates|citizens|employees)\b)/im,
   // Not "open until the position has been filled" or "once the position has been filled, this posting will be removed" (#903).
   // Built In's "Sorry, this job was removed at 3:14 a.m. ...": "was" with filled, closed or removed only, so "this role was
   // available to remote candidates" stays open (#1271). "Has been archived" and "was archived" too (#1279).
   // Deleted, withdrawn, unpublished, cancelled and taken down too, but not "taken down to three days a week" (#1451).
-  /(?<!\b(?:(?:until|till|til)(?: such time as)?|once|when|after|if|before|unless|for|of|to|on|with|in|about) (?:the |this |a |our )?)(?<!\b(?:each|every|any|all|no|which|whether) )(job|position|posting|role|requisition|opening|vacancy|opportunity|listing)( ad)? ((is )?no longer (available|filled|closed|removed|archived|deleted|withdrawn|unpublished|cancell?ed|taken down)(?!\s+(?:as|in|at)\b|\s+(?:fully\s+)?(?:remote|hybrid|on-?site)\b|\s+for\s+(?:fully\s+)?(?:remote|hybrid|on-?site)\b)|(is )?has (?:already |now )?been (available|filled|closed|removed|archived|deleted|withdrawn|unpublished|cancell?ed|taken down)|was (filled|closed|removed|archived|deleted|withdrawn|unpublished|cancell?ed|taken down)\b)(?! to\b)/i,
+  /(?<!\b(?:(?:until|till|til)(?: such time as)?|once|when|after|if|before|unless|for|of|to|on|with|in|about) (?:the |this |a |our )?(?:(?:job|role|position) )?)(?<!\b(?:each|every|any|all|no|which|whether) (?:(?:job|role|position) )?)(job|position|posting|role|requisition|opening|vacancy|opportunity|listing)( ad)? ((is )?no longer (available|filled|closed|removed|archived|deleted|withdrawn|unpublished|cancell?ed|taken down)(?!\s+(?:as|in|at)\b|\s+(?:fully\s+)?(?:remote|hybrid|on-?site)\b|\s+for\s+(?:fully\s+)?(?:remote|hybrid|on-?site)\b|\s+(?:to|for)\s+(?:[\w’'-]+\s+){0,3}?(?:candidates|applicants|people|persons|residents|anyone|those|individuals|workers|contractors|students|graduates|citizens|employees)\b)|(is )?has (?:already |now )?been (available|filled|closed|removed|archived|deleted|withdrawn|unpublished|cancell?ed|taken down)|was (filled|closed|removed|archived|deleted|withdrawn|unpublished|cancell?ed|taken down)\b)(?! to\b)/i,
   // Ending there too, as below (#1516).
   /(job|posting|position|page) (was )?not found(?=\s*(?:[.!?,;:|)\n-]|$))/i,
   /(?<!\b(?:until|till|til|once|when|after|if|before|unless) )this (job|position|posting|role)( ad)? (is |has )?(now )?(expired|closed|been filled)\b(?! to\b|[- ]?date\b|-)/i,
@@ -51,7 +54,9 @@ const CLOSED = [
   // "The job you are trying to apply for is no longer available", "attempting to view" too (#1251). "Apply to" too (#1441).
   /(job|position|posting|role|page) you(['’]re| are) (looking for|(trying|attempting) to (apply (for|to)|access|view|reach|open)) ((has|is|was|might have|may have) (been )?(filled|removed|closed|deleted|expired)|is no longer (available|active|open))\b/i,
   /(job|position|posting|role|opening) is not available anymore/i,
-  /page you(['’]re| are) looking for (doesn['’]t|does not|no longer) exists?|(can(['’]|no)t|couldn['’]t|could not) find (that|this|the) page/i,
+  // A duty about such a screen is not one: "the screen that says the page you're looking for doesn't exist", "customers who
+  // can't find the page they need", "users who couldn't find the page, across web" (#1553).
+  /(?<!\b(?:says|said|saying|reads|shows|showing|tells (?:them|users|people|you)|like|when|if|where|that|which) (?:that )?(?:the |this )?)page you(['’]re| are) looking for (doesn['’]t|does not|no longer) exists?|(?<!\bwho )(can(['’]|no)t|couldn['’]t|could not) find (that|this|the) page(?=\s*(?:[.!?\n]|$)|\s+you(?:['’]re| are| were)? (?:looking for|requested|wanted))/i,
   // A soft 404 that answers 200: "The page you requested could not be found", "This page cannot be found." (#1441).
   // "This/the X cannot be found" only as the end of the sentence, so "the job cannot be found on other boards" stays open.
   /\b(page|job|position|posting) you(['’]ve| have)? requested (could not|cannot|can['’]t) be found|\b(this|the) (page|job|position|posting) (could not|cannot|can['’]t) be found\s*(?:[.!?\n]|$)/i,
@@ -67,7 +72,7 @@ const CLOSED = [
   // "This requisition is closed" (#1361).
   // Not a duty about other jobs: "every requisition is closed out", "each role is closed in Greenhouse", "the opportunity is
   // closed won" (#1493).
-  /(?<!\b(?:each|every|any|all|no|which|whether) )\b(job|posting|position|role|vacancy|opportunity|listing|advert|opening|requisition)( posting| post| ad| advert| opening)? (is |has )?(now )?closed\b(?! to\b|[- ]?date\b|-|\s+(?:out|won|lost)\b)/i,
+  /(?<!\b(?:each|every|any|all|no|which|whether) (?:(?:job|role|position) )?)\b(job|posting|position|role|vacancy|opportunity|listing|advert|opening|requisition)( posting| post| ad| advert| opening)? (is |has )?(now )?closed\b(?! to\b|[- ]?date\b|-|\s+(?:out|won|lost)\b)/i,
   // Not "not accepting applications at this time from third-party recruiters" (#1083).
   /not accepting applications (for this (job|role|position)|at this time)(?!,? (from|via|by|through)\b)/i,
   // Only as the page's own message, ending the line, sentence or title: "Own our 404 page not found experience" and "Page
@@ -102,9 +107,24 @@ const CONDITION = /\b(until|till|til|as soon as|once(?! again\b)|when|whenever|i
 // count only in the clause right before the phrase (#1006).
 const NEAR_CONDITION = /\b(after|before)\b/i;
 
+// A closed phrase someone reports is a duty about such a screen: "the page that tells seekers this job has expired", "the
+// page where a job posting has expired" (#1591). Checked in the clause right before the phrase.
+const REPORTED = /\b(tells?|telling|told|says|saying|shows|showing|displays|displaying|warns?|warning|notif(?:y|ies|ying)|explains?|lets? (?:\w+ ){1,2}know|where)\b/i;
+// A condition right after the phrase makes it a rule about other postings: "a listing is no longer live once the role is
+// filled" (#1591).
+const THEN_CONDITION = /^\s*(?:once|when|whenever|after|until|till|if|as soon as)\b/i;
+
+// A closed phrase given as an example is copy to write, not the page's own message: "write error messages like 'This job
+// is no longer available'" or "rewrite \"Page not found\"" (#1620): an opening quote not yet closed before the phrase, or
+// "like" or "such as" right before it, but not "looks like this job is no longer available". A closing quote ("Senior Designer" is ...) follows a word, so it doesn't count.
+const QUOTED = /(?:^|[\s(\[:])["“‘'][^"“”‘’'\n]{0,40}$|(?<!\b(?:looks?|looked|seems?|seemed|sounds?) )\b(?:like|such as)\s+(?:(?:the|this|a|your|our)\s+)?$/i;
+
 const lastOf = (s: string, marks: string[]) => Math.max(...marks.map((c) => s.lastIndexOf(c)));
 
-/** A closed phrase counts unless it is led into with a condition (#980). */
+/**
+ * A closed phrase counts unless it is led into with a condition (#980), reported, followed by a condition (#1591), or
+ * quoted as an example (#1620).
+ */
 function saysClosed(r: RegExp, text: string) {
   for (const m of text.matchAll(new RegExp(r.source, r.flags.includes("g") ? r.flags : `${r.flags}g`))) {
     // A match can start on the separator before the phrase ("\nNo longer available"): look back from the phrase itself,
@@ -112,6 +132,7 @@ function saysClosed(r: RegExp, text: string) {
     const before = text.slice(0, m.index + (/^[.!?:;\n\s]*/.exec(m[0])?.[0].length ?? 0));
     const sentence = before.slice(lastOf(before, [".", "!", "?", "\n", ";"]) + 1);
     const clause = sentence.slice(lastOf(sentence, [",", ":"]) + 1);
+    if (REPORTED.test(clause) || QUOTED.test(before) || THEN_CONDITION.test(text.slice(m.index + m[0].length))) continue;
     if (!CONDITION.test(sentence) && !NEAR_CONDITION.test(clause)) return true;
   }
   return false;

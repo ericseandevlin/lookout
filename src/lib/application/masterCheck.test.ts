@@ -106,4 +106,36 @@ describe("drafting from the confirmed master", () => {
     expect(s[0]).toMatch(/^"Grew the web development team.*under Vice President, UX Engineering, Citi here, but under Web Development Team Lead, RPM/);
     expect(roleSwaps(master, master)).toEqual([]);
   });
+
+  // #1638: two headings that share a word ("product", the employer) are still two jobs.
+  const twoJobs =
+    "## Experience\n### Senior Product Designer, Acme | 2022 – Present\n- Led the checkout redesign that lifted conversion by twelve percent\n- Ran weekly design critiques for the payments squad\n### Product Designer, Globex | 2018 – 2022\n- Built the mobile onboarding flow used by two million members\n- Set up usability testing with field researchers";
+  it("flags a bullet moved between jobs whose titles share a word", () => {
+    const draft =
+      "## Experience\n### Senior Product Designer, Acme | 2022 – Present\n- Led the checkout redesign that lifted conversion by twelve percent\n- Built the mobile onboarding flow used by two million members\n### Product Designer, Globex | 2018 – 2022\n- Set up usability testing with field researchers";
+    const s = roleSwaps(twoJobs, draft);
+    expect(s).toHaveLength(1);
+    expect(s[0]).toMatch(/^"Built the mobile onboarding flow.*under Senior Product Designer, Acme here, but under Product Designer, Globex/);
+    expect(roleSwaps(twoJobs, twoJobs)).toEqual([]);
+  });
+
+  it("flags a bullet moved between titles at the same employer", () => {
+    const grouped =
+      "## Experience\n### Acme\n#### Design Manager | 2023 – Present\n- Hired and coached a team of six designers\n- Set the design roadmap with product leads\n#### Product Designer | 2019 – 2023\n- Shipped the new search results page for the web app\n- Ran diary studies with small business owners";
+    const draft =
+      "## Experience\n### Acme\n#### Design Manager | 2023 – Present\n- Hired and coached a team of six designers\n- Shipped the new search results page for the web app\n#### Product Designer | 2019 – 2023\n- Ran diary studies with small business owners";
+    const s = roleSwaps(grouped, draft);
+    expect(s).toHaveLength(1);
+    expect(s[0]).toMatch(/^"Shipped the new search results page.*under Design Manager, Acme here, but under Product Designer, Acme/);
+    expect(roleSwaps(grouped, grouped)).toEqual([]);
+  });
+
+  it("pairs a reworded heading with the job its bullets come from", () => {
+    const promoted =
+      "## Experience\n### Senior Product Designer, Acme | 2022 – Present\n- Led the checkout redesign that lifted conversion by twelve percent\n- Ran weekly design critiques for the payments squad\n### Product Designer, Acme | 2019 – 2022\n- Built the mobile onboarding flow used by two million members";
+    // "Lead Product Designer" shares more words with "Product Designer, Acme", but its bullets are the senior job's.
+    const draft =
+      "## Experience\n### Lead Product Designer, Acme Inc | 2022 – Present\n- Led the checkout redesign that lifted conversion by twelve percent\n- Ran weekly design critiques for the payments squad team\n### Product Designer, Acme | 2019 – 2022\n- Built the mobile onboarding flow used by two million members";
+    expect(roleSwaps(promoted, draft)).toEqual([]);
+  });
 });

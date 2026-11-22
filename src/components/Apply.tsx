@@ -1,5 +1,6 @@
 "use client";
 
+import { InterviewBanner } from "./InterviewBanner";
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import type { ApplicationStatus, AutoApplySettings } from "@/lib/db/schema";
@@ -9,8 +10,7 @@ import { Seg, btn } from "./Settings";
 import { useConfirm } from "./Confirm";
 import { XIcon } from "./icons";
 import { api } from "./store";
-import { SubmitModeNote } from "./SubmitModeNote";
-import { ATS_NAME, type SubmitMode } from "@/lib/application/submitMode";
+import type { SubmitMode } from "@/lib/application/submitMode";
 import { useFocusTrap } from "./useFocusTrap";
 import { color, font } from "@/lib/tokens";
 
@@ -116,23 +116,24 @@ export function ApplyPage() {
   };
 
   const on = !!settings?.enabled;
-  const summary = !settings ? "" : on ? `Queues ${settings.threshold === 5 ? "level 5 matches" : "level 4 and 5 matches"} automatically, up to ${settings.dailyCap} a day` : "Only roles you queue yourself";
+  // The title row holds only the state, the switch and a gear (#1531). The limits live in Settings.
+  const control = settings && (
+    <div data-auto-apply style={{ display: "flex", alignItems: "center", gap: 10 }}>
+      <span style={{ fontSize: font.md, fontWeight: 700 }}>Auto-apply {on ? "on" : "off"}</span>
+      <Switch on={on} onToggle={() => save({ enabled: !on })} />
+      <button onClick={() => setPanel(true)} aria-label="Settings" title="Settings" style={{ ...btn("text"), width: 40, height: 40, padding: 0, display: "inline-flex", alignItems: "center", justifyContent: "center", flex: "none" }}>
+        <svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <circle cx="12" cy="12" r="3" />
+          <path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z" />
+        </svg>
+      </button>
+    </div>
+  );
 
   return (
     <div className="page-pad lk-page w-page" style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-      <PageHead eyebrow="Beta" title="Auto-apply" intro="Lookout drafts each application for your review and only sends what you approve." />
-
-      {settings && (
-        <div style={{ display: "flex", alignItems: "center", gap: 14, minHeight: 64, padding: "10px 12px 10px 18px", borderRadius: 14, background: "#fff", border: `1.5px solid ${color.border}` }}>
-          <span aria-hidden style={{ width: 10, height: 10, borderRadius: "50%", flex: "none", background: on ? "#427D33" : "#CFC6B9" }} />
-          <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column" }}>
-            <span style={{ fontSize: font.md, fontWeight: 700 }}>Auto-apply {on ? "on" : "off"}</span>
-            <span style={{ fontSize: font.base, color: color.t2, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{summary}</span>
-          </div>
-          <button onClick={() => setPanel(true)} style={{ ...btn("outline"), height: 38, flex: "none" }}>Settings</button>
-          <Switch on={on} onToggle={() => save({ enabled: !on })} />
-        </div>
-      )}
+      <PageHead eyebrow="Beta" title="Auto-apply" intro="Lookout drafts each application for your review and only sends what you approve." action={control} />
+      <InterviewBanner />
 
       {err && <div role="alert" style={{ fontSize: font.base, color: color.brick }}>{err}</div>}
       {!apps && !err && <div role="status" style={{ fontSize: font.base, color: color.t2 }}>Loading…</div>}
@@ -169,32 +170,17 @@ export function ApplyPage() {
                       style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap", padding: "12px 14px", borderRadius: 12, background: focusId === a.id ? "#FDF3E8" : "#fff", border: `1.5px solid ${focusId === a.id ? color.orange : color.border}`, transition: "background-color .4s ease, border-color .4s ease", scrollMarginTop: 120 }}
                     >
                       <div style={{ flex: "1 1 260px", minWidth: 0 }}>
-                        <div style={{ fontSize: font.md, fontWeight: 600, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                          {a.items > 0 ? (
-                            <Link href={`/apply/${a.id}`} style={{ color: color.ink }}>
-                              {a.role}
-                            </Link>
-                          ) : (
-                            a.role
-                          )}
-                        </div>
-                        <div style={{ fontSize: font.base, color: color.t2 }}>
-                          {a.company}
-                          {a.score ? ` · match ${a.score}/5` : ""}
-                          {a.items > 0 ? ` · ${a.items} things to fill${a.ats ? ` on ${ATS_NAME[a.ats] ?? a.ats}` : ""}` : ""}
+                        <div style={{ fontSize: font.md, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                          <span style={{ fontWeight: 700 }}>{a.company}</span> · {a.role}
                         </div>
                         {a.error && (
                           <div role="alert" style={{ fontSize: font.base, color: color.brick, marginTop: 4 }}>
                             {a.error}
                           </div>
                         )}
-                        {a.status !== "submitted" && a.status !== "canceled" && (
-                          <div style={{ marginTop: 6 }}>
-                            <SubmitModeNote submit={a.submit} compact />
-                          </div>
-                        )}
                       </div>
-                      <span style={{ padding: "5px 11px", borderRadius: 999, fontSize: font.base, fontWeight: 600, background: st.bg, color: st.ink }}>{st.label}</span>
+                      {/* "Ready for your review" would only repeat the Review button. */}
+                      {a.status !== "needs_review" && <span style={{ padding: "5px 11px", borderRadius: 999, fontSize: font.base, fontWeight: 600, background: st.bg, color: st.ink }}>{st.label}</span>}
                       {(a.status === "needs_review" || a.status === "manual" || a.status === "approved" || a.status === "submitted") && (
                         <Link href={`/apply/${a.id}`} style={{ ...btn(a.status === "submitted" ? "outline" : "solid"), height: 34, fontSize: font.base, display: "inline-flex", alignItems: "center", textDecoration: "none" }}>
                           {a.status === "submitted" ? "See what was sent" : a.status === "manual" || a.status === "approved" ? "Send it" : "Review"}
@@ -213,13 +199,6 @@ export function ApplyPage() {
             </section>
           );
         })}
-
-      {apps && apps.length > 0 && (
-        <p style={{ margin: "4px 0 0", fontSize: font.base, color: color.t2 }}>
-          To send, open the job in Firefox with the Lookout extension: it fills the form and you press Submit. No extension? Each application has a two-minute checklist.{" "}
-          <button onClick={() => setPanel(true)} style={{ ...btn("text"), height: "auto", padding: 0, fontSize: font.base }}>How it works</button>
-        </p>
-      )}
 
       {panel && settings && <SettingsPanel settings={settings} save={save} close={() => setPanel(false)} />}
     </div>

@@ -19,6 +19,12 @@ describe("openSecretFields (#274)", () => {
   it("skips empty or missing fields", () => {
     expect(openSecretFields({ apiKey: "" }, ["apiKey", "braveKey"], dec).unreadable).toEqual([]);
   });
+  it("treats a saved empty key as never set, so the env key still applies after a save (#1532)", () => {
+    const r = openSecretFields({ apiKey: "", model: "m" }, ["apiKey"], dec);
+    expect("apiKey" in r.saved).toBe(false);
+    const env = { apiKey: "sk-env", model: "x" };
+    expect({ ...env, ...r.saved }).toEqual({ apiKey: "sk-env", model: "m" });
+  });
 });
 
 describe("nextSecret", () => {

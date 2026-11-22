@@ -24,6 +24,52 @@ describe("jobKey (#169)", () => {
     expect(jobKey("https://careers.example.com/job?ref=li&jobId=R-42")).toBe("url:careers.example.com/job?jobid=r-42");
     expect(jobKey("https://careers.example.com/job?job_id=R-42")).toBe(jobKey("https://careers.example.com/job?jobId=R-42&src=mail"));
   });
+  it("keys an Indeed or LinkedIn posting by its job ID, however the link is written (#1578)", () => {
+    const jk = "indeed:0a1b2c3d4e5f6789";
+    for (const u of [
+      "https://www.indeed.com/viewjob?jk=0a1b2c3d4e5f6789",
+      "https://www.indeed.com/viewjob?jk=0A1B2C3D4E5F6789&from=serp&vjs=3",
+      "https://indeed.com/viewjob?from=serp&tk=1h2j3k&jk=0a1b2c3d4e5f6789&advn=123",
+      "https://www.indeed.com/jobs?q=designer&vjk=0a1b2c3d4e5f6789",
+    ])
+      expect(jobKey(u), u).toBe(jk);
+    expect(jobKey("https://www.indeed.com/viewjob?jk=1111111111111111")).not.toBe(jk);
+    const li = "linkedin:3812345678";
+    for (const u of [
+      "https://www.linkedin.com/jobs/view/3812345678",
+      "https://www.linkedin.com/jobs/view/3812345678/?trk=public_jobs",
+      "https://www.linkedin.com/jobs/view/senior-product-designer-at-acme-3812345678",
+      "https://uk.linkedin.com/jobs/view/senior-product-designer-at-acme-3812345678/",
+    ])
+      expect(jobKey(u), u).toBe(li);
+    expect(jobKey("https://www.linkedin.com/jobs/search?keywords=designer")).toMatch(/^url:/);
+  });
+  it("keys a LinkedIn job open beside a search or collection like its own page (#1583)", () => {
+    for (const u of [
+      "https://www.linkedin.com/jobs/search/?currentJobId=3812345678&keywords=designer",
+      "https://www.linkedin.com/jobs/collections/recommended/?currentJobId=3812345678",
+      "https://ca.linkedin.com/jobs/search?geoId=101174742&currentJobId=3812345678",
+    ])
+      expect(jobKey(u), u).toBe("linkedin:3812345678");
+    expect(sameJob(["https://www.linkedin.com/jobs/search/?currentJobId=3812345678"], ["https://www.linkedin.com/jobs/view/3812345678/"])).toBe(true);
+    expect(jobKey("https://www.linkedin.com/jobs/search/?currentJobId=abc")).toMatch(/^url:/);
+    expect(jobKey("https://example.com/jobs?currentJobId=3812345678")).toMatch(/^url:/);
+  });
+  it("keys a Glassdoor job by its listing ID, and keeps ?jobRequisitionId= (#1605)", () => {
+    for (const u of [
+      "https://www.glassdoor.com/partner/jobListing.htm?pos=101&ao=1136043&guid=abc&jobListingId=1009012345678&jrtk=xyz",
+      "https://www.glassdoor.com/job-listing/senior-designer-acme-JV_IC1132348_KO0,15_KE16,20.htm?jl=1009012345678",
+      "https://www.glassdoor.com/Job/new-york-ny-designer-jobs-SRCH_IL.0,11_IC1132348_KO12,20.htm?jl=1009012345678",
+      "https://www.glassdoor.co.uk/partner/jobListing.htm?jobListingId=1009012345678",
+    ])
+      expect(jobKey(u), u).toBe("glassdoor:1009012345678");
+    expect(jobKey("https://www.glassdoor.com/partner/jobListing.htm?jobListingId=1009000000001")).not.toBe(jobKey("https://www.glassdoor.com/partner/jobListing.htm?jobListingId=1009000000002"));
+    expect(jobKey("https://www.glassdoor.com/Job/new-york-ny-designer-jobs-SRCH_IL.0,11.htm")).toMatch(/^url:/);
+    expect(jobKey("https://example.com/jobs?jl=1009012345678")).toMatch(/^url:/);
+    const req = (id: string) => jobKey(`https://careers.acme.com/jobs/job-details?jobRequisitionId=${id}&utm_source=x`);
+    expect(req("R-12345")).toBe("url:careers.acme.com/jobs/job-details?jobrequisitionid=r-12345");
+    expect(req("R-12345")).not.toBe(req("R-67890"));
+  });
   it("keys a Workday job by tenant and job slug, ignoring locale and the apply steps (#622)", () => {
     const post = "https://acme.wd5.myworkdayjobs.com/en-US/External/job/New-York-NY/Senior-Designer_R12345";
     const key = "workday:acme.wd5.myworkdayjobs.com:senior-designer_r12345";
@@ -75,6 +121,12 @@ describe("sameJob", () => {
     const up = (id: string) => `https://recruiting.ultipro.com/ACM1000ACME/JobBoard/abc-123/OpportunityDetail?opportunityId=${id}`;
     expect(sameJob([up("11111111-2222-3333-4444-555555555555")], [up("99999999-2222-3333-4444-555555555555")])).toBe(false);
     expect(sameJob([up("11111111-2222-3333-4444-555555555555").replace("opportunityId", "opportunityid")], [up("11111111-2222-3333-4444-555555555555")])).toBe(true);
+  });
+  it("tells Phenom apply pages apart by ?jobSeqNo=, not as the careers home (#1584)", () => {
+    const ph = (seq: string, extra = "") => `https://careers.acme.com/us/en/apply?jobSeqNo=${seq}${extra}`;
+    expect(sameJob([ph("ACMEUSR123EXTERNALENUS")], [ph("ACMEUSR456EXTERNALENUS")])).toBe(false);
+    expect(sameJob([ph("ACMEUSR123EXTERNALENUS", "&step=1&stepname=personalInformation")], [ph("ACMEUSR123EXTERNALENUS")])).toBe(true);
+    expect(sameJob(["https://careers.acme.com/us/en"], [ph("ACMEUSR123EXTERNALENUS")])).toBe(false);
   });
   it("tells SuccessFactors jobs apart by ?career_job_req_id= (#840)", () => {
     const sf = (id: number, extra = "") => `https://career4.successfactors.com/career?company=acme&career_ns=job_listing${extra}&career_job_req_id=${id}`;

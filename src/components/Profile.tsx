@@ -21,7 +21,10 @@ const inputBase: React.CSSProperties = {
 export function ProfileTabs() {
   const path = usePathname();
   const { state } = useStore();
-  const tabs: [string, string][] = [["/profile", "Your answers"], ["/profile/materials", "Materials"], ["/profile/sees", "What Lookout sees"]];
+  // With the interview on (#1449): Interview, Materials, What Lookout knows, as in the design.
+  const tabs: [string, string][] = state.user.interview
+    ? [["/interview", "Interview"], ["/profile/materials", "Materials"], ["/profile/knows", "What Lookout knows"]]
+    : [["/profile", "Your answers"], ["/profile/materials", "Materials"], ["/profile/sees", "What Lookout sees"]];
   // Auto-apply beta: the answers it reuses on every application form (#108).
   if (state.user.autoApply) tabs.push(["/profile/application", "Application answers"]);
   // Each tab is its own page, so arrows move focus between tabs and Enter opens one (manual activation).
@@ -37,6 +40,8 @@ export function ProfileTabs() {
   const anyOn = tabs.some(([href]) => href === path);
   return (
     // Drawn as tabs, not pills: one baseline, the open page underlined (#277).
+    // Phone only: on desktop the sidebar lists the same pages (#1531).
+    <div className="mob-only">
     <div role="tablist" aria-label="Profile sections" onKeyDown={onKey} style={{ display: "flex", gap: 24, overflowX: "auto", overflowY: "hidden", boxShadow: `inset 0 -1px 0 ${color.border}`, marginBottom: 22 }}>
       {tabs.map(([href, label]) => {
         const on = path === href;
@@ -46,6 +51,7 @@ export function ProfileTabs() {
           </Link>
         );
       })}
+    </div>
     </div>
   );
 }
@@ -100,11 +106,20 @@ export function NextStep({ here }: { here: "materials" | "finds" }) {
   );
 }
 
-export function PageHead({ eyebrow, title, intro, children }: { eyebrow: string; title: string; intro?: string; children?: React.ReactNode }) {
+/** action: a control on the title row, at the right. It wraps under the title when the row is too narrow. */
+export function PageHead({ eyebrow, title, intro, action, children }: { eyebrow: string; title: string; intro?: string; action?: React.ReactNode; children?: React.ReactNode }) {
+  const h1 = <h1 style={{ margin: "8px 0 0", fontSize: font["4xl"], fontWeight: 700, letterSpacing: "-0.02em" }}>{title}</h1>;
   return (
     <div style={{ padding: "8px 0" }}>
       <div style={{ fontSize: font.base, fontWeight: 700, letterSpacing: ".14em", textTransform: "uppercase", color: color.brick }}>{eyebrow}</div>
-      <h1 style={{ margin: "8px 0 0", fontSize: font["4xl"], fontWeight: 700, letterSpacing: "-0.02em" }}>{title}</h1>
+      {action ? (
+        <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", flexWrap: "wrap", gap: "8px 16px" }}>
+          {h1}
+          {action}
+        </div>
+      ) : (
+        h1
+      )}
       {intro && <p style={{ margin: "8px 0 0", fontSize: font.base, lineHeight: 1.5, color: color.t2, maxWidth: 560, textWrap: "pretty" }}>{intro}</p>}
       {children}
     </div>
@@ -276,8 +291,8 @@ export function Profile() {
           eyebrow="Search profile"
           title={cfg.id === "rfp" ? "Tell Lookout about your business" : "Five questions from your recruiter"}
           intro={cfg.id === "rfp"
-            ? "These answers tell the search what your business can win, and they shape every score and fit rating on your board."
-            : "Your resume and LinkedIn show what you've done. These answers tell the search what you want next, and they shape every score and fit rating on your board."}
+            ? "These shape every score on your board."
+            : "What you want next. These shape every score on your board."}
         >
           <div style={{ display: "flex", alignItems: "center", gap: 12, marginTop: 16 }}>
             <div role="progressbar" aria-valuemin={0} aria-valuemax={total} aria-valuenow={answered} style={{ flex: 1, maxWidth: 320, height: 6, borderRadius: 999, background: color.border, overflow: "hidden" }}>
@@ -340,7 +355,10 @@ export function Profile() {
                       );
                     })}
                   </div>
-                  <input id={`q-${q.key}`} className="f-brick" value={str(q.areaKey)} onChange={set(q.areaKey)} placeholder="Neighborhoods or cities" aria-label="Areas" maxLength={300} style={{ ...inputBase, height: 42, padding: "0 13px" }} />
+                  {/* Remote alone needs no place (#1531). */}
+                  {!(arr(q.modesKey).length === 1 && arr(q.modesKey)[0] === "Remote") && (
+                    <input id={`q-${q.key}`} className="f-brick" value={str(q.areaKey)} onChange={set(q.areaKey)} placeholder="Neighborhoods or cities" aria-label="Areas" maxLength={300} style={{ ...inputBase, height: 42, padding: "0 13px" }} />
+                  )}
                 </>
               )}
             </div>

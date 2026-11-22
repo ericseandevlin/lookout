@@ -486,6 +486,30 @@ describe("classifyPage: a job that changed work mode or city is still open (#149
   });
 });
 
+describe("duties about a page people can't find (#1553)", () => {
+  const posting = (duty: string) =>
+    `TITLE: Senior Content Designer at Acme\n\nTEXT:\nAcme is hiring a Senior Content Designer.\nWhat you'll do\n${duty}\nPartner with research and engineering.\nRequirements\n5+ years of content design.`;
+  it.each([
+    "Rework site navigation so customers who can't find the page they need get there in one click.",
+    "Write error-state copy, like the message shown to users who couldn't find the page, across web and app.",
+    "Write microcopy for empty states and the screen that says the page you're looking for doesn't exist.",
+    "Help visitors who could not find the page.",
+  ])("keeps %s open", (duty) => {
+    expect(classifyPage(200, posting(duty)).state).toBe("open");
+  });
+
+  it.each([
+    "Sorry, we couldn't find that page.",
+    "We can't find the page you're looking for.",
+    "We couldn’t find the page you were looking for. Go back to all jobs",
+    "Oops! The page you're looking for doesn't exist.",
+    "Sorry, the page you are looking for does not exist",
+    "Hmm, we can't find this page",
+  ])("still reads %s as closed", (text) => {
+    expect(classifyPage(200, `TITLE: Acme Careers\n\nTEXT:\n${text}`).state).toBe("gone");
+  });
+});
+
 describe("duties about a 404 screen or an expired posting (#1516)", () => {
   it.each([
     "Product Designer. Own our 404 page not found experience and empty states.",
@@ -508,5 +532,83 @@ describe("duties about a 404 screen or an expired posting (#1516)", () => {
     "Job posting expired",
   ])("still reads %s as closed", (text) => {
     expect(classifyPage(200, text).state).toBe("gone");
+  });
+});
+
+describe("classifyPage: 'for this job posting' and 'every job posting' are not the posting closing (#1569)", () => {
+  const page = (line: string) => `TITLE: Designer - Acme\n\nTEXT:\nAcme builds tools for teams.\n${line}\nWhat you'll do\nDesign things.`;
+  it.each([
+    "Visa sponsorship for this job posting is no longer available.",
+    "Relocation support for this job opening is no longer available.",
+    "Visa sponsorship for the role posting is no longer available.",
+    "Make sure every job posting is closed in Greenhouse and the hiring team is told.",
+    "Confirm each job opening has been filled before the quarter ends.",
+  ])("keeps %j open", (line) => {
+    expect(classifyPage(200, page(line)).state).toBe("open");
+  });
+
+  it("still reads the posting's own two-noun closed line as gone", () => {
+    for (const line of [
+      "This job posting is no longer available.",
+      "This job opening is closed.",
+      "This job posting has been filled.",
+      "Sorry, this job posting is no longer active.",
+    ])
+      expect(classifyPage(200, `TITLE: Acme\n\nTEXT:\n${line}`).state, line).toBe("gone");
+  });
+});
+
+describe("classifyPage: a job no longer available to some people is still open (#1589)", () => {
+  it("keeps a posting that narrowed who may apply", () => {
+    for (const t of [
+      "This opportunity is no longer available to candidates outside the US.",
+      "This position is no longer available to candidates requiring sponsorship.",
+      "This role is no longer available for candidates who need a visa.",
+      "This role is no longer available to applicants in Colorado.",
+      "Note: No longer available to internal candidates.",
+    ])
+      expect(classifyPage(200, `Senior Designer\n${t}`).state, t).toBe("open");
+  });
+  it("still closes one that ended", () => {
+    for (const t of ["This position is no longer available.", "This role is no longer available to apply.", "Sorry, no longer available."])
+      expect(classifyPage(200, `Senior Designer\n${t}`).state, t).toBe("gone");
+  });
+});
+
+describe("classifyPage: a duty about a closed-job screen is not the posting closing (#1591)", () => {
+  it("keeps a job-board posting that describes such screens", () => {
+    for (const t of [
+      "Redesign the page that tells seekers this job has expired.",
+      "Make sure a listing is no longer live once the role is filled, and tell candidates.",
+      "You'll own the page where a job posting has expired and help users renew it.",
+      "Build the banner that shows this position is no longer available, with similar roles below.",
+    ])
+      expect(classifyPage(200, `Product Designer, Jobs\n${t}`).state, t).toBe("open");
+  });
+  it("still closes the page's own message", () => {
+    for (const t of ["This job has expired.", "This position is no longer available.", "Sorry, this job is closed.", "We're sorry, this listing is no longer active."])
+      expect(classifyPage(200, `Product Designer\n${t}`).state, t).toBe("gone");
+  });
+});
+
+describe("classifyPage: a closed message quoted as copy to write is not the posting closing (#1620)", () => {
+  it("stays open when the phrase is quoted or given as an example", () => {
+    for (const text of [
+      "Content Designer. Write error messages like 'This job is no longer available'.",
+      'Write the copy for screens such as "This position has been filled".',
+      'Rewrite "Page not found" and "This job has expired" across the careers site.',
+      "Own the empty states, like “This posting has expired”, for job seekers.",
+      "Write the messages job seekers see, such as this job is no longer available, in plain words.",
+    ])
+      expect(classifyPage(200, text).state, text).toBe("open");
+  });
+  it("still closes on the page's own message", () => {
+    for (const text of [
+      "Sorry, this job is no longer available.",
+      "Sorry! It seems like this position has been filled.",
+      "Content Designer\nIt looks like this job is no longer available.",
+      "Content Designer\nThis position has been filled. Browse other jobs like this one.",
+    ])
+      expect(classifyPage(200, text).state, text).toBe("gone");
   });
 });

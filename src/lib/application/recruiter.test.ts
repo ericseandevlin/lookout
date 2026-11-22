@@ -114,6 +114,30 @@ Design Systems Lead
     }
   });
 
+  it("doesn't read a year or a version as a number, but keeps real scale (#1653)", () => {
+    const bareOf = (line: string) =>
+      recruiterChecks("resume", resume.replace("Built the design system site used across the firm.", line)).some((x) => x.dim === "impact" && x.line === line);
+    for (const line of [
+      "Led the 2023 rebrand across the product line.",
+      "Brought the checkout to WCAG 2.1 AA.",
+      "Migrated the app to React 18.",
+      "Built the Section 508 audit process.",
+      "Led the COVID-19 response site.",
+      "Shipped the v2.1 design tokens in 2024.",
+      "Ran the 1990s archive redesign.",
+    ])
+      expect(bareOf(line), line).toBe(true);
+    for (const line of [
+      "Rolled the rebrand out to 2,000 stores.",
+      "Served 2000 users in the pilot.",
+      "Moved 12 teams to React 18.",
+      "Lifted Android 30% retention in 2023.",
+      "Brought 40 screens to WCAG 2.1 AA.",
+      "Grew revenue to $2020 per seat.",
+    ])
+      expect(bareOf(line), line).toBe(false);
+  });
+
   it("doesn't read names like B2B or HTML5, or one-click, as a number (#1265)", () => {
     const bareOf = (line: string) =>
       recruiterChecks("resume", resume.replace("Built the design system site used across the firm.", line)).some((x) => x.dim === "impact" && x.line === line);

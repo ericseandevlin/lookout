@@ -24,7 +24,7 @@ export function Landing({ inviteOnly, channel, pages = false }: { inviteOnly: bo
               <div className={s.eyebrow}>In testing · {inviteOnly ? "invite only" : "free"}</div>
               <h1 className={s.h1}>Stop refreshing job boards.</h1>
               <p className={s.lede}>
-                Answer five questions. Twice a week {BRAND.name} goes looking, reads every posting, and puts the ones that fit on your board, each with a
+                Answer five questions. Every week {BRAND.name} goes looking, reads every posting, and puts the ones that fit on your board, each with a
                 score and a plain reason why.
               </p>
               <div className={s.ctas}>
@@ -57,7 +57,7 @@ export function Landing({ inviteOnly, channel, pages = false }: { inviteOnly: bo
                 if you want. That&apos;s the setup.
               </Step>
               <Step n={2} title="It goes looking" media={<Clip src="/landing/how-looking.mp4" poster="/landing/how-looking.jpg" label="The board filling with new finds, best match first." />}>
-                Job boards and company career pages, twice a week. It reads the full posting, not the title, and tells you what it looked at and what it
+                Job boards and company career pages, every week. It reads the full posting, not the title, and tells you what it looked at and what it
                 threw out.
               </Step>
               <Step n={3} title="You decide" media={<Clip src="/landing/how-decide.mp4" poster="/landing/how-decide.jpg" label="Turning on the pay filter, archiving two low matches and pinning a strong one." />}>
@@ -92,7 +92,7 @@ export function Landing({ inviteOnly, channel, pages = false }: { inviteOnly: bo
                 <ul className={s.list}>
                   <li>For the roles you want, {BRAND.name} drafts the application from your resume and the posting.</li>
                   <li>A recruiter&apos;s read flags the gaps before a recruiter does.</li>
-                  <li>You review every line and press Submit. Nothing goes out on its own.</li>
+                  <li>You review every line. Nothing goes out until you approve it.</li>
                 </ul>
               </div>
               <Playable className={s.shot}>

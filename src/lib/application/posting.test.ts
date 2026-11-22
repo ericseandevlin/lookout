@@ -32,6 +32,11 @@ describe("isJunkKeyword", () => {
     for (const k of ["agentic workflows", "P&L ownership", "SQL", "AI/ML products", "product strategy", "market opportunity sizing"]) expect(isJunkKeyword(k)).toBe(false);
   });
 
+  it("drops a generic single word, keeps it inside a real skill (#1485)", () => {
+    for (const k of ["tools", "Capabilities", "craft", "portfolio", "skills", "experience", "impact", "collaboration", "stakeholders"]) expect(isJunkKeyword(k)).toBe(true);
+    for (const k of ["design tools", "craft beverages", "portfolio management", "leadership", "strategy", "Figma", "SQL", "people management"]) expect(isJunkKeyword(k)).toBe(false);
+  });
+
   it("keeps a topic word when the job itself is about it, not when only a notice says it (#509)", () => {
     expect(isJunkKeyword("fraud detection", [...fraudRole, ...boilerplate].join("\n"))).toBe(false);
     expect(isJunkKeyword("social media", "Own our social media calendar across Instagram and TikTok.")).toBe(false);
@@ -346,5 +351,41 @@ describe("stripBoilerplate: duties that share words with notices stay (#1495)", 
     "California residents: see our privacy notice for the personal information we collect.",
   ])("still drops %j", (line) => {
     expect(stripBoilerplate(line)).toBe("");
+  });
+});
+
+describe("findTraps: content design lines that name no word to insert (#1607)", () => {
+  it("keeps UX writing and content design job lines", () => {
+    for (const s of [
+      "You'll write the words people see across the app, from buttons to error messages.",
+      "Write the terms and conditions copy for checkout.",
+      "Use the right word at the right moment, and keep a glossary.",
+    ])
+      expect(findTraps(s), s).toEqual([]);
+  });
+
+  it("leaves ordinary form questions to the drafts", () => {
+    for (const s of [
+      "Please use the words a customer would use.",
+      "Say the phrase you use to open a tough conversation with a stakeholder.",
+      "Please write the terms of your current notice period.",
+    ])
+      expect(findTraps(s), s).toEqual([]);
+  });
+
+  it("still catches a word to insert, named or aimed at the application", () => {
+    expect(findTraps("Please include the word banana.")[0].words).toContain("banana");
+    expect(findTraps("Use the phrase 'blue sky' somewhere.")[0].words).toContain("blue sky");
+    expect(findTraps("Add this specific phrase to your cover letter.")).toHaveLength(1);
+    expect(findTraps("Include the following keyword: ORCA")).toHaveLength(1);
+  });
+});
+
+describe("isJunkKeyword: opportunity in the business sense is the job (#1609)", () => {
+  it("keeps market, business, revenue and partnership opportunities", () => {
+    for (const k of ["Market opportunity", "Business opportunities", "Revenue opportunities", "Partnership opportunities"]) expect(isJunkKeyword(k), k).toBe(false);
+  });
+  it("still drops the hiring sense", () => {
+    for (const k of ["Opportunity", "Exciting opportunity", "Career opportunities", "Employment opportunity", "Equal opportunity", "this opportunity"]) expect(isJunkKeyword(k), k).toBe(true);
   });
 });

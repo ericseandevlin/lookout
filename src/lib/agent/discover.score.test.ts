@@ -71,3 +71,37 @@ describe("unscoredCount (#1456)", () => {
     expect(unscoredCount([page(1)], [{ url: page(1).url }])).toBe(0);
   });
 });
+
+describe("scoring reads the resume (#1531)", () => {
+  beforeEach(() => completeJSON.mockReset());
+  it("sends the resume along with the search profile, and asks not to contradict it", async () => {
+    completeJSON.mockResolvedValue({ finds: [] });
+    const sp = { summary: "You design web products.", targetTitles: ["Product Designer"], seniority: "Senior", industries: [], strengths: ["web"], proof: [], where: "Remote", pay: "", avoid: [], searchTerms: [] };
+    const withProfile = { ...ctx, searchProfile: sp, resume: "Shipped an iOS and Android app with 1.2 million users" } as unknown as Ctx;
+    await scorePages(withProfile, [page(1)], {} as never);
+    const call = completeJSON.mock.calls[0][0];
+    expect(call.user).toContain("<search_profile>");
+    expect(call.user).toContain("<resume>\nShipped an iOS and Android app with 1.2 million users\n</resume>");
+    expect(call.system).toContain("Never claim a gap the resume contradicts");
+    expect(call.system).toContain("No em dashes");
+  });
+});
+
+describe("scorePages: pay the model copied per month (#1636)", () => {
+  beforeEach(() => {
+    completeJSON.mockReset();
+  });
+  const monthly = { url: "https://jobs.example.com/1", text: "Compensation: $12,000 - $15,000 per month", pay: { min: 144000, max: 180000, currency: "USD", source: "text" } };
+
+  it("takes the page's yearly read over the model's monthly numbers", async () => {
+    completeJSON.mockResolvedValueOnce({ finds: [{ ...find(0), comp_min: 12000, comp_max: 15000 }] });
+    const [out] = await scorePages(ctx, [monthly] as never, {} as never);
+    expect([out.comp_min, out.comp_max]).toEqual([144000, 180000]);
+  });
+
+  it("keeps the model's range when it is a different yearly range, not a copy of the page's pay", async () => {
+    completeJSON.mockResolvedValueOnce({ finds: [{ ...find(0), comp_min: 120000, comp_max: 150000 }] });
+    const [out] = await scorePages(ctx, [monthly] as never, {} as never);
+    expect([out.comp_min, out.comp_max]).toEqual([120000, 150000]);
+  });
+});

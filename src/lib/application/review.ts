@@ -12,6 +12,7 @@ import { stripHtml } from "@/lib/ai/entities";
 import { humanize, shapeResume } from "./resumeLayout";
 import { isCommon, upsert } from "./saved";
 import { notesBlock } from "./skills";
+import { draftableFacts, draftFactsBlock } from "@/lib/interview/facts";
 import { getAutoApplySettings } from "@/lib/apply";
 import { bullets } from "./notes";
 import { resolve } from "./eeo";
@@ -22,10 +23,12 @@ import { masterForDrafts, roleSwaps } from "./masterCheck";
 import { answerKey } from "./saved";
 import { canAutoSubmit } from "./submit";
 import { submitMode } from "./submitMode";
-import { approvedFor, keywordPicks, keywordRows } from "./evidence";
+import { approvedFor, keywordPicks, keywordRows, trimRows } from "./evidence";
+import { featureOn } from "@/lib/features";
 import { suggestStrategy } from "./letterStrategy";
 import { finishAnalysis, honestyFindings, RECRUITER_SYSTEM, RecruiterDraft, recruiterChecks, recruiterPrompt } from "./recruiter";
 import { addUsd, patchReport } from "./reportStore";
+import { letterButtons } from "./letterStrategy";
 import { autoApproveField, optionAnswerAllowed, settledStatus, submitClicked } from "./flowRules";
 
 /**
@@ -60,32 +63,44 @@ export async function draftFacts(userId: string) {
   const [mat] = await db.select({ x: schema.materials.extracted }).from(schema.materials).where(and(eq(schema.materials.userId, userId), eq(schema.materials.kind, "resume")));
   const resume = masterForDrafts(p?.m) ?? mat?.x?.text ?? "";
   const notes = p?.notes ?? [];
-  return { resume, notes, facts: resume + notesBlock(notes) };
+  // Shareable interview facts count too (#1449); private ones never reach a draft.
+  return { resume, notes, facts: resume + notesBlock(notes) + (await draftFactsBlock(userId)) };
 }
 
 /**
  * The keyword list with evidence (#121), worked out from the person's current master resume and
  * experience notes, so edits to either count the next time keywords are chosen.
  */
-export async function keywordState(userId: string, a: { report: ApplicationReport }, posting: string) {
+export async function keywordState(userId: string, a: { report: ApplicationReport; opportunityId?: string }, posting: string, title?: string) {
   const { resume, notes } = await draftFacts(userId);
-  return { resume, rows: keywordRows(a.report, posting, resume, notes) };
+  const facts = (await draftableFacts(userId)).map((f) => f.text);
+  const rows = keywordRows(a.report, posting, resume, notes, facts);
+  if (!featureOn("INTERVIEW")) return { resume, rows };
+  // The shorter list (#1485). The panel, the go and the resume all read it from here, so they agree.
+  const t = title ?? (a.opportunityId ? ((await db.select({ t: schema.opportunities.title }).from(schema.opportunities).where(eq(schema.opportunities.id, a.opportunityId)))[0]?.t ?? "") : "");
+  // Ranked from the posting alone, so backing or removing a keyword never lets a different one into the list.
+  const starred = keywordPicks(rows.map((r) => ({ ...r, support: null, removed: false })), posting, t);
+  return { resume, rows: trimRows(rows, starred, posting) };
 }
 
 async function keywordDetail(userId: string, report: ApplicationReport, posting: string, title: string) {
   if (!report.keywordPlan && !report.keywords) return { keywordRows: null, keywordsApproved: false, keywordPicks: [] };
-  const { rows } = await keywordState(userId, { report }, posting);
+  const { rows } = await keywordState(userId, { report }, posting, title);
   return { keywordRows: rows, keywordsApproved: approvedFor(report, rows), keywordPicks: keywordPicks(rows, posting, title) };
 }
 
-/** The cover letter's strategy and Lookout's pick for this role (#738). */
+/** Lookout's pick for this role (#738), and each cover letter's strategy and stored letters (#1484). */
 async function letterDetail(userId: string, report: ApplicationReport, posting: { title: string; text: string }) {
   const [p] = await db.select({ stories: schema.profiles.personalStories }).from(schema.profiles).where(eq(schema.profiles.userId, userId));
   const s = suggestStrategy(posting, p?.stories ?? []);
-  return { strategy: report.letterStrategy ?? null, suggested: s.strategy, why: s.why };
+  const items = Object.fromEntries(Object.entries(report.letters ?? {}).map(([id, set]) => [id, letterButtons(set, null)]));
+  return { strategy: report.letterStrategy ?? null, suggested: s.strategy, why: s.why, items };
 }
 
 export async function getApplicationDetail(userId: string, id: string) {
+  // A draft missing letter strategies gets them written in the background; the page shows those as busy (#1484).
+  // Imported here because run.ts imports this file.
+  await (await import("./run")).fillLetters((await ownApplication(userId, id)).id);
   const a = await ownApplication(userId, id);
   const [o] = await db.select().from(schema.opportunities).where(eq(schema.opportunities.id, a.opportunityId));
   const items = await db.select().from(schema.applicationItems).where(eq(schema.applicationItems.applicationId, id)).orderBy(asc(schema.applicationItems.position));
@@ -118,8 +133,10 @@ export async function getApplicationDetail(userId: string, id: string) {
     status: a.status,
     ats: a.ats,
     route: a.route,
-    report: { ...a.report, postingText: undefined },
+    report: { ...a.report, postingText: undefined, letters: undefined },
     ...(await keywordDetail(userId, a.report, postingText, o?.title ?? "")),
+    /** The keyword panel that uses the interview (#1485). */
+    interviewKeywords: featureOn("INTERVIEW"),
     letter: items.some((i) => i.kind === "cover_letter") ? await letterDetail(userId, a.report, { title: o?.title ?? "", text: postingText }) : null,
     autoSubmit: a.route === "browser" && canAutoSubmit(),
     submit: submitMode({ ats: a.ats, url: o?.sourceUrl, autoSubmit: canAutoSubmit(), captcha: a.report.fill?.captcha }),

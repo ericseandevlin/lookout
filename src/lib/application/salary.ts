@@ -25,7 +25,17 @@ const NEGATED =
 // "Base salary range: $150K - $180K + bonus" or "$150k-$180k base + bonus + equity" (#1425).
 const BASE_PLUS = /(?<!\d[km]?\s{0,2})\bbase\b[^.?!$\d]{0,30}?(\+|\bplus\b|\band\b)[^.?!]{0,20}?\b(bonus|commission|incentive)/i;
 const THE_RANGE = /\b(range|figure|amount)s?\b/i;
-const ON_TARGET = /\bon[- ]target earnings\b|\btotal (target )?(cash|compensation|comp|pay)\b[^.?!]{0,10}(range|:|\$)/i;
+// "Our total compensation package: medical, dental, 401(k)" heads a benefits list, not the range: a benefits word before
+// the colon counts only when an amount follows it ("Total compensation package: $200k-$250k") (#1556).
+const TOTAL_PAY_HEAD = /\btotal (target )?(cash|compensation|comp|pay)\b([^.?!]{0,10}?)(range|:|\$)(\s*\$?\s*\d)?/i;
+const BENEFITS_HEAD = /\b(package|rewards?|benefits?|perks)\b/i;
+const ON_TARGET = {
+  test: (s: string) => {
+    if (/\bon[- ]target earnings\b/i.test(s)) return true;
+    const m = s.match(TOTAL_PAY_HEAD);
+    return !!m && !(m[4] !== "$" && BENEFITS_HEAD.test(m[3]) && !m[5]);
+  },
+};
 // "Total cash" and "OTE" count only where they name the range: in a sentence with the range or an amount, or as a short
 // heading over it. "Beyond base pay, a bonus means total cash compensation may be higher" is about base (#795).
 const TOTAL_CASH = /\btotal cash\b|\bOTE\b/i;
@@ -50,19 +60,36 @@ const PAY_INCLUDES_BONUS = (s: string) => {
   if (EXTRA_PAY.test(subject)) return false;
   return ABOUT_PAY.test(s) && !PACKAGE.test(subject);
 };
+// The same said the other way round: "Bonus is included in this range", "Commission is reflected in the posted pay" (#1566).
+// "Is not included" never matches: the verb must follow "is" or "are" right away.
+const BONUS_INCLUDED =
+  /\b(bonus|commission|incentive)\w*(?:\s+(?:pay|payments?|target|eligibility))?\s+(is|are)\s+(also\s+)?(included|reflected)\s+in\s+(the|this|that|our)\s+(?:(?:posted|above|listed|stated)\s+)?(?:(?:compensation|pay|salary)\s+)?(range|figure|amount|salary|pay)\b/i;
 const SAYS_TOTAL = (s: string) =>
-  !NEGATED.test(s) && (PAY_INCLUDES_BONUS(s) || (BASE_PLUS.test(s) && THE_RANGE.test(s)) || ON_TARGET.test(s) || NAMES_TOTAL(s));
+  !NEGATED.test(s) && (PAY_INCLUDES_BONUS(s) || BONUS_INCLUDED.test(s) || (BASE_PLUS.test(s) && THE_RANGE.test(s)) || ON_TARGET.test(s) || NAMES_TOTAL(s));
 
 // A sentence about the pay that puts the bonus outside it says the range is base: "The salary range is $150,000 to
 // $180,000 and does not include bonus or equity" (#650, #1411).
 const SAYS_BASE = (s: string) => NEGATED.test(s) && ABOUT_PAY.test(s) && /\b(bonus|commission|incentive)/i.test(s);
 
 // A bonus added right after an amount sits on top of it, word "base" or not: "Salary range: $150,000 - $180,000 + bonus" (#1528).
-const AMOUNT_PLUS_BONUS = /\d[km]?\s{0,2}(\+|\bplus\b)\s*(an?\s+)?((annual|target|performance|quarterly|sales)\s+)?(bonus|commission|incentive)/i;
+// A currency code, a period word or a comma can sit between: "$150,000 - $180,000 per year, plus bonus" (#1602).
+const AMOUNT_PLUS_BONUS = /\d[km]?(\s*(usd|cad|gbp|eur))?(\s*(per (year|annum)|annually|a year|\/\s?y(ea)?r\b))?\s{0,2},?\s{0,2}(\+|\bplus\b)\s*(an?\s+)?((annual|target|performance|quarterly|sales)\s+)?(bonus|commission|incentive)/i;
 
 /** What the posted range covers: total cash (bonus included), base, or the posting doesn't say. "$150k-$180k base" names it base (#1425). */
+// An explicit "base salary range" beats a total heading with no amount in another sentence: "Total compensation: our
+// package covers..." then "The base salary range for this position is $150,000 - $180,000" is a base range (#1556).
+const BASE_RANGE = /\bbase (salary|pay|compensation) range\b/i;
+const HAS_AMOUNT = /\$\s?\d|\d[km]\b/i;
+const totalWins = (posting: string) => {
+  const all = sentences(posting);
+  const totals = all.filter(SAYS_TOTAL);
+  if (!totals.length) return false;
+  const baseElsewhere = all.some((s) => BASE_RANGE.test(s) && !totals.includes(s));
+  return !baseElsewhere || totals.some((s) => HAS_AMOUNT.test(s) || BASE_RANGE.test(s));
+};
+
 export const rangeBasis = (posting: string): "total" | "base" | null =>
-  sentences(posting).some(SAYS_TOTAL)
+  totalWins(posting)
     ? "total"
     : /\bbase (salary|pay|compensation)\b|\d[km]?\s{0,2}base\b/i.test(posting) || AMOUNT_PLUS_BONUS.test(posting) || sentences(posting).some(SAYS_BASE)
       ? "base"
@@ -169,9 +196,12 @@ export function askPer(prompt: string): Per | null {
 
 // A short instruction about the answer with no pay word: "Please answer monthly.", "Monthly, before tax.",
 // "Hourly is fine." Only the -ly words count, so "We will get back to you in a week" still doesn't (#1245).
+// "Per month" and "/hour" count too when the sentence says how to answer: "Please answer in USD per month." (#1601).
 const ADVERB = /\b(hourly|daily|weekly|monthly|annually|yearly)\b/i;
+const PER_UNIT = /\bper (hour|hr|day|week|wk|month|mo|year|annum)\b|\/\s?(hour|hr|day|week|wk|month|mo|year|yr)\b/i;
 const HOW_TO_ANSWER = /\b(answer|enter|give|provide|before tax|after tax|gross|net|is fine)\b/i;
-const answerHint = (s: string) => ADVERB.test(s) && (HOW_TO_ANSWER.test(s) || s.trim().split(/\s+/).length <= 4);
+const answerHint = (s: string) =>
+  (ADVERB.test(s) && (HOW_TO_ANSWER.test(s) || s.trim().split(/\s+/).length <= 4)) || (PER_UNIT.test(s) && HOW_TO_ANSWER.test(s));
 
 const orYear = (p: ReturnType<typeof periodIn>) => (p === "year" ? null : p);
 
@@ -185,6 +215,9 @@ function periodIn(prompt: string): "year" | Per | null {
   prompt = prompt.replace(/\b(hours?|hrs?|days?)\s*(per|a|each|\/)\s*(week|wk|month|day|year|yr)\b/gi, " ");
   // "May extend to a year" and "could run a year" are a contract's length too (#1248).
   prompt = prompt.replace(/\b(last(s|ing)?|for|within|after|over|least|to|run(s|ning)?|extend(s|ed|ing)?|renew(s|ed|able)?)\s+(about\s+|up to\s+|roughly\s+)?(a|one)\s+(year|month|week)\b/gi, " ");
+  // "Annual" on another thing is not the pay period: "monthly salary (excluding annual bonus)", "annual 13th month",
+  // "2,000 hours annually" (#1565). "Annual salary (paid monthly)" is still yearly.
+  prompt = prompt.replace(/\bannual(ly)?\s+(bonus(es)?|raises?|reviews?|leave|13th|holidays?|vacation|pto|incentives?|increases?|performance|hours?)\b|\b(hours?|hrs?)\s+(annually|yearly)\b/gi, " ");
   // "a year-end bonus" and "a year-long contract" are not a yearly ask (#1060).
   // "/yr" after a space or "(" has no word boundary before the slash (#1121).
   if (/(\b(annual(ly)?|yearly|per (year|annum)|a year)|\/\s?y(ea)?r)\b(?!-)/i.test(prompt)) return "year";
@@ -201,7 +234,7 @@ function periodIn(prompt: string): "year" | Per | null {
 
 /**
  * The ask wants its number in thousands: "Desired salary (in thousands)", "Salary expectations in $K", "Base (000s)"
- * (#1188). "401(k)" is a retirement plan, not a unit.
+ * (#1188). "401(k)" is a retirement plan, not a unit, and "in K-12" is a school grade range (#1557).
  */
 export const asksThousands = (prompt: string) => THOUSANDS.test(prompt);
 
@@ -209,7 +242,7 @@ export const asksThousands = (prompt: string) => THOUSANDS.test(prompt);
 const CUR = String.raw`(?:usd|us\$|\$|£|€|eur|gbp|cad)`;
 const UNIT = String.raw`(?:000s|000's|'000s?|1,?000s|k|thousands?)`;
 const THOUSANDS = new RegExp(
-  String.raw`\bin (?:\$\s?|usd\s)?(?:thousands?|k|1,?000s)\b|(?<![\d\w])\(\s*(?:in\s+)?(?:${CUR}\s*,?\s*)?${UNIT}(?:\s*,?\s*${CUR})?\s*\)|\bin 000s\b`,
+  String.raw`\bin (?:\$\s?|usd\s)?(?:thousands?|k(?![-–]?\d)|1,?000s)\b|(?<![\d\w])\(\s*(?:in\s+)?(?:${CUR}\s*,?\s*)?${UNIT}(?:\s*,?\s*${CUR})?\s*\)|\bin 000s\b`,
   "i",
 );
 

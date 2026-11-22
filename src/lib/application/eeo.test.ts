@@ -231,6 +231,15 @@ describe("a non-veteran never gets a veteran's answer (#961)", () => {
     const opts = ["I identify as a veteran, just not a protected veteran", "I am not a veteran", "I identify as one or more of the classifications of protected veteran", "I don't wish to answer"];
     expect(matchOption("Not a veteran", opts)).toBe("I am not a veteran");
   });
+  it("also asks for short labels: 'Veteran, not protected' and 'Non-Protected Veteran' (#1639)", () => {
+    for (const split of ["Veteran, not protected", "Non-Protected Veteran", "Non Protected Veteran", "Veteran - Not Protected"]) {
+      const opts = ["Not a Veteran", "Protected Veteran", split, "Decline to answer"];
+      expect(matchOption("Veteran", opts)).toBeNull();
+      expect(matchOption("Not a veteran", opts)).toBe("Not a Veteran");
+    }
+    // A list without the split still answers.
+    expect(matchOption("Veteran", ["Not a Veteran", "Protected Veteran", "Decline to answer"])).toBe("Protected Veteran");
+  });
 });
 
 

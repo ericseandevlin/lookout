@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { applyRules, fingerprint, legacyFingerprint, normUrl, placeId, placesDiffer, remoteFirst } from "./rules";
+import { applyRules, bareCompany, fingerprint, legacyFingerprint, listPage, normUrl, placeId, placesDiffer, remoteFirst, suffixedFingerprint } from "./rules";
 
 const base = { score: 5, reasonsMatch: ["Director title"], reasonsGap: [], locationFit: true, dealbreaker: false, compMin: 140000, compMax: 160000 };
 
@@ -67,6 +67,21 @@ describe("dedupe keys", () => {
     expect(fingerprint("Acme", "Designer", "Montréal")).not.toBe(legacyFingerprint("Acme", "Designer", "Montréal"));
     expect(fingerprint("Acme", "Designer", "Montreal")).toBe(legacyFingerprint("Acme", "Designer", "Montreal"));
   });
+  it("keys a company without its legal form, so 'Acme, Inc.' and 'Acme' are one job (#1645)", () => {
+    const k = (c: string) => fingerprint(c, "Senior Product Designer", "New York, NY");
+    for (const c of ["Acme Inc.", "Acme, Inc.", "ACME INC", "Acme LLC", "Acme, L.L.C.", "Acme Ltd", "Acme Limited", "Acme Corp.", "Acme Corporation", "Acme Co.", "Acme GmbH", "Acme PLC", "Acme AG", "Acme S.A.", "Acme B.V.", "Acme Pty Ltd"]) expect(k(c)).toBe(k("Acme"));
+    expect(bareCompany("Procter & Gamble Co.")).toBe("Procter & Gamble");
+    // Not a legal form at the end, or nothing left without it.
+    expect(bareCompany("Acme Co-op")).toBe("Acme Co-op");
+    expect(bareCompany("Limited Brands")).toBe("Limited Brands");
+    expect(bareCompany("Incorporated")).toBe("Incorporated");
+    expect(bareCompany("Agco")).toBe("Agco");
+    expect(k("Acme Labs")).not.toBe(k("Acme"));
+    // The key from before #1645 keeps the legal form, and is the same as the new one for a bare name.
+    expect(suffixedFingerprint("Acme, Inc.", "Designer", "Paris")).not.toBe(fingerprint("Acme, Inc.", "Designer", "Paris"));
+    expect(suffixedFingerprint("Acme", "Designer", "Paris")).toBe(fingerprint("Acme", "Designer", "Paris"));
+    expect(legacyFingerprint("Acme, Inc.", "Designer", "Paris")).toBe(suffixedFingerprint("Acme, Inc.", "Designer", "Paris"));
+  });
   it("keeps marks in non-Latin text, so डिज़ाइनर and डिजाइन stay apart (#1269)", () => {
     expect(fingerprint("मेरा", "डिज़ाइनर", "दिल्ली")).toBe(legacyFingerprint("मेरा", "डिज़ाइनर", "दिल्ली"));
     expect(fingerprint("メルカリ", "ガイド", "東京")).not.toBe(fingerprint("メルカリ", "カイト", "東京"));
@@ -103,6 +118,13 @@ describe("dedupe keys", () => {
     expect(normUrl("https://acme.com/careers?gclid_job=9")).toBe("acme.com/careers?gclid_job=9");
   });
 
+  it("drops Google's srsltid, the _ga linker, more click IDs and Lever's lever-via (#1615)", () => {
+    expect(normUrl("https://acme.com/careers/designer?srsltid=AfmBOoq123")).toBe("acme.com/careers/designer");
+    expect(normUrl("https://acme.com/careers/1?_ga=2.1234.5678&gad_source=1&ttclid=a&twclid=b&yclid=c&rdt_cid=d&epik=e")).toBe("acme.com/careers/1");
+    expect(normUrl("https://jobs.lever.co/acme/abc?lever-via=xyz")).toBe("jobs.lever.co/acme/abc");
+    expect(normUrl("https://acme.com/careers?jobId=9&srsltid=x")).toBe("acme.com/careers?jobid=9");
+  });
+
   it("leaves the rest of the query as written when it drops a tracking tag (#1166)", () => {
     expect(normUrl("https://careers.example.com/job?title=Senior%20Designer&utm_source=linkedin")).toBe(normUrl("https://careers.example.com/job?title=Senior%20Designer"));
     expect(normUrl("https://careers.example.com/job?loc=NY,US&ref=x")).toBe(normUrl("https://careers.example.com/job?loc=NY,US"));
@@ -132,6 +154,38 @@ describe("placesDiffer (#1285)", () => {
     expect(placesDiffer("New York (NYC)", "New York, NY")).toBe(false);
     expect(placesDiffer("New York, NY (hybrid)", "New York, NY")).toBe(false);
     expect(placeId("Remote (Canada)")).toBe("ca");
+  });
+
+  it("reads an unknown country in parentheses after Remote (#1555)", () => {
+    expect(placesDiffer("Remote (US)", "Remote (Germany)")).toBe(true);
+    expect(placesDiffer("Remote (US)", "Remote (Mexico)")).toBe(true);
+    expect(placesDiffer("Remote (India)", "Remote (Germany)")).toBe(true);
+    expect(placesDiffer("Remote (Germany)", "Remote, Germany")).toBe(false);
+    expect(placesDiffer("Remote (Germany)", "Remote (Germany)")).toBe(false);
+    expect(placesDiffer("Remote (US)", "Remote (hybrid)")).toBe(false);
+    expect(placesDiffer("Remote (US)", "Remote (Full-time)")).toBe(false);
+    expect(placesDiffer("Remote (US)", "Remote (contract)")).toBe(false);
+    expect(placesDiffer("New York (NYC)", "New York, NY")).toBe(false);
+    expect(placesDiffer("New York, NY (Manhattan)", "New York, NY")).toBe(false);
+  });
+
+  it("reads a country's ISO code that is also a state's as that country (#1561)", () => {
+    expect(placesDiffer("Berlin, DE", "Berlin, Germany")).toBe(false);
+    expect(placesDiffer("Berlin, Germany", "Berlin, DE")).toBe(false);
+    expect(placesDiffer("Munich, Bavaria, DE", "Munich, Germany")).toBe(false);
+    expect(placesDiffer("Tel Aviv, IL", "Tel Aviv, Israel")).toBe(false);
+    expect(placesDiffer("Bengaluru, IN", "Bengaluru, India")).toBe(false);
+    expect(placesDiffer("Bogota, CO", "Bogota, Colombia")).toBe(false);
+    expect(placesDiffer("Amsterdam, NL", "Amsterdam, Netherlands")).toBe(false);
+    expect(placesDiffer("Amsterdam, NL", "Amsterdam, The Netherlands")).toBe(false);
+    expect(placesDiffer("Remote (DE)", "Remote (Germany)")).toBe(false);
+    // A real state pair, a named US state, or a code with its own country beside it still differs.
+    expect(placesDiffer("Wilmington, DE", "Wilmington, NC")).toBe(true);
+    expect(placesDiffer("Berlin, DE", "Berlin, NY")).toBe(true);
+    expect(placesDiffer("Wilmington, DE, US", "Wilmington, Germany")).toBe(true);
+    expect(placesDiffer("Wilmington, Delaware", "Wilmington, Germany")).toBe(true);
+    expect(placesDiffer("Berlin, DE", "Berlin, India")).toBe(true);
+    expect(placesDiffer("Bogota, CO", "Bogota, Mexico")).toBe(true);
   });
 
   it("tells apart the same city in another state or country", () => {
@@ -276,5 +330,124 @@ describe("dedupe: remote and a country before the first comma (#1514)", () => {
   it("keeps the legacy key as written, so postings stored before are still matched", () => {
     expect(legacyFingerprint("Acme", "Product Designer", "Remote - US")).not.toBe(fp("Remote - US"));
     expect(legacyFingerprint("Acme", "Product Designer", "Remote, US")).toBe(fp("Remote, US"));
+  });
+});
+
+describe("no em dashes in match reasons (#1531)", () => {
+  it("turns em and en dashes into commas", () => {
+    const r = applyRules({ score: 4, reasonsMatch: ["Design systems — your core strength"], reasonsGap: ["Heavy mobile focus – check fit"], locationFit: true, dealbreaker: false, compMin: 150000, compMax: 180000 }, null)!;
+    expect(r.reasonsMatch).toEqual(["Design systems, your core strength"]);
+    expect(r.reasonsGap).toEqual(["Heavy mobile focus, check fit"]);
+  });
+});
+
+describe("listPage: search and board pages are not jobs (#1537)", () => {
+  it("drops Wellfound role and location list pages, not its postings (#1577)", () => {
+    for (const u of ["https://wellfound.com/role/l/product-designer/new-york", "https://wellfound.com/role/r/product-designer", "https://wellfound.com/location/new-york"])
+      expect(listPage(u), u).toBe(true);
+    for (const u of ["https://wellfound.com/jobs/3123456-senior-product-designer", "https://wellfound.com/company/acme/jobs/3123456-senior-product-designer"])
+      expect(listPage(u), u).toBe(false);
+  });
+
+  it("drops job board search pages, on any country site", () => {
+    for (const u of [
+      "https://www.glassdoor.com/Job/new-york-ny-ux-director-jobs-SRCH_IL.0,11_IC1132348_KO12,23.htm",
+      "https://www.glassdoor.co.uk/Job/london-ux-director-jobs-SRCH_IL.0,6_IC2671300.htm",
+      "https://www.indeed.com/l-New-York,-NY-jobs.html",
+      "https://www.indeed.com/q-UX-Director-jobs.html",
+      "https://uk.indeed.com/jobs?q=ux+director",
+      "https://www.indeed.co.uk/jobs?q=ux+director",
+      "https://ca.linkedin.com/jobs/ux-director-jobs",
+      "https://www.linkedin.com/jobs/search?keywords=ux%20director&location=New%20York",
+      "https://www.linkedin.com/jobs/",
+      "https://www.ziprecruiter.com/Jobs/UX-Director",
+      "https://www.simplyhired.com/search?q=ux+director",
+      "https://careers.acme.com/jobs/",
+    ])
+      expect(listPage(u), u).toBe(true);
+  });
+
+  it("drops Built In, Dice, YC, RemoteOK and We Work Remotely list pages, not their postings (#1614)", () => {
+    for (const u of [
+      "https://www.builtinnyc.com/jobs/design-ux",
+      "https://builtin.com/jobs/remote/design-ux",
+      "https://builtin.com/jobs?search=product+designer",
+      "https://www.dice.com/jobs?q=designer",
+      "https://www.ycombinator.com/jobs/role/design",
+      "https://www.ycombinator.com/jobs",
+      "https://remoteok.com/remote-design-jobs",
+      "https://weworkremotely.com/categories/remote-design-jobs",
+    ])
+      expect(listPage(u), u).toBe(true);
+    for (const u of [
+      "https://builtin.com/job/product-designer/123456",
+      "https://www.builtinnyc.com/job/senior-product-designer/987654",
+      "https://www.dice.com/job-detail/0c3f1a2b-4d5e-6f70-8a9b-0c1d2e3f4a5b",
+      "https://www.ycombinator.com/companies/acme/jobs/AbC123-product-designer",
+      "https://remoteok.com/remote-jobs/123456-remote-product-designer-acme",
+      "https://weworkremotely.com/remote-jobs/acme-product-designer",
+    ])
+      expect(listPage(u), u).toBe(false);
+  });
+
+  it("drops an ATS board home that names no job", () => {
+    for (const u of [
+      "https://jobs.lever.co/acme",
+      "https://jobs.eu.lever.co/acme?team=Design",
+      "https://job-boards.greenhouse.io/acme",
+      "https://boards.greenhouse.io/embed/job_board?for=acme",
+      "https://jobs.ashbyhq.com/acme",
+      "https://acme.wd1.myworkdayjobs.com/External",
+      "https://acme.wd1.myworkdayjobs.com/en-US/External?q=design",
+      "https://wd3.myworkdaysite.com/recruiting/acme/External",
+    ])
+      expect(listPage(u), u).toBe(true);
+  });
+
+  it("keeps single postings, on those sites too", () => {
+    for (const u of [
+      "https://www.glassdoor.com/job-listing/ux-director-acme-JV_IC1132348_KO0,11_KE12,16.htm?jl=1009",
+      "https://www.indeed.com/viewjob?jk=abc123",
+      "https://www.linkedin.com/jobs/view/4012345678",
+      "https://www.linkedin.com/jobs/view/senior-ux-director-at-acme-4012345678",
+      "https://ca.linkedin.com/jobs/view/ux-director-at-acme-4012345678?trk=public_jobs",
+      "https://jobs.lever.co/acme/0c3f1a2b-4d5e-6f70-8a9b-0c1d2e3f4a5b",
+      "https://jobs.lever.co/acme/0c3f1a2b-4d5e-6f70-8a9b-0c1d2e3f4a5b/apply",
+      "https://job-boards.greenhouse.io/acme/jobs/4001234005",
+      "https://boards.greenhouse.io/embed/job_app?for=acme&token=4001234005",
+      "https://jobs.ashbyhq.com/acme/0c3f1a2b-4d5e-6f70-8a9b-0c1d2e3f4a5b",
+      "https://acme.wd1.myworkdayjobs.com/en-US/External/job/New-York-NY/UX-Director_R12345",
+      "https://wd3.myworkdaysite.com/recruiting/acme/External/job/New-York/UX-Director_R12345",
+      "https://careers.acme.com/jobs/101-ux-director",
+      "not a url",
+    ])
+      expect(listPage(u), u).toBe(false);
+  });
+
+  it("drops SmartRecruiters, Workable, Teamtailor, iCIMS, Taleo and Paylocity board pages, not their postings (#1613)", () => {
+    for (const u of [
+      "https://careers.smartrecruiters.com/Acme",
+      "https://jobs.smartrecruiters.com/Acme",
+      "https://apply.workable.com/acme/",
+      "https://acme.teamtailor.com/",
+      "https://acme.teamtailor.com/departments/design",
+      "https://careers-acme.icims.com/jobs/intro",
+      "https://acme.taleo.net/careersection/2/jobsearch.ftl",
+      "https://recruiting.paylocity.com/Recruiting/Jobs/All/0c3f1a2b-4d5e-6f70-8a9b-0c1d2e3f4a5b/Acme-Inc",
+    ])
+      expect(listPage(u), u).toBe(true);
+    for (const u of [
+      "https://jobs.smartrecruiters.com/Acme/743999912345678-product-designer",
+      "https://jobs.smartrecruiters.com/oneclick-ui/company/Acme/publication/0c3f1a2b-4d5e-6f70-8a9b-0c1d2e3f4a5b",
+      "https://apply.workable.com/acme/j/ABC123DEF/",
+      "https://acme.workable.com/jobs/123456",
+      "https://jobs.workable.com/view/abc/product-designer-at-acme",
+      "https://acme.teamtailor.com/jobs/12345-designer",
+      "https://careers-acme.icims.com/jobs/1234/designer/job",
+      "https://acme.taleo.net/careersection/2/jobdetail.ftl?job=ABC",
+      "https://chk.tbe.taleo.net/chk01/ats/careers/v2/viewRequisition?org=ACME&cws=39&rid=1234",
+      "https://recruiting.paylocity.com/Recruiting/Jobs/Details/123456",
+    ])
+      expect(listPage(u), u).toBe(false);
   });
 });
