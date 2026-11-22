@@ -201,7 +201,7 @@ function periodIn(prompt: string): "year" | Per | null {
 
 /**
  * The ask wants its number in thousands: "Desired salary (in thousands)", "Salary expectations in $K", "Base (000s)"
- * (#1188). "401(k)" is a retirement plan, not a unit.
+ * (#1188). "401(k)" is a retirement plan, not a unit, and "in K-12" is a school grade range (#1557).
  */
 export const asksThousands = (prompt: string) => THOUSANDS.test(prompt);
 
@@ -209,7 +209,7 @@ export const asksThousands = (prompt: string) => THOUSANDS.test(prompt);
 const CUR = String.raw`(?:usd|us\$|\$|£|€|eur|gbp|cad)`;
 const UNIT = String.raw`(?:000s|000's|'000s?|1,?000s|k|thousands?)`;
 const THOUSANDS = new RegExp(
-  String.raw`\bin (?:\$\s?|usd\s)?(?:thousands?|k|1,?000s)\b|(?<![\d\w])\(\s*(?:in\s+)?(?:${CUR}\s*,?\s*)?${UNIT}(?:\s*,?\s*${CUR})?\s*\)|\bin 000s\b`,
+  String.raw`\bin (?:\$\s?|usd\s)?(?:thousands?|k(?![-–]?\d)|1,?000s)\b|(?<![\d\w])\(\s*(?:in\s+)?(?:${CUR}\s*,?\s*)?${UNIT}(?:\s*,?\s*${CUR})?\s*\)|\bin 000s\b`,
   "i",
 );
 

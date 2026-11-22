@@ -26,6 +26,18 @@ describe("postedDays and postedText", () => {
     expect(postedText(find({ postedAt: "2026-09-01" }))).toBe("2mo ago");
   });
 
+  it("counts calendar days, whatever the hour (#1551)", () => {
+    vi.setSystemTime(new Date(2026, 10, 7, 8));
+    expect(postedText(find({ postedAt: "2026-11-06" }))).toBe("1d ago");
+    expect(postedText(find({ postedAt: "2026-10-31" }))).toBe("1w ago");
+    expect(postedText(find({ postedAt: "2026-11-07" }))).toBe("today");
+    vi.setSystemTime(new Date(2026, 10, 7, 23, 30));
+    expect(postedText(find({ postedAt: "2026-11-07" }))).toBe("today");
+    expect(postedText(find({ postedAt: "2026-11-06" }))).toBe("1d ago");
+    // Across the clock change (Nov 1, 2026 in the US) it is still a whole number of days.
+    expect(postedDays(find({ postedAt: "2026-10-31" }))).toBe(7);
+  });
+
   it("treats a future date as today", () => {
     expect(postedDays(find({ postedAt: "2026-11-20" }))).toBe(0);
     expect(postedText(find({ postedAt: "2026-11-20" }))).toBe("today");
