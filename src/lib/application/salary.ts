@@ -57,11 +57,14 @@ const SAYS_TOTAL = (s: string) =>
 // $180,000 and does not include bonus or equity" (#650, #1411).
 const SAYS_BASE = (s: string) => NEGATED.test(s) && ABOUT_PAY.test(s) && /\b(bonus|commission|incentive)/i.test(s);
 
+// A bonus added right after an amount sits on top of it, word "base" or not: "Salary range: $150,000 - $180,000 + bonus" (#1528).
+const AMOUNT_PLUS_BONUS = /\d[km]?\s{0,2}(\+|\bplus\b)\s*(an?\s+)?((annual|target|performance|quarterly|sales)\s+)?(bonus|commission|incentive)/i;
+
 /** What the posted range covers: total cash (bonus included), base, or the posting doesn't say. "$150k-$180k base" names it base (#1425). */
 export const rangeBasis = (posting: string): "total" | "base" | null =>
   sentences(posting).some(SAYS_TOTAL)
     ? "total"
-    : /\bbase (salary|pay|compensation)\b|\d[km]?\s{0,2}base\b/i.test(posting) || sentences(posting).some(SAYS_BASE)
+    : /\bbase (salary|pay|compensation)\b|\d[km]?\s{0,2}base\b/i.test(posting) || AMOUNT_PLUS_BONUS.test(posting) || sentences(posting).some(SAYS_BASE)
       ? "base"
       : null;
 
