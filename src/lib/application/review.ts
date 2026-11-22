@@ -12,7 +12,7 @@ import { stripHtml } from "@/lib/ai/entities";
 import { humanize, shapeResume } from "./resumeLayout";
 import { isCommon, upsert } from "./saved";
 import { notesBlock } from "./skills";
-import { draftFactsBlock } from "@/lib/interview/facts";
+import { draftableFacts, draftFactsBlock } from "@/lib/interview/facts";
 import { getAutoApplySettings } from "@/lib/apply";
 import { bullets } from "./notes";
 import { resolve } from "./eeo";
@@ -72,7 +72,8 @@ export async function draftFacts(userId: string) {
  */
 export async function keywordState(userId: string, a: { report: ApplicationReport; opportunityId?: string }, posting: string, title?: string) {
   const { resume, notes } = await draftFacts(userId);
-  const rows = keywordRows(a.report, posting, resume, notes);
+  const facts = (await draftableFacts(userId)).map((f) => f.text);
+  const rows = keywordRows(a.report, posting, resume, notes, facts);
   if (!featureOn("INTERVIEW")) return { resume, rows };
   // The shorter list (#1485). The panel, the go and the resume all read it from here, so they agree.
   const t = title ?? (a.opportunityId ? ((await db.select({ t: schema.opportunities.title }).from(schema.opportunities).where(eq(schema.opportunities.id, a.opportunityId)))[0]?.t ?? "") : "");
