@@ -97,7 +97,9 @@ export function supportFor(term: string, cite: string | undefined, resume: strin
   if (named) return { line: named, from: "resume" };
   const c = cite ? flat(cite) : "";
   if (c.length >= 12) {
-    const inResume = lines.find((l) => flat(l).includes(c) || (flat(l).length >= 12 && c.includes(flat(l))));
+    // The cite must be the person's own words. A resume line inside a longer cite counts only when it is
+    // most of the cite; otherwise one real skill line would back a made-up claim around it (#1627).
+    const inResume = lines.find((l) => flat(l).includes(c) || (flat(l).length >= 12 && c.includes(flat(l)) && flat(l).length >= 0.8 * c.length));
     if (inResume) return { line: inResume, from: "resume" };
     const inNotes = notes.find((n) => n.story.trim() && flat(n.story).includes(c));
     if (inNotes) return { line: cite!.trim(), from: "notes" };
