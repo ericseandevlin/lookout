@@ -111,10 +111,11 @@ export function pickOne(answer: string, labels: string[]): number {
  * a failed submit (#886), even with "not yet been" between (#1154). Nor "unsuccessfully submitted" (#1115), nor "no application
  * has been submitted" (#1154). "You have submitted your application" and "You've submitted your application" count (#1452).
  * "Your application is complete" and a bare "Application complete" count, but not "make sure your application is
- * complete" or a progress label like "Application complete: 80%" (#1621).
+ * complete" or a progress label like "Application complete: 80%" (#1621). "Submission complete" and "Applied successfully!"
+ * count too (#1647).
  * extension/firefox/fill.js and background.js carry the same pattern.
  */
-export const CONFIRMATION = /(?<!\b(?:once|after|when|if|before|until|upon)\b[^.!?\n]{0,40})(?:thank(?:s| you) for (?:applying|your application|submitting|your submission)|(?<!\bno\s+)(?:application|submission|candidacy) (?:has been |was )?(?:successfully )?(?:received|submitted|sent)\b|application (?:for|to|with) [^.!?\n]{1,80}? (?:has been|was) (?:successfully )?(?:received|submitted|sent)\b|we(?:'ve|’ve| have)? (?:successfully )?(?:received|got) your (?:application|submission)|you(?:'ve|’ve| have) (?:successfully )?submitted your (?:application|submission)\b|(?<!(?:\bnot|\bnever|n't|n’t)\s+(?:(?:be|been|yet)\s+){0,2})\bsuccessfully (?:applied|submitted)\b|(?<!\b(?:sure|ensure|check|confirm|verify)\s+(?:that\s+)?(?:your\s+|the\s+)?)\bapplication (?:is |has been |was )?(?:now )?completed?(?=\s*(?:[.!\n]|$)))/i;
+export const CONFIRMATION = /(?<!\b(?:once|after|when|if|before|until|upon)\b[^.!?\n]{0,40})(?:thank(?:s| you) for (?:applying|your application|submitting|your submission)|(?<!\bno\s+)(?:application|submission|candidacy) (?:has been |was )?(?:successfully )?(?:received|submitted|sent)\b|application (?:for|to|with) [^.!?\n]{1,80}? (?:has been|was) (?:successfully )?(?:received|submitted|sent)\b|we(?:'ve|’ve| have)? (?:successfully )?(?:received|got) your (?:application|submission)|you(?:'ve|’ve| have) (?:successfully )?submitted your (?:application|submission)\b|(?<!(?:\bnot|\bnever|n't|n’t)\s+(?:(?:be|been|yet)\s+){0,2})\bsuccessfully (?:applied|submitted)\b|(?<!\b(?:sure|ensure|check|confirm|verify)\s+(?:that\s+)?(?:your\s+|the\s+)?)\b(?:application|submission) (?:is |has been |was )?(?:now |successfully )?completed?(?=\s*(?:[.!\n]|$))|(?<!(?:\bnot|\bnever|n't|n’t)\s+(?:(?:be|been|yet)\s+){0,2})\bapplied successfully\b)/i;
 
 /**
  * Whether an answer reads as one for a checkbox at all: a yes, a no or nothing. A text answer ("https://linkedin.com/in/...")
