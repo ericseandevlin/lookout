@@ -600,6 +600,11 @@ describe("asks in thousands (#1188)", () => {
     ["Desired salary ($ in thousands)", true],
     ["Desired salary (USD)", false],
     ["Do you have 401(k) experience?", false],
+    // "K-12" is school grades, not thousands (#1557).
+    ["What are your salary expectations for this role in K-12 education?", false],
+    ["Desired salary for a teaching role in K–12", false],
+    ["Salary expectations in K12 schools", false],
+    ["Salary expectations in K, please", true],
   ])("%j -> %s", (prompt, want) => expect(asksThousands(prompt)).toBe(want));
 
   it("gives a yearly ask in thousands", () => {
