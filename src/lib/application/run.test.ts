@@ -3,7 +3,7 @@ import { eq } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/pglite";
 import { migrate } from "drizzle-orm/pglite/migrator";
 import path from "node:path";
-import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
+import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import * as schema from "@/lib/db/schema";
 import type { Usage } from "@/lib/ai/llm";
 
@@ -47,6 +47,7 @@ const { deleteFact, updateFact } = await import("@/lib/interview/facts");
 const { finalTerms } = await import("./evidence");
 const { answerKey } = await import("./saved");
 const { emptyUsage } = await import("@/lib/ai/llm");
+const { lettersWritten, fillLetters } = await import("./run");
 
 const GH_URL = "https://job-boards.greenhouse.io/engines/jobs/123";
 const GH_API = "https://boards-api.greenhouse.io/v1/boards/engines/jobs/123?questions=true";
@@ -90,6 +91,10 @@ beforeAll(async () => {
 });
 afterAll(async () => {
   await pg.close();
+});
+// Background letter strategies (#1484) finish inside the test that started them.
+afterEach(async () => {
+  await lettersWritten();
 });
 beforeEach(async () => {
   await db.delete(schema.users);
@@ -213,8 +218,8 @@ describe("processApplication (#378)", () => {
     expect(done.report).toMatchObject({ source: "form", letterAdded: true, applyUrl: GH_URL, scannedAt: expect.any(String), draftedAt: expect.any(String) });
     expect(done.report.error).toBeUndefined();
     expect(done.report.keywordPlan).toBeDefined();
-    // keywords + answers, a cent each.
-    expect(done.report.usd).toBeCloseTo(0.02);
+    // keywords + answers + the two other letter strategies (#1484), a cent each.
+    expect(done.report.usd).toBeCloseTo(0.04);
 
     const items = await itemsOf(app.id);
     const by = (p: RegExp) => items.find((i) => p.test(i.prompt))!;
@@ -273,7 +278,8 @@ describe("processApplication (#378)", () => {
     await processApplication(app.id);
     const failed = await getApp(app.id);
     expect(failed).toMatchObject({ status: "failed", report: { error: "Model timed out", source: "form" } });
-    expect(failed.report.usd).toBeCloseTo(0.02);
+    // The two other letter strategies ran beside the answers and are paid for too (#1484).
+    expect(failed.report.usd).toBeCloseTo(0.04);
   });
 
   it("still drafts when people research is down", async () => {
@@ -340,7 +346,8 @@ describe("redrafts (#378)", () => {
     expect(after.approvedVersionId).toBeNull();
     const a = await getApp(app.id);
     expect(a.status).toBe("needs_review");
-    expect(a.report.usd).toBeCloseTo(before + 0.01);
+    // All three strategies at once (#1484).
+    expect(a.report.usd).toBeCloseTo(before + 0.03);
   });
 
   it("redrafts the cover letter that was pressed when the form has two (#870)", async () => {
@@ -388,13 +395,174 @@ describe("redrafts (#378)", () => {
     expect(after.approvedVersionId).toBe(letter.versions[0].id);
     const a = await getApp(app.id);
     expect(a.status).toBe("submitting");
-    expect(a.report.usd).toBeCloseTo(before + 0.01);
+    expect(a.report.usd).toBeCloseTo(before + 0.03);
   });
 
   it("refuses a redraft on an application with no such item", async () => {
     const { app } = await seedApp({ status: "failed" });
     await expect(redraftLetter(app.id)).rejects.toThrow("No cover letter on this application");
     await expect(redraftResume(app.id)).rejects.toThrow("No resume on this application");
+  });
+});
+
+describe("cover letter strategies written once (#1484)", () => {
+  // Each strategy writes its own letter, so a test can tell which one is on screen.
+  const byStrategy = (c: { user: string }) => {
+    const s = /Cover letter strategy: (lead with proof|match the asks|why this team)/.exec(c.user)?.[1] ?? "none";
+    return { items: [{ index: 0, content: `Dear team, ${s}.`, sources: ["resume"], question: "", note: "" }] };
+  };
+  const letterOf = async (id: string) => (await itemsOf(id)).find((i) => i.kind === "cover_letter")!;
+  const letterCalls = () => completeJSON.mock.calls.filter((c) => c[0].name === "apply-letter").length;
+  /** A draft from before #1484: one letter, nothing stored. */
+  async function oldDraft() {
+    replies["apply-letter"] = byStrategy;
+    const { app } = await seedApp();
+    await processApplication(app.id);
+    const r = (await getApp(app.id)).report;
+    await db.update(schema.applications).set({ report: { ...r, letters: undefined } }).where(eq(schema.applications.id, app.id));
+    completeJSON.mockClear();
+    return { app, letter: await letterOf(app.id) };
+  }
+
+  it("writes all three strategies before the draft is ready for review", async () => {
+    replies["apply-letter"] = byStrategy;
+    const { app } = await seedApp();
+    await processApplication(app.id);
+    const drafted = await getApp(app.id);
+    expect(drafted.status).toBe("needs_review");
+    const letter = await letterOf(app.id);
+    expect(letter.versions).toHaveLength(1);
+    const set = drafted.report.letters![letter.id];
+    // "Lead" in the title: Lookout suggests leading with proof.
+    expect(set.current).toBe("proof");
+    expect(set.writing).toBeUndefined();
+    expect(set.drafts.proof?.content).toBe("I have built design systems for 40 teams.");
+    expect(set.drafts.match?.content).toBe("Dear team, match the asks.");
+    expect(set.drafts.why?.content).toBe("Dear team, why this team.");
+    expect(letterCalls()).toBe(2);
+  });
+
+  it("switches to a stored strategy with no model call and clears the approval", async () => {
+    replies["apply-letter"] = byStrategy;
+    const { app } = await seedApp();
+    await processApplication(app.id);
+    const letter = await letterOf(app.id);
+    await db.update(schema.applicationItems).set({ approvedVersionId: letter.versions[0].id }).where(eq(schema.applicationItems.id, letter.id));
+    await db.update(schema.applications).set({ status: "approved" }).where(eq(schema.applications.id, app.id));
+    completeJSON.mockClear();
+    assertBudget.mockClear();
+
+    await redraftLetter(app.id, "match", letter.id);
+
+    expect(completeJSON).not.toHaveBeenCalled();
+    expect(assertBudget).not.toHaveBeenCalled();
+    const after = await letterOf(app.id);
+    expect(after.versions.map((v) => v.content)).toEqual(["I have built design systems for 40 teams.", "Dear team, match the asks."]);
+    expect(after.approvedVersionId).toBeNull();
+    const a = await getApp(app.id);
+    expect(a.status).toBe("needs_review");
+    expect(a.report.letters![letter.id].current).toBe("match");
+    expect(a.report.letterStrategy).toBe("match");
+  });
+
+  it("keeps the person's edits with the strategy they made them in", async () => {
+    replies["apply-letter"] = byStrategy;
+    const { app } = await seedApp();
+    await processApplication(app.id);
+    const letter = await letterOf(app.id);
+    await db.insert(schema.itemVersions).values({ itemId: letter.id, version: 2, content: "My own proof letter.", note: "Edited by you.", author: "user", sources: ["you"] });
+    completeJSON.mockClear();
+
+    await redraftLetter(app.id, "why", letter.id);
+    await redraftLetter(app.id, "proof", letter.id);
+
+    const after = await letterOf(app.id);
+    expect(after.versions.map((v) => v.content)).toEqual(["I have built design systems for 40 teams.", "My own proof letter.", "Dear team, why this team.", "My own proof letter."]);
+    expect(after.versions[3].author).toBe("user");
+    expect(completeJSON).not.toHaveBeenCalled();
+  });
+
+  it("refuses a pick that isn't stored, with no model call in the request, and writes it in the background", async () => {
+    const { app, letter } = await oldDraft();
+
+    await expect(redraftLetter(app.id, "why", letter.id)).rejects.toMatchObject({ status: 409 });
+    expect(letterCalls()).toBe(0);
+    expect((await getApp(app.id)).report.letters![letter.id].writing).toBeTruthy();
+
+    await lettersWritten();
+    const set = (await getApp(app.id)).report.letters![letter.id];
+    expect(set.writing).toBeUndefined();
+    expect(Object.keys(set.drafts).sort()).toEqual(["match", "proof", "why"]);
+    expect((await letterOf(app.id)).versions).toHaveLength(1);
+  });
+
+  it("fills a draft from before #1484 once, keeping the letter on screen under its strategy", async () => {
+    const { app, letter } = await oldDraft();
+
+    await fillLetters(app.id);
+    // The claim is saved before the page reads the draft, so it shows the other two as busy.
+    const claimed = (await getApp(app.id)).report.letters![letter.id];
+    expect(claimed).toMatchObject({ current: "proof" });
+    expect(claimed.writing).toBeTruthy();
+    expect(Object.keys(claimed.drafts)).toEqual(["proof"]);
+    // A poll while it's writing starts nothing more.
+    await fillLetters(app.id);
+    await lettersWritten();
+    await fillLetters(app.id);
+    await lettersWritten();
+
+    expect(letterCalls()).toBe(2);
+    const set = (await getApp(app.id)).report.letters![letter.id];
+    expect(set.writing).toBeUndefined();
+    expect(set.drafts.proof?.content).toBe("I have built design systems for 40 teams.");
+    expect(set.drafts.why?.content).toBe("Dear team, why this team.");
+    expect((await letterOf(app.id)).versions).toHaveLength(1);
+  });
+
+  it("fills a strategy that failed in the draft", async () => {
+    replies["apply-letter"] = (c) => {
+      if (c.user.includes("why this team")) throw new Error("model down");
+      return byStrategy(c);
+    };
+    const { app } = await seedApp();
+    await processApplication(app.id);
+    const letter = await letterOf(app.id);
+    expect(Object.keys((await getApp(app.id)).report.letters![letter.id].drafts).sort()).toEqual(["match", "proof"]);
+
+    replies["apply-letter"] = byStrategy;
+    await fillLetters(app.id);
+    await lettersWritten();
+    expect((await getApp(app.id)).report.letters![letter.id].drafts.why?.content).toBe("Dear team, why this team.");
+  });
+
+  it("refreshes all three on a plain redraft, and an older round never writes over it", async () => {
+    const { app, letter } = await oldDraft();
+    let round = "first";
+    let open!: () => void;
+    const gate = new Promise<void>((r) => (open = r));
+    replies["apply-letter"] = async (c) => {
+      const mine = round;
+      // The page's fill waits until the redraft is saved.
+      if (mine === "first") await gate;
+      const d = byStrategy(c);
+      d.items[0].content += ` (${mine})`;
+      return d;
+    };
+    await fillLetters(app.id);
+    round = "second";
+    await redraftLetter(app.id, undefined, letter.id);
+    open();
+    await lettersWritten();
+
+    const set = (await getApp(app.id)).report.letters![letter.id];
+    expect(set.current).toBe("proof");
+    expect(set.writing).toBeUndefined();
+    expect(set.drafts.proof?.content).toBe("Dear team, lead with proof. (second)");
+    expect(set.drafts.match?.content).toBe("Dear team, match the asks. (second)");
+    expect(set.drafts.why?.content).toBe("Dear team, why this team. (second)");
+    expect((await letterOf(app.id)).versions.at(-1)?.content).toBe("Dear team, lead with proof. (second)");
+    // The fill's two letters and the redraft's three, all paid for.
+    expect(letterCalls()).toBe(5);
   });
 });
 

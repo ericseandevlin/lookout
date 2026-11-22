@@ -28,6 +28,7 @@ import { featureOn } from "@/lib/features";
 import { suggestStrategy } from "./letterStrategy";
 import { finishAnalysis, honestyFindings, RECRUITER_SYSTEM, RecruiterDraft, recruiterChecks, recruiterPrompt } from "./recruiter";
 import { addUsd, patchReport } from "./reportStore";
+import { letterButtons } from "./letterStrategy";
 import { autoApproveField, optionAnswerAllowed, settledStatus, submitClicked } from "./flowRules";
 
 /**
@@ -88,14 +89,18 @@ async function keywordDetail(userId: string, report: ApplicationReport, posting:
   return { keywordRows: rows, keywordsApproved: approvedFor(report, rows), keywordPicks: keywordPicks(rows, posting, title) };
 }
 
-/** The cover letter's strategy and Lookout's pick for this role (#738). */
+/** Lookout's pick for this role (#738), and each cover letter's strategy and stored letters (#1484). */
 async function letterDetail(userId: string, report: ApplicationReport, posting: { title: string; text: string }) {
   const [p] = await db.select({ stories: schema.profiles.personalStories }).from(schema.profiles).where(eq(schema.profiles.userId, userId));
   const s = suggestStrategy(posting, p?.stories ?? []);
-  return { strategy: report.letterStrategy ?? null, suggested: s.strategy, why: s.why };
+  const items = Object.fromEntries(Object.entries(report.letters ?? {}).map(([id, set]) => [id, letterButtons(set, null)]));
+  return { strategy: report.letterStrategy ?? null, suggested: s.strategy, why: s.why, items };
 }
 
 export async function getApplicationDetail(userId: string, id: string) {
+  // A draft missing letter strategies gets them written in the background; the page shows those as busy (#1484).
+  // Imported here because run.ts imports this file.
+  await (await import("./run")).fillLetters((await ownApplication(userId, id)).id);
   const a = await ownApplication(userId, id);
   const [o] = await db.select().from(schema.opportunities).where(eq(schema.opportunities.id, a.opportunityId));
   const items = await db.select().from(schema.applicationItems).where(eq(schema.applicationItems.applicationId, id)).orderBy(asc(schema.applicationItems.position));
@@ -128,7 +133,7 @@ export async function getApplicationDetail(userId: string, id: string) {
     status: a.status,
     ats: a.ats,
     route: a.route,
-    report: { ...a.report, postingText: undefined },
+    report: { ...a.report, postingText: undefined, letters: undefined },
     ...(await keywordDetail(userId, a.report, postingText, o?.title ?? "")),
     /** The keyword panel that uses the interview (#1485). */
     interviewKeywords: featureOn("INTERVIEW"),
