@@ -9,7 +9,7 @@ import { InfoTip } from "./InfoTip";
 import { RecruiterPanel } from "./RecruiterPanel";
 import { TemplatePicker } from "./TemplatePicker";
 import { VersionNotes } from "./VersionNotes";
-import { card, muted, OptionChecks, type Act, type Detail, type Item } from "./shared";
+import { card, muted, OptionChecks, type Act, type Item, type LetterInfo } from "./shared";
 import type { LetterStrategy } from "@/lib/application/letterStrategy";
 import { color, font } from "@/lib/tokens";
 import { LETTER_STRATEGIES, STRATEGY } from "@/lib/application/letterStrategy";
@@ -220,7 +220,7 @@ export function ItemCard({ appId, item, locked, act, analysis, template, accent,
   );
 }
 
-type LetterPick = NonNullable<Detail["letter"]>["items"][string] & { suggested: LetterStrategy; why: string };
+type LetterPick = LetterInfo["items"][string] & { suggested: LetterStrategy; why: string };
 
 /**
  * Three ways to write the letter (#738). All three are written once (#1484), so a pick shows the stored letter.

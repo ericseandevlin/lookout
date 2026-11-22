@@ -41,11 +41,12 @@ vi.mock("./master", () => ({ ensureMaster: async () => ({ md: RESUME, built: fal
 const findOutreach = vi.fn(async () => [] as unknown[]);
 vi.mock("./outreach", () => ({ findOutreach }));
 
-const { scanPosting, processApplication, sweepApplications, resumeFor, redraftLetter, redraftResume, lettersWritten, LOST_SUBMIT } = await import("./run");
+const { scanPosting, processApplication, sweepApplications, resumeFor, redraftLetter, redraftResume, LOST_SUBMIT } = await import("./run");
 const { keywordState } = await import("./review");
 const { finalTerms } = await import("./evidence");
 const { answerKey } = await import("./saved");
 const { emptyUsage } = await import("@/lib/ai/llm");
+const { lettersWritten } = await import("./run");
 
 const GH_URL = "https://job-boards.greenhouse.io/engines/jobs/123";
 const GH_API = "https://boards-api.greenhouse.io/v1/boards/engines/jobs/123?questions=true";
