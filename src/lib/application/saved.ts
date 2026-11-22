@@ -6,10 +6,10 @@ import { sameOption } from "./fillPlan";
  * nearly the same words. Job-specific essays and salary are never saved; they change per role.
  */
 
-// "Are you 18 or older?" and "over 18" too (#1576). "Legally able", "eligible" and "right to work" are work authorization (#1597).
+// "Are you 18 or older?" and "over 18" too (#1576). "Legally able", "eligible" and "right to work" are work authorization (#1597), and so is a work permit (#1619).
 // Short words need \b: "city" sits inside "ethnicity", which saved an ethnicity answer for the drafting model (#1059).
 const COMMON =
-  /authori[sz]ed to work|work authori[sz]ation|legally (authorized|eligible|able|permitted)|(eligible|permitted) to work|right to work|sponsor|\bvisa\b|\bzip\b|postal|state of residence|^state$|\bcity\b|address|phone|mobile|country|relocat|notice period|start date|earliest.*start|when can you start|availab(le|ility) to start|previously (worked|employed)|ever (been )?employed by|criminal|background check|\bdrug|18 years|\bage of\b|\b(over|at least) 18\b|\b18 (or|and) (older|over|above)\b|\b18\+|security clearance|how did you hear|referr|pronoun|preferred (first )?name/i;
+  /authori[sz]ed to work|work authori[sz]ation|legally (authorized|eligible|able|permitted)|(eligible|permitted) to work|right to work|work permit|sponsor|\bvisa\b|\bzip\b|postal|state of residence|^state$|\bcity\b|address|phone|mobile|country|relocat|notice period|start date|earliest.*start|when can you start|availab(le|ility) to start|previously (worked|employed)|ever (been )?employed by|criminal|background check|\bdrug|18 years|\bage of\b|\b(over|at least) 18\b|\b18 (or|and) (older|over|above)\b|\b18\+|security clearance|how did you hear|referr|pronoun|preferred (first )?name/i;
 // Never kept: salary and essays change per role; commute and office questions depend on where each job is.
 // "years of" is experience, not "18 years of age" (#1059). "Expected" is the pay ask, not an expected start or notice period (#1595).
 const NEVER = /salary|compensation|pay|expected(?!\s+(start|notice|availability))|why|describe|tell us|cover letter|portfolio|years of(?! age)|commut|in.?office|hybrid|remote|location (listed|of the)|this (role|position|location)/i;
@@ -58,7 +58,7 @@ const qualifier = (q: string) =>
 /** Is this question one we should remember the answer to? */
 // Work authorization and sponsorship don't change with the role: "authorized to work in the United States for this
 // position?" is the same fact everywhere, so "this role" or "this position" doesn't rule it out. "This location" still does (#1123).
-const AUTH = /authori[sz]ed to work|work authori[sz]ation|legally (authorized|eligible|able|permitted)|(eligible|permitted) to work|right to work|sponsor|\bvisa\b/i;
+const AUTH = /authori[sz]ed to work|work authori[sz]ation|legally (authorized|eligible|able|permitted)|(eligible|permitted) to work|right to work|work permit|sponsor|\bvisa\b/i;
 // Where the job is, not where the person is: a US job's "No" to sponsorship "in the country where this role is based" is the
 // wrong answer for a London job. Checked before "this role" is removed; "the country where you live" is still kept (#1227).
 // "The country for which you are applying", "the country you're applying to" and "the location of this role" too (#1572).
