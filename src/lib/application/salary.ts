@@ -72,7 +72,8 @@ const SAYS_TOTAL = (s: string) =>
 const SAYS_BASE = (s: string) => NEGATED.test(s) && ABOUT_PAY.test(s) && /\b(bonus|commission|incentive)/i.test(s);
 
 // A bonus added right after an amount sits on top of it, word "base" or not: "Salary range: $150,000 - $180,000 + bonus" (#1528).
-const AMOUNT_PLUS_BONUS = /\d[km]?\s{0,2}(\+|\bplus\b)\s*(an?\s+)?((annual|target|performance|quarterly|sales)\s+)?(bonus|commission|incentive)/i;
+// A currency code, a period word or a comma can sit between: "$150,000 - $180,000 per year, plus bonus" (#1602).
+const AMOUNT_PLUS_BONUS = /\d[km]?(\s*(usd|cad|gbp|eur))?(\s*(per (year|annum)|annually|a year|\/\s?y(ea)?r\b))?\s{0,2},?\s{0,2}(\+|\bplus\b)\s*(an?\s+)?((annual|target|performance|quarterly|sales)\s+)?(bonus|commission|incentive)/i;
 
 /** What the posted range covers: total cash (bonus included), base, or the posting doesn't say. "$150k-$180k base" names it base (#1425). */
 // An explicit "base salary range" beats a total heading with no amount in another sentence: "Total compensation: our
