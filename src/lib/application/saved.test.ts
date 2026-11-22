@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { answerKey, isCommon, match, savedBlock, upsert } from "./saved";
+import { onlyThisOne, answerKey, isCommon, match, savedBlock, upsert } from "./saved";
 
 describe("saved answers", () => {
   it("keeps common facts, never salary or essays", () => {
@@ -71,6 +71,14 @@ describe("saved answers", () => {
       expect(isCommon("Earliest start date", a)).toBe(false);
     for (const a of ["Immediately", "2 weeks after an offer", "After a final decision, with 30 days notice", "1 month", "I may need 3 weeks"])
       expect(isCommon("When can you start?", a)).toBe(true);
+  });
+
+  it("keeps a span of weeks, which is not a day and month (#1575)", () => {
+    for (const a of ["2-3 weeks after an offer", "4-6 weeks", "2-4 business days", "1-2 months notice", "2/3 weeks", "4.6 weeks"]) {
+      expect(isCommon("What is your earliest start date?", a), a).toBe(true);
+      expect(onlyThisOne("When can you start?", a), a).toBe(false);
+    }
+    for (const a of ["12/1", "12-1", "1/15/2027", "12/1, then 2 weeks of onboarding"]) expect(isCommon("Earliest start date", a), a).toBe(false);
   });
 
   it("never reuses an older saved Yes about one employer (#1032)", () => {
