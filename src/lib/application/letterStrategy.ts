@@ -95,7 +95,7 @@ export type LetterDraft = { content: string; note: string; sources: string[]; qu
  */
 export type LetterSet = { current: LetterStrategy; gen: string; drafts: Partial<Record<LetterStrategy, LetterDraft>>; writing?: string };
 
-/** Background drafts older than this count as failed, so a pick falls back to a fresh model call. */
+/** Background drafts older than this count as failed, so the review page writes them again. */
 export const WRITING_MS = 5 * 60_000;
 
 export const isWriting = (set: LetterSet | undefined, now = Date.now()) => !!set?.writing && now - Date.parse(set.writing) < WRITING_MS;

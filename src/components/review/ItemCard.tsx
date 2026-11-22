@@ -90,7 +90,7 @@ export function ItemCard({ appId, item, locked, act, analysis, template, accent,
           )}
         </div>
       )}
-      {letter && !locked && !editing && <StrategyPicker letter={letter} busy={!!busy || dirty} onPick={(s) => run("revise", { action: "redraft", strategy: s }, letter.ready.includes(s) ? `Showing the letter: ${STRATEGY[s].label.toLowerCase()}.` : `Lookout rewrote the letter: ${STRATEGY[s].label.toLowerCase()}.`)} />}
+      {letter && !locked && !editing && <StrategyPicker letter={letter} busy={!!busy || dirty} onPick={(s) => run("revise", { action: "redraft", strategy: s }, `Showing the letter: ${STRATEGY[s].label.toLowerCase()}.`)} />}
 
       {doc && !editing ? (
         <>
@@ -224,7 +224,7 @@ type LetterPick = LetterInfo["items"][string] & { suggested: LetterStrategy; why
 
 /**
  * Three ways to write the letter (#738). All three are written once (#1484), so a pick shows the stored letter.
- * A strategy still being written pulses and waits. The description and the reason for the pick live in the tooltips.
+ * A strategy not stored yet pulses and waits; a click never calls the model. The description and the reason for the pick live in the tooltips.
  */
 function StrategyPicker({ letter, busy, onPick }: { letter: LetterPick; busy: boolean; onPick: (s: LetterStrategy) => void }) {
   const current = letter.strategy;
@@ -233,7 +233,7 @@ function StrategyPicker({ letter, busy, onPick }: { letter: LetterPick; busy: bo
       <span style={{ fontSize: font.base, fontWeight: 600, marginRight: 4 }}>Strategy</span>
       {LETTER_STRATEGIES.map((s) => {
         const on = s === current;
-        const waiting = !on && letter.writing && !letter.ready.includes(s);
+        const waiting = !on && !letter.ready.includes(s);
         return (
           <button
             key={s}

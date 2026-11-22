@@ -88,6 +88,9 @@ async function letterDetail(userId: string, report: ApplicationReport, posting: 
 }
 
 export async function getApplicationDetail(userId: string, id: string) {
+  // A draft missing letter strategies gets them written in the background; the page shows those as busy (#1484).
+  // Imported here because run.ts imports this file.
+  await (await import("./run")).fillLetters((await ownApplication(userId, id)).id);
   const a = await ownApplication(userId, id);
   const [o] = await db.select().from(schema.opportunities).where(eq(schema.opportunities.id, a.opportunityId));
   const items = await db.select().from(schema.applicationItems).where(eq(schema.applicationItems.applicationId, id)).orderBy(asc(schema.applicationItems.position));

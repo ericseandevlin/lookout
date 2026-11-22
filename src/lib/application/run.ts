@@ -200,13 +200,11 @@ export async function processApplication(id: string) {
     await setStatus(id, "drafting", report);
 
     await assertBudget(app.userId);
-    const { later, ...drafted } = await draftAll(id, app.userId, opp, usage, scan.postingHtml);
+    const drafted = await draftAll(id, app.userId, opp, usage, scan.postingHtml);
     Object.assign(report, drafted);
     report.draftedAt = new Date().toISOString();
     report.usd = (report.usd ?? 0) + usage.usd;
     await setStatus(id, "needs_review", report);
-    // The other two letter strategies, after the draft is on screen so it is no slower (#1484).
-    later();
   } catch (e) {
     report.error = e instanceof Error ? e.message : String(e);
     report.usd = (report.usd ?? 0) + usage.usd;
@@ -365,17 +363,19 @@ async function writeLetter(inp: DraftInputs, item: { prompt: string; required: b
 }
 
 /**
- * Write the strategies a letter doesn't have yet, in the background, and store them (#1484). About two more letter
- * calls per letter. A newer round of drafting (`gen`) wins: this one then only adds its spend.
+ * Write the strategies a letter doesn't have yet, in the background, and store them (#1484). Only for drafts from
+ * before #1484, or a draft where one strategy failed. A newer round (`gen`) wins: this one then only adds its spend.
+ * If any strategy fails, `writing` stays set, so the next try waits WRITING_MS instead of repeating every poll.
  */
-function writeOtherLetters(appId: string, userId: string, item: { id: string; prompt: string; required: boolean }, gen: string, inp: DraftInputs, company: string, have: LetterStrategy[]) {
+function writeOtherLetters(appId: string, userId: string, item: { id: string; prompt: string; required: boolean }, gen: string, opp: typeof schema.opportunities.$inferSelect, have: LetterStrategy[]) {
   const job: Promise<void> = (async () => {
     const usage = emptyUsage();
     const todo = LETTER_STRATEGIES.filter((s) => !have.includes(s));
     let got: PromiseSettledResult<LetterDraft>[] = [];
     try {
       await assertBudget(userId);
-      got = await Promise.allSettled(todo.map((s) => writeLetter(inp, item, s, company, usage)));
+      const inp = await loadInputs(userId, opp, usage);
+      got = await Promise.allSettled(todo.map((s) => writeLetter(inp, item, s, opp.company, usage)));
     } finally {
       await patchReport(appId, (r) => {
         const set = r.letters?.[item.id];
@@ -384,14 +384,68 @@ function writeOtherLetters(appId: string, userId: string, item: { id: string; pr
         const drafts = { ...set.drafts };
         got.forEach((g, i) => {
           if (g.status === "fulfilled" && !drafts[todo[i]]) drafts[todo[i]] = g.value;
+          else if (g.status === "rejected") console.error("[apply] letter strategy", todo[i], g.reason);
         });
-        return { ...paid, letters: { ...r.letters, [item.id]: { ...set, drafts, writing: undefined } } };
+        const done = LETTER_STRATEGIES.every((s) => drafts[s]);
+        return { ...paid, letters: { ...r.letters, [item.id]: { ...set, drafts, writing: done ? undefined : set.writing } } };
       });
     }
   })()
     .catch((e) => console.error("[apply] other letter strategies", e))
     .finally(() => letterWork.delete(job));
   letterWork.add(job);
+}
+
+/**
+ * Called when the review page loads (#1484). A cover letter missing any of its three strategies, and not being
+ * written now, gets the missing ones written in the background. The claim is one locked write, so the page that
+ * triggers it already shows those buttons as busy, and polls never start a second job.
+ */
+export async function fillLetters(appId: string) {
+  const [a] = await db.select().from(schema.applications).where(eq(schema.applications.id, appId));
+  if (!a || !REVIEW_FILL.includes(a.status)) return;
+  const items = await db.select().from(schema.applicationItems).where(and(eq(schema.applicationItems.applicationId, appId), eq(schema.applicationItems.kind, "cover_letter")));
+  const need = (r: ApplicationReport, id: string) => {
+    const set = r.letters?.[id];
+    return !isWriting(set) && !LETTER_STRATEGIES.every((s) => set?.drafts[s]);
+  };
+  if (!items.some((it) => need(a.report, it.id))) return;
+  const [opp] = await db.select().from(schema.opportunities).where(eq(schema.opportunities.id, a.opportunityId));
+  if (!opp) return;
+  const fallback = a.report.letterStrategy ?? (await pageSuggestion(a.userId, opp, a.report));
+  const claimed: { item: (typeof items)[number]; gen: string; have: LetterStrategy[] }[] = [];
+  await db.transaction(async (tx) => {
+    const latest = new Map(await Promise.all(items.map(async (it) => [it.id, await latestVersion(tx, it.id)] as const)));
+    await patchReport(
+      appId,
+      (r) => {
+        const letters = { ...r.letters };
+        for (const it of items) {
+          const v = latest.get(it.id);
+          if (!v?.content || !need(r, it.id)) continue;
+          const set = letters[it.id];
+          const current = set?.current ?? fallback;
+          const drafts = set ? keepShown(set, v, it.question) : { [current]: { content: v.content, note: v.note, sources: v.sources, question: it.question, author: v.author } };
+          const gen = randomUUID();
+          letters[it.id] = { current, gen, drafts, writing: new Date().toISOString() };
+          claimed.push({ item: it, gen, have: LETTER_STRATEGIES.filter((s) => drafts[s]) });
+        }
+        return claimed.length ? { ...r, letters } : r;
+      },
+      {},
+      tx,
+    );
+  });
+  for (const c of claimed) writeOtherLetters(appId, a.userId, c.item, c.gen, opp, c.have);
+}
+
+/** Statuses where the review page fills missing letters. Not while drafting, sending or sent. */
+const REVIEW_FILL: ApplicationStatus[] = ["needs_review", "manual", "approved"];
+
+/** Lookout's suggestion for a draft from before #738, which saved no strategy. */
+async function pageSuggestion(userId: string, opp: typeof schema.opportunities.$inferSelect, report: ApplicationReport) {
+  const [p] = await db.select({ stories: schema.profiles.personalStories }).from(schema.profiles).where(eq(schema.profiles.userId, userId));
+  return suggestStrategy({ title: opp.title, text: report.postingText || opp.description || "" }, p?.stories ?? []).strategy;
 }
 
 /** The latest version of an item, inside a transaction. */
@@ -431,18 +485,21 @@ async function switchLetter(appId: string, itemId: string, to: LetterStrategy) {
 }
 
 /**
- * A new cover letter version. With a strategy that's stored, it shows that letter at once (#1484). Otherwise it writes
- * one from the posting with the current letter rules (#129). A redraft with no strategy, or of a letter from before
- * #1484, starts a new round: this strategy now, the other two in the background.
+ * A new cover letter version. A pick of a strategy shows its stored letter and never calls the model (#1484). A
+ * strategy that isn't stored yet is refused while the review page writes it. A redraft with no strategy writes all
+ * three again from the posting with the current letter rules (#129), at once, and shows the one in use.
  */
 export async function redraftLetter(appId: string, strategy?: LetterStrategy, itemId?: string) {
   const [a] = await db.select().from(schema.applications).where(eq(schema.applications.id, appId));
   const item = await itemToRedraft(appId, "cover_letter", itemId);
   if (!a || !item) throw new Error("No cover letter on this application");
   const set = a.report.letters?.[item.id];
-  if (strategy && set?.current === strategy) return;
-  if (strategy && set?.drafts[strategy]) return switchLetter(appId, item.id, strategy);
-  if (strategy && isWriting(set)) throw new HttpError(409, "Lookout is still writing that letter. Try again in a moment.");
+  if (strategy) {
+    if (set?.current === strategy) return;
+    if (set?.drafts[strategy]) return switchLetter(appId, item.id, strategy);
+    await fillLetters(appId);
+    throw new HttpError(409, "Lookout is still writing that letter. Try again in a moment.");
+  }
   await assertBudget(a.userId);
   const [opp] = await db.select().from(schema.opportunities).where(eq(schema.opportunities.id, a.opportunityId));
   traceAs("redraft", a.userId, a.id);
@@ -454,27 +511,29 @@ export async function redraftLetter(appId: string, strategy?: LetterStrategy, it
     // The posting page still works without the ATS's full description.
   }
   const inp = await loadInputs(a.userId, opp, usage, postingHtml);
-  // The person's pick (#738), else the strategy the letter already uses, else Lookout's suggestion.
-  const using = strategy ?? set?.current ?? a.report.letterStrategy ?? suggestStrategy(inp.posting, inp.stories ?? []).strategy;
-  const d = await writeLetter(inp, item, using, opp.company, usage);
-  const fresh = !strategy || !set;
-  const gen = fresh ? randomUUID() : set.gen;
+  // The strategy the letter already uses, else Lookout's suggestion.
+  const using = set?.current ?? a.report.letterStrategy ?? suggestStrategy(inp.posting, inp.stories ?? []).strategy;
+  const got = await Promise.allSettled(LETTER_STRATEGIES.map((s) => writeLetter(inp, item, s, opp.company, usage)));
+  const drafts: LetterSet["drafts"] = {};
+  got.forEach((g, i) => {
+    if (g.status === "fulfilled") drafts[LETTER_STRATEGIES[i]] = g.value;
+  });
+  const d = drafts[using];
+  if (!d) {
+    await patchReport(appId, addUsd(usage.usd));
+    throw (got[LETTER_STRATEGIES.indexOf(using)] as PromiseRejectedResult).reason;
+  }
   await writeRedraft(appId, usage.usd, async (tx, now) => {
     const latest = await latestVersion(tx, item.id);
     await tx.insert(schema.itemVersions).values({ itemId: item.id, version: (latest?.version ?? 0) + 1, content: d.content, note: `- Redrafted from the posting\n${d.note}`, author: "ai", sources: d.sources });
     await tx.update(schema.applicationItems).set({ approvedVersionId: null, question: d.question }).where(eq(schema.applicationItems.id, item.id));
     await patchReport(
       appId,
-      (r) => {
-        const cur = r.letters?.[item.id];
-        const next: LetterSet = fresh || !cur ? { current: using, gen, drafts: { [using]: d }, writing: new Date().toISOString() } : { ...cur, current: using, drafts: { ...keepShown(cur, latest, item.question), [using]: d } };
-        return { ...addUsd(usage.usd)(r), letterStrategy: using, letters: { ...r.letters, [item.id]: next } };
-      },
+      (r) => ({ ...addUsd(usage.usd)(r), letterStrategy: using, letters: { ...r.letters, [item.id]: { current: using, gen: randomUUID(), drafts } } }),
       { status: reviewAgain(now), updatedAt: new Date() },
       tx,
     );
   });
-  if (fresh) writeOtherLetters(appId, a.userId, item, gen, inp, opp.company, [using]);
 }
 
 export async function redraftResume(appId: string, itemId?: string) {
@@ -534,8 +593,17 @@ async function draftAll(id: string, userId: string, opp: typeof schema.opportuni
     if (fact) out.set(it.id, fact);
     else rest.push({ id: it.id, index, kind: it.kind, prompt: it.prompt, required: it.required, options: it.options, multi: it.fieldType === "multiselect" });
   }
+  // All three letter strategies are written in the draft, so a pick on the review page only swaps stored text (#1484).
+  // The other two run beside the answers call, so the draft takes about as long as before.
+  const strategy = inp.letterStrategy!;
+  const others = LETTER_STRATEGIES.filter((s) => s !== strategy);
+  const extra = new Map(rest.filter((it) => it.kind === "cover_letter").map((it) => [it.id, Promise.allSettled(others.map((s) => writeLetter(inp, it, s, opp.company, usage)))]));
   if (rest.length) {
-    const r = await completeJSON({ name: "apply-answers", schema: AnswersDraft, system: ANSWERS_SYSTEM, user: answersPrompt(inp, rest), maxTokens: 8000, usage });
+    // If the answers fail, the other letters still finish first, so their spend is counted.
+    const r = await completeJSON({ name: "apply-answers", schema: AnswersDraft, system: ANSWERS_SYSTEM, user: answersPrompt(inp, rest), maxTokens: 8000, usage }).catch(async (e) => {
+      await Promise.all(extra.values());
+      throw e;
+    });
     const byIndex = new Map(r.items.map((a) => [a.index, a]));
     for (const it of rest) {
       const raw = byIndex.get(it.index);
@@ -586,12 +654,18 @@ async function draftAll(id: string, userId: string, opp: typeof schema.opportuni
       await tx.insert(schema.itemVersions).values({ itemId: item.id, version: 1, content: person.draft.content, note: person.draft.note, author: "ai", sources: person.draft.sources });
     }
   });
-  // Each drafted letter starts a round: the suggested strategy is on screen, the other two follow (#1484).
-  const strategy = inp.letterStrategy!;
-  const rounds = rest.filter((it) => it.kind === "cover_letter" && out.get(it.id)?.content).map((it) => ({ item: items.find((i) => i.id === it.id)!, gen: randomUUID() }));
-  const letters = rounds.length ? Object.fromEntries(rounds.map(({ item, gen }) => [item.id, { current: strategy, gen, drafts: { [strategy]: { ...out.get(item.id)!, author: "ai" as const } }, writing: new Date().toISOString() } satisfies LetterSet])) : undefined;
-  const later = () => rounds.forEach(({ item, gen }) => writeOtherLetters(id, userId, item, gen, inp, opp.company, [strategy]));
-  return { keywordPlan, keywords: undefined, keywordsApproved: undefined, postingText: inp.posting.text, traps: inp.traps ?? [], letterStrategy: items.some((i) => i.kind === "cover_letter") ? inp.letterStrategy : undefined, letters, later };
+  const letters: Record<string, LetterSet> = {};
+  for (const [itemId, job] of extra) {
+    const main = out.get(itemId);
+    if (!main?.content) continue;
+    const drafts: LetterSet["drafts"] = { [strategy]: { ...main, author: "ai" } };
+    (await job).forEach((g, i) => {
+      if (g.status === "fulfilled") drafts[others[i]] = g.value;
+      else console.error("[apply] letter strategy", others[i], g.reason);
+    });
+    letters[itemId] = { current: strategy, gen: randomUUID(), drafts };
+  }
+  return { keywordPlan, keywords: undefined, keywordsApproved: undefined, postingText: inp.posting.text, traps: inp.traps ?? [], letterStrategy: items.some((i) => i.kind === "cover_letter") ? inp.letterStrategy : undefined, letters: Object.keys(letters).length ? letters : undefined };
 }
 
 /** What a submit the server lost track of records (#864). It may have gone through, so it counts as clicked (#865). */
