@@ -60,8 +60,12 @@ const PAY_INCLUDES_BONUS = (s: string) => {
   if (EXTRA_PAY.test(subject)) return false;
   return ABOUT_PAY.test(s) && !PACKAGE.test(subject);
 };
+// The same said the other way round: "Bonus is included in this range", "Commission is reflected in the posted pay" (#1566).
+// "Is not included" never matches: the verb must follow "is" or "are" right away.
+const BONUS_INCLUDED =
+  /\b(bonus|commission|incentive)\w*(?:\s+(?:pay|payments?|target|eligibility))?\s+(is|are)\s+(also\s+)?(included|reflected)\s+in\s+(the|this|that|our)\s+(?:(?:posted|above|listed|stated)\s+)?(?:(?:compensation|pay|salary)\s+)?(range|figure|amount|salary|pay)\b/i;
 const SAYS_TOTAL = (s: string) =>
-  !NEGATED.test(s) && (PAY_INCLUDES_BONUS(s) || (BASE_PLUS.test(s) && THE_RANGE.test(s)) || ON_TARGET.test(s) || NAMES_TOTAL(s));
+  !NEGATED.test(s) && (PAY_INCLUDES_BONUS(s) || BONUS_INCLUDED.test(s) || (BASE_PLUS.test(s) && THE_RANGE.test(s)) || ON_TARGET.test(s) || NAMES_TOTAL(s));
 
 // A sentence about the pay that puts the bonus outside it says the range is base: "The salary range is $150,000 to
 // $180,000 and does not include bonus or equity" (#650, #1411).
