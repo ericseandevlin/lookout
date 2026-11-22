@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useEffect, useId, useLayoutEffect, useRef, useState } from "react";
 import type { InterviewView, ViewFact, ViewTurn } from "@/lib/interview/session";
-import { Composer, QuestionBubble, Said } from "./chat";
+import { Composer, QuestionBubble, Said, Thinking } from "./chat";
 import { PageHead, ProfileTabs } from "./Profile";
 import { btn } from "./Settings";
 import { api, useStore } from "./store";
@@ -33,6 +33,7 @@ export function Interview() {
   const [err, setErr] = useState<string | null>(null);
   const [text, setText] = useState("");
   const [busy, setBusy] = useState<null | "answer" | "skip">(null);
+  const [pending, setPending] = useState<{ text: string | null } | null>(null);
   const [early, setEarly] = useState<Earlier>({ open: false, turns: [], more: true, loading: false });
   // The topic count at which the person last pressed Keep going: the soft stop comes back 5 topics later.
   const [keptAt, setKeptAt] = useState(-1);
@@ -125,18 +126,23 @@ export function Interview() {
       box.current?.focus();
       return;
     }
-    // The person just acted, so their turn and the reply come into view.
+    // The person just acted, so their turn and the reply come into view. The answer moves into the chat right away and
+    // Lookout's thinking shows under it until the reply comes back.
     stick.current = true;
+    const said = text;
     setBusy(action);
+    setPending({ text: action === "answer" ? said.trim() : null });
+    setText("");
     setErr(null);
     try {
-      const d = await api<InterviewView>("/api/interview", { method: "POST", json: { turnId: data.current.id, action, text } });
+      const d = await api<InterviewView>("/api/interview", { method: "POST", json: { turnId: data.current.id, action, text: said } });
       setData(d);
-      setText("");
       requestAnimationFrame(() => box.current?.focus());
     } catch (e) {
+      setText(said);
       setErr(e instanceof Error ? e.message : "Couldn't save that");
     } finally {
+      setPending(null);
       setBusy(null);
     }
   };
@@ -191,6 +197,14 @@ export function Interview() {
                   <Past key={t.id} t={t} />
                 ))}
                 {ask && <Question t={cur} />}
+                {pending && (
+                  <>
+                    <Said who="You" rise>
+                      {pending.text ?? <em>Skipped</em>}
+                    </Said>
+                    <Thinking />
+                  </>
+                )}
                 {cur && softStop && (
                   <Said who="Lookout">
                     Good place to stop. {plural(data.sitting.facts, "fact")} saved today. Your next question will be here when you come back.
