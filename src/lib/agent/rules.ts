@@ -76,7 +76,8 @@ export const fullTitle = (t: string) => withOtherScript(t);
 const key = (company: string, title: string, location: string, fold: boolean) =>
   // nosemgrep: javascript.lang.security.audit.node-sha1.node_sha1 -- SHA-1 here only fingerprints postings for dedupe, not security
   createHash("sha1")
-    .update([company, title, location.split(",")[0]].map(normPart(fold)).join("|"))
+    // The legacy key (fold false) keeps the location as written, so postings stored before #1514 are still matched.
+    .update([company, title, (fold ? remoteFirst(location) : location).split(",")[0]].map(normPart(fold)).join("|"))
     .digest("hex");
 
 export const fingerprint = (company: string, title: string, location: string) => key(company, title, location, true);
@@ -130,6 +131,26 @@ const withoutQualifier = (p: string) =>
 
 const known = (p: string) => STATES.has(p) || COUNTRIES.has(p);
 
+/**
+ * "Remote - US", "US Remote", "USA (Remote)" and "Remote – United States" as "Remote, US", the way "Remote, US" and
+ * "Remote (US)" already key: the fingerprint keeps only the text before the first comma, so one remote job written two
+ * ways was two finds (#1514). Only a known country: "New York (Remote)" names a city and stays as it is.
+ */
+export function remoteFirst(location: string) {
+  const i = location.indexOf(",");
+  const first = i < 0 ? location : location.slice(0, i);
+  if (!/\bremote\b/i.test(first)) return location;
+  const rest = normPart(true)(first.replace(/[()]/g, " "))
+    .replace(/\bremote\b/g, " ")
+    .replace(/\s+/g, " ")
+    .trim()
+    .replace(/\b([a-z]) (?=[a-z]\b)/g, "$1");
+  // "US-based", "anywhere in the US", "US East Coast": the same filler region() drops after a comma.
+  const place = withoutZone(withPlace(withoutQualifier(rest)));
+  if (!COUNTRIES.has(place)) return location;
+  return `Remote, ${place}${i < 0 ? "" : location.slice(i)}`;
+}
+
 /** "anywhere in the us" and "within the united states" name a known place once their filler goes (#1466); anything else stays as it is. */
 const withPlace = (p: string) => {
   const t = p.replace(/^(?:anywhere )?(?:in |within |across |throughout )?(?:the )?(?=\S)/, "");
@@ -150,7 +171,8 @@ const withoutZone = (p: string) => {
  * Canada" is { country: "ca" }. A country not known here stands as its own text, so "Remote, Mexico" still differs from
  * "Remote, US". ZIP codes are dropped ("NY 10001").
  */
-export function region(location: string) {
+export function region(raw: string) {
+  const location = remoteFirst(raw);
   let state: string | null = null;
   let country: string | null = null;
   let other: string | null = null;

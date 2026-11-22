@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { applyRules, fingerprint, legacyFingerprint, normUrl, placeId, placesDiffer } from "./rules";
+import { applyRules, fingerprint, legacyFingerprint, normUrl, placeId, placesDiffer, remoteFirst } from "./rules";
 
 const base = { score: 5, reasonsMatch: ["Director title"], reasonsGap: [], locationFit: true, dealbreaker: false, compMin: 140000, compMax: 160000 };
 
@@ -242,5 +242,39 @@ describe("placesDiffer: a coast or time zone after the place (#1510)", () => {
     ["Remote, Europe - Central Time", "Remote, US"],
   ])("%s and %s are still two places", (a, b) => {
     expect(placesDiffer(a, b)).toBe(true);
+  });
+});
+
+describe("dedupe: remote and a country before the first comma (#1514)", () => {
+  const fp = (loc: string) => fingerprint("Acme", "Product Designer", loc);
+
+  it("keys every way of writing a remote US job as one find", () => {
+    for (const loc of ["Remote - US", "US Remote", "USA (Remote)", "Remote – United States", "Remote U.S.", "Remote (US)", "US-based Remote"]) {
+      expect(fp(loc), loc).toBe(fp("Remote, US"));
+      expect(placesDiffer(loc, "Remote, US"), loc).toBe(false);
+    }
+    expect(fp("United States (Remote)")).toBe(fp("Remote, United States"));
+  });
+
+  it("keeps a remote job in another country apart", () => {
+    expect(fp("Remote - Canada")).toBe(fp("Remote, US"));
+    expect(placesDiffer("Remote - Canada", "Remote, US")).toBe(true);
+    expect(placeId("Remote - Canada")).toBe("ca");
+    expect(placesDiffer("UK Remote", "Remote (US)")).toBe(true);
+  });
+
+  it("leaves a city, a bare Remote and an unknown place as written", () => {
+    expect(remoteFirst("New York (Remote)")).toBe("New York (Remote)");
+    expect(remoteFirst("Remote")).toBe("Remote");
+    expect(remoteFirst("Remote, US")).toBe("Remote, US");
+    expect(remoteFirst("Remote - Mexico")).toBe("Remote - Mexico");
+    expect(remoteFirst("United States")).toBe("United States");
+    expect(remoteFirst("Remote - US, Eastern Time")).toBe("Remote, us, Eastern Time");
+    expect(fp("New York (Remote)")).toBe(fp("New York, NY"));
+  });
+
+  it("keeps the legacy key as written, so postings stored before are still matched", () => {
+    expect(legacyFingerprint("Acme", "Product Designer", "Remote - US")).not.toBe(fp("Remote - US"));
+    expect(legacyFingerprint("Acme", "Product Designer", "Remote, US")).toBe(fp("Remote, US"));
   });
 });
