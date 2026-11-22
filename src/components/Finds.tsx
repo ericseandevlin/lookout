@@ -11,6 +11,7 @@ import { ArchiveIcon, ChevronDown, PinIcon, SearchIcon, SlidersIcon } from "./ic
 import { useCounts } from "./Shell";
 import { LastReport, SearchPanel } from "./SearchPanel";
 import { useStore } from "./store";
+import { useHydratedNow } from "./useHydratedNow";
 import { NextStep } from "./Profile";
 import { trackClient } from "./track";
 import { sortsFor, chip, seg, type SortKey } from "./finds/shared";
@@ -28,15 +29,16 @@ export { Switch } from "./finds/Controls";
 type Filter = "all" | "new" | "archived";
 
 /** Column widths (#8), keyed by column key so the grid follows the kind config. */
+// Minimums that fit the board beside the sidebar at 1280 px; long text ends in an ellipsis (#1531).
 const WIDTH: Record<string, string> = {
-  company: "minmax(170px,1.2fr)",
-  role: "minmax(210px,1.6fr)",
-  comp: "minmax(170px,1fr)",
+  company: "minmax(120px,1.2fr)",
+  role: "minmax(150px,1.6fr)",
+  comp: "minmax(130px,1fr)",
   listed: "100px",
-  location: "minmax(160px,1.1fr)",
-  value: "minmax(150px,1fr)",
+  location: "minmax(110px,1.1fr)",
+  value: "minmax(120px,1fr)",
   due: "110px",
-  setAside: "minmax(130px,1fr)",
+  setAside: "minmax(110px,1fr)",
 };
 
 /** One column's sort value for a find (#8): from the find itself, or its kind's stage order. */
@@ -61,7 +63,7 @@ export function Finds() {
   // Board columns, headers and stage list come from the profile's kind (#8).
   const cfg = kindOf(state.profile.kind);
   const SORTS = sortsFor(cfg);
-  const GRID = `82px 76px ${cfg.board.columns.map((c) => WIDTH[c.key]).join(" ")} ${WIDTH[cfg.board.preStage.key]} 156px ${WIDTH[cfg.board.tail.key]}`;
+  const GRID = `82px 76px ${cfg.board.columns.map((c) => WIDTH[c.key]).join(" ")} ${WIDTH[cfg.board.preStage.key]} 140px ${WIDTH[cfg.board.tail.key]}`;
 
   const [filter, setFilter] = useState<Filter>("all");
   const [fit, setFit] = useState(0);
@@ -105,7 +107,8 @@ export function Finds() {
   const [showReport, setShowReport] = useState(false);
 
   const finds = state.finds;
-  const isNew = useCallback((f: Find) => isNewFind(f, settings.newDays), [settings.newDays]);
+  const now = useHydratedNow();
+  const isNew = useCallback((f: Find) => isNewFind(f, settings.newDays, now), [settings.newDays, now]);
   const active = finds.filter((f) => !f.archived);
   const tally = { all: active.length, new: active.filter(isNew).length, archived: finds.length - active.length };
 
@@ -314,7 +317,7 @@ export function Finds() {
                         {label}
                         <span style={{ color: on ? color.brick : "#CFC6B9", marginRight: 16 }}>{key ? (on ? arrow : "↕") : ""}</span>
                       </button>
-                      {key === "comp" && <Switch small on={compOnly} onClick={() => setCompOnly((v) => !v)} tip={compOnly ? "Showing only roles with posted comp. Click to show all." : "Hide roles with no comp posted"} />}
+                      {key === "comp" && <Switch small on={compOnly} onClick={() => setCompOnly((v) => !v)} tip={compOnly ? "Only roles with comp posted (on)" : "Only roles with comp posted"} />}
                     </div>
                   );
                 })}
@@ -349,17 +352,17 @@ export function Finds() {
                         <div role="rowheader" key={c.key} style={{ fontSize: font.base, fontWeight: 600, paddingRight: 16 }}>
                           {/* The keyboard and screen reader way into a find (#211); the row's click stays for pointers. */}
                           <button className="cell-link no-tint" onClick={(e) => { e.stopPropagation(); open(f.id); }} aria-label={`${f.role} at ${f.company}`}>
-                            {cellText(f, c.key)}
+                            {cellText(f, c.key, now)}
                           </button>
                         </div>
                       ) : (
                         <div role="cell" key={c.key} style={{ fontSize: font.base, fontWeight: c.key === "comp" || c.key === "value" ? 600 : 400, color: cellQuiet(f, c.key) ? color.t2 : c.key === "comp" || c.key === "value" ? color.brick : color.ink, fontVariantNumeric: "tabular-nums", paddingRight: 16, textWrap: "pretty" }}>
-                          {cellText(f, c.key)}
+                          {cellText(f, c.key, now)}
                           {c.key === "comp" && <CompCompare f={f} current={currentComp} style={{ marginTop: 2 }} />}
                         </div>
                       ),
                     )}
-                    <div role="cell" style={{ fontSize: font.base, color: color.t2, fontStyle: cellQuiet(f, cfg.board.preStage.key) ? "italic" : "normal" }}>{cellText(f, cfg.board.preStage.key)}</div>
+                    <div role="cell" style={{ fontSize: font.base, color: color.t2, fontStyle: cellQuiet(f, cfg.board.preStage.key) ? "italic" : "normal" }}>{cellText(f, cfg.board.preStage.key, now)}</div>
                     <div role="cell" style={{ position: "relative", paddingRight: 16 }}>
                       <button
                         data-tip="Change stage"
@@ -373,7 +376,7 @@ export function Finds() {
                         <StageMenu stages={kindOf(f.type).stages} ended={kindOf(f.type).endedStages} current={f.stage} style={{ ...menuAt, minWidth: 150 }} onPick={(s) => { setStage(f, s); setStageMenu(null); }} />
                       )}
                     </div>
-                    <div role="cell" style={{ fontSize: font.base, color: color.t2, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} data-tip={cellText(f, cfg.board.tail.key)}>{cellText(f, cfg.board.tail.key)}</div>
+                    <div role="cell" style={{ fontSize: font.base, color: color.t2, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} data-tip={cellText(f, cfg.board.tail.key, now)}>{cellText(f, cfg.board.tail.key, now)}</div>
                   </div>
                 );
               })}
@@ -400,11 +403,11 @@ export function Finds() {
                         </div>
                         <div style={{ fontSize: font.base, lineHeight: 1.35, color: "#3A3428", marginTop: 1, display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>{f.role}</div>
                       </div>
-                      <span style={{ flex: "none", fontSize: font.base, color: color.t2, fontStyle: cellQuiet(f, cfg.board.preStage.key) ? "italic" : "normal", whiteSpace: "nowrap", marginTop: 2 }}>{cellText(f, cfg.board.preStage.key)}</span>
+                      <span style={{ flex: "none", fontSize: font.base, color: color.t2, fontStyle: cellQuiet(f, cfg.board.preStage.key) ? "italic" : "normal", whiteSpace: "nowrap", marginTop: 2 }}>{cellText(f, cfg.board.preStage.key, now)}</span>
                     </div>
                     <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, marginTop: 2 }}>
                       <div style={{ minWidth: 0 }}>
-                        <div style={{ fontSize: font.base, fontWeight: 600, color: color.brick, fontVariantNumeric: "tabular-nums", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{cellText(f, cfg.board.columns[2].key)}</div>
+                        <div style={{ fontSize: font.base, fontWeight: 600, color: color.brick, fontVariantNumeric: "tabular-nums", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{cellText(f, cfg.board.columns[2].key, now)}</div>
                         {cfg.board.columns[2].key === "comp" && <CompCompare f={f} current={currentComp} />}
                       </div>
                       <div style={{ position: "relative", flex: "none" }}>

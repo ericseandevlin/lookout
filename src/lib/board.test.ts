@@ -170,3 +170,15 @@ describe("stageStyle and scoreStyle", () => {
     expect(scoreStyle(3)).toEqual({ bg: "#fff", ink: "#1D1A0F", border: "#D8D0C4" });
   });
 });
+
+describe("dates wait for the browser while the page hydrates (#1531)", () => {
+  it("leaves day cells and the new dot empty until there is a time", () => {
+    const f = find({ postedAt: "2026-11-20", addedAt: new Date().toISOString() });
+    expect(cellText(f, "listed", null)).toBe("");
+    expect(cellText(f, "company", null)).toBe(f.company);
+    expect(isNewFind(f, 7, null)).toBe(false);
+    const noon = new Date("2026-11-21T12:00:00").getTime();
+    expect(cellText(f, "listed", noon)).toBe("1d ago");
+    expect(isNewFind(f, 7)).toBe(true);
+  });
+});

@@ -12,6 +12,7 @@ import { api, useStore } from "../store";
 import { SubmitModeNote } from "../SubmitModeNote";
 import { trackClient } from "../track";
 import { useFocusTrap } from "../useFocusTrap";
+import { useHydratedNow } from "../useHydratedNow";
 import { color, font } from "@/lib/tokens";
 
 const Label = ({ children, style }: { children: React.ReactNode; style?: React.CSSProperties }) => (
@@ -26,6 +27,7 @@ const NOT_A_FIT = ["Wrong level", "Wrong kind of role", "Wrong industry", "Locat
 type DrawerNav = { index: number; total: number; prev?: () => void; next?: () => void };
 
 export function Drawer({ f, currentComp, close, toggle, setStage, enter, nav }: { f: Find; currentComp: number | null; close: () => void; toggle: (f: Find, k: "pinned" | "archived") => void; setStage: (f: Find, s: string) => void; enter: boolean; nav: DrawerNav }) {
+  const now = useHydratedNow();
   const { patchFind, state, refresh, readOnly } = useStore();
   const [applyMsg, setApplyMsg] = useState<string | null>(null);
   const applyWithLookout = async () => {
@@ -124,9 +126,9 @@ export function Drawer({ f, currentComp, close, toggle, setStage, enter, nav }: 
   // Labels, cells and stages come from the find's kind config (#8).
   const cfg = kindOf(f.type);
   const cells = [
-    { label: cfg.board.columns[2].label, text: cellText(f, cfg.board.columns[2].key), quiet: cellQuiet(f, cfg.board.columns[2].key) },
-    { label: cfg.board.preStage.label, text: cellText(f, cfg.board.preStage.key), quiet: cellQuiet(f, cfg.board.preStage.key) },
-    { label: cfg.board.tail.label, text: cellText(f, cfg.board.tail.key), quiet: cellQuiet(f, cfg.board.tail.key) },
+    { label: cfg.board.columns[2].label, text: cellText(f, cfg.board.columns[2].key, now), quiet: cellQuiet(f, cfg.board.columns[2].key) },
+    { label: cfg.board.preStage.label, text: cellText(f, cfg.board.preStage.key, now), quiet: cellQuiet(f, cfg.board.preStage.key) },
+    { label: cfg.board.tail.label, text: cellText(f, cfg.board.tail.key, now), quiet: cellQuiet(f, cfg.board.tail.key) },
   ];
 
   return (

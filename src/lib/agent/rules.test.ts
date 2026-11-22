@@ -278,3 +278,11 @@ describe("dedupe: remote and a country before the first comma (#1514)", () => {
     expect(legacyFingerprint("Acme", "Product Designer", "Remote, US")).toBe(fp("Remote, US"));
   });
 });
+
+describe("no em dashes in match reasons (#1531)", () => {
+  it("turns em and en dashes into commas", () => {
+    const r = applyRules({ score: 4, reasonsMatch: ["Design systems — your core strength"], reasonsGap: ["Heavy mobile focus – check fit"], locationFit: true, dealbreaker: false, compMin: 150000, compMax: 180000 }, null)!;
+    expect(r.reasonsMatch).toEqual(["Design systems, your core strength"]);
+    expect(r.reasonsGap).toEqual(["Heavy mobile focus, check fit"]);
+  });
+});

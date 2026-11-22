@@ -54,7 +54,7 @@ export function valueText(f: Find) {
   return "No value posted";
 }
 /** Days until a due date (negative once it's past), or null when there's no date. */
-export const dueDays = (f: Find) => daysUntil(attrStr(f, "due"));
+export const dueDays = (f: Find, now = Date.now()) => daysUntil(attrStr(f, "due"), now);
 /** Today's calendar date at `now`, as a UTC midnight: in `timeZone` when given, else the local clock. */
 function todayUtc(now: number, timeZone?: string) {
   const n = new Date(now);
@@ -79,22 +79,29 @@ export function daysUntil(s: string, now = Date.now(), timeZone?: string) {
   const t = new Date(s).getTime();
   return Number.isFinite(t) ? Math.ceil((t - now) / 864e5) : null;
 }
-export function dueText(f: Find) {
+export function dueText(f: Find, now = Date.now()) {
   const s = attrStr(f, "due");
   if (!s) return "no date";
-  const d = dueDays(f);
+  const d = dueDays(f, now);
   if (d == null) return s;
   return d < 0 ? `${-d}d past` : d === 0 ? "today" : `${d}d left`;
 }
-/** The text for one board cell, by column key (#8). */
-export const cellText = (f: Find, key: string): string =>
-  key === "company" ? f.company
+/** Columns whose text depends on today's date. */
+const TIMED = new Set(["listed", "due"]);
+
+/**
+ * The text for one board cell, by column key (#8). now: null while the page hydrates, so the server (in UTC) and the
+ * browser (in local time) render the same text and React doesn't throw error 418 (#1531); the dates fill in right after.
+ */
+export const cellText = (f: Find, key: string, now: number | null = Date.now()): string =>
+  now === null && TIMED.has(key) ? ""
+  : key === "company" ? f.company
   : key === "role" ? f.role
   : key === "comp" ? compText(f)
-  : key === "listed" ? postedText(f)
+  : key === "listed" ? postedText(f, now ?? Date.now())
   : key === "location" ? f.location || "—"
   : key === "value" ? valueText(f)
-  : key === "due" ? dueText(f)
+  : key === "due" ? dueText(f, now ?? Date.now())
   : key === "setAside" ? attrStr(f, "setAside") || "—"
   : "";
 /** Whether a column's cell reads as "not stated" styling: dim and italic. */
@@ -107,14 +114,14 @@ export const cellQuiet = (f: Find, key: string): boolean =>
   || (key === "location" && !f.location);
 
 /** Days since posted, or null when the posting has no date. */
-export function postedDays(f: Find) {
+export function postedDays(f: Find, now = Date.now()) {
   if (!f.postedAt) return null;
-  const d = Math.floor((Date.now() - new Date(f.postedAt + "T12:00:00").getTime()) / 864e5);
+  const d = Math.floor((now - new Date(f.postedAt + "T12:00:00").getTime()) / 864e5);
   return Math.max(0, d);
 }
 
-export function postedText(f: Find) {
-  const d = postedDays(f);
+export function postedText(f: Find, now = Date.now()) {
+  const d = postedDays(f, now);
   if (d == null) return "no date";
   if (d < 1) return "today";
   if (d < 7) return `${d}d ago`;
@@ -122,8 +129,9 @@ export function postedText(f: Find) {
   return `${Math.floor(d / 30)}mo ago`;
 }
 
-export const isNewFind = (f: Find, newDays: number) =>
-  !f.archived && !f.seen && Date.now() - new Date(f.addedAt).getTime() <= newDays * 864e5;
+/** now: null while the page hydrates, so the green dot doesn't differ between server and browser (#1531). */
+export const isNewFind = (f: Find, newDays: number, now: number | null = Date.now()) =>
+  now !== null && !f.archived && !f.seen && now - new Date(f.addedAt).getTime() <= newDays * 864e5;
 
 export const slugOf = (f: Find) =>
   (f.company + " " + f.role).toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
