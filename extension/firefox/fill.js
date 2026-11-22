@@ -254,15 +254,19 @@
   const startsWord = (a, b) => !!a && b.startsWith(a) && (b.length === a.length || /\W/.test(b[a.length]) || /\W/.test(a[a.length - 1]));
 
   /**
-   * Same rule as pickOptions in src/lib/application/fillPlan.ts: one answer per line, exact text first, then a prefix
+   * Same rule as pickOptions in src/lib/application/fillPlan.ts: one answer per line, exact text first, then the same
+   * text with or without hyphens and spaces (#1518), then a prefix
    * either way, at a word boundary, closest length first.
    */
+  /** Same as compactChoice in fillPlan.ts: "Full time" is "Full-time", "Onsite" is "On-site", whole text only (#1518). */
+  const compact = (t) => norm(t).replace(/[\s'".-]+/g, "");
+
   function pickOptions(content, options) {
     const out = [];
     for (const part of (content || "").split(/\n+/).map((t) => t.trim()).filter(Boolean)) {
       const p = norm(part);
       const near = (options || []).filter((o) => startsWord(norm(o), p) || startsWord(p, norm(o))).sort((a, b) => Math.abs(norm(a).length - p.length) - Math.abs(norm(b).length - p.length));
-      const hit = (options || []).find((o) => norm(o) === p) || near[0];
+      const hit = (options || []).find((o) => norm(o) === p) || (options || []).find((o) => !!compact(o) && compact(o) === compact(part)) || near[0];
       const label = hit || ((options || []).length ? null : part);
       if (label && !out.includes(label)) out.push(label);
     }

@@ -135,6 +135,16 @@ describe("pickOne (#695)", () => {
     expect(pickOne("None", ["No", "None of the above"])).toBe(1);
     expect(pickOne(`${long}.`, ["Select", `${long} (2026 edition)`])).toBe(1);
   });
+  it("matches the same text written with or without hyphens, spaces or an apostrophe (#1518)", () => {
+    expect(pickOne("Full time", ["Select", "Full-time", "Part-time"])).toBe(1);
+    expect(pickOne("Onsite", ["Remote", "Hybrid", "On-site"])).toBe(2);
+    expect(pickOne("Bachelors", ["Associate's", "Bachelor's", "Master's"])).toBe(1);
+    expect(pickOne("Nonbinary", ["Man", "Woman", "Non-binary"])).toBe(2);
+    expect(pickOne("Part time ✱", ["Full-time", "Part-time"])).toBe(1);
+    expect(pickOptions("Full time\nContract", ["Full-time", "Part-time", "Contract"])).toEqual(["Full-time", "Contract"]);
+    // Whole text only: "No" is still not "None".
+    expect(pickOne("No", ["None", "Yes"])).toBe(-1);
+  });
   it("is -1 when no option fits", () => {
     expect(pickOne("They/them", ["She/her", "He/him"])).toBe(-1);
     expect(pickOne("Maybe", ["Yes", "No"])).toBe(-1);
