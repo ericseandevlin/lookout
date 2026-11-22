@@ -90,10 +90,19 @@ export function dueText(f: Find, now = Date.now()) {
 const TIMED = new Set(["listed", "due"]);
 
 /**
+ * The time board text is rendered at: null on the server and while the page hydrates, then set by useHydratedNow in
+ * the browser (#1531). Only the board and the find drawer render cells.
+ */
+export const boardClock: { now: number | null } = { now: null };
+export const setBoardClock = (now: number | null) => {
+  boardClock.now = now;
+};
+
+/**
  * The text for one board cell, by column key (#8). now: null while the page hydrates, so the server (in UTC) and the
  * browser (in local time) render the same text and React doesn't throw error 418 (#1531); the dates fill in right after.
  */
-export const cellText = (f: Find, key: string, now: number | null = Date.now()): string =>
+export const cellText = (f: Find, key: string, now: number | null = boardClock.now): string =>
   now === null && TIMED.has(key) ? ""
   : key === "company" ? f.company
   : key === "role" ? f.role

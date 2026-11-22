@@ -1,12 +1,18 @@
 "use client";
 
 import { useSyncExternalStore } from "react";
+import { setBoardClock } from "@/lib/board";
 
 const never = () => () => {};
 let loadedAt: number | null = null;
 
 /**
  * The time, or null while the page hydrates (#1531). The server renders in UTC and the browser in local time, so text
- * that depends on today ("1d ago", the new dot) must wait for the browser, or React throws hydration error 418.
+ * that depends on today ("1d ago", the new dot) must wait for the browser, or React throws hydration error 418. It also
+ * sets the board's clock, which cellText reads.
  */
-export const useHydratedNow = (): number | null => useSyncExternalStore(never, () => (loadedAt ??= Date.now()), () => null);
+export function useHydratedNow(): number | null {
+  const now = useSyncExternalStore(never, () => (loadedAt ??= Date.now()), () => null);
+  setBoardClock(now);
+  return now;
+}

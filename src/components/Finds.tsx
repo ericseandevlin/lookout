@@ -63,7 +63,7 @@ export function Finds() {
   // Board columns, headers and stage list come from the profile's kind (#8).
   const cfg = kindOf(state.profile.kind);
   const SORTS = sortsFor(cfg);
-  const GRID = `82px 76px ${cfg.board.columns.map((c) => WIDTH[c.key]).join(" ")} ${WIDTH[cfg.board.preStage.key]} 140px ${WIDTH[cfg.board.tail.key]}`;
+  const GRID = `82px 76px ${cfg.board.columns.map((c) => WIDTH[c.key]).join(" ")} ${WIDTH[cfg.board.preStage.key]} 156px ${WIDTH[cfg.board.tail.key]}`;
 
   const [filter, setFilter] = useState<Filter>("all");
   const [fit, setFit] = useState(0);
@@ -352,17 +352,17 @@ export function Finds() {
                         <div role="rowheader" key={c.key} style={{ fontSize: font.base, fontWeight: 600, paddingRight: 16 }}>
                           {/* The keyboard and screen reader way into a find (#211); the row's click stays for pointers. */}
                           <button className="cell-link no-tint" onClick={(e) => { e.stopPropagation(); open(f.id); }} aria-label={`${f.role} at ${f.company}`}>
-                            {cellText(f, c.key, now)}
+                            {cellText(f, c.key)}
                           </button>
                         </div>
                       ) : (
                         <div role="cell" key={c.key} style={{ fontSize: font.base, fontWeight: c.key === "comp" || c.key === "value" ? 600 : 400, color: cellQuiet(f, c.key) ? color.t2 : c.key === "comp" || c.key === "value" ? color.brick : color.ink, fontVariantNumeric: "tabular-nums", paddingRight: 16, textWrap: "pretty" }}>
-                          {cellText(f, c.key, now)}
+                          {cellText(f, c.key)}
                           {c.key === "comp" && <CompCompare f={f} current={currentComp} style={{ marginTop: 2 }} />}
                         </div>
                       ),
                     )}
-                    <div role="cell" style={{ fontSize: font.base, color: color.t2, fontStyle: cellQuiet(f, cfg.board.preStage.key) ? "italic" : "normal" }}>{cellText(f, cfg.board.preStage.key, now)}</div>
+                    <div role="cell" style={{ fontSize: font.base, color: color.t2, fontStyle: cellQuiet(f, cfg.board.preStage.key) ? "italic" : "normal" }}>{cellText(f, cfg.board.preStage.key)}</div>
                     <div role="cell" style={{ position: "relative", paddingRight: 16 }}>
                       <button
                         data-tip="Change stage"
@@ -376,7 +376,7 @@ export function Finds() {
                         <StageMenu stages={kindOf(f.type).stages} ended={kindOf(f.type).endedStages} current={f.stage} style={{ ...menuAt, minWidth: 150 }} onPick={(s) => { setStage(f, s); setStageMenu(null); }} />
                       )}
                     </div>
-                    <div role="cell" style={{ fontSize: font.base, color: color.t2, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} data-tip={cellText(f, cfg.board.tail.key, now)}>{cellText(f, cfg.board.tail.key, now)}</div>
+                    <div role="cell" style={{ fontSize: font.base, color: color.t2, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} data-tip={cellText(f, cfg.board.tail.key)}>{cellText(f, cfg.board.tail.key)}</div>
                   </div>
                 );
               })}
@@ -403,11 +403,11 @@ export function Finds() {
                         </div>
                         <div style={{ fontSize: font.base, lineHeight: 1.35, color: "#3A3428", marginTop: 1, display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>{f.role}</div>
                       </div>
-                      <span style={{ flex: "none", fontSize: font.base, color: color.t2, fontStyle: cellQuiet(f, cfg.board.preStage.key) ? "italic" : "normal", whiteSpace: "nowrap", marginTop: 2 }}>{cellText(f, cfg.board.preStage.key, now)}</span>
+                      <span style={{ flex: "none", fontSize: font.base, color: color.t2, fontStyle: cellQuiet(f, cfg.board.preStage.key) ? "italic" : "normal", whiteSpace: "nowrap", marginTop: 2 }}>{cellText(f, cfg.board.preStage.key)}</span>
                     </div>
                     <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, marginTop: 2 }}>
                       <div style={{ minWidth: 0 }}>
-                        <div style={{ fontSize: font.base, fontWeight: 600, color: color.brick, fontVariantNumeric: "tabular-nums", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{cellText(f, cfg.board.columns[2].key, now)}</div>
+                        <div style={{ fontSize: font.base, fontWeight: 600, color: color.brick, fontVariantNumeric: "tabular-nums", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{cellText(f, cfg.board.columns[2].key)}</div>
                         {cfg.board.columns[2].key === "comp" && <CompCompare f={f} current={currentComp} />}
                       </div>
                       <div style={{ position: "relative", flex: "none" }}>

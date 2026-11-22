@@ -137,10 +137,10 @@ describe("RFP cells", () => {
     expect(cellText(f, "company")).toBe("Austin");
     expect(cellText(f, "role")).toBe("Website redesign");
     expect(cellText(f, "comp")).toBe("$100 – $200");
-    expect(cellText(f, "listed")).toBe("3d ago");
+    expect(cellText(f, "listed", Date.now())).toBe("3d ago");
     expect(cellText(f, "location")).toBe("Austin, TX");
     expect(cellText(f, "value")).toBe("$90,000");
-    expect(cellText(f, "due")).toBe("3d left");
+    expect(cellText(f, "due", Date.now())).toBe("3d left");
     expect(cellText(f, "setAside")).toBe("8(a)");
     expect(cellText(f, "unknown")).toBe("");
     expect(cellText(rfp({}), "location")).toBe("\u2014");
