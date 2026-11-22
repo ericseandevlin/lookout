@@ -590,3 +590,25 @@ describe("classifyPage: a duty about a closed-job screen is not the posting clos
       expect(classifyPage(200, `Product Designer\n${t}`).state, t).toBe("gone");
   });
 });
+
+describe("classifyPage: a closed message quoted as copy to write is not the posting closing (#1620)", () => {
+  it("stays open when the phrase is quoted or given as an example", () => {
+    for (const text of [
+      "Content Designer. Write error messages like 'This job is no longer available'.",
+      'Write the copy for screens such as "This position has been filled".',
+      'Rewrite "Page not found" and "This job has expired" across the careers site.',
+      "Own the empty states, like “This posting has expired”, for job seekers.",
+      "Write the messages job seekers see, such as this job is no longer available, in plain words.",
+    ])
+      expect(classifyPage(200, text).state, text).toBe("open");
+  });
+  it("still closes on the page's own message", () => {
+    for (const text of [
+      "Sorry, this job is no longer available.",
+      "Sorry! It seems like this position has been filled.",
+      "Content Designer\nIt looks like this job is no longer available.",
+      "Content Designer\nThis position has been filled. Browse other jobs like this one.",
+    ])
+      expect(classifyPage(200, text).state, text).toBe("gone");
+  });
+});
