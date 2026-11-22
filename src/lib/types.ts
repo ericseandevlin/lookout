@@ -48,6 +48,7 @@ export type Settings = {
   setup: SetupMode;
   newDays: number;
   railClosed: boolean;
+  interviewBannerClosed: boolean;
 };
 
 export type Answers = Record<string, string | string[]>;
@@ -56,7 +57,7 @@ export type Answers = Record<string, string | string[]>;
 export type SearchInfo = { id: string; name: string; kind: string };
 
 export type AppState = {
-  user: { name: string; email: string; joinedAt: string; isAdmin: boolean; autoApply: boolean; events: boolean; searches: boolean; /** The interview and What Lookout knows (#1449). */ interview?: boolean };
+  user: { name: string; email: string; joinedAt: string; isAdmin: boolean; autoApply: boolean; events: boolean; searches: boolean; /** The interview and What Lookout knows (#1449). */ interview?: boolean; /** The interview has a question waiting for them. */ interviewOpen?: boolean };
   settings: Settings;
   /** Every search the account holds; the board, profile and runs follow `searchId` (#8). */
   searches: SearchInfo[];

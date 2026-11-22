@@ -267,6 +267,13 @@
       "when": 1795651200000,
       "tag": "0037_interview_paging",
       "breakpoints": true
+    },
+    {
+      "idx": 38,
+      "version": "7",
+      "when": 1795737600000,
+      "tag": "0038_interview_banner",
+      "breakpoints": true
     }
   ]
 }

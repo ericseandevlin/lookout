@@ -17,7 +17,6 @@ import { sortsFor, chip, seg, type SortKey } from "./finds/shared";
 import { IconBtn, Menu, StageMenu, Switch } from "./finds/Controls";
 import { SetupPanel } from "./finds/SetupPanel";
 import { FirstWeek } from "./finds/FirstWeek";
-import { InterviewCard } from "./finds/InterviewCard";
 import { SearchNowButton } from "./finds/SearchNowButton";
 import { AddLink } from "./finds/AddLink";
 import { FilterSheet } from "./finds/FilterSheet";
@@ -231,7 +230,6 @@ export function Finds() {
         <SearchPanel reportOpen={showReport && !!state.lastReport} ready={counts.answered === counts.total && state.materials.resume?.status === "done"} />
         <SetupPanel answered={counts.answered} sources={counts.sources} />
         <FirstWeek ready={counts.answered === counts.total && state.materials.resume?.status === "done"} />
-        <InterviewCard />
 
         <section className="board-sec" style={{ background: "#fff", overflow: "hidden" }}>
           {/* Desktop toolbar */}

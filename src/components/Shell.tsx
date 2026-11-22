@@ -1,12 +1,12 @@
 "use client";
 
 import Link from "next/link";
-import { Fragment, useEffect } from "react";
+import { Fragment, useEffect, useState } from "react";
 import { usePathname } from "next/navigation";
 import { answeredCount, kindOf } from "@/lib/kinds";
 import { initialsOf, isNewFind } from "@/lib/board";
 import type { AppState } from "@/lib/types";
-import { BoardIcon, CalendarIcon, CheckIcon, EyeIcon, FileIcon, ListIcon, PanelIcon, ShieldIcon } from "./icons";
+import { BoardIcon, CalendarIcon, CheckIcon, FileIcon, ListIcon, PanelIcon, ShieldIcon } from "./icons";
 import { useStore } from "./store";
 import { TooltipLayer } from "./Tooltip";
 import { ConfirmProvider } from "./Confirm";
@@ -50,7 +50,7 @@ export function Shell({ children }: { children: React.ReactNode }) {
   const base = state.user.events ? BASE_PAGES : BASE_PAGES.filter((p) => p.href !== "/events");
   const PAGES = state.user.autoApply ? [...base, APPLY_PAGE] : base;
   // Profile to-dos live on subpages with a done/todo mark, not as text squeezed beside the link (#255).
-  // What Lookout sees is a view, not a step, so it gets an eye instead of a mark (#266).
+  // Only a step gets a mark, at the right edge of its row; a view like What Lookout knows gets none (#1449).
   const materials = { href: "/profile/materials", label: "Resume and materials", done: state.materials.resume?.status === "done", on: path.startsWith("/profile/materials") };
   // With the interview on (#1449), it takes the Questions page's place and What Lookout knows takes What Lookout sees'.
   // The old pages stay at their addresses until Eric approves the new ones.
@@ -66,6 +66,11 @@ export function Shell({ children }: { children: React.ReactNode }) {
         { href: "/profile/sees", label: "What Lookout sees", on: path.startsWith("/profile/sees") },
       ];
   const profileTodo = subpages.some((p) => p.done === false);
+  // Search profile is an accordion (#1449): open on its own pages, and a click toggles it until the next page.
+  const inProfile = path.startsWith("/profile") || path.startsWith("/interview");
+  const [manual, setManual] = useState<{ path: string; open: boolean } | null>(null);
+  const profileOpen = manual?.path === path ? manual.open : inProfile;
+  const toggleProfile = () => setManual({ path, open: !profileOpen });
 
   return (
     <ConfirmProvider>
@@ -104,13 +109,21 @@ export function Shell({ children }: { children: React.ReactNode }) {
             const isProfile = href === "/profile";
             return (
               <Fragment key={href}>
+              <div style={{ display: "flex", alignItems: "center", borderRadius: 10, background: active ? "rgba(255,255,255,.09)" : "transparent" }}>
               <Link
                 href={href}
                 data-tip={closed ? label : undefined}
                 aria-label={label}
-                style={{
+                onClick={(e) => {
+                  // On its own pages, the row opens and closes the list instead of reloading the page.
+                  if (isProfile && !closed && inProfile) {
+                    e.preventDefault();
+                    toggleProfile();
+                  }
+                }}
+                style={{ flex: 1, minWidth: 0,
                   display: "flex", alignItems: "center", justifyContent: closed ? "center" : "flex-start", gap: 10, padding: "10px 12px",
-                  borderRadius: 10, background: active ? "rgba(255,255,255,.09)" : "transparent", color: active ? "#fff" : "#C9C1B5",
+                  borderRadius: 10, color: active ? "#fff" : "#C9C1B5",
                   fontSize: font.base, fontWeight: 600, textDecoration: "none", whiteSpace: "nowrap",
                 }}
               >
@@ -135,7 +148,22 @@ export function Shell({ children }: { children: React.ReactNode }) {
                 )}
               </Link>
               {isProfile && !closed && (
-                <div role="list" aria-label="Search profile pages" style={{ display: "flex", flexDirection: "column", gap: 2, marginBottom: 4 }}>
+                <button
+                  onClick={toggleProfile}
+                  aria-expanded={profileOpen}
+                  aria-controls="rail-profile-pages"
+                  aria-label={profileOpen ? "Hide Search profile pages" : "Show Search profile pages"}
+                  className="h-rail"
+                  style={{ width: 32, height: 32, marginRight: 4, flex: "none", border: 0, borderRadius: 8, background: "transparent", color: "#A89F92", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", padding: 0 }}
+                >
+                  <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" style={{ transform: profileOpen ? "rotate(180deg)" : "none", transition: "transform .15s" }}>
+                    <path d="M6 9l6 6 6-6" />
+                  </svg>
+                </button>
+              )}
+              </div>
+              {isProfile && !closed && profileOpen && (
+                <div id="rail-profile-pages" role="list" aria-label="Search profile pages" style={{ display: "flex", flexDirection: "column", gap: 2, marginBottom: 4 }}>
                   {subpages.map((p) => (
                     <Link
                       key={p.href}
@@ -143,12 +171,14 @@ export function Shell({ children }: { children: React.ReactNode }) {
                       role="listitem"
                       aria-current={p.on ? "page" : undefined}
                       aria-label={p.done === undefined ? p.label : `${p.label}, ${p.done ? "done" : "to do"}`}
-                      style={{ display: "flex", alignItems: "center", gap: 10, padding: "7px 8px 7px 12px", borderRadius: 10, color: p.on ? "#fff" : "#A89F92", fontSize: font.base, fontWeight: 600, textDecoration: "none", lineHeight: 1.3 }}
+                      style={{ display: "flex", alignItems: "center", gap: 10, padding: "7px 12px 7px 40px", borderRadius: 10, color: p.on ? "#fff" : "#A89F92", fontSize: font.base, fontWeight: 600, textDecoration: "none", lineHeight: 1.3 }}
                     >
-                      <span aria-hidden style={{ width: 18, flex: "none", display: "flex", justifyContent: "center" }}>
-                        {p.done === undefined ? <EyeIcon size={14} /> : p.done ? <CheckIcon size={13} stroke="#8FBF7F" /> : <span style={{ width: 9, height: 9, borderRadius: "50%", border: "1.5px solid #F8A865" }} />}
-                      </span>
-                      <span style={{ minWidth: 0 }}>{p.label}</span>
+                      <span style={{ flex: 1, minWidth: 0 }}>{p.label}</span>
+                      {p.done !== undefined && (
+                        <span aria-hidden style={{ flex: "none", display: "flex" }}>
+                          {p.done ? <CheckIcon size={13} stroke="#8FBF7F" /> : <span style={{ width: 9, height: 9, borderRadius: "50%", border: "1.5px solid #F8A865" }} />}
+                        </span>
+                      )}
                     </Link>
                   ))}
                 </div>
