@@ -381,13 +381,30 @@ describe("one interview, opened from an application's keywords (#1485)", () => {
     expect(completeJSON.mock.calls.at(-1)![0].user).toContain("<priority_keywords from a job they are applying to; ask about these first>\n- run of show\n- event sales");
   });
 
-  it("refuses a bare yes or no question and asks again for the story", async () => {
+  it("adds the story request to a bare yes or no question, with no second model call", async () => {
     const { user } = await seedUser(ALL_ANSWERS);
     focus = ["run of show"];
-    replies = [ask("run of show", "Have you run a show?"), ask("run of show", "Tell me about a show you ran: where, and your part.")];
+    replies = [ask("run of show", "Have you run a show?")];
     const v = await openInterview(user.id, APP);
-    expect(v.current?.question).toBe("Tell me about a show you ran: where, and your part.");
-    expect(completeJSON.mock.calls.at(-1)![0].user).toContain('"Have you run a show?" is a yes or no question');
+    expect(v.current?.question).toBe("Have you run a show? Tell me where, your part, and how big it was.");
+    expect(completeJSON).toHaveBeenCalledTimes(1);
+  });
+
+  it("reads a follow-up type on the first question as a new topic", async () => {
+    const { user } = await seedUser(ALL_ANSWERS);
+    focus = ["run of show"];
+    replies = [ask("run of show", "Tell me about a show you ran.", "follow_up")];
+    const v = await openInterview(user.id, APP);
+    expect(v.current).toMatchObject({ question: "Tell me about a show you ran.", followUp: false });
+    expect(completeJSON).toHaveBeenCalledTimes(1);
+  });
+
+  it("still asks a missing keyword when the model asks nothing", async () => {
+    const { user } = await seedUser(ALL_ANSWERS);
+    focus = ["run of show"];
+    replies = [{ backs: [], facts: [], next: { type: "done", topic: "", question: "", why: "", closest: "" } }];
+    const v = await openInterview(user.id, APP);
+    expect(v.current?.question).toBe("Tell me about a time you worked on run of show: where it was, your part, and how big it was.");
   });
 
   it("follows a bare yes with a request for the story, even when the model moves on", async () => {

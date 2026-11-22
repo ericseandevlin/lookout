@@ -40,6 +40,9 @@ export async function missingKeywords(userId: string, appId: string): Promise<st
   }
 }
 
+/** A plain story question for one keyword, when the model asks none. */
+export const keywordQuestion = (term: string) => `Tell me about a time you worked on ${term}: where it was, your part, and how big it was.`;
+
 /** The keywords a topic covers: the interviewer names a keyword topic after its keywords. */
 export const termsOf = (topic: string, terms: string[]) => {
   const k = topicKey(topic);

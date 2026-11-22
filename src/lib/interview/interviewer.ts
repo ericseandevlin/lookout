@@ -20,7 +20,7 @@ export const FACT_RULES = `- Write each fact the way the person would put it on 
 - One fact per claim: their part, the scope, the result. Keep numbers exactly as they said them ("about $240k").
 - People: never write a person's name. Write their role instead ("my manager", "a client"). Set namesPerson true if the answer named a person.
 - Set complaint true if the fact is a complaint or a negative remark about a person or employer.
-- Set confidential true for an employer's confidential details: targets, client names, unreleased plans.
+- Set confidential true only for what an employer would not want public: a named client, internal targets or forecasts, unreleased products or plans. A result with numbers and no names is not confidential, and is what drafts need: "Redesigned the admin console for a 300-location account, cutting setup from 2 weeks to 3 days" is confidential false.
 - Set personal true for health, family, past pay, or political or religious beliefs.
 - If the answer has no fact (for example "not sure"), return no facts.`;
 
@@ -80,6 +80,8 @@ export type InterviewTurnOut = z.infer<typeof InterviewTurnOut>;
 
 /** The follow-up after a bare yes, when the model asks none: where, what and how big (#1485). */
 export const STORY_FOLLOW_UP = "Where was that, what was your part, and how big was it?";
+/** Put after a yes or no question so it asks for the story too. */
+export const STORY_ASK = "Tell me where, your part, and how big it was.";
 
 /**
  * A yes or no question with nothing else to it (#1485): "Have you led production for large events?". A question that

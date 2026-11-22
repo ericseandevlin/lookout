@@ -31,6 +31,8 @@ type Earlier = { open: boolean; turns: ViewTurn[]; more: boolean; loading: boole
 export function Interview({ app }: { app?: string }) {
   const { state } = useStore();
   const [data, setData] = useState<InterviewView | null>(null);
+  // Set once, when the page loads: answering on a first visit doesn't turn "Hi" into "Welcome back" (#1531).
+  const [returning, setReturning] = useState(false);
   const [err, setErr] = useState<string | null>(null);
   const [text, setText] = useState("");
   const [busy, setBusy] = useState<null | "answer" | "skip">(null);
@@ -82,6 +84,7 @@ export function Interview({ app }: { app?: string }) {
     api<InterviewView>(app ? `/api/interview?app=${app}` : "/api/interview")
       .then(async (d) => {
         setData(d);
+        setReturning(!!(d.earlier || d.turns.length));
         setKeptAt(readKept(d));
         // A quote link from What Lookout knows lands on its turn, paging back to it if it's from an earlier sitting.
         const id = window.location.hash.slice(1);
@@ -173,7 +176,7 @@ export function Interview({ app }: { app?: string }) {
       <PageHead
         eyebrow="Search profile"
         title="Interview"
-        intro="Lookout asks one question at a time, about what your top finds want and your profile doesn't show yet. Stop whenever you like; pick up where you left off."
+        intro="One question at a time. Stop whenever you like."
       />
       <div style={{ display: "flex", gap: 20, alignItems: "flex-start", flexWrap: "wrap" }}>
         <section
@@ -197,7 +200,7 @@ export function Interview({ app }: { app?: string }) {
                   <Past key={t.id} t={t} />
                 ))}
                 <Said who="Lookout">
-                  {data.earlier || data.turns.length ? `Welcome back${first ? `, ${first}` : ""}.` : `Hi${first ? ` ${first}` : ""}.`} Got five minutes? Stop whenever you want. Every answer saves as you go.
+                  {returning ? `Welcome back${first ? `, ${first}` : ""}.` : `Hi${first ? ` ${first}` : ""}.`} Every answer saves as you go.
                 </Said>
                 {data.turns.map((t) => (
                   <Past key={t.id} t={t} />

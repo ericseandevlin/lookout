@@ -291,8 +291,8 @@ export function Profile() {
           eyebrow="Search profile"
           title={cfg.id === "rfp" ? "Tell Lookout about your business" : "Five questions from your recruiter"}
           intro={cfg.id === "rfp"
-            ? "These answers tell the search what your business can win, and they shape every score and fit rating on your board."
-            : "Your resume and LinkedIn show what you've done. These answers tell the search what you want next, and they shape every score and fit rating on your board."}
+            ? "These shape every score on your board."
+            : "What you want next. These shape every score on your board."}
         >
           <div style={{ display: "flex", alignItems: "center", gap: 12, marginTop: 16 }}>
             <div role="progressbar" aria-valuemin={0} aria-valuemax={total} aria-valuenow={answered} style={{ flex: 1, maxWidth: 320, height: 6, borderRadius: 999, background: color.border, overflow: "hidden" }}>

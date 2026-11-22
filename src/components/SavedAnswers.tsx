@@ -18,7 +18,7 @@ export function SavedAnswers() {
       <PageHead
         eyebrow="Search profile"
         title="Application answers"
-        intro="What Lookout reuses on every application: answers to questions most forms ask, experience notes behind your skills, and personal stories for cover letters. Change one here when it's no longer true, like a move or a new name."
+        intro="What Lookout reuses on every application."
       />
       <FormAnswers />
       <ExperienceNotes />

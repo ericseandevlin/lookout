@@ -97,7 +97,7 @@ export function Knows() {
       <PageHead
         eyebrow="Search profile"
         title="What Lookout knows about you"
-        intro="Every fact Lookout uses, in your words. Shareable facts can go into your drafts; private ones never leave Lookout."
+        intro="Every fact Lookout uses. Private ones never leave Lookout."
       />
       {/* The resume is read too, so say so: a short list of facts alone looked like it wasn't (#1531). */}
       {resume?.status === "done" && (
