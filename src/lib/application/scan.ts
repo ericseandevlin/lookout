@@ -113,6 +113,9 @@ const RESUME = /^((upload|attach)( your| a)? )?(r[eé]sum[eé]|cv|curriculum vit
 // On an upload, the word anywhere names it: "Please upload your resume", "Your CV" (#935).
 const RESUME_WORD = /(?<![\p{L}\p{N}])(r[eé]sum[eé]|cv|curriculum vitae)(?![\p{L}\p{N}])/iu;
 const COVER = /cover\s*letter/i;
+// One upload for both: "Resume/Cover Letter", "CV & cover letter", "Upload your resume and cover letter", "Cover letter and resume".
+// Not "your cover letter, not your resume" (#1633).
+const BOTH = /(?<![\p{L}\p{N}])(?:r[eé]sum[eé]|cv)\s*(?:\/|&|\+|and|or)\s*(?:(?:a|your)\s+)?cover\s*letter|cover\s*letter\s*(?:\/|&|\+|and|or)\s*(?:(?:a|your)\s+)?(?:r[eé]sum[eé]|cv)(?![\p{L}\p{N}])/iu;
 // What may follow the resume words and still be just the upload: "Resume/CV *", "CV (PDF)", "Resume or CV", "Resume link" (#972).
 const RESUME_TAIL = /^\s*(?:(?:\/|or|and|&)\s*(?:r[eé]sum[eé]|cv|curriculum vitae)\s*)?(?:(?:file|upload|attachment|document|link|url)\s*)?(?:\([^)]*\)\s*)?[*:]?\s*$/iu;
 // "Mobile Phone", "Cell Phone" and "Home Phone" are the phone too; they come first so the whole name is the field (#1412).
@@ -139,6 +142,9 @@ export function kindFor(label: string, fieldType: string): ApplicationItemKind {
   // "Resume gaps: anything to explain?" is a question, not the upload. So is "Resume gap explanation" in a text box (#972).
   if (RESUME.test(l) && !l.includes("?") && RESUME_TAIL.test(l.replace(RESUME, ""))) return "resume";
   if (/file/i.test(fieldType) && RESUME_WORD.test(l) && !COVER.test(l) && !l.includes("?")) return "resume";
+  // One upload for both ("Resume/Cover Letter") is the resume's slot: as a letter, the resume Lookout adds for it
+  // went into the same input first and the letter replaced it (#1633).
+  if (/file/i.test(fieldType) && BOTH.test(l) && !l.includes("?")) return "resume";
   // "Would you like to include a cover letter?" is a Yes/No question, not the upload (#804).
   if (COVER.test(l) && !l.includes("?") && !/select|checkbox/i.test(fieldType)) return "cover_letter";
   if (/portfolio|work samples?/i.test(l) && /file/i.test(fieldType)) return "portfolio";
@@ -311,7 +317,8 @@ export function fromPage(r: z.infer<typeof PageItems>): Omit<ScanResult, "ats" |
 export function withBasics(items: ScannedItem[]): ScannedItem[] {
   const out = [...items];
   if (!out.some((i) => i.kind === "resume")) out.unshift({ kind: "resume", prompt: "Resume", required: true, fieldType: "file" });
-  if (!out.some((i) => i.kind === "cover_letter")) out.splice(1, 0, { kind: "cover_letter", prompt: "Cover letter", required: false, fieldType: "file" });
+  // Right after the resume, so a resume asked for late in the form still fills before the letter that could share its upload (#1633).
+  if (!out.some((i) => i.kind === "cover_letter")) out.splice(out.findIndex((i) => i.kind === "resume") + 1, 0, { kind: "cover_letter", prompt: "Cover letter", required: false, fieldType: "file" });
   // Duplicate labels happen on long forms (repeated "Website" fields); keep the first.
   const seen = new Set<string>();
   return out.filter((i) => {
