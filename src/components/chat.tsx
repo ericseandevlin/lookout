@@ -9,9 +9,10 @@ import { color, font } from "@/lib/tokens";
  * the question with its reason in a tooltip, and the answer box with Skip and Send inside it.
  */
 
+// The person's answers sit in a light gray bubble; Lookout's lines are plain text, like a chat with Claude.
 export const bubble = (you: boolean): React.CSSProperties => ({
-  position: "relative", maxWidth: 620, padding: "11px 15px", borderRadius: 14, fontSize: font.lg, lineHeight: 1.5, textWrap: "pretty", whiteSpace: "pre-wrap",
-  background: you ? color.surface : "#fff", border: you ? "none" : `1.5px solid ${color.border}`,
+  position: "relative", maxWidth: 620, fontSize: font.lg, lineHeight: 1.5, textWrap: "pretty", whiteSpace: "pre-wrap",
+  ...(you ? { padding: "11px 15px", borderRadius: 14, background: color.surface } : { padding: "2px 0" }),
 });
 
 export function Said({ who, children, id }: { who: "Lookout" | "You"; children: React.ReactNode; id?: string }) {
@@ -97,18 +98,18 @@ export function TapTip({ tip, label, children, style, openStyle }: { tip: string
   );
 }
 
-/** The question bubble. The info icon in its corner shows the reason as a tooltip. */
+/** Lookout's question, as plain text. The info icon at its end shows the reason as a tooltip. */
 export function QuestionBubble({ question, why }: { question: string; why: string }) {
   return (
     <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-start", gap: 6 }}>
-      <div style={{ ...bubble(false), ...(why && { paddingRight: 46 }) }}>
+      <div style={bubble(false)}>
         <span className="sr-only">Lookout: </span>
         {question}
         {why && (
           <TapTip
             tip={why}
             label="Why this question?"
-            style={{ position: "absolute", right: 6, bottom: 6, width: 32, height: 32, padding: 0, border: 0, borderRadius: 999, background: "transparent", color: color.t2, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}
+            style={{ display: "inline-flex", verticalAlign: "middle", margin: "-6px 0 -4px 4px", width: 32, height: 32, padding: 0, border: 0, borderRadius: 999, background: "transparent", color: color.t2, cursor: "pointer", alignItems: "center", justifyContent: "center" }}
             openStyle={{ background: color.surface, color: color.ink }}
           >
             <svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
