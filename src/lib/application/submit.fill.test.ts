@@ -799,6 +799,14 @@ describe("runFill controls (#567)", () => {
       expect(page.did).toContain(`fill Cover Letter=${LETTER.content}`);
     });
 
+    it("is typed into its own text box, not a Portfolio upload, when the form has two uploads (#1635)", async () => {
+      const id = await seed("approved", [RESUME, LETTER]);
+      page = fakePage([{ kind: "file", label: "Resume", type: "file" }, { kind: "file", label: "Portfolio", type: "file" }, { kind: "control", label: "Cover Letter", tag: "textarea" }]);
+      const r = await runFill(id, "test");
+      expect(r.log.find((l) => l.prompt === "Cover Letter")).toMatchObject({ ok: true, how: "typed the letter" });
+      expect(uploads()).toEqual(["upload Resume=Pat Lee - Acme Inc. Resume.docx"]);
+    });
+
     it("takes the second upload when no box names it", async () => {
       const id = await seed("approved", [RESUME, LETTER]);
       page = fakePage([{ kind: "file", label: "Resume", type: "file" }, { kind: "file", label: "Other documents", type: "file" }]);

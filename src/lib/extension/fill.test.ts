@@ -813,6 +813,19 @@ describe("extension fill: uploads", () => {
     expect(fileName(p, "cv")).toBe("new.docx");
   });
 
+  it("types a cover letter into its own text box, not a Portfolio upload (#1635)", async () => {
+    const p = page(`<form><div><label for="cv">Resume</label><input type="file" id="cv"></div><div><label for="pf">Portfolio</label><input type="file" id="pf"></div><div><label for="t">Cover Letter</label><textarea id="t"></textarea></div></form>`);
+    const log = await p.fill({
+      steps: [
+        { prompt: "Resume", kind: "file", itemKind: "resume", file: docx("Resume.docx") },
+        { prompt: "Cover Letter", kind: "file", itemKind: "cover_letter", content: "Dear team,\nI build design systems.", file: docx("Letter.docx") },
+      ],
+    });
+    expect(fileName(p, "pf")).toBeUndefined();
+    expect((p.doc.getElementById("t") as unknown as { value: string }).value).toBe("Dear team,\nI build design systems.");
+    expect(log[1].how).toBe("typed the letter");
+  });
+
   it("falls back to the first input for the resume and the second for the letter", async () => {
     const p = page(`<input type="file" id="a"><input type="file" id="b">`);
     await p.fill({

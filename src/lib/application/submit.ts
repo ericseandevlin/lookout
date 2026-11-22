@@ -280,19 +280,26 @@ async function fillOne(page: Page, s: FillStep): Promise<{ ok: boolean; how: str
       const alone = !letter || !hasBox || (await box.locator("input[type=file]").count()) <= 1 && (await box.locator("input:not([type=file]):not([type=hidden]),textarea,select").count()) === 0;
       // Unlabeled, only the resume takes the first upload; a writing sample or portfolio there replaced it (#1030).
       const fallback = letter ? 1 : s.itemKind === "resume" ? 0 : -1;
-      const found = hasBox && alone ? box.locator("input[type=file]").first() : fallback >= 0 ? page.locator("input[type=file]").nth(fallback) : null;
-      // An upload this fill already put a file in is taken: a combined "Resume/Cover Letter" box would get the letter
-      // over the resume (#1633). The extension's fileInputFor does the same.
-      const input = found && (await found.count()) && !(await found.evaluate((e) => e.hasAttribute("data-lookout-filled"))) ? found : null;
-      if (!input) {
-        // A cover letter asked for as text, not a file: type it into the box labeled with the prompt (#860).
+      const own = hasBox && alone;
+      // A cover letter asked for as text, not a file: type it into the box labeled with the prompt (#860). Its own text
+      // box beats an unlabeled upload, which may be a Portfolio or Transcript (#1635).
+      const typeLetter = async () => {
         const text = letter && s.content.trim() ? await letterBox(page, s.prompt) : null;
-        if (!text) return { ok: false, how: "upload field not found" };
+        if (!text) return null;
         const long = await overMax(text, s.content);
         if (long) return { ok: false, how: long };
         await text.fill(s.content);
         return { ok: true, how: "typed the letter" };
+      };
+      if (!own) {
+        const typed = await typeLetter();
+        if (typed) return typed;
       }
+      const found = own ? box.locator("input[type=file]").first() : fallback >= 0 ? page.locator("input[type=file]").nth(fallback) : null;
+      // An upload this fill already put a file in is taken: a combined "Resume/Cover Letter" box would get the letter
+      // over the resume (#1633). The extension's fileInputFor does the same.
+      const input = found && (await found.count()) && !(await found.evaluate((e) => e.hasAttribute("data-lookout-filled"))) ? found : null;
+      if (!input) return (own && (await typeLetter())) || { ok: false, how: "upload field not found" };
       if (!s.file) return { ok: false, how: "no file" };
       await input.setInputFiles(s.file);
       await input.evaluate((e) => e.setAttribute("data-lookout-filled", ""));

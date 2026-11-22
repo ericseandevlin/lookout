@@ -235,7 +235,7 @@
   // box, a label both prompts hold) would replace that file, so it reports not found instead (#1633).
   let filledUploads = new WeakSet();
 
-  function fileInputFor(prompt, itemKind) {
+  function fileInputFor(prompt, itemKind, labeledOnly = false) {
     const inputs = [...document.querySelectorAll("input[type=file]")];
     const pick = (input) => (input && !filledUploads.has(input) ? input : null);
     const key = norm(prompt).slice(0, 40);
@@ -250,6 +250,7 @@
         if (depth > 0 && (itemKind === "cover_letter" ? siblingHas(n, input, key) : otherBoxHas(n, input, key))) continue;
         return input;
       }
+    if (labeledOnly) return null;
     // Unlabeled, only the resume takes the first upload and the letter the second. Any other upload (writing sample,
     // portfolio) would replace the resume there, so it reports not found instead (#1030).
     return itemKind === "cover_letter" ? pick(inputs[1]) : itemKind === "resume" ? pick(inputs[0]) : null;
@@ -403,7 +404,8 @@
   }
 
   async function fillFile(step) {
-    const input = fileInputFor(step.prompt, step.itemKind);
+    // A letter's own text box beats an unlabeled upload: the second upload may be a Portfolio or Transcript (#1635).
+    let input = fileInputFor(step.prompt, step.itemKind, true);
     if (!input && step.itemKind === "cover_letter" && (step.content || "").trim()) {
       // A cover letter asked for as text, not a file: type it into the box labeled with the prompt, same as the worker (#860, #1292).
       const box = controlFor(step.prompt);
@@ -412,6 +414,7 @@
         return { ok: true, how: "typed the letter" };
       }
     }
+    if (!input) input = fileInputFor(step.prompt, step.itemKind);
     if (!input || !step.file) return { ok: false, how: step.file ? "upload field not found" : "no file" };
     const bytes = Uint8Array.from(atob(step.file.base64), (c) => c.charCodeAt(0));
     const file = new File([bytes], step.file.name, { type: "application/vnd.openxmlformats-officedocument.wordprocessingml.document" });
