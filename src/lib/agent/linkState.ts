@@ -114,9 +114,17 @@ const REPORTED = /\b(tells?|telling|told|says|saying|shows|showing|displays|disp
 // filled" (#1591).
 const THEN_CONDITION = /^\s*(?:once|when|whenever|after|until|till|if|as soon as)\b/i;
 
+// A closed phrase given as an example is copy to write, not the page's own message: "write error messages like 'This job
+// is no longer available'" or "rewrite \"Page not found\"" (#1620): an opening quote not yet closed before the phrase, or
+// "like" or "such as" right before it, but not "looks like this job is no longer available". A closing quote ("Senior Designer" is ...) follows a word, so it doesn't count.
+const QUOTED = /(?:^|[\s(\[:])["“‘'][^"“”‘’'\n]{0,40}$|(?<!\b(?:looks?|looked|seems?|seemed|sounds?) )\b(?:like|such as)\s+(?:(?:the|this|a|your|our)\s+)?$/i;
+
 const lastOf = (s: string, marks: string[]) => Math.max(...marks.map((c) => s.lastIndexOf(c)));
 
-/** A closed phrase counts unless it is led into with a condition (#980), reported, or followed by a condition (#1591). */
+/**
+ * A closed phrase counts unless it is led into with a condition (#980), reported, followed by a condition (#1591), or
+ * quoted as an example (#1620).
+ */
 function saysClosed(r: RegExp, text: string) {
   for (const m of text.matchAll(new RegExp(r.source, r.flags.includes("g") ? r.flags : `${r.flags}g`))) {
     // A match can start on the separator before the phrase ("\nNo longer available"): look back from the phrase itself,
@@ -124,7 +132,7 @@ function saysClosed(r: RegExp, text: string) {
     const before = text.slice(0, m.index + (/^[.!?:;\n\s]*/.exec(m[0])?.[0].length ?? 0));
     const sentence = before.slice(lastOf(before, [".", "!", "?", "\n", ";"]) + 1);
     const clause = sentence.slice(lastOf(sentence, [",", ":"]) + 1);
-    if (REPORTED.test(clause) || THEN_CONDITION.test(text.slice(m.index + m[0].length))) continue;
+    if (REPORTED.test(clause) || QUOTED.test(before) || THEN_CONDITION.test(text.slice(m.index + m[0].length))) continue;
     if (!CONDITION.test(sentence) && !NEAR_CONDITION.test(clause)) return true;
   }
   return false;
