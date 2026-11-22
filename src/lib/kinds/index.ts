@@ -290,12 +290,18 @@ const periods = (unit: string) => (/^(bi|every)/.test(unit) ? 26 : /^(semi|twice
 // A number that is part of a label isn't pay: "W2 $90/hr", "W-2 only", "L6 $200k", "Senior (IC4) 180k", "Level 5, $180k"
 // (#1562). "USD 150,000" and "US$150k" are still amounts.
 const NOT_PAY = /(?:\b(?!usd?\b)[a-z]{1,3}-?|\b(?:level|lvl|grade|band|tier|step)\s*)$/;
+const labelNumber = (a: RegExpMatchArray, rest: string) =>
+  a[1] === "1099" ||
+  (/^(401|403|457)$/.test(a[1]) && (/^[kb]$/.test(a[2] ?? "") || /^\s*\(\s*[kb]\s*\)/.test(rest))) ||
+  (/^(19|20)\d{2}$/.test(a[1]) && !a[2] && !PER_UNIT.test(rest));
 export function parseMoney(v: unknown): number | null {
   const s = str(v).toLowerCase().replace(/[,$]/g, "").replace(/(\d)\s+(?=\d{3}\b)/g, "$1");
   if (!s || /[€£¥₹]|\b(eur|euros?|gbp|pounds?|inr|jpy)\b/.test(s) || /\bfigures?\b/.test(s)) return null;
-  let m: RegExpExecArray | null;
   const AMOUNT = /(\d+(?:\.\d+)?)(?![\d.])\s*(k|mm|mil|million|m|bn|billion|b)?s?(?![a-z])/g;
-  while ((m = AMOUNT.exec(s)) && NOT_PAY.test(s.slice(0, m.index)));
+  const found = [...s.matchAll(AMOUNT)].filter((a) => !NOT_PAY.test(s.slice(0, a.index)));
+  // A tax form, a retirement plan or a year before the pay is not the pay: "1099 $90/hr", "401k + 150k", "2026 target:
+  // 150k" (#1567). Only when another number follows, so "2000/month" alone is still read.
+  const m = found.find((a) => !labelNumber(a, s.slice(a.index + a[0].length))) ?? found[0];
   if (!m) return null;
   const bare = parseFloat(m[1]);
   const rest = s.slice(m.index + m[0].length);
