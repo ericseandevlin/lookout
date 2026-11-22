@@ -250,9 +250,10 @@ export const placeId = (location: string) => {
 
 // Tracking params only, matched by exact name, so job IDs like referenceId or refnum stay in the key (#487). Ad and email
 // click IDs too: Google, Meta, Microsoft, LinkedIn, Instagram, HubSpot, Mailchimp, Marketo and the Google linker (#1193).
-// Jobvite's source tags __jvst and __jvsd (#1252).
+// Jobvite's source tags __jvst and __jvsd (#1252). Google's result tag srsltid, the older _ga linker, gad_source, the
+// TikTok, X, Yandex, Reddit and Pinterest click IDs, and Lever's share tag lever-via (#1615).
 const TRACKING =
-  /^(utm_.*|gh_src|source|src|ref|refid|ref_src|referrer|trk|trackingid|lever-source|lever-origin|gclid|gbraid|wbraid|dclid|fbclid|msclkid|li_fat_id|igshid|_hsenc|_hsmi|mc_cid|mc_eid|mkt_tok|_gl|__jvst|__jvsd)$/i;
+  /^(utm_.*|gh_src|source|src|ref|refid|ref_src|referrer|trk|trackingid|lever-source|lever-origin|lever-via|gclid|gbraid|wbraid|dclid|fbclid|msclkid|li_fat_id|igshid|_hsenc|_hsmi|mc_cid|mc_eid|mkt_tok|_gl|_ga|gad_source|srsltid|ttclid|twclid|yclid|rdt_cid|epik|__jvst|__jvsd)$/i;
 
 /** A query pair's name, decoded when it can be. An array name ("lever-source[]", Lever's shared links) is its plain name (#1431). */
 const pairName = (p: string) => {

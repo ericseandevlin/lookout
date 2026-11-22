@@ -103,6 +103,13 @@ describe("dedupe keys", () => {
     expect(normUrl("https://acme.com/careers?gclid_job=9")).toBe("acme.com/careers?gclid_job=9");
   });
 
+  it("drops Google's srsltid, the _ga linker, more click IDs and Lever's lever-via (#1615)", () => {
+    expect(normUrl("https://acme.com/careers/designer?srsltid=AfmBOoq123")).toBe("acme.com/careers/designer");
+    expect(normUrl("https://acme.com/careers/1?_ga=2.1234.5678&gad_source=1&ttclid=a&twclid=b&yclid=c&rdt_cid=d&epik=e")).toBe("acme.com/careers/1");
+    expect(normUrl("https://jobs.lever.co/acme/abc?lever-via=xyz")).toBe("jobs.lever.co/acme/abc");
+    expect(normUrl("https://acme.com/careers?jobId=9&srsltid=x")).toBe("acme.com/careers?jobid=9");
+  });
+
   it("leaves the rest of the query as written when it drops a tracking tag (#1166)", () => {
     expect(normUrl("https://careers.example.com/job?title=Senior%20Designer&utm_source=linkedin")).toBe(normUrl("https://careers.example.com/job?title=Senior%20Designer"));
     expect(normUrl("https://careers.example.com/job?loc=NY,US&ref=x")).toBe(normUrl("https://careers.example.com/job?loc=NY,US"));
