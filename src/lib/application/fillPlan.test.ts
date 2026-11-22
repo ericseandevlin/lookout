@@ -206,6 +206,12 @@ describe("CONFIRMATION (#692, #748, #762)", () => {
       "Application complete",
       "Your application is complete. We'll be in touch.",
       "Thank you! Your application has been completed.",
+      // #1647
+      "Submission complete",
+      "Your submission is complete.",
+      "Your submission has been completed.",
+      "Your application has been successfully completed.",
+      "Applied successfully!",
     ])
       expect(CONFIRMATION.test(t), t).toBe(true);
   });
@@ -254,6 +260,12 @@ describe("CONFIRMATION (#692, #748, #762)", () => {
       "Please check that your application is complete.",
       "Application complete: 80%",
       "Your application is not complete.",
+      // #1647
+      "Your submission is not complete.",
+      "Please complete your submission.",
+      "Make sure your submission is complete.",
+      "Submission complete: 2 of 5 steps",
+      "You have not applied successfully.",
     ])
       expect(CONFIRMATION.test(t), t).toBe(false);
   });
