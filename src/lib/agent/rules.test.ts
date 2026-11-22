@@ -289,6 +289,8 @@ describe("listPage: search and board pages are not jobs (#1537)", () => {
       "https://uk.indeed.com/jobs?q=ux+director",
       "https://www.indeed.co.uk/jobs?q=ux+director",
       "https://ca.linkedin.com/jobs/ux-director-jobs",
+      "https://www.linkedin.com/jobs/search?keywords=ux%20director&location=New%20York",
+      "https://www.linkedin.com/jobs/",
       "https://www.ziprecruiter.com/Jobs/UX-Director",
       "https://www.simplyhired.com/search?q=ux+director",
       "https://careers.acme.com/jobs/",
@@ -314,6 +316,9 @@ describe("listPage: search and board pages are not jobs (#1537)", () => {
     for (const u of [
       "https://www.glassdoor.com/job-listing/ux-director-acme-JV_IC1132348_KO0,11_KE12,16.htm?jl=1009",
       "https://www.indeed.com/viewjob?jk=abc123",
+      "https://www.linkedin.com/jobs/view/4012345678",
+      "https://www.linkedin.com/jobs/view/senior-ux-director-at-acme-4012345678",
+      "https://ca.linkedin.com/jobs/view/ux-director-at-acme-4012345678?trk=public_jobs",
       "https://jobs.lever.co/acme/0c3f1a2b-4d5e-6f70-8a9b-0c1d2e3f4a5b",
       "https://jobs.lever.co/acme/0c3f1a2b-4d5e-6f70-8a9b-0c1d2e3f4a5b/apply",
       "https://job-boards.greenhouse.io/acme/jobs/4001234005",
