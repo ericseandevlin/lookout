@@ -486,6 +486,30 @@ describe("classifyPage: a job that changed work mode or city is still open (#149
   });
 });
 
+describe("duties about a page people can't find (#1553)", () => {
+  const posting = (duty: string) =>
+    `TITLE: Senior Content Designer at Acme\n\nTEXT:\nAcme is hiring a Senior Content Designer.\nWhat you'll do\n${duty}\nPartner with research and engineering.\nRequirements\n5+ years of content design.`;
+  it.each([
+    "Rework site navigation so customers who can't find the page they need get there in one click.",
+    "Write error-state copy, like the message shown to users who couldn't find the page, across web and app.",
+    "Write microcopy for empty states and the screen that says the page you're looking for doesn't exist.",
+    "Help visitors who could not find the page.",
+  ])("keeps %s open", (duty) => {
+    expect(classifyPage(200, posting(duty)).state).toBe("open");
+  });
+
+  it.each([
+    "Sorry, we couldn't find that page.",
+    "We can't find the page you're looking for.",
+    "We couldn’t find the page you were looking for. Go back to all jobs",
+    "Oops! The page you're looking for doesn't exist.",
+    "Sorry, the page you are looking for does not exist",
+    "Hmm, we can't find this page",
+  ])("still reads %s as closed", (text) => {
+    expect(classifyPage(200, `TITLE: Acme Careers\n\nTEXT:\n${text}`).state).toBe("gone");
+  });
+});
+
 describe("duties about a 404 screen or an expired posting (#1516)", () => {
   it.each([
     "Product Designer. Own our 404 page not found experience and empty states.",

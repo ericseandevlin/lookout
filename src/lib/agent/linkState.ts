@@ -51,7 +51,9 @@ const CLOSED = [
   // "The job you are trying to apply for is no longer available", "attempting to view" too (#1251). "Apply to" too (#1441).
   /(job|position|posting|role|page) you(['’]re| are) (looking for|(trying|attempting) to (apply (for|to)|access|view|reach|open)) ((has|is|was|might have|may have) (been )?(filled|removed|closed|deleted|expired)|is no longer (available|active|open))\b/i,
   /(job|position|posting|role|opening) is not available anymore/i,
-  /page you(['’]re| are) looking for (doesn['’]t|does not|no longer) exists?|(can(['’]|no)t|couldn['’]t|could not) find (that|this|the) page/i,
+  // A duty about such a screen is not one: "the screen that says the page you're looking for doesn't exist", "customers who
+  // can't find the page they need", "users who couldn't find the page, across web" (#1553).
+  /(?<!\b(?:says|said|saying|reads|shows|showing|tells (?:them|users|people|you)|like|when|if|where|that|which) (?:that )?(?:the |this )?)page you(['’]re| are) looking for (doesn['’]t|does not|no longer) exists?|(?<!\bwho )(can(['’]|no)t|couldn['’]t|could not) find (that|this|the) page(?=\s*(?:[.!?\n]|$)|\s+you(?:['’]re| are| were)? (?:looking for|requested|wanted))/i,
   // A soft 404 that answers 200: "The page you requested could not be found", "This page cannot be found." (#1441).
   // "This/the X cannot be found" only as the end of the sentence, so "the job cannot be found on other boards" stays open.
   /\b(page|job|position|posting) you(['’]ve| have)? requested (could not|cannot|can['’]t) be found|\b(this|the) (page|job|position|posting) (could not|cannot|can['’]t) be found\s*(?:[.!?\n]|$)/i,
