@@ -57,7 +57,6 @@ export function Clip({ src, poster, label }: { src: string; poster: string; labe
       <img src={poster} alt="" className={s.poster} data-hide={on || undefined} />
       <span className={s.playHint} data-hide={on || undefined} aria-hidden>
         <svg viewBox="0 0 16 16" width="12" height="12"><path d="M4 2.5v11l9-5.5z" fill="currentColor" /></svg>
-        Hover to play
       </span>
     </div>
   );
@@ -105,7 +104,6 @@ export function FiveQuestions() {
       </div>
       <span className={s.playHint} data-hide={on || undefined} aria-hidden>
         <svg viewBox="0 0 16 16" width="12" height="12"><path d="M4 2.5v11l9-5.5z" fill="currentColor" /></svg>
-        Hover to play
       </span>
     </div>
   );

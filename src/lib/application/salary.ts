@@ -16,9 +16,10 @@ const sentences = (t: string) => t.split(/(?<=[.?!])\s+|\n+/);
 const INCLUDES_BONUS = /\b(includ|reflect)\w*\b[^.?!]{0,40}?\b(bonus|commission|incentive)/i;
 const ABOUT_PAY = /\b(range|salary|pay|compensation|amount|figure)\b/i;
 // "In addition to", "on top of" and "separate" put the bonus outside the range only when they are about the bonus:
-// "includes base and bonus, in addition to equity" is still total cash (#937).
+// "includes base and bonus, in addition to equity" is still total cash (#937). "Base salary only, not bonus" and "bonus and
+// equity are separate" leave it out too (#1487).
 const NEGATED =
-  /(\bnot|n't)\s+(includ|reflect)|\bexclud|\b(in addition to|on top of|separate(ly)? from)\b[^.?!]{0,60}?\b(bonus|commission|incentive)|\b(bonus|commission|incentive)\w*\s+(is|are)\s+(\w+\s+)?separate/i;
+  /(\bnot|n't)\s+(includ|reflect)|\bexclud|\b(in addition to|on top of|separate(ly)? from)\b[^.?!]{0,60}?\b(bonus|commission|incentive)|\b(only|solely)\b[^.?!]{0,20}?\b(not|excluding|without)\b[^.?!]{0,30}?\b(bonus|commission|incentive)|\b(bonus|commission|incentive)\w*(?:,?\s+(?:and|or|&)\s+\w+|,\s*\w+)*\s+(is|are)\s+(\w+\s+)?separate/i;
 // Other ways a posting says its range is total cash (#690): "base pay plus bonus", "on-target earnings",
 // "Total compensation range: $200,000 - $250,000". A bonus added after an amount sits on top of it, so the range is base:
 // "Base salary range: $150K - $180K + bonus" or "$150k-$180k base + bonus + equity" (#1425).
@@ -56,11 +57,14 @@ const SAYS_TOTAL = (s: string) =>
 // $180,000 and does not include bonus or equity" (#650, #1411).
 const SAYS_BASE = (s: string) => NEGATED.test(s) && ABOUT_PAY.test(s) && /\b(bonus|commission|incentive)/i.test(s);
 
+// A bonus added right after an amount sits on top of it, word "base" or not: "Salary range: $150,000 - $180,000 + bonus" (#1528).
+const AMOUNT_PLUS_BONUS = /\d[km]?\s{0,2}(\+|\bplus\b)\s*(an?\s+)?((annual|target|performance|quarterly|sales)\s+)?(bonus|commission|incentive)/i;
+
 /** What the posted range covers: total cash (bonus included), base, or the posting doesn't say. "$150k-$180k base" names it base (#1425). */
 export const rangeBasis = (posting: string): "total" | "base" | null =>
   sentences(posting).some(SAYS_TOTAL)
     ? "total"
-    : /\bbase (salary|pay|compensation)\b|\d[km]?\s{0,2}base\b/i.test(posting) || sentences(posting).some(SAYS_BASE)
+    : /\bbase (salary|pay|compensation)\b|\d[km]?\s{0,2}base\b/i.test(posting) || AMOUNT_PLUS_BONUS.test(posting) || sentences(posting).some(SAYS_BASE)
       ? "base"
       : null;
 
@@ -197,10 +201,17 @@ function periodIn(prompt: string): "year" | Per | null {
 
 /**
  * The ask wants its number in thousands: "Desired salary (in thousands)", "Salary expectations in $K", "Base (000s)"
- * (#1188). "401(k)" is a retirement plan, not a unit.
+ * (#1188). "401(k)" is a retirement plan, not a unit, and "in K-12" is a school grade range (#1557).
  */
-export const asksThousands = (prompt: string) =>
-  /\bin (?:\$\s?|usd\s)?(?:thousands|k)\b|(?<![\d\w])\(\s*(?:in\s+)?(?:\$\s?)?(?:000s|000's|k|thousands)\s*\)|\bin 000s\b/i.test(prompt);
+export const asksThousands = (prompt: string) => THOUSANDS.test(prompt);
+
+// "(in 1000s)", "(thousands USD)", "(USD, thousands)", "(£'000)" and "in thousand USD" too (#1488).
+const CUR = String.raw`(?:usd|us\$|\$|£|€|eur|gbp|cad)`;
+const UNIT = String.raw`(?:000s|000's|'000s?|1,?000s|k|thousands?)`;
+const THOUSANDS = new RegExp(
+  String.raw`\bin (?:\$\s?|usd\s)?(?:thousands?|k(?![-–]?\d)|1,?000s)\b|(?<![\d\w])\(\s*(?:in\s+)?(?:${CUR}\s*,?\s*)?${UNIT}(?:\s*,?\s*${CUR})?\s*\)|\bin 000s\b`,
+  "i",
+);
 
 // 260 working days a year, the same rule discovery uses to read a day rate on a posting (#1187).
 const PER: Record<Per, { n: number; how: string }> = {

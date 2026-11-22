@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { applyRules, fingerprint, legacyFingerprint, normUrl, placeId, placesDiffer } from "./rules";
+import { applyRules, fingerprint, legacyFingerprint, listPage, normUrl, placeId, placesDiffer, remoteFirst } from "./rules";
 
 const base = { score: 5, reasonsMatch: ["Director title"], reasonsGap: [], locationFit: true, dealbreaker: false, compMin: 140000, compMax: 160000 };
 
@@ -134,6 +134,19 @@ describe("placesDiffer (#1285)", () => {
     expect(placeId("Remote (Canada)")).toBe("ca");
   });
 
+  it("reads an unknown country in parentheses after Remote (#1555)", () => {
+    expect(placesDiffer("Remote (US)", "Remote (Germany)")).toBe(true);
+    expect(placesDiffer("Remote (US)", "Remote (Mexico)")).toBe(true);
+    expect(placesDiffer("Remote (India)", "Remote (Germany)")).toBe(true);
+    expect(placesDiffer("Remote (Germany)", "Remote, Germany")).toBe(false);
+    expect(placesDiffer("Remote (Germany)", "Remote (Germany)")).toBe(false);
+    expect(placesDiffer("Remote (US)", "Remote (hybrid)")).toBe(false);
+    expect(placesDiffer("Remote (US)", "Remote (Full-time)")).toBe(false);
+    expect(placesDiffer("Remote (US)", "Remote (contract)")).toBe(false);
+    expect(placesDiffer("New York (NYC)", "New York, NY")).toBe(false);
+    expect(placesDiffer("New York, NY (Manhattan)", "New York, NY")).toBe(false);
+  });
+
   it("tells apart the same city in another state or country", () => {
     expect(placesDiffer("Remote, US", "Remote, Canada")).toBe(true);
     expect(placesDiffer("Cambridge, MA", "Cambridge, United Kingdom")).toBe(true);
@@ -219,5 +232,116 @@ describe("placesDiffer: a work mode after an unknown country, or on its own (#13
     ["Berlin, Germany - Hybrid", "Berlin, Mexico"],
   ])("%s and %s are still two places", (a, b) => {
     expect(placesDiffer(a, b)).toBe(true);
+  });
+});
+
+describe("placesDiffer: a coast or time zone after the place (#1510)", () => {
+  it.each([
+    ["Remote, US", "Remote, US - East Coast"],
+    ["Remote, United States", "Remote, United States - Eastern Time"],
+    ["Remote (US)", "Remote (US East Coast)"],
+    ["Remote, USA", "Remote, USA (PST)"],
+    ["Remote, Canada", "Remote, Canada - Pacific Time Zone"],
+    ["Remote, US", "Remote, US Midwest"],
+  ])("%s and %s are one place", (a, b) => {
+    expect(placesDiffer(a, b)).toBe(false);
+    expect(placeId(b)).toBe(placeId(a));
+  });
+
+  it.each([
+    ["Remote, US - East Coast", "Remote, Canada"],
+    ["Raleigh, North Carolina", "Raleigh, NY"],
+    ["Charleston, West Virginia", "Charleston, SC"],
+    ["Remote, Europe - Central Time", "Remote, US"],
+  ])("%s and %s are still two places", (a, b) => {
+    expect(placesDiffer(a, b)).toBe(true);
+  });
+});
+
+describe("dedupe: remote and a country before the first comma (#1514)", () => {
+  const fp = (loc: string) => fingerprint("Acme", "Product Designer", loc);
+
+  it("keys every way of writing a remote US job as one find", () => {
+    for (const loc of ["Remote - US", "US Remote", "USA (Remote)", "Remote – United States", "Remote U.S.", "Remote (US)", "US-based Remote"]) {
+      expect(fp(loc), loc).toBe(fp("Remote, US"));
+      expect(placesDiffer(loc, "Remote, US"), loc).toBe(false);
+    }
+    expect(fp("United States (Remote)")).toBe(fp("Remote, United States"));
+  });
+
+  it("keeps a remote job in another country apart", () => {
+    expect(fp("Remote - Canada")).toBe(fp("Remote, US"));
+    expect(placesDiffer("Remote - Canada", "Remote, US")).toBe(true);
+    expect(placeId("Remote - Canada")).toBe("ca");
+    expect(placesDiffer("UK Remote", "Remote (US)")).toBe(true);
+  });
+
+  it("leaves a city, a bare Remote and an unknown place as written", () => {
+    expect(remoteFirst("New York (Remote)")).toBe("New York (Remote)");
+    expect(remoteFirst("Remote")).toBe("Remote");
+    expect(remoteFirst("Remote, US")).toBe("Remote, US");
+    expect(remoteFirst("Remote - Mexico")).toBe("Remote - Mexico");
+    expect(remoteFirst("United States")).toBe("United States");
+    expect(remoteFirst("Remote - US, Eastern Time")).toBe("Remote, us, Eastern Time");
+    expect(fp("New York (Remote)")).toBe(fp("New York, NY"));
+  });
+
+  it("keeps the legacy key as written, so postings stored before are still matched", () => {
+    expect(legacyFingerprint("Acme", "Product Designer", "Remote - US")).not.toBe(fp("Remote - US"));
+    expect(legacyFingerprint("Acme", "Product Designer", "Remote, US")).toBe(fp("Remote, US"));
+  });
+});
+
+describe("listPage: search and board pages are not jobs (#1537)", () => {
+  it("drops job board search pages, on any country site", () => {
+    for (const u of [
+      "https://www.glassdoor.com/Job/new-york-ny-ux-director-jobs-SRCH_IL.0,11_IC1132348_KO12,23.htm",
+      "https://www.glassdoor.co.uk/Job/london-ux-director-jobs-SRCH_IL.0,6_IC2671300.htm",
+      "https://www.indeed.com/l-New-York,-NY-jobs.html",
+      "https://www.indeed.com/q-UX-Director-jobs.html",
+      "https://uk.indeed.com/jobs?q=ux+director",
+      "https://www.indeed.co.uk/jobs?q=ux+director",
+      "https://ca.linkedin.com/jobs/ux-director-jobs",
+      "https://www.linkedin.com/jobs/search?keywords=ux%20director&location=New%20York",
+      "https://www.linkedin.com/jobs/",
+      "https://www.ziprecruiter.com/Jobs/UX-Director",
+      "https://www.simplyhired.com/search?q=ux+director",
+      "https://careers.acme.com/jobs/",
+    ])
+      expect(listPage(u), u).toBe(true);
+  });
+
+  it("drops an ATS board home that names no job", () => {
+    for (const u of [
+      "https://jobs.lever.co/acme",
+      "https://jobs.eu.lever.co/acme?team=Design",
+      "https://job-boards.greenhouse.io/acme",
+      "https://boards.greenhouse.io/embed/job_board?for=acme",
+      "https://jobs.ashbyhq.com/acme",
+      "https://acme.wd1.myworkdayjobs.com/External",
+      "https://acme.wd1.myworkdayjobs.com/en-US/External?q=design",
+      "https://wd3.myworkdaysite.com/recruiting/acme/External",
+    ])
+      expect(listPage(u), u).toBe(true);
+  });
+
+  it("keeps single postings, on those sites too", () => {
+    for (const u of [
+      "https://www.glassdoor.com/job-listing/ux-director-acme-JV_IC1132348_KO0,11_KE12,16.htm?jl=1009",
+      "https://www.indeed.com/viewjob?jk=abc123",
+      "https://www.linkedin.com/jobs/view/4012345678",
+      "https://www.linkedin.com/jobs/view/senior-ux-director-at-acme-4012345678",
+      "https://ca.linkedin.com/jobs/view/ux-director-at-acme-4012345678?trk=public_jobs",
+      "https://jobs.lever.co/acme/0c3f1a2b-4d5e-6f70-8a9b-0c1d2e3f4a5b",
+      "https://jobs.lever.co/acme/0c3f1a2b-4d5e-6f70-8a9b-0c1d2e3f4a5b/apply",
+      "https://job-boards.greenhouse.io/acme/jobs/4001234005",
+      "https://boards.greenhouse.io/embed/job_app?for=acme&token=4001234005",
+      "https://jobs.ashbyhq.com/acme/0c3f1a2b-4d5e-6f70-8a9b-0c1d2e3f4a5b",
+      "https://acme.wd1.myworkdayjobs.com/en-US/External/job/New-York-NY/UX-Director_R12345",
+      "https://wd3.myworkdaysite.com/recruiting/acme/External/job/New-York/UX-Director_R12345",
+      "https://careers.acme.com/jobs/101-ux-director",
+      "not a url",
+    ])
+      expect(listPage(u), u).toBe(false);
   });
 });

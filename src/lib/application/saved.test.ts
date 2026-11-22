@@ -32,6 +32,8 @@ describe("saved answers", () => {
     const list = upsert([], "Are you authorized to work in the US?", "yes");
     expect(match(list, "Are you authorized to work in the US?", ["Yes", "No"])).toBe("Yes");
     expect(match(list, "Are you authorized to work in the US?", ["Authorized", "Not authorized"])).toBeNull();
+    // The form's own spelling of the saved answer (#1524).
+    expect(match([...list, { key: answerKey("Employment type"), question: "Employment type", answer: "Full time", updatedAt: "" }], "Employment type", ["Full-time", "Part-time"])).toBe("Full-time");
   });
 
   it("keeps a No about one employer, never a Yes or a referrer's name (#1032)", () => {
@@ -44,6 +46,11 @@ describe("saved answers", () => {
   it("keeps a general answer to how they heard of the job, never a referral (#1097)", () => {
     expect(isCommon("How did you hear about this job?", "LinkedIn")).toBe(true);
     expect(isCommon("How did you hear about us?", "Company website")).toBe(true);
+    // "This position" and "this role" are the same question as "this job" (#1545).
+    expect(isCommon("How did you hear about this position?", "LinkedIn")).toBe(true);
+    expect(isCommon("How did you hear about this role?", "Indeed")).toBe(true);
+    expect(isCommon("How did you hear about this opportunity?", "Company website")).toBe(true);
+    expect(isCommon("How did you hear about this role?", "Employee referral")).toBe(false);
     for (const a of ["Referred by Jane Doe (Design Manager)", "Employee Referral", "A friend who works there", "Recruiter reached out", "Former colleague on the team"])
       expect(isCommon("How did you hear about this job?", a)).toBe(false);
     // Saved before the fix: never reused or shown to the model.

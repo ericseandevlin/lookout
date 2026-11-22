@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
-import { checksBox, CONFIRMATION, pickOne, pickOptions, planFill, uploadLabels } from "./fillPlan";
+import { checksBox, CONFIRMATION, pickOne, pickOptions, planFill, sameOption, uploadLabels } from "./fillPlan";
 
 const item = (o: Partial<Parameters<typeof planFill>[0][number]>) => ({ id: "i", kind: "answer" as const, prompt: "Q", required: true, fieldType: "text", options: null, approvedVersionId: null, ...o });
 
@@ -134,6 +134,26 @@ describe("pickOne (#695)", () => {
     expect(pickOne("No", ["Select", "None of the above", "No, I do not have a disability"])).toBe(2);
     expect(pickOne("None", ["No", "None of the above"])).toBe(1);
     expect(pickOne(`${long}.`, ["Select", `${long} (2026 edition)`])).toBe(1);
+  });
+  it("matches the same text written with or without hyphens, spaces or an apostrophe (#1518)", () => {
+    expect(pickOne("Full time", ["Select", "Full-time", "Part-time"])).toBe(1);
+    expect(pickOne("Onsite", ["Remote", "Hybrid", "On-site"])).toBe(2);
+    expect(pickOne("Bachelors", ["Associate's", "Bachelor's", "Master's"])).toBe(1);
+    expect(pickOne("Nonbinary", ["Man", "Woman", "Non-binary"])).toBe(2);
+    expect(pickOne("Part time ✱", ["Full-time", "Part-time"])).toBe(1);
+    expect(pickOptions("Full time\nContract", ["Full-time", "Part-time", "Contract"])).toEqual(["Full-time", "Contract"]);
+    // Whole text only: "No" is still not "None".
+    expect(pickOne("No", ["None", "Yes"])).toBe(-1);
+  });
+  it("never joins two numbers into one: '12' is not the '1-2' range (#1549)", () => {
+    expect(pickOne("12 years", ["Less than 1 year", "1-2 years", "3-5 years", "6-10 years", "10+ years"])).toBe(-1);
+    expect(sameOption("12", ["0-1", "1-2", "3-5", "6-10", "10+"])).toBeUndefined();
+    expect(sameOption("12 weeks", ["Immediately", "1-2 weeks", "1 month"])).toBeUndefined();
+    expect(sameOption("15", ["1.5", "2"])).toBeUndefined();
+    expect(pickOptions("15 years", ["1-5 years", "6-10 years", "11-15 years", "15+ years"])).not.toContain("1-5 years");
+    // A range still lands on itself however it's spaced.
+    expect(pickOne("1 - 2 years", ["Less than 1 year", "1-2 years", "3-5 years"])).toBe(1);
+    expect(pickOne("3–5 years", ["1-2 years", "3-5 years"])).toBe(1);
   });
   it("is -1 when no option fits", () => {
     expect(pickOne("They/them", ["She/her", "He/him"])).toBe(-1);

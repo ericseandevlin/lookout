@@ -83,7 +83,7 @@ function LinkedinPdf() {
     <div style={{ display: "flex", flexDirection: "column", gap: 10, padding: 14, borderRadius: 12, background: color.surface, border: `1.5px solid ${color.border}` }}>
       <div style={{ fontSize: font.base, fontWeight: 600 }}>Add your full LinkedIn profile</div>
       <p style={{ margin: 0, fontSize: font.base, lineHeight: 1.5, color: color.t2, textWrap: "pretty" }}>
-        LinkedIn doesn&apos;t let apps read profiles, so have LinkedIn save yours as a PDF and upload it here. Lookout reads your full history from it.
+        LinkedIn doesn&apos;t let apps read profiles, so upload it as a PDF.
       </p>
       <ol style={{ margin: 0, paddingLeft: 20, fontSize: font.base, lineHeight: 1.6, color: "#3B362C" }}>
         <li>On a computer, open <a href="https://www.linkedin.com/in/me/" target="_blank" rel="noopener noreferrer" style={{ color: color.brick }}>your LinkedIn profile</a>.</li>
@@ -133,15 +133,13 @@ export function Materials() {
       <PageHead
         eyebrow="Materials"
         title="Resume, LinkedIn and links"
-        intro="Lookout reads these to understand your background, so it can fill in your search profile and judge which roles fit. Changes save automatically."
+        intro="What Lookout reads to judge fit. Changes save as you go."
       />
       <div style={{ display: "flex", flexDirection: "column" }}>
         <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
           <Section ruled>Resume</Section>
           <p style={{ margin: "0 0 4px", fontSize: font.base, lineHeight: 1.5, color: color.t2, textWrap: "pretty" }}>
-            Lookout keeps the text of your resume with your account and uses it two ways. It fills any profile answers you left empty (next role,
-            where you work, workplace type, your lead win); those get a &ldquo;Filled from resume&rdquo; tag and are yours to edit. And every search
-            reads it to judge fit. It never overwrites an answer you wrote. Deleting the resume removes the file and its text.
+            Every search reads it to judge fit. It also fills profile answers you left empty, never ones you wrote.
           </p>
           <label className="h-border" style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 4, padding: rs ? "14px" : "22px 14px", border: "1.5px dashed #D0C7BA", background: "#fff", borderRadius: 12, cursor: "pointer", textAlign: "center" }}>
             <input type="file" accept=".pdf,.docx,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document" onChange={onFile} style={{ position: "absolute", width: 1, height: 1, opacity: 0 }} />
@@ -175,7 +173,6 @@ export function Materials() {
               <div style={{ display: "flex", gap: 6, flex: "none" }}>
                 <a href="/api/materials/resume" target="_blank" rel="noopener" className="h-ink-border" style={{ height: 32, padding: "0 12px", borderRadius: 8, border: `1.5px solid ${color.border}`, background: "#fff", fontSize: font.base, fontWeight: 600, color: color.ink, display: "flex", alignItems: "center", textDecoration: "none" }}>View</a>
                 <button
-                  data-tip="Delete resume"
                   aria-label="Delete resume"
                   className="h-border"
                   onClick={async () => {
@@ -191,9 +188,10 @@ export function Materials() {
                     });
                     if (ok) m.deleteResume();
                   }}
-                  style={{ width: 32, height: 32, borderRadius: 8, border: `1.5px solid ${color.border}`, background: "#fff", color: color.t2, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", padding: 0 }}
+                  style={{ height: 32, padding: "0 12px", borderRadius: 8, border: `1.5px solid ${color.border}`, background: "#fff", color: color.ink, fontSize: font.base, fontWeight: 600, cursor: "pointer", display: "flex", alignItems: "center", gap: 6 }}
                 >
                   <TrashIcon />
+                  Delete
                 </button>
               </div>
             </div>
@@ -349,7 +347,7 @@ function MasterResumeSection() {
     <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
       <Section ruled>How Lookout reads your resume</Section>
       <p style={{ margin: "0 0 4px", fontSize: font.base, lineHeight: 1.5, color: color.t2, textWrap: "pretty" }}>
-        Text pulled from a PDF loses its layout, so Lookout rebuilds your resume once: each job with its own bullets, in your exact words. Check that every bullet sits under the right job, fix anything, and confirm. Auto-apply drafts every tailored resume from the version you confirm.
+        Lookout rebuilds your resume once, in your words. Check each bullet sits under the right job, then confirm. Drafts start from this version.
       </p>
       {!m && !err && <div role="status" style={{ fontSize: font.base, color: color.t2 }}>Loading…</div>}
       {err && <div role="alert" style={{ fontSize: font.base, color: color.brick }}>{err}</div>}

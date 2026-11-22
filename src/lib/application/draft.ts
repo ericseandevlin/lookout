@@ -2,6 +2,7 @@ import { z } from "zod";
 import type { ApplicationItemKind } from "@/lib/db/schema";
 import { isJunkKeyword } from "./posting";
 import { bullets } from "./notes";
+import { sameOption } from "./fillPlan";
 import { storiesBlock } from "./stories";
 import { STRATEGY, suggestStrategy } from "./letterStrategy";
 
@@ -64,7 +65,12 @@ export const PREFERRED_NAME = /preferred (first )?name/i;
 
 /** Name, email and profile links come straight from the account. Returns null when the model should handle it. */
 export function fillField(prompt: string, inp: DraftInputs): Drafted | null {
-  const p = prompt.toLowerCase();
+  // "Legal first name" is the account name, never a saved preferred name (#1489).
+  const p = prompt
+    .toLowerCase()
+    .replace(/^legal (?=(first |last |full )?name)/, "")
+    .replace(/^given name/, "first name")
+    .replace(/^(family name|surname)/, "last name");
   const [first, ...rest] = inp.name.trim().split(/\s+/);
   const fact = (content: string, source: string): Drafted => ({ content, note: `From your ${source}.`, sources: [source], question: null });
   if (PREFERRED_NAME.test(p)) return first ? fact(first, "account name") : null;
@@ -233,7 +239,7 @@ export const AnswersDraft = z.object({
       index: z.number().int(),
       content: z.string().describe("The answer, ready to paste. For a choice question, exactly one of the options; for a select-any question, one option per line. Empty if you need to ask"),
       sources: z.array(z.string()).describe("Where each fact came from: 'resume: <role or line>', 'profile: <field>', 'posting', 'LinkedIn'"),
-      question: z.string().describe("If you can't answer from the materials, the one question to ask the person. Else empty"),
+      question: z.string().describe("If you can't answer from the materials, the one question to ask the person, in a few words. Say what the materials don't include (\"Your materials don't include a LinkedIn URL\"), never that the person doesn't have it. Else empty"),
       note: z.string().describe("One short sentence on how you approached it, speaking to the person as 'you'"),
       storyId: z.string().describe("Cover letter only: the id of the personal story its opening line comes from. Empty if none fits").optional(),
       storyAsk: z.string().describe("Cover letter only, when no story fits: one question about this company that could draw out a real personal connection. Else empty").optional(),
@@ -267,7 +273,7 @@ export function answersPrompt(inp: DraftInputs, items: DraftItem[]) {
   const letter = items.some((i) => i.kind === "cover_letter");
   const stories = letter ? storiesBlock(inp.stories ?? []) : "";
   const strategy = letter ? `\n\n${STRATEGY[inp.letterStrategy ?? suggestStrategy(inp.posting, inp.stories ?? []).strategy].rule}` : "";
-  return `Person: ${inp.name || "(no name on file)"}, ${inp.email}\nLinkedIn: ${inp.linkedinUrl ?? "(none)"}\n\n<profile>\n${inp.brief}\n</profile>\n\n<resume>\n${inp.resume}\n</resume>${stories}\n\n<links>\n${links}\n</links>\n\nPosting: ${inp.posting.title} at ${inp.posting.company}\n<posting>\n${inp.posting.text}\n</posting>\n\nDraft each of these, by index:\n${list}${strategy}`;
+  return `Person: ${inp.name || "(no name on file)"}, ${inp.email}\nLinkedIn: ${inp.linkedinUrl ?? "(not in their materials)"}\n\n<profile>\n${inp.brief}\n</profile>\n\n<resume>\n${inp.resume}\n</resume>${stories}\n\n<links>\n${links}\n</links>\n\nPosting: ${inp.posting.title} at ${inp.posting.company}\n<posting>\n${inp.posting.text}\n</posting>\n\nDraft each of these, by index:\n${list}${strategy}`;
 }
 
 /** Keep a model answer only if it's usable: choice answers must be real options; otherwise it becomes a question. */
@@ -276,7 +282,8 @@ export function checkAnswer(item: DraftItem, a: z.infer<typeof AnswersDraft>["it
   let content = a.content.trim();
   let question = a.question.trim() || null;
   if (content && item.options?.length) {
-    const exact = (t: string) => item.options!.find((o) => o.toLowerCase() === t.toLowerCase());
+    // Spelled like the filler compares it: "I don't" is the option "I don’t", "Full time" is "Full-time" (#1524).
+    const exact = (t: string) => sameOption(t, item.options!);
     // Select-any answers come one option per line; every line must be a real option (#624).
     const lines = item.multi ? content.split(/\n+/).map((t) => t.replace(/^[•·*-]\s*/, "").trim()).filter(Boolean) : [content];
     const hits = lines.map(exact);

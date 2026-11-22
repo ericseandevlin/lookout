@@ -90,7 +90,21 @@
     const own = (el) => labelOf(el).replace(/\s*\((?:required|optional)\)$/, "");
     const word = new RegExp(`(?:^|[^\\p{L}\\p{N}])${q.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}(?![\\p{L}\\p{N}])`, "u");
     const long = (el) => Math.min(labelOf(el).length, q.length) >= 80 && sameText(labelOf(el), prompt);
-    return all.find((el) => own(el) === q) || all.find((el) => word.test(labelOf(el))) || all.find(long) || null;
+    // Two controls with the question's own label: the phone's Country picker is not the "Country" question (#1498).
+    const exact = all.filter((el) => own(el) === q);
+    return (exact.length > 1 && exact.find((el) => !isPhoneCountry(el))) || exact[0] || all.find((el) => word.test(labelOf(el))) || all.find(long) || null;
+  }
+
+  /**
+   * Greenhouse's phone field has its own "Country" picker right beside the number. A "Country" control next to the phone
+   * input is that picker, not a question the employer asked (#1498).
+   */
+  function isPhoneCountry(el) {
+    if (!/^country$/.test(labelOf(el))) return false;
+    const all = [...document.querySelectorAll("input:not([type=hidden]):not([type=submit]):not([type=button]):not([type=reset]):not([type=image]), select, textarea, [role=combobox]")];
+    const i = all.indexOf(el);
+    const phone = (c) => !!c && c !== el && (c.type === "tel" || /^(?:(?:mobile|cell(?:ular)?|home|primary) )?phone\b/.test(labelOf(c)));
+    return i >= 0 && (phone(all[i - 1]) || phone(all[i + 1]));
   }
 
   /** A dropdown opened by a button: Workday's selects are <button aria-haspopup="listbox"> with no combobox role (#1420). */
@@ -240,15 +254,19 @@
   const startsWord = (a, b) => !!a && b.startsWith(a) && (b.length === a.length || /\W/.test(b[a.length]) || /\W/.test(a[a.length - 1]));
 
   /**
-   * Same rule as pickOptions in src/lib/application/fillPlan.ts: one answer per line, exact text first, then a prefix
+   * Same rule as pickOptions in src/lib/application/fillPlan.ts: one answer per line, exact text first, then the same
+   * text with or without hyphens and spaces (#1518), then a prefix
    * either way, at a word boundary, closest length first.
    */
+  /** Same as compactChoice in fillPlan.ts: "Full time" is "Full-time", "Onsite" is "On-site", whole text only (#1518). "1-2" is never "12" (#1549). */
+  const compact = (t) => norm(t).replace(/(\d)[\s'".-]+(?=\d)/g, "$1~").replace(/[\s'".-]+/g, "");
+
   function pickOptions(content, options) {
     const out = [];
     for (const part of (content || "").split(/\n+/).map((t) => t.trim()).filter(Boolean)) {
       const p = norm(part);
       const near = (options || []).filter((o) => startsWord(norm(o), p) || startsWord(p, norm(o))).sort((a, b) => Math.abs(norm(a).length - p.length) - Math.abs(norm(b).length - p.length));
-      const hit = (options || []).find((o) => norm(o) === p) || near[0];
+      const hit = (options || []).find((o) => norm(o) === p) || (options || []).find((o) => !!compact(o) && compact(o) === compact(part)) || near[0];
       const label = hit || ((options || []).length ? null : part);
       if (label && !out.includes(label)) out.push(label);
     }
@@ -538,9 +556,12 @@
 
   /** Greenhouse's phone input has its own Country picker that isn't one of the questions. */
   async function phoneCountry(packet) {
-    if (!packet.steps.some((s) => /^phone\b/i.test(s.prompt)) || packet.steps.some((s) => /^country\b/i.test(s.prompt))) return null;
-    const el = [...document.querySelectorAll("[role=combobox], select")].find((c) => /^country$/.test(labelOf(c)));
-    if (!el) return null;
+    if (!packet.steps.some((s) => /^phone\b/i.test(s.prompt))) return null;
+    const pickers = [...document.querySelectorAll("[role=combobox], select")].filter((c) => /^country$/.test(labelOf(c)));
+    const country = packet.steps.filter((s) => /^country\b/i.test(s.prompt));
+    // With a "Country" question on the form too, only the picker beside the phone, and only if the question went elsewhere (#1498).
+    const el = country.length ? pickers.find(isPhoneCountry) : pickers[0];
+    if (!el || country.some((s) => controlFor(s.prompt) === el)) return null;
     if (el.tagName === "SELECT") {
       const opt = [...el.options].find((o) => /^united states(?!\s+minor)/i.test(o.textContent.trim()));
       if (!opt) return { prompt: "Phone country", ok: false, how: "United States not in the list" };

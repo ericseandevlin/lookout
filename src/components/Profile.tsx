@@ -40,6 +40,8 @@ export function ProfileTabs() {
   const anyOn = tabs.some(([href]) => href === path);
   return (
     // Drawn as tabs, not pills: one baseline, the open page underlined (#277).
+    // Phone only: on desktop the sidebar lists the same pages (#1531).
+    <div className="mob-only">
     <div role="tablist" aria-label="Profile sections" onKeyDown={onKey} style={{ display: "flex", gap: 24, overflowX: "auto", overflowY: "hidden", boxShadow: `inset 0 -1px 0 ${color.border}`, marginBottom: 22 }}>
       {tabs.map(([href, label]) => {
         const on = path === href;
@@ -49,6 +51,7 @@ export function ProfileTabs() {
           </Link>
         );
       })}
+    </div>
     </div>
   );
 }
@@ -343,7 +346,10 @@ export function Profile() {
                       );
                     })}
                   </div>
-                  <input id={`q-${q.key}`} className="f-brick" value={str(q.areaKey)} onChange={set(q.areaKey)} placeholder="Neighborhoods or cities" aria-label="Areas" maxLength={300} style={{ ...inputBase, height: 42, padding: "0 13px" }} />
+                  {/* Remote alone needs no place (#1531). */}
+                  {!(arr(q.modesKey).length === 1 && arr(q.modesKey)[0] === "Remote") && (
+                    <input id={`q-${q.key}`} className="f-brick" value={str(q.areaKey)} onChange={set(q.areaKey)} placeholder="Neighborhoods or cities" aria-label="Areas" maxLength={300} style={{ ...inputBase, height: 42, padding: "0 13px" }} />
+                  )}
                 </>
               )}
             </div>

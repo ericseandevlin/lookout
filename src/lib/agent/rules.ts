@@ -1,5 +1,5 @@
 import { createHash } from "node:crypto";
-import { hashRoute } from "@/lib/extension/match";
+import { hashRoute, jobKey } from "@/lib/extension/match";
 
 export type Scored = {
   score: number;
@@ -76,7 +76,8 @@ export const fullTitle = (t: string) => withOtherScript(t);
 const key = (company: string, title: string, location: string, fold: boolean) =>
   // nosemgrep: javascript.lang.security.audit.node-sha1.node_sha1 -- SHA-1 here only fingerprints postings for dedupe, not security
   createHash("sha1")
-    .update([company, title, location.split(",")[0]].map(normPart(fold)).join("|"))
+    // The legacy key (fold false) keeps the location as written, so postings stored before #1514 are still matched.
+    .update([company, title, (fold ? remoteFirst(location) : location).split(",")[0]].map(normPart(fold)).join("|"))
     .digest("hex");
 
 export const fingerprint = (company: string, title: string, location: string) => key(company, title, location, true);
@@ -128,7 +129,30 @@ const withoutQualifier = (p: string) =>
     .trim()
     .replace(/^(?:or|and) (?=\S)|(?<=\S) (?:or|and)$/g, "");
 
+// Words in "Remote (...)" that are terms of the job, not a place (#1555).
+const NOT_PLACE = /^(?:(?:full|part) ?time|contract(?:or)?|temporary|temp|permanent|freelance|flexible|anywhere|ft|pt)$/;
+
 const known = (p: string) => STATES.has(p) || COUNTRIES.has(p);
+
+/**
+ * "Remote - US", "US Remote", "USA (Remote)" and "Remote – United States" as "Remote, US", the way "Remote, US" and
+ * "Remote (US)" already key: the fingerprint keeps only the text before the first comma, so one remote job written two
+ * ways was two finds (#1514). Only a known country: "New York (Remote)" names a city and stays as it is.
+ */
+export function remoteFirst(location: string) {
+  const i = location.indexOf(",");
+  const first = i < 0 ? location : location.slice(0, i);
+  if (!/\bremote\b/i.test(first)) return location;
+  const rest = normPart(true)(first.replace(/[()]/g, " "))
+    .replace(/\bremote\b/g, " ")
+    .replace(/\s+/g, " ")
+    .trim()
+    .replace(/\b([a-z]) (?=[a-z]\b)/g, "$1");
+  // "US-based", "anywhere in the US", "US East Coast": the same filler region() drops after a comma.
+  const place = withoutZone(withPlace(withoutQualifier(rest)));
+  if (!COUNTRIES.has(place)) return location;
+  return `Remote, ${place}${i < 0 ? "" : location.slice(i)}`;
+}
 
 /** "anywhere in the us" and "within the united states" name a known place once their filler goes (#1466); anything else stays as it is. */
 const withPlace = (p: string) => {
@@ -136,22 +160,37 @@ const withPlace = (p: string) => {
   return known(t) ? t : p;
 };
 
+// A coast, part of the country or time zone after a known place: "US - East Coast", "United States, Eastern Time",
+// "US (PST)" (#1510). Whole trailing words only, so "North Carolina" and "West Virginia" stay the states they are.
+const ZONE =
+  /^(.+?) (?:(?:east(?:ern)?|west(?:ern)?|central|mountain|pacific|atlantic|midwest(?:ern)?|(?:north|south)(?:east|west)?(?:ern)?)(?: (?:coast|time(?: ?zones?)?|time ?zones?|region|states|us))?|[ecmp][sd]?t)$/;
+const withoutZone = (p: string) => {
+  const m = p.match(ZONE);
+  return m && known(m[1]) ? m[1] : p;
+};
+
 /**
  * The state and country after a location's first comma: "Portland, OR" is { state: "us-or", country: "us" }, "Remote,
  * Canada" is { country: "ca" }. A country not known here stands as its own text, so "Remote, Mexico" still differs from
  * "Remote, US". ZIP codes are dropped ("NY 10001").
  */
-export function region(location: string) {
+export function region(raw: string) {
+  const location = remoteFirst(raw);
   let state: string | null = null;
   let country: string | null = null;
   let other: string | null = null;
   // A known state or country in parentheses names the place too: "Remote (US)" is not "Remote (Canada)" (#1426). Other
-  // words there ("(hybrid)", "(NYC)") say nothing, so they never make two places of one.
+  // words there ("(hybrid)", "(NYC)") say nothing, so they never make two places of one. After "Remote" or nothing, an
+  // unknown word is the place itself: "Remote (Germany)" is not "Remote (US)" (#1555).
   const parts = [
-    ...location.split(",").slice(1).map((text) => ({ text, paren: false })),
-    ...[...location.matchAll(/\(([^()]*)\)/g)].map((m) => ({ text: m[1], paren: true })),
+    ...location.split(",").slice(1).map((text) => ({ text, paren: false, open: false })),
+    ...[...location.matchAll(/\(([^()]*)\)/g)].map((m) => ({
+      text: m[1],
+      paren: true,
+      open: /^(?:remote)?$/i.test(location.slice(0, m.index).split(",").pop()!.replace(/[^\p{L}]+/gu, "")),
+    })),
   ];
-  for (const { text: part, paren } of parts) {
+  for (const { text: part, paren, open } of parts) {
     // Dotted codes come out of normPart as single letters: "D.C." is "d c", read as "dc" (#1303).
     const p = normPart(true)(part)
       .replace(/\b\d+\b/g, " ")
@@ -160,9 +199,9 @@ export function region(location: string) {
       .replace(/\b([a-z]) (?=[a-z]\b)/g, "$1");
     if (!p) continue;
     // A work mode or "metro area" after a known place is not part of it: "NY - Hybrid", "IL Metro Area", "US-based" (#1374).
-    const q = known(p) ? p : withPlace(withoutQualifier(p));
+    const q = known(p) ? p : withoutZone(withPlace(withoutQualifier(p)));
     // A work mode on its own ("New York, Remote") or after an unknown country ("Germany - Hybrid") is not a place (#1385).
-    if (!q || (paren && !known(q))) continue;
+    if (!q || (paren && !known(q) && (!open || NOT_PLACE.test(q)))) continue;
     const s = STATES.get(q);
     if (s) state ??= s;
     else if (COUNTRIES.has(q)) country ??= COUNTRIES.get(q)!;
@@ -217,4 +256,29 @@ export function normUrl(u: string) {
   } catch {
     return u.toLowerCase();
   }
+}
+
+// LinkedIn's /jobs/view/<id> is one posting with a public page, not a list (#1547).
+// Job board search and list pages, on any country site (indeed.co.uk, ca.linkedin.com): /jobs, /q-<title>-jobs.html,
+// Indeed's /l-<place>-jobs.html, the mobile /m/jobs; Glassdoor's /Job/...-SRCH_... pages; any /search? page or path
+// that ends in /jobs (#1537).
+const AGGREGATOR =
+  /(indeed|linkedin|glassdoor|ziprecruiter|simplyhired|monster|careerbuilder)\.[a-z]{2,3}(\.[a-z]{2})?\/(jobs(?!\/view\/)|q-|l-|m\/jobs)|glassdoor\.[a-z]{2,3}(\.[a-z]{2})?\/(job\/|.*SRCH_)|\/search\?|\/jobs\/?$/i;
+
+// ATS hosts where every posting has an ID jobKey reads, so an address there without one is the board, not a job.
+const ATS_HOST = /(^|\.)(greenhouse\.io|lever\.co|ashbyhq\.com|myworkdayjobs\.com|myworkdaysite\.com)$/i;
+
+/**
+ * A search result that lists jobs rather than being one: a job board search page, or an ATS board home such as
+ * jobs.lever.co/acme or acme.wd1.myworkdayjobs.com/External (#1537). Dropped before triage so it doesn't take a pick.
+ */
+export function listPage(u: string): boolean {
+  if (AGGREGATOR.test(u)) return true;
+  let host: string;
+  try {
+    host = new URL(u).hostname;
+  } catch {
+    return false;
+  }
+  return ATS_HOST.test(host) && !!jobKey(u)?.startsWith("url:");
 }

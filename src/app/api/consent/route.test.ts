@@ -66,3 +66,15 @@ describe("POST /api/welcome (#21)", () => {
     expect(u.acceptedAt).toBeInstanceOf(Date);
   });
 });
+
+describe("POST /api/welcome workplace type (#1531)", () => {
+  const answers = async () => (await db.select().from(schema.searches).where(eq(schema.searches.userId, current!.id)))[0].answers;
+  it("saves several workplace types, like the profile", async () => {
+    expect((await welcome(req("/api/welcome", { name: "Ann", agree: true, modes: ["Hybrid", "Remote", "Hybrid"] }), {})).status).toBe(200);
+    expect((await answers()).modes).toEqual(["Hybrid", "Remote"]);
+  });
+  it("still takes the single pick an older page sends", async () => {
+    expect((await welcome(req("/api/welcome", { name: "Ann", agree: true, mode: "On-site" }), {})).status).toBe(200);
+    expect((await answers()).modes).toEqual(["On-site"]);
+  });
+});

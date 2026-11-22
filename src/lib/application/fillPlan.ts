@@ -49,11 +49,29 @@ const startsWord = (a: string, b: string) => !!a && b.startsWith(a) && (b.length
  * hyphen: "Yes - I am authorized" lands on "Yes – I am authorized" or "Yes—I am authorized" (#1277). fill.js carries the same rule.
  */
 const normChoice = (t: string) =>
-  t.replace(/\*/g, "").replace(/[‘’]/g, "'").replace(/[“”]/g, '"').replace(/\s*[‐‑‒–—―-]\s*/g, " - ").replace(/\s+/g, " ").trim().toLowerCase();
+  t.replace(/[*✱]/g, "").replace(/[‘’]/g, "'").replace(/[“”]/g, '"').replace(/\s*[‐‑‒–—―-]\s*/g, " - ").replace(/\s+/g, " ").trim().toLowerCase();
+
+/**
+ * The whole text with spaces, hyphens, dashes, apostrophes and dots gone, so "Full time" is "Full-time", "Onsite" is
+ * "On-site" and "Bachelors" is "Bachelor's" (#1518). Only ever compared whole, so "No" still never matches "None".
+ */
+// A separator between two digits stays as a mark: "1-2" is a range, never "12", and "1.5" is never "15" (#1549).
+const compactChoice = (t: string) => normChoice(t).replace(/(\d)[\s'".-]+(?=\d)/g, "$1~").replace(/[\s'".-]+/g, "");
+
+/**
+ * The form option an answer names, compared whole the way the filler does: case, a required mark, curly quotes, dashes
+ * and "Full time" vs "Full-time" aside. No prefix match, so "No" is never "None". The drafter and saved answers use it,
+ * so an answer the filler would land isn't thrown away first (#1524).
+ */
+export const sameOption = (answer: string, options: string[]): string | undefined => {
+  const a = normChoice(answer);
+  if (!a) return undefined;
+  return options.find((o) => normChoice(o) === a) ?? options.find((o) => !!compactChoice(o) && compactChoice(o) === compactChoice(answer));
+};
 
 /**
  * Which option labels to tick on a "select any that apply" question (#165). One answer per line.
- * Exact text first, then a prefix match either way, so a long label cut short in the answer still lands.
+ * Exact text first, then the same text spelled with or without hyphens and spaces (#1518), then a prefix match either way, so a long label cut short in the answer still lands.
  * Prefixes stop at a word boundary and the closest length wins, so "None" is "None of the above", not "No" (#632).
  */
 export function pickOptions(content: string, options: string[] = []): string[] {
@@ -62,7 +80,7 @@ export function pickOptions(content: string, options: string[] = []): string[] {
   for (const part of content.split(/\n+/).map((t) => t.trim()).filter(Boolean)) {
     const p = norm(part);
     const near = options.filter((o) => startsWord(norm(o), p) || startsWord(p, norm(o))).sort((a, b) => Math.abs(norm(a).length - p.length) - Math.abs(norm(b).length - p.length));
-    const hit = options.find((o) => norm(o) === p) ?? near[0];
+    const hit = options.find((o) => norm(o) === p) ?? options.find((o) => !!compactChoice(o) && compactChoice(o) === compactChoice(part)) ?? near[0];
     const label = hit ?? (options.length ? null : part);
     if (label && !out.includes(label)) out.push(label);
   }

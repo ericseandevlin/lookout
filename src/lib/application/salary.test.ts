@@ -166,6 +166,20 @@ describe("rangeBasis", () => {
     expect(rangeBasis(posting)).toBe("base");
   });
 
+  it.each([
+    "Salary range: $150,000 - $180,000 + bonus",
+    "Pay: $150k-$180k plus commission.",
+    "Compensation: $150k - $180k + annual bonus + equity",
+    "$150,000-$180,000 plus a performance bonus",
+  ])("reads %s as base: the bonus is added after the amount, word base or not (#1528)", (posting) => {
+    expect(rangeBasis(posting)).toBe("base");
+  });
+
+  it("still reads total cash wording first, and a bonus in a benefits list says nothing (#1528)", () => {
+    expect(rangeBasis("On-target earnings: $150k + commission")).toBe("total");
+    expect(rangeBasis("Salary: $150k-$180k. Benefits include a bonus plus 401(k).")).toBeNull();
+  });
+
   it("keeps a bonus the role is also eligible for as base (#1074)", () => {
     expect(rangeBasis("The base salary range for this role is $150,000 - $180,000. You will also be eligible for additional compensation, including an annual bonus and equity.")).toBe("base");
     expect(rangeBasis("Base salary range: $150k-$180k. This position is eligible for incentive compensation, including an annual bonus.")).toBe("base");
@@ -577,6 +591,20 @@ describe("asks in thousands (#1188)", () => {
     ["What are your salary expectations? We offer a 401(k) match.", false],
     ["What are your salary expectations?", false],
     ["Tell us about your thousands of users", false],
+    // Other ways forms write the unit (#1488).
+    ["Salary expectations (in 1000s)", true],
+    ["Expected annual salary (thousands USD)", true],
+    ["Desired salary (USD, thousands)", true],
+    ["Salary expectation (£'000)", true],
+    ["Desired salary in thousand USD", true],
+    ["Desired salary ($ in thousands)", true],
+    ["Desired salary (USD)", false],
+    ["Do you have 401(k) experience?", false],
+    // "K-12" is school grades, not thousands (#1557).
+    ["What are your salary expectations for this role in K-12 education?", false],
+    ["Desired salary for a teaching role in K–12", false],
+    ["Salary expectations in K12 schools", false],
+    ["Salary expectations in K, please", true],
   ])("%j -> %s", (prompt, want) => expect(asksThousands(prompt)).toBe(want));
 
   it("gives a yearly ask in thousands", () => {
@@ -627,6 +655,28 @@ describe("askPer: 'per mo' and 'per wk' (#1395)", () => {
     ["Expected salary, not per mo", null],
   ])("%s -> %s", (prompt, per) => {
     expect(askPer(prompt)).toBe(per);
+  });
+});
+
+describe("rangeBasis: base only, not bonus, is base (#1487)", () => {
+  it.each([
+    "The salary range for this role is $150,000 - $180,000. This range includes base salary only, not bonus or equity.",
+    "This range reflects base pay only, not commission or bonus.",
+    "Base salary range: $150,000 - $180,000. The range reflects base pay only and not bonus or equity.",
+    "The pay range includes base salary; bonus and equity are separate.",
+    "The pay range covers base salary; bonus, equity and benefits are separate.",
+  ])("reads %s as base", (posting) => {
+    expect(rangeBasis(posting)).toBe("base");
+  });
+
+  it("still reads a range that includes the bonus as total", () => {
+    expect(rangeBasis("This range includes base salary and target bonus; equity is granted separately.")).toBe("total");
+    expect(rangeBasis("The range includes base salary and bonus only, not equity.")).toBe("total");
+  });
+
+  it("gives a base question an amount on a base-only range", () => {
+    const basis = rangeBasis("The salary range for this role is $150,000 - $180,000. This range includes base salary only, not bonus or equity.");
+    expect(suggestSalary({ min: 150_000, max: 180_000, basis, asksBase: asksBase("What is your desired base salary?") })?.amount).not.toBeNull();
   });
 });
 

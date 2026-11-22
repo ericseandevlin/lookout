@@ -21,6 +21,16 @@ describe("fillField", () => {
     expect(fillField("LinkedIn Profile", inp)?.content).toBe("https://www.linkedin.com/in/maya");
   });
 
+  it("fills legal, given and family name labels from the account (#1489)", () => {
+    expect(fillField("Legal First Name", inp)?.content).toBe("Maya");
+    expect(fillField("Legal Last Name *", inp)?.content).toBe("Ortiz Reyes");
+    expect(fillField("Legal Name", inp)?.content).toBe("Maya Ortiz Reyes");
+    expect(fillField("Given Name", inp)?.content).toBe("Maya");
+    expect(fillField("Family Name", inp)?.content).toBe("Ortiz Reyes");
+    expect(fillField("Surname", inp)?.content).toBe("Ortiz Reyes");
+    expect(fillField("Zip Code", inp)).toBeNull();
+  });
+
   it("fills a full-name label that carries a required marker (#817)", () => {
     for (const label of ["Name *", "Full Name *", "Full name (required)", "Name:", "Full Name*"]) expect(fillField(label, inp)?.content).toBe("Maya Ortiz Reyes");
     expect(fillField("Name pronunciation", inp)).toBeNull();
@@ -150,6 +160,20 @@ describe("checkAnswer", () => {
 
   it("keeps a real option, matching its exact spelling", () => {
     expect(checkAnswer(sel, { index: 3, content: "no", sources: ["profile: work authorization"], question: "", note: "" })).toMatchObject({ content: "No", question: null });
+  });
+
+  it("keeps an answer spelled like the option apart from quotes, dashes, a required mark or spacing (#1524)", () => {
+    const eeo = { ...sel, options: ["I don’t wish to answer", "Yes – I am authorized*", "Full-time"] };
+    const ask = (content: string) => checkAnswer(eeo, { index: 3, content, sources: [], question: "", note: "" });
+    expect(ask("I don't wish to answer")).toMatchObject({ content: "I don’t wish to answer", question: null });
+    expect(ask("Yes - I am authorized")).toMatchObject({ content: "Yes – I am authorized*", question: null });
+    expect(ask("Full time")).toMatchObject({ content: "Full-time", question: null });
+    expect(checkAnswer({ ...sel, multi: true, options: ["Full-time", "Part-time"] }, { index: 3, content: "Full time\nPart time", sources: [], question: "", note: "" }).content).toBe("Full-time\nPart-time");
+  });
+
+  it("still never takes a prefix: No is not None (#1524)", () => {
+    const d = checkAnswer({ ...sel, options: ["None", "Some"] }, { index: 3, content: "No", sources: [], question: "", note: "" });
+    expect(d.content).toBe("");
   });
 
   it("turns a made-up option into a question", () => {

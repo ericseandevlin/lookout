@@ -1,4 +1,5 @@
 import type { SavedAnswer } from "@/lib/db/schema";
+import { sameOption } from "./fillPlan";
 
 /**
  * Answers worth keeping across applications (#108): facts about the person that most forms ask in
@@ -58,7 +59,9 @@ const AUTH = /authori[sz]ed to work|work authori[sz]ation|legally (authorized|el
 // Where the job is, not where the person is: a US job's "No" to sponsorship "in the country where this role is based" is the
 // wrong answer for a London job. Checked before "this role" is removed; "the country where you live" is still kept (#1227).
 const JOB_PLACE = /\b(role|job|position|opportunity) (is|will be) (based|located)\b|\b(role|job|position)'?s (country|location)\b/i;
-const neverKept = (question: string) => JOB_PLACE.test(question) || NEVER.test(AUTH.test(question) ? question.replace(/\bthis (role|position)\b/gi, " ") : question);
+// "How did you hear about this position?" is the same question as "...this job?", so it travels the same way (#1545).
+const neverKept = (question: string) =>
+  JOB_PLACE.test(question) || NEVER.test(AUTH.test(question) || HEARD.test(question) ? question.replace(/\bthis (role|position|job|opportunity)\b/gi, " ") : question);
 
 export function isCommon(question: string, answer: string) {
   return COMMON.test(question) && !neverKept(question) && !EEO.test(question) && answer.trim().length > 0 && answer.length <= 300 && !onlyThisOne(question, answer);
@@ -76,7 +79,8 @@ export function match(list: SavedAnswer[], question: string, options?: string[] 
   const hit = list.find((s) => s.key === answerKey(question) && qualifier(s.question) === qualifier(question) && !onlyThisOne(s.question, s.answer) && !EEO.test(s.question) && !JOB_PLACE.test(s.question));
   if (!hit) return null;
   if (!options?.length) return hit.answer;
-  return options.find((o) => o.toLowerCase() === hit.answer.toLowerCase()) ?? null;
+  // The form's own spelling of the saved answer: "Full time" lands on "Full-time" (#1524).
+  return sameOption(hit.answer, options) ?? null;
 }
 
 /** For the drafting prompt: the model may reuse these when a question means the same thing. */
