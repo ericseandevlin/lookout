@@ -468,7 +468,8 @@ export async function save(ctx: Context, finds: ScoredT[], via: "agent" | "manua
     // A reply with the ends the wrong way round ($200,000 low, $150,000 high) is one range: the top judges the floor (#1526).
     const [lo, hi] = [annualPay(raw.comp_min), annualPay(raw.comp_max)];
     const f = { ...raw, ...(lo != null && hi != null && lo > hi ? { comp_min: hi, comp_max: lo } : { comp_min: lo, comp_max: hi }) };
-    if (!f.is_open_job_posting || !f.company || !f.title) {
+    // In agent mode this is the only list-page check gatherHits would have made; a link the person added is theirs (#1631).
+    if (!f.is_open_job_posting || !f.company || !f.title || (via === "agent" && listPage(f.url))) {
       t.notPostings++;
       continue;
     }

@@ -92,6 +92,12 @@ describe("save", () => {
     expect(await board()).toHaveLength(0);
   });
 
+  it("on a search, skips list pages and board home pages the agent sent as postings (#1631)", async () => {
+    const r = await save(ctx(), [find({ url: "https://jobs.lever.co/acme" }), find({ url: "https://www.linkedin.com/jobs/search/?keywords=director%20of%20design", company: "Beta" })], "agent");
+    expect(r).toMatchObject({ notPostings: 2, postings: 0, added: 0 });
+    expect(await board()).toHaveLength(0);
+  });
+
   it("on a search, skips URLs already on the board, ignoring tracking params and www", async () => {
     const r = await save(ctx({ knownUrls: ["https://www.jobs.example.com/acme/123/?utm_source=x"] }), [find()], "agent");
     expect(r).toMatchObject({ postings: 1, known: 1, added: 0 });
