@@ -315,7 +315,7 @@ export async function scorePages(ctx: Context, pages: Page[], usage: Usage, repo
         // Pay posted in another currency: the model copies the posted numbers as dollars, so the page's read and its
         // currency win, and the USD floor leaves it alone (#1095).
         if (page.pay && page.pay.currency !== "USD") out.push({ ...f, comp_min: page.pay.min, comp_max: page.pay.max, currency: page.pay.currency, url: page.url });
-        else out.push({ ...f, ...comp, url: page.url, ...((comp.comp_min == null || comp.comp_max == null) && page.pay && { comp_min: page.pay.min, comp_max: page.pay.max }) });
+        else out.push({ ...f, ...comp, url: page.url, ...((comp.comp_min == null || comp.comp_max == null || unconverted(comp, page.pay)) && page.pay && { comp_min: page.pay.min, comp_max: page.pay.max }) });
       }
     } catch (e) {
       console.error("[discover] scoring batch failed", e);
@@ -349,6 +349,16 @@ export const realDate = (d: string | null) => {
  * An annual salary, or null. Under $10,000 is an hourly or monthly rate, not a year's pay: stored as annual it read as
  * below the floor and capped the score (#702). Over the integer column is a range in cents (#626).
  */
+/**
+ * The model copied a monthly, biweekly, weekly, daily or hourly range as written ("$12,000 - $15,000 per month" as 12000-15000),
+ * and the page's own read already turned it into a year. Both ends times one pay period give the page's range (#1636).
+ */
+function unconverted(comp: { comp_min: number | null; comp_max: number | null }, pay: { min: number; max: number } | null): boolean {
+  if (!pay || comp.comp_min == null || comp.comp_max == null || comp.comp_max >= pay.min) return false;
+  const near = (a: number, b: number) => Math.abs(a - b) <= 0.02 * b;
+  return [12, 24, 26, 52, 260, 2080].some((k) => near(comp.comp_min! * k, pay.min) && near(comp.comp_max! * k, pay.max));
+}
+
 const annualPay = (n: number | null) => (n != null && Number.isFinite(n) && n >= 10_000 && n < 2 ** 31 ? Math.round(n) : null);
 
 /** In an insert's conflict update: the shared row's link check says gone and the new find is at another URL (#830). */
