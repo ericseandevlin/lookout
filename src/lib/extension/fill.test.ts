@@ -794,6 +794,25 @@ describe("extension fill: uploads", () => {
       expect([fileName(p, "cv"), fileName(p, "cl")]).toEqual(["Pat Lee - Acme Resume.docx", "Pat Lee - Acme Cover Letter.docx"]);
     });
 
+  it("never puts the letter over the resume in a combined Resume/Cover Letter upload (#1633)", async () => {
+    const p = page(`<form><div><label for="f">Resume/Cover Letter *</label><input type="file" id="f"></div><div><label for="e">Email</label><input id="e"></div></form>`);
+    const log = await p.fill({
+      steps: [
+        { prompt: "Resume/Cover Letter", kind: "file", itemKind: "resume", file: docx("Pat Lee - Acme Resume.docx") },
+        { prompt: "Cover letter", kind: "file", itemKind: "cover_letter", content: "Dear team", file: docx("Pat Lee - Acme Cover Letter.docx") },
+      ],
+    });
+    expect(fileName(p, "f")).toBe("Pat Lee - Acme Resume.docx");
+    expect(log.map((r) => r.ok)).toEqual([true, false]);
+  });
+
+  it("starts each fill with every upload free, so a second fill can replace a file (#1633)", async () => {
+    const p = page(`<div><label>Resume/CV</label><input type="file" id="cv"></div>`);
+    await p.fill({ steps: [{ prompt: "Resume/CV", kind: "file", itemKind: "resume", file: docx("old.docx") }] });
+    await p.fill({ steps: [{ prompt: "Resume/CV", kind: "file", itemKind: "resume", file: docx("new.docx") }] });
+    expect(fileName(p, "cv")).toBe("new.docx");
+  });
+
   it("falls back to the first input for the resume and the second for the letter", async () => {
     const p = page(`<input type="file" id="a"><input type="file" id="b">`);
     await p.fill({

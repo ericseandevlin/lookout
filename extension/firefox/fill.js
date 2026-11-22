@@ -231,8 +231,13 @@
     return false;
   }
 
+  // Uploads this fill already put a file in. A later step that finds the same input (a combined "Resume/Cover Letter"
+  // box, a label both prompts hold) would replace that file, so it reports not found instead (#1633).
+  let filledUploads = new WeakSet();
+
   function fileInputFor(prompt, itemKind) {
     const inputs = [...document.querySelectorAll("input[type=file]")];
+    const pick = (input) => (input && !filledUploads.has(input) ? input : null);
     const key = norm(prompt).slice(0, 40);
     // Nearest labeled box wins, one level at a time: a section holding both uploads holds both labels (#590).
     // A cover letter's prompt must not match a resume input whose outer ancestor happens to hold the text
@@ -241,13 +246,13 @@
       for (const input of inputs) {
         let n = input.parentElement;
         for (let i = 0; n && i < depth; i++) n = n.parentElement;
-        if (!n || !norm(n.textContent).includes(key)) continue;
+        if (!n || filledUploads.has(input) || !norm(n.textContent).includes(key)) continue;
         if (depth > 0 && (itemKind === "cover_letter" ? siblingHas(n, input, key) : otherBoxHas(n, input, key))) continue;
         return input;
       }
     // Unlabeled, only the resume takes the first upload and the letter the second. Any other upload (writing sample,
     // portfolio) would replace the resume there, so it reports not found instead (#1030).
-    return itemKind === "cover_letter" ? inputs[1] || null : itemKind === "resume" ? inputs[0] || null : null;
+    return itemKind === "cover_letter" ? pick(inputs[1]) : itemKind === "resume" ? pick(inputs[0]) : null;
   }
 
   /** a starts b and ends on a word boundary there: "no" starts "no, thanks" but not "none" (#632). A blank option starts nothing (#722). */
@@ -413,6 +418,7 @@
     const dt = new DataTransfer();
     dt.items.add(file);
     input.files = dt.files;
+    filledUploads.add(input);
     input.dispatchEvent(new Event("input", { bubbles: true }));
     input.dispatchEvent(new Event("change", { bubbles: true }));
     await sleep(300);
@@ -613,6 +619,7 @@
     if (msg.type === "lookout-probe") return probe(msg.packet);
     if (msg.type === "lookout-fill") {
       const log = [];
+      filledUploads = new WeakSet();
       for (const step of msg.packet.steps) {
         const r = await fillOne(step);
         log.push({ prompt: step.prompt, required: step.required, ok: r.ok, how: r.how });
