@@ -9,6 +9,9 @@ export function openSecretFields(saved: Record<string, unknown>, fields: string[
   const unreadable: string[] = [];
   for (const f of fields) {
     const v = out[f];
+    // Saved empty means never set: a save from the admin page writes "" when no key was typed (#1532). Dropping it
+    // lets the env key apply, as before the save. A blob that won't decrypt is different: it still blanks, below.
+    if (v === "") delete out[f];
     if (typeof v !== "string" || !v) continue;
     try {
       out[f] = decrypt(v);

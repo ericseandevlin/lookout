@@ -41,6 +41,7 @@ function withoutHint<T extends object, K extends keyof T>(o: T, k: K): Omit<T, K
 export function AdminAi() {
   const [cfg, setCfg] = useState<Config | null>(null);
   const [aiMsg, setAiMsg] = useState<{ text: string; ok: boolean } | null>(null);
+  const [writeMsg, setWriteMsg] = useState<{ text: string; ok: boolean } | null>(null);
   const [searchMsg, setSearchMsg] = useState<{ text: string; ok: boolean } | null>(null);
   const [fetchUrl, setFetchUrl] = useState("");
   const [fetchMsg, setFetchMsg] = useState<{ text: string; ok: boolean } | null>(null);
@@ -118,13 +119,13 @@ export function AdminAi() {
   const aiBody = () => withoutHint(ai, "apiKeyHint");
   const searchBody = () => withoutHint(search, "braveKeyHint");
 
-  const test = async (section: "ai" | "search") => {
-    const set = section === "ai" ? setAiMsg : setSearchMsg;
+  const test = async (section: "ai" | "search", writing = false) => {
+    const set = writing ? setWriteMsg : section === "ai" ? setAiMsg : setSearchMsg;
     set({ text: "Testing…", ok: true });
     type T = { ok: boolean; error?: string; ms?: number; sample?: string; count?: number };
     const r: T = await api<T>("/api/admin/settings/test", {
       method: "POST",
-      json: section === "ai" ? { section, values: aiBody() } : { section, values: searchBody() },
+      json: section === "ai" ? { section, values: aiBody(), writing } : { section, values: searchBody() },
     }).catch((e): T => ({ ok: false, error: e.message as string }));
     if (!r.ok) return set({ text: `Didn't work: ${r.error ?? "no result"}`, ok: false });
     set({
@@ -201,6 +202,51 @@ export function AdminAi() {
           ) : (
             <input value={ai.model} onChange={(e) => setAi({ model: e.target.value }, TYPING)} placeholder="provider/model-name" aria-label="Model" className="f-brick" style={input} />
           )}
+        </div>
+      </Row>
+      <Row title="Writing model" help="Writes what people read: resumes, letters, answers, the interview. Empty uses the model above.">
+        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+          <Fixed empty={!ai.writing?.model}>{ai.writing?.model ? `${ai.writing.model} · $${ai.writing.priceIn} in · $${ai.writing.priceOut} out` : "Same as the model above"}</Fixed>
+          {catalog ? (
+            <ModelPicker
+              key={`writing-${catalog}`}
+              source={catalog}
+              current={ai.writing?.model ?? ""}
+              onPick={(m) => setAi({ writing: { model: m.id, priceIn: m.priceIn ?? 0, priceOut: m.priceOut ?? 0, jsonMode: m.structured === false ? "object" : "schema" } })}
+            />
+          ) : (
+            <input
+              value={ai.writing?.model ?? ""}
+              onChange={(e) => setAi({ writing: { model: e.target.value, priceIn: ai.writing?.priceIn ?? ai.priceIn, priceOut: ai.writing?.priceOut ?? ai.priceOut, jsonMode: ai.writing?.jsonMode ?? ai.jsonMode } }, TYPING)}
+              placeholder="Same as the model above"
+              aria-label="Writing model"
+              className="f-brick"
+              style={input}
+            />
+          )}
+          {!catalog && !!ai.writing?.model && (
+            <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
+              <NumberField label="Input" value={ai.writing.priceIn} onChange={(v) => setAi({ writing: { ...ai.writing!, priceIn: v } }, TYPING)} />
+              <NumberField label="Output" value={ai.writing.priceOut} onChange={(v) => setAi({ writing: { ...ai.writing!, priceOut: v } }, TYPING)} />
+            </div>
+          )}
+          {!!ai.writing?.model && (
+            <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+              <button onClick={() => test("ai", true)} style={{ ...btn("text"), height: 34 }}>
+                Test
+              </button>
+              <button
+                onClick={() => {
+                  setAi({ writing: undefined });
+                  setWriteMsg(null);
+                }}
+                style={{ ...btn("text"), height: 34 }}
+              >
+                Use the model above
+              </button>
+            </div>
+          )}
+          {writeMsg && <Msg text={writeMsg.text} ok={writeMsg.ok} />}
         </div>
       </Row>
       <Row title="API key" help={ai.apiKeyUnreadable ? "The saved key can't be read (the app secret changed). Searches won't use it or fall back to another key. Re-enter it." : ai.apiKeyHint ? "Saved and encrypted. Replace it to use a different key." : "Not set. Local servers like Ollama don't need one."}>
