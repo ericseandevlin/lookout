@@ -557,3 +557,20 @@ describe("classifyPage: 'for this job posting' and 'every job posting' are not t
       expect(classifyPage(200, `TITLE: Acme\n\nTEXT:\n${line}`).state, line).toBe("gone");
   });
 });
+
+describe("classifyPage: a job no longer available to some people is still open (#1589)", () => {
+  it("keeps a posting that narrowed who may apply", () => {
+    for (const t of [
+      "This opportunity is no longer available to candidates outside the US.",
+      "This position is no longer available to candidates requiring sponsorship.",
+      "This role is no longer available for candidates who need a visa.",
+      "This role is no longer available to applicants in Colorado.",
+      "Note: No longer available to internal candidates.",
+    ])
+      expect(classifyPage(200, `Senior Designer\n${t}`).state, t).toBe("open");
+  });
+  it("still closes one that ended", () => {
+    for (const t of ["This position is no longer available.", "This role is no longer available to apply.", "Sorry, no longer available."])
+      expect(classifyPage(200, `Senior Designer\n${t}`).state, t).toBe("gone");
+  });
+});
