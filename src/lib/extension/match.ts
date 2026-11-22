@@ -86,8 +86,8 @@ export function hashRoute(u: URL) {
 }
 
 // Query params that name the job itself (indeed.com/viewjob?jk=..., careers pages with ?jobId=, UltiPro ?opportunityId=,
-// SuccessFactors ?career_job_req_id= (#840)). Tracking params stay out (#508).
-const ID_PARAM = /^(v?jk|id|jid|job|jobs?id|jobreqid|careerjobreqid|req|reqid|requisitionid|postingid|openingid|opportunityid|positionid|currentjobid|pid)$/;
+// SuccessFactors ?career_job_req_id= (#840), Phenom's apply page ?jobSeqNo= (#1584)). Tracking params stay out (#508).
+const ID_PARAM = /^(v?jk|id|jid|job|jobs?id|jobreqid|careerjobreqid|req|reqid|requisitionid|postingid|openingid|opportunityid|positionid|currentjobid|pid|jobseqno)$/;
 // Params that name the employer on a host many employers share: SuccessFactors ?company=, Brassring ?partnerid= (#895).
 // Req IDs there are small per-employer numbers, so they join the key whenever a job ID does.
 const TENANT_PARAM = /^(company|partnerid)$/;

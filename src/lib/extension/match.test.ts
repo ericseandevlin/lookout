@@ -107,6 +107,12 @@ describe("sameJob", () => {
     expect(sameJob([up("11111111-2222-3333-4444-555555555555")], [up("99999999-2222-3333-4444-555555555555")])).toBe(false);
     expect(sameJob([up("11111111-2222-3333-4444-555555555555").replace("opportunityId", "opportunityid")], [up("11111111-2222-3333-4444-555555555555")])).toBe(true);
   });
+  it("tells Phenom apply pages apart by ?jobSeqNo=, not as the careers home (#1584)", () => {
+    const ph = (seq: string, extra = "") => `https://careers.acme.com/us/en/apply?jobSeqNo=${seq}${extra}`;
+    expect(sameJob([ph("ACMEUSR123EXTERNALENUS")], [ph("ACMEUSR456EXTERNALENUS")])).toBe(false);
+    expect(sameJob([ph("ACMEUSR123EXTERNALENUS", "&step=1&stepname=personalInformation")], [ph("ACMEUSR123EXTERNALENUS")])).toBe(true);
+    expect(sameJob(["https://careers.acme.com/us/en"], [ph("ACMEUSR123EXTERNALENUS")])).toBe(false);
+  });
   it("tells SuccessFactors jobs apart by ?career_job_req_id= (#840)", () => {
     const sf = (id: number, extra = "") => `https://career4.successfactors.com/career?company=acme&career_ns=job_listing${extra}&career_job_req_id=${id}`;
     expect(sameJob([sf(101)], [sf(202)])).toBe(false);
