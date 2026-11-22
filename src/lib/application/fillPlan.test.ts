@@ -201,6 +201,11 @@ describe("CONFIRMATION (#692, #748, #762)", () => {
       "You have submitted your application",
       "You've submitted your application for Senior Designer.",
       "You’ve submitted your application.",
+      // #1621
+      "Success! Your application is complete.",
+      "Application complete",
+      "Your application is complete. We'll be in touch.",
+      "Thank you! Your application has been completed.",
     ])
       expect(CONFIRMATION.test(t), t).toBe(true);
   });
@@ -242,6 +247,13 @@ describe("CONFIRMATION (#692, #748, #762)", () => {
       "Once you have submitted your application, we will email you.",
       "Have you submitted your application yet?",
       "You have not submitted your application.",
+      // #1621
+      "Once your application is complete, click Submit.",
+      "Your application is incomplete.",
+      "Make sure your application is complete before you submit.",
+      "Please check that your application is complete.",
+      "Application complete: 80%",
+      "Your application is not complete.",
     ])
       expect(CONFIRMATION.test(t), t).toBe(false);
   });
