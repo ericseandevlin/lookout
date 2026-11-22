@@ -147,6 +147,25 @@ describe("placesDiffer (#1285)", () => {
     expect(placesDiffer("New York, NY (Manhattan)", "New York, NY")).toBe(false);
   });
 
+  it("reads a country's ISO code that is also a state's as that country (#1561)", () => {
+    expect(placesDiffer("Berlin, DE", "Berlin, Germany")).toBe(false);
+    expect(placesDiffer("Berlin, Germany", "Berlin, DE")).toBe(false);
+    expect(placesDiffer("Munich, Bavaria, DE", "Munich, Germany")).toBe(false);
+    expect(placesDiffer("Tel Aviv, IL", "Tel Aviv, Israel")).toBe(false);
+    expect(placesDiffer("Bengaluru, IN", "Bengaluru, India")).toBe(false);
+    expect(placesDiffer("Bogota, CO", "Bogota, Colombia")).toBe(false);
+    expect(placesDiffer("Amsterdam, NL", "Amsterdam, Netherlands")).toBe(false);
+    expect(placesDiffer("Amsterdam, NL", "Amsterdam, The Netherlands")).toBe(false);
+    expect(placesDiffer("Remote (DE)", "Remote (Germany)")).toBe(false);
+    // A real state pair, a named US state, or a code with its own country beside it still differs.
+    expect(placesDiffer("Wilmington, DE", "Wilmington, NC")).toBe(true);
+    expect(placesDiffer("Berlin, DE", "Berlin, NY")).toBe(true);
+    expect(placesDiffer("Wilmington, DE, US", "Wilmington, Germany")).toBe(true);
+    expect(placesDiffer("Wilmington, Delaware", "Wilmington, Germany")).toBe(true);
+    expect(placesDiffer("Berlin, DE", "Berlin, India")).toBe(true);
+    expect(placesDiffer("Bogota, CO", "Bogota, Mexico")).toBe(true);
+  });
+
   it("tells apart the same city in another state or country", () => {
     expect(placesDiffer("Remote, US", "Remote, Canada")).toBe(true);
     expect(placesDiffer("Cambridge, MA", "Cambridge, United Kingdom")).toBe(true);

@@ -137,6 +137,16 @@ const NOT_PLACE = /^(?:(?:full|part) ?time|contract(?:or)?|temporary|temp|perman
 
 const known = (p: string) => STATES.has(p) || COUNTRIES.has(p);
 
+// Countries whose ISO code is also a US state's or Canadian province's: ATS feeds write "Berlin, DE" and LinkedIn
+// writes "Berlin, Germany", and DE alone reads as Delaware (#1561). Each code with the names that country goes by.
+const ISO_CLASH: Record<string, string[]> = {
+  al: ["albania"], ar: ["argentina"], az: ["azerbaijan"], co: ["colombia"], de: ["germany", "deutschland"],
+  ga: ["gabon"], id: ["indonesia"], il: ["israel"], in: ["india"], ky: ["cayman islands"], la: ["laos"],
+  ma: ["morocco"], md: ["moldova"], me: ["montenegro"], mn: ["mongolia"], mo: ["macao", "macau"], mt: ["malta"],
+  nc: ["new caledonia"], ne: ["niger"], nl: ["netherlands", "the netherlands", "holland"], pa: ["panama"],
+  pe: ["peru"], sc: ["seychelles"], sd: ["sudan"], sk: ["slovakia"], tn: ["tunisia"], va: ["vatican", "vatican city"],
+};
+
 /**
  * "Remote - US", "US Remote", "USA (Remote)" and "Remote – United States" as "Remote, US", the way "Remote, US" and
  * "Remote (US)" already key: the fingerprint keeps only the text before the first comma, so one remote job written two
@@ -182,6 +192,7 @@ export function region(raw: string) {
   let state: string | null = null;
   let country: string | null = null;
   let other: string | null = null;
+  let code: string | null = null;
   // A known state or country in parentheses names the place too: "Remote (US)" is not "Remote (Canada)" (#1426). Other
   // words there ("(hybrid)", "(NYC)") say nothing, so they never make two places of one. After "Remote" or nothing, an
   // unknown word is the place itself: "Remote (Germany)" is not "Remote (US)" (#1555).
@@ -206,12 +217,18 @@ export function region(raw: string) {
     // A work mode on its own ("New York, Remote") or after an unknown country ("Germany - Hybrid") is not a place (#1385).
     if (!q || (paren && !known(q) && (!open || NOT_PLACE.test(q)))) continue;
     const s = STATES.get(q);
-    if (s) state ??= s;
-    else if (COUNTRIES.has(q)) country ??= COUNTRIES.get(q)!;
+    if (s) {
+      if (!state && q.length === 2) code = q;
+      state ??= s;
+    } else if (COUNTRIES.has(q)) country ??= COUNTRIES.get(q)!;
     else other = q;
   }
-  return { state, country: country ?? state?.slice(0, 2) ?? other };
+  return { state, country: country ?? state?.slice(0, 2) ?? other, code: country ? null : code };
 }
+
+/** "DE" on one side, with no country named beside it, and "Germany" on the other, with no state on that side: one place written two ways (#1561). */
+const isoMatch = (x: ReturnType<typeof region>, y: ReturnType<typeof region>) =>
+  !!x.code && !y.state && !!y.country && !!ISO_CLASH[x.code]?.includes(y.country);
 
 /**
  * Two locations that share the fingerprint's city but are in different places: both name a country and they differ, or
@@ -221,6 +238,7 @@ export function region(raw: string) {
 export function placesDiffer(a: string, b: string) {
   const x = region(a);
   const y = region(b);
+  if (isoMatch(x, y) || isoMatch(y, x)) return false;
   return (!!x.country && !!y.country && x.country !== y.country) || (!!x.state && !!y.state && x.state !== y.state);
 }
 
