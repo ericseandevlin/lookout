@@ -40,7 +40,7 @@ beforeEach(async () => {
 });
 
 /** A find on the board, added `ago` ms back. */
-async function find(title: string, o: { ago?: number; score?: number; due?: string; pinned?: boolean; archived?: boolean; compMin?: number; compMax?: number; currency?: string; location?: string; via?: "agent" | "manual" | "import" } = {}) {
+async function find(title: string, o: { ago?: number; score?: number; due?: string; pinned?: boolean; archived?: boolean; compMin?: number; compMax?: number; currency?: string; location?: string; via?: "agent" | "manual" | "import"; stage?: string } = {}) {
   const [opp] = await db
     .insert(schema.opportunities)
     .values({ company: "Acme <Labs>", title, location: o.location ?? "Remote", fingerprint: title, compMin: o.compMin, compMax: o.compMax, currency: o.currency, attributes: o.due ? { due: o.due } : {} })
@@ -54,6 +54,7 @@ async function find(title: string, o: { ago?: number; score?: number; due?: stri
     archived: o.archived ?? false,
     addedAt: new Date(Date.now() - (o.ago ?? 0)),
     addedVia: o.via ?? "agent",
+    ...(o.stage ? { stage: o.stage } : {}),
   });
   return opp.id;
 }
@@ -208,6 +209,20 @@ describe("sendDigest", () => {
     expect(m.text).not.toContain("Archived");
     const [dg] = await digests();
     expect(m.text).toContain(`/go/${dg.id}/${dueId}`);
+  });
+
+  it("leaves out pinned finds already applied to (#1539)", async () => {
+    await find("Applied", { ago: 5 * DAY, pinned: true, due: inDays(1), stage: "Applied" });
+    await find("Interview", { ago: 5 * DAY, pinned: true, due: inDays(2), stage: "Interview" });
+    await sendDigest(userId);
+    expect(sent()).toHaveLength(0);
+    const id = await find("Still to apply", { ago: 5 * DAY, pinned: true, due: inDays(1) });
+    await sendDigest(userId);
+    const [m] = sent();
+    expect(m.subject).toBe("Lookout: 1 pinned find due soon");
+    expect(m.text).toContain(`/${id}`);
+    expect(m.text).not.toContain("Applied");
+    expect(m.text).not.toContain("Interview");
   });
 
   it("sends a due-soon-only email at most once a day", async () => {
