@@ -129,6 +129,9 @@ const withoutQualifier = (p: string) =>
     .trim()
     .replace(/^(?:or|and) (?=\S)|(?<=\S) (?:or|and)$/g, "");
 
+// Words in "Remote (...)" that are terms of the job, not a place (#1555).
+const NOT_PLACE = /^(?:(?:full|part) ?time|contract(?:or)?|temporary|temp|permanent|freelance|flexible|anywhere|ft|pt)$/;
+
 const known = (p: string) => STATES.has(p) || COUNTRIES.has(p);
 
 /**
@@ -177,12 +180,17 @@ export function region(raw: string) {
   let country: string | null = null;
   let other: string | null = null;
   // A known state or country in parentheses names the place too: "Remote (US)" is not "Remote (Canada)" (#1426). Other
-  // words there ("(hybrid)", "(NYC)") say nothing, so they never make two places of one.
+  // words there ("(hybrid)", "(NYC)") say nothing, so they never make two places of one. After "Remote" or nothing, an
+  // unknown word is the place itself: "Remote (Germany)" is not "Remote (US)" (#1555).
   const parts = [
-    ...location.split(",").slice(1).map((text) => ({ text, paren: false })),
-    ...[...location.matchAll(/\(([^()]*)\)/g)].map((m) => ({ text: m[1], paren: true })),
+    ...location.split(",").slice(1).map((text) => ({ text, paren: false, open: false })),
+    ...[...location.matchAll(/\(([^()]*)\)/g)].map((m) => ({
+      text: m[1],
+      paren: true,
+      open: /^(?:remote)?$/i.test(location.slice(0, m.index).split(",").pop()!.replace(/[^\p{L}]+/gu, "")),
+    })),
   ];
-  for (const { text: part, paren } of parts) {
+  for (const { text: part, paren, open } of parts) {
     // Dotted codes come out of normPart as single letters: "D.C." is "d c", read as "dc" (#1303).
     const p = normPart(true)(part)
       .replace(/\b\d+\b/g, " ")
@@ -193,7 +201,7 @@ export function region(raw: string) {
     // A work mode or "metro area" after a known place is not part of it: "NY - Hybrid", "IL Metro Area", "US-based" (#1374).
     const q = known(p) ? p : withoutZone(withPlace(withoutQualifier(p)));
     // A work mode on its own ("New York, Remote") or after an unknown country ("Germany - Hybrid") is not a place (#1385).
-    if (!q || (paren && !known(q))) continue;
+    if (!q || (paren && !known(q) && (!open || NOT_PLACE.test(q)))) continue;
     const s = STATES.get(q);
     if (s) state ??= s;
     else if (COUNTRIES.has(q)) country ??= COUNTRIES.get(q)!;
