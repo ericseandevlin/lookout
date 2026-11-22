@@ -189,3 +189,16 @@ describe("available to start (#1596)", () => {
     expect(isCommon("When are you available to start?", "January 2027")).toBe(false);
   });
 });
+
+describe("other ways to ask work authorization (#1597)", () => {
+  it("keeps legally able, eligible and right to work", () => {
+    expect(isCommon("Are you legally able to work in the US?", "Yes")).toBe(true);
+    expect(isCommon("Are you eligible to work in the US?", "Yes")).toBe(true);
+    expect(isCommon("Do you have the right to work in the UK?", "Yes")).toBe(true);
+    expect(isCommon("Are you eligible to work in the United States for this position?", "Yes")).toBe(true);
+  });
+  it("still never keeps one tied to where the job is", () => {
+    expect(isCommon("Are you eligible to work in the country where this role is based?", "Yes")).toBe(false);
+    expect(isCommon("Do you have the right to work in the country of employment?", "Yes")).toBe(false);
+  });
+});
