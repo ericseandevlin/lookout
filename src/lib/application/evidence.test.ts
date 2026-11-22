@@ -47,6 +47,14 @@ describe("keyword evidence (#121)", () => {
     expect(supportFor("people leadership", "Ran WCAG accessibility audits across 12 products", resume, [])).toEqual({ line: "Ran WCAG accessibility audits across 12 products", from: "resume" });
   });
 
+  it("a short resume line inside a made-up cite is not backing (#1627)", () => {
+    const skills = "## Skills\n- User research\n- Figma";
+    expect(supportFor("accessibility audits", "Ran accessibility audits and user research across three products", skills, [])).toBeNull();
+    // A cite that is the line plus a little extra still counts.
+    expect(supportFor("people leadership", "- Ran WCAG accessibility audits across 12 products.", resume, [])).toEqual({ line: "Ran WCAG accessibility audits across 12 products", from: "resume" });
+    expect(supportFor("people leadership", "Acme: Ran WCAG accessibility audits across 12 products", resume, [])).toEqual({ line: "Ran WCAG accessibility audits across 12 products", from: "resume" });
+  });
+
   it("a note without details is not evidence; a note with details is", () => {
     expect(supportFor("Kubernetes", undefined, resume, upsertNote([], "Kubernetes", ""))).toBeNull();
     expect(supportFor("Kubernetes", undefined, resume, upsertNote([], "kubernetes", "Run the k3s cluster for my side project"))).toEqual({ line: "Run the k3s cluster for my side project", from: "notes" });
