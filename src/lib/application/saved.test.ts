@@ -46,6 +46,11 @@ describe("saved answers", () => {
   it("keeps a general answer to how they heard of the job, never a referral (#1097)", () => {
     expect(isCommon("How did you hear about this job?", "LinkedIn")).toBe(true);
     expect(isCommon("How did you hear about us?", "Company website")).toBe(true);
+    // "This position" and "this role" are the same question as "this job" (#1545).
+    expect(isCommon("How did you hear about this position?", "LinkedIn")).toBe(true);
+    expect(isCommon("How did you hear about this role?", "Indeed")).toBe(true);
+    expect(isCommon("How did you hear about this opportunity?", "Company website")).toBe(true);
+    expect(isCommon("How did you hear about this role?", "Employee referral")).toBe(false);
     for (const a of ["Referred by Jane Doe (Design Manager)", "Employee Referral", "A friend who works there", "Recruiter reached out", "Former colleague on the team"])
       expect(isCommon("How did you hear about this job?", a)).toBe(false);
     // Saved before the fix: never reused or shown to the model.
