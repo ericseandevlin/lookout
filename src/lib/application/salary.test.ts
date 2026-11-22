@@ -179,6 +179,12 @@ describe("rangeBasis", () => {
     "Pay: $150k-$180k plus commission.",
     "Compensation: $150k - $180k + annual bonus + equity",
     "$150,000-$180,000 plus a performance bonus",
+    // A comma, a period word or a currency code between the amount and the plus (#1602).
+    "The salary range for this role is $150,000 - $180,000 per year, plus bonus and equity.",
+    "Pay: $150k-$180k, plus bonus.",
+    "$150,000 - $180,000 annually + bonus",
+    "$150,000 - $180,000 USD + annual bonus",
+    "$150k-$180k/yr + commission",
   ])("reads %s as base: the bonus is added after the amount, word base or not (#1528)", (posting) => {
     expect(rangeBasis(posting)).toBe("base");
   });
@@ -186,6 +192,8 @@ describe("rangeBasis", () => {
   it("still reads total cash wording first, and a bonus in a benefits list says nothing (#1528)", () => {
     expect(rangeBasis("On-target earnings: $150k + commission")).toBe("total");
     expect(rangeBasis("Salary: $150k-$180k. Benefits include a bonus plus 401(k).")).toBeNull();
+    expect(rangeBasis("Salary: $150k-$180k per year. Plus bonus eligibility is reviewed later.")).toBeNull();
+    expect(rangeBasis("Salary: $150k-$180k, plus great benefits.")).toBeNull();
   });
 
   it("keeps a bonus the role is also eligible for as base (#1074)", () => {
