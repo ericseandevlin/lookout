@@ -314,9 +314,10 @@ function EarlierRow({ count, early, onToggle, onMore }: { count: number; early: 
 /** Skip and Send: 44px tap targets, so they work by touch. */
 const composerBtn: React.CSSProperties = { width: 44, height: 44, flex: "none", padding: 0, border: 0, borderRadius: 999, background: "transparent", color: color.t2, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" };
 
+// The person's answers sit in a light gray bubble; Lookout's lines are plain text, like a chat with Claude.
 const bubble = (you: boolean): React.CSSProperties => ({
-  position: "relative", maxWidth: 620, padding: "11px 15px", borderRadius: 14, fontSize: font.lg, lineHeight: 1.5, textWrap: "pretty", whiteSpace: "pre-wrap",
-  background: you ? color.surface : "#fff", border: you ? "none" : `1.5px solid ${color.border}`,
+  position: "relative", maxWidth: 620, fontSize: font.lg, lineHeight: 1.5, textWrap: "pretty", whiteSpace: "pre-wrap",
+  ...(you ? { padding: "11px 15px", borderRadius: 14, background: color.surface } : { padding: "2px 0" }),
 });
 
 function Said({ who, children, id }: { who: "Lookout" | "You"; children: React.ReactNode; id?: string }) {
@@ -367,7 +368,7 @@ function Question({ t }: { t: ViewTurn }) {
   }, [open]);
   return (
     <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-start", gap: 6 }}>
-      <div style={{ ...bubble(false), ...(t.why && { paddingRight: 46 }) }}>
+      <div style={bubble(false)}>
         <span className="sr-only">Lookout: </span>
         {t.question}
         {t.why && (
@@ -382,7 +383,7 @@ function Question({ t }: { t: ViewTurn }) {
               onKeyDown={(e) => e.key === "Escape" && (setHover(false), setPinned(false))}
               aria-label="Why this question?"
               aria-describedby={tipId}
-              style={{ position: "absolute", right: 6, bottom: 6, width: 32, height: 32, padding: 0, border: 0, borderRadius: 999, background: open ? color.surface : "transparent", color: open ? color.ink : color.t2, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}
+              style={{ display: "inline-flex", verticalAlign: "middle", margin: "-6px 0 -4px 4px", width: 32, height: 32, padding: 0, border: 0, borderRadius: 999, background: open ? color.surface : "transparent", color: open ? color.ink : color.t2, cursor: "pointer", alignItems: "center", justifyContent: "center" }}
             >
               <svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
                 <circle cx="12" cy="12" r="9.5" />
