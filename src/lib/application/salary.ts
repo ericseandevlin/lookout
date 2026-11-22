@@ -195,9 +195,12 @@ export function askPer(prompt: string): Per | null {
 
 // A short instruction about the answer with no pay word: "Please answer monthly.", "Monthly, before tax.",
 // "Hourly is fine." Only the -ly words count, so "We will get back to you in a week" still doesn't (#1245).
+// "Per month" and "/hour" count too when the sentence says how to answer: "Please answer in USD per month." (#1601).
 const ADVERB = /\b(hourly|daily|weekly|monthly|annually|yearly)\b/i;
+const PER_UNIT = /\bper (hour|hr|day|week|wk|month|mo|year|annum)\b|\/\s?(hour|hr|day|week|wk|month|mo|year|yr)\b/i;
 const HOW_TO_ANSWER = /\b(answer|enter|give|provide|before tax|after tax|gross|net|is fine)\b/i;
-const answerHint = (s: string) => ADVERB.test(s) && (HOW_TO_ANSWER.test(s) || s.trim().split(/\s+/).length <= 4);
+const answerHint = (s: string) =>
+  (ADVERB.test(s) && (HOW_TO_ANSWER.test(s) || s.trim().split(/\s+/).length <= 4)) || (PER_UNIT.test(s) && HOW_TO_ANSWER.test(s));
 
 const orYear = (p: ReturnType<typeof periodIn>) => (p === "year" ? null : p);
 
