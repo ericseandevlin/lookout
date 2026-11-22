@@ -77,8 +77,10 @@ describe("fill.js answer rules match the worker's (#1541)", () => {
       ["Yes*", "No*"],
       ["", "Select…", "Bachelor's", "Master's"],
       ["LinkedIn", "Company website", "Referral from an employee"],
+      ["Less than 1 year", "1-2 years", "3-5 years", "6-10 years", "10+ years"],
+      ["0-1", "1-2", "1.5", "12+"],
     ];
-    const answers = ["No", "None", "Yes", "Full time", "Onsite", "Yes - I am authorized", "Yes—I am authorized", "I don't wish to answer", "yes", "Bachelors", "Masters", "Referral", "LinkedIn profile", "Something else", ""];
+    const answers = ["No", "None", "Yes", "Full time", "Onsite", "Yes - I am authorized", "Yes—I am authorized", "I don't wish to answer", "yes", "Bachelors", "Masters", "Referral", "LinkedIn profile", "Something else", "12 years", "12", "15", "1 - 2 years", "3–5 years", ""];
     for (const labels of lists) for (const a of answers) expect(ext.pickOne(a, labels), `${a} in ${labels.join("|")}`).toBe(pickOne(a, labels));
   });
 
