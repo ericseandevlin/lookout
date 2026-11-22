@@ -125,6 +125,20 @@ describe("sameJob", () => {
     // A company's job list isn't one job.
     expect(jobKey("https://recruiting.paylocity.com/Recruiting/Jobs/All/abc-123")).toMatch(/^url:/);
   });
+
+  it("keys a SmartRecruiters posting by its ID, with or without the title slug, on either host (#1520)", () => {
+    const job = "https://jobs.smartrecruiters.com/Acme/743999912345678-product-designer";
+    expect(jobKey(job)).toBe("smartrecruiters:acme:743999912345678");
+    expect(sameJob(["https://jobs.smartrecruiters.com/Acme/743999912345678"], [job])).toBe(true);
+    expect(sameJob(["https://careers.smartrecruiters.com/acme/743999912345678-product-designer/?trid=abc"], [job])).toBe(true);
+    // Retitled: the slug changed, the ID did not.
+    expect(sameJob(["https://jobs.smartrecruiters.com/Acme/743999912345678-senior-product-designer"], [job])).toBe(true);
+    expect(sameJob(["https://jobs.smartrecruiters.com/Acme/743999912399999-product-designer"], [job])).toBe(false);
+    expect(sameJob(["https://jobs.smartrecruiters.com/Other/743999912345678-product-designer"], [job])).toBe(false);
+    // A company's job list isn't one job.
+    expect(jobKey("https://careers.smartrecruiters.com/Acme")).toMatch(/^url:/);
+    expect(jobKey("https://jobs.smartrecruiters.com/oneclick-ui/company/Acme/publication/1b2c3d4e-1111-2222-3333-444455556666")).toMatch(/^url:/);
+  });
 });
 
 describe("Recruitee and Teamtailor apply steps (#1200)", () => {
