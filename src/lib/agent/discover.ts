@@ -689,7 +689,9 @@ export async function discover(searchId: string, trigger: "scheduled" | "manual"
     const events = !featureOn("EVENTS") ? null : await findEventsIfDue(ctx, usage, (step) => report(99, step)).catch((e) => (console.error("[events] failed", e), null));
     const eventsNote = events ? `, plus ${events} ${events === 1 ? "event" : "events"}` : "";
     await progress(run.id, 100, doneStep(tally) + eventsNote);
-    const summary = makeReport(ctx, { queries, results: hits.length + onBoard, picked: picks.length, read: pages.length, tally });
+    // A page that opened onto a find already on the board was still read: without it, a run whose every pick redirects
+    // to the board reported read 0, told the person no page could be opened, and counted as failed in Metrics (#1649).
+    const summary = makeReport(ctx, { queries, results: hits.length + onBoard, picked: picks.length, read: pages.length + landed.onBoard, tally });
     await finishRun(run.id, usage, { found, added, report: summary });
     return { found, added, runId: run.id };
   } catch (e) {
