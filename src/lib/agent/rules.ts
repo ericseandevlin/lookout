@@ -1,5 +1,5 @@
 import { createHash } from "node:crypto";
-import { hashRoute } from "@/lib/extension/match";
+import { hashRoute, jobKey } from "@/lib/extension/match";
 
 export type Scored = {
   score: number;
@@ -248,4 +248,28 @@ export function normUrl(u: string) {
   } catch {
     return u.toLowerCase();
   }
+}
+
+// Job board search and list pages, on any country site (indeed.co.uk, ca.linkedin.com): /jobs, /q-<title>-jobs.html,
+// Indeed's /l-<place>-jobs.html, the mobile /m/jobs; Glassdoor's /Job/...-SRCH_... pages; any /search? page or path
+// that ends in /jobs (#1537).
+const AGGREGATOR =
+  /(indeed|linkedin|glassdoor|ziprecruiter|simplyhired|monster|careerbuilder)\.[a-z]{2,3}(\.[a-z]{2})?\/(jobs|q-|l-|m\/jobs)|glassdoor\.[a-z]{2,3}(\.[a-z]{2})?\/(job\/|.*SRCH_)|\/search\?|\/jobs\/?$/i;
+
+// ATS hosts where every posting has an ID jobKey reads, so an address there without one is the board, not a job.
+const ATS_HOST = /(^|\.)(greenhouse\.io|lever\.co|ashbyhq\.com|myworkdayjobs\.com|myworkdaysite\.com)$/i;
+
+/**
+ * A search result that lists jobs rather than being one: a job board search page, or an ATS board home such as
+ * jobs.lever.co/acme or acme.wd1.myworkdayjobs.com/External (#1537). Dropped before triage so it doesn't take a pick.
+ */
+export function listPage(u: string): boolean {
+  if (AGGREGATOR.test(u)) return true;
+  let host: string;
+  try {
+    host = new URL(u).hostname;
+  } catch {
+    return false;
+  }
+  return ATS_HOST.test(host) && !!jobKey(u)?.startsWith("url:");
 }
