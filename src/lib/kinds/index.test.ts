@@ -179,6 +179,18 @@ describe("parseMoney", () => {
     ["L6 $200k", 200000],
     ["Senior (IC4) 180k", 180000],
     ["usd150k", 150000],
+    // A tax form, retirement plan or year before the pay is not the floor (#1567).
+    ["1099 $90/hr", 187200],
+    ["1099 contractor, $90/hr", 187200],
+    ["$90/hr 1099", 187200],
+    ["401k + 150k", 150000],
+    ["150k + 401(k)", 150000],
+    ["401(k) match, 150k base", 150000],
+    ["403b and 150k", 150000],
+    ["2026 target: 150k", 150000],
+    ["150k in 2026", 150000],
+    ["2000/month", 24000],
+    ["2,000 per month", 24000],
   ])("reads %s as %d", (v, n) => {
     expect(parseMoney(v)).toBe(n);
   });
