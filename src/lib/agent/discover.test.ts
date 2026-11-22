@@ -127,6 +127,13 @@ describe("save", () => {
     expect((await board())[0].via).toBe("manual");
   });
 
+  it("reads a range given high to low as low to high, so its top judges the floor (#1526)", async () => {
+    const r = await save(ctx({ floor: 180000 }), [find({ comp_min: 200000, comp_max: 150000 })], "agent");
+    expect(r).toMatchObject({ added: 1, belowFloor: 0 });
+    const [o] = await db.select({ min: schema.opportunities.compMin, max: schema.opportunities.compMax }).from(schema.opportunities);
+    expect(o).toEqual({ min: 150000, max: 200000 });
+  });
+
   it("leaves off pay that tops out under the floor; marks down off-location roles (#740)", async () => {
     const r = await save(
       ctx({ floor: 180000 }),
