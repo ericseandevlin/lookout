@@ -61,8 +61,10 @@ const AUTH = /authori[sz]ed to work|work authori[sz]ation|legally (authorized|el
 // Where the job is, not where the person is: a US job's "No" to sponsorship "in the country where this role is based" is the
 // wrong answer for a London job. Checked before "this role" is removed; "the country where you live" is still kept (#1227).
 // "The country for which you are applying", "the country you're applying to" and "the location of this role" too (#1572).
+// "The country of employment", "the country this role is in", "the country where you will be working" and "the hiring
+// country" too (#1590).
 const JOB_PLACE =
-  /\b(role|job|position|opportunity) (is|will be) (based|located)\b|\b(role|job|position)'?s (country|location)\b|\b(country|location|place|region)\s+(?:(?:for|in|to) which\s+)?(you are|you're|you['’]re) applying\b|\b(country|location) of (this|the) (role|job|position|opportunity|posting)\b/i;
+  /\b(role|job|position|opportunity) (is|will be) (based|located)\b|\b(role|job|position)'?s (country|location)\b|\b(country|location|place|region)\s+(?:(?:for|in|to) which\s+)?(you are|you're|you['’]re) applying\b|\b(country|location) of (this|the) (role|job|position|opportunity|posting)\b|\b(country|location|place) of (employment|hire)\b|\b(country|location|region|place)\s+(?:(?:where|that|which)\s+)?(this|the) (role|job|position|opportunity) is in\b|\b(country|location|region|place)\s+(?:where|in which)\s+you(?:['’]ll| will| would)\s+(?:be\s+)?work(?:ing)?\b|\bhiring (country|location)\b/i;
 // "How did you hear about this position?" is the same question as "...this job?", so it travels the same way (#1545).
 const neverKept = (question: string) =>
   JOB_PLACE.test(question) || NEVER.test(AUTH.test(question) || HEARD.test(question) ? question.replace(/\bthis (role|position|job|opportunity)\b/gi, " ") : question);
