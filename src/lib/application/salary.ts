@@ -207,6 +207,9 @@ function periodIn(prompt: string): "year" | Per | null {
   prompt = prompt.replace(/\b(hours?|hrs?|days?)\s*(per|a|each|\/)\s*(week|wk|month|day|year|yr)\b/gi, " ");
   // "May extend to a year" and "could run a year" are a contract's length too (#1248).
   prompt = prompt.replace(/\b(last(s|ing)?|for|within|after|over|least|to|run(s|ning)?|extend(s|ed|ing)?|renew(s|ed|able)?)\s+(about\s+|up to\s+|roughly\s+)?(a|one)\s+(year|month|week)\b/gi, " ");
+  // "Annual" on another thing is not the pay period: "monthly salary (excluding annual bonus)", "annual 13th month",
+  // "2,000 hours annually" (#1565). "Annual salary (paid monthly)" is still yearly.
+  prompt = prompt.replace(/\bannual(ly)?\s+(bonus(es)?|raises?|reviews?|leave|13th|holidays?|vacation|pto|incentives?|increases?|performance|hours?)\b|\b(hours?|hrs?)\s+(annually|yearly)\b/gi, " ");
   // "a year-end bonus" and "a year-long contract" are not a yearly ask (#1060).
   // "/yr" after a space or "(" has no word boundary before the slash (#1121).
   if (/(\b(annual(ly)?|yearly|per (year|annum)|a year)|\/\s?y(ea)?r)\b(?!-)/i.test(prompt)) return "year";

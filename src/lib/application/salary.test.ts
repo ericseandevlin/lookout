@@ -435,6 +435,15 @@ describe("hourly and monthly salary questions (#949)", () => {
     ["Desired salary", null],
     ["Desired annual salary (paid monthly)", null],
     ["Salary expectations, paid bi-weekly", null],
+    // "Annual" on a bonus, 13th month or hours is not the pay period (#1565).
+    ["What is your expected monthly salary (excluding annual bonus)?", "month"],
+    ["Expected monthly gross salary, including annual 13th month?", "month"],
+    ["Desired hourly rate (W2, about 2,000 hours annually)", "hour"],
+    ["Expected monthly salary? We also pay an annual bonus.", "month"],
+    ["Hourly rate expected (1,800 annual hours)", "hour"],
+    ["Expected salary per month, before the annual raise", "month"],
+    ["Annual salary expectation (we pay monthly)", null],
+    ["Expected salary, including annual bonus", null],
   ])("%s asks per %s", (q, per) => {
     expect(askPer(q)).toBe(per);
   });
