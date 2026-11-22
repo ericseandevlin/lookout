@@ -289,6 +289,14 @@ const AGGREGATOR =
 // ATS hosts where every posting has an ID jobKey reads, so an address there without one is the board, not a job.
 const ATS_HOST = /(^|\.)(greenhouse\.io|lever\.co|ashbyhq\.com|myworkdayjobs\.com|myworkdaysite\.com)$/i;
 
+// More ATS hosts whose postings jobKey keys by ID (#1613). Their other job pages (SmartRecruiters' one-click form,
+// Workable's old /jobs/<id>, Taleo Business Edition's viewRequisition?rid=) still hold a long number or a UUID, so only
+// an address with neither is the board. jobs.workable.com is Workable's own job board: its postings have no /j/ code.
+const ATS_MORE = /(^|\.)(smartrecruiters\.com|workable\.com|teamtailor\.com|icims\.com|taleo\.net)$/i;
+const NAMES_ID = /\d{4,}|[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i;
+// Paylocity's board for one company is /Recruiting/Jobs/All/<company id>.
+const PAYLOCITY_BOARD = /(^|\.)paylocity\.com\/recruiting\/jobs\/all(\/|$)/i;
+
 /**
  * A search result that lists jobs rather than being one: a job board search page, or an ATS board home such as
  * jobs.lever.co/acme or acme.wd1.myworkdayjobs.com/External (#1537). Dropped before triage so it doesn't take a pick.
@@ -301,5 +309,9 @@ export function listPage(u: string): boolean {
   } catch {
     return false;
   }
-  return ATS_HOST.test(host) && !!jobKey(u)?.startsWith("url:");
+  if (!jobKey(u)?.startsWith("url:")) return false;
+  if (ATS_HOST.test(host)) return true;
+  const { pathname, search } = new URL(u);
+  if (PAYLOCITY_BOARD.test(host + pathname)) return true;
+  return ATS_MORE.test(host) && !/^jobs\.workable\.com$/i.test(host) && !NAMES_ID.test(pathname + search);
 }
