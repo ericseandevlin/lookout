@@ -202,3 +202,16 @@ describe("other ways to ask work authorization (#1597)", () => {
     expect(isCommon("Do you have the right to work in the country of employment?", "Yes")).toBe(false);
   });
 });
+
+describe("work permit questions are work authorization (#1619)", () => {
+  it("keeps them", () => {
+    expect(isCommon("Do you need a work permit?", "No")).toBe(true);
+    expect(isCommon("Do you require a work permit to work in Germany?", "Yes")).toBe(true);
+    expect(isCommon("Do you hold a valid work permit for the UK?", "Yes")).toBe(true);
+    expect(isCommon("Do you need a work permit for this position?", "No")).toBe(true);
+  });
+  it("still never keeps one tied to where the job is", () => {
+    expect(isCommon("Do you require a work permit for the country where this role is based?", "Yes")).toBe(false);
+    expect(isCommon("Do you hold a work permit for the country of employment?", "Yes")).toBe(false);
+  });
+});
