@@ -18,7 +18,7 @@ export const AUTO_ATS: readonly Ats[] = ["greenhouse", "lever", "ashby"];
 export const ATS_NAME: Record<string, string> = { greenhouse: "Greenhouse", lever: "Lever", ashby: "Ashby", workday: "Workday", smartrecruiters: "SmartRecruiters", other: "company site" };
 
 export const SUBMIT_LABEL: Record<SubmitMode["mode"], string> = {
-  auto: "Lookout submits this for you",
+  auto: "You approve, then Lookout sends it",
   press: "Lookout fills it; you press Submit",
 };
 

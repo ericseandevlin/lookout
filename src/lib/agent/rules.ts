@@ -14,6 +14,9 @@ export type Scored = {
 // A gap already about pay. Whole words, so "Company is early stage" or "payments experience" don't count (#658).
 const PAY_GAP = /\b(comp|compensation|pay|salary|salaries|wages?)\b/i;
 
+/** Em and en dashes become a comma: reasons are read as plain copy, and Lookout never writes one (#1531). */
+export const noDashes = (s: string) => s.replace(/\s*[\u2014\u2013]\s*/g, ", ").replace(/,\s*,/g, ",").trim();
+
 /**
  * Hard rules applied on top of the model's score. The model's score is a
  * ceiling candidate; rules can only lower it. Returns null when the find
@@ -31,7 +34,7 @@ export function applyRules(s: Scored, floor: number | null) {
   if (!s.locationFit) cap = Math.min(cap, 3);
   if (!topComp && !gap.some((g) => PAY_GAP.test(g))) gap.push("No comp posted");
   const score = Math.max(1, Math.min(5, Math.round(s.score), cap));
-  return { score, reasonsMatch: s.reasonsMatch.slice(0, 5), reasonsGap: gap.slice(0, 5) };
+  return { score, reasonsMatch: s.reasonsMatch.slice(0, 5).map(noDashes), reasonsGap: gap.slice(0, 5).map(noDashes) };
 }
 
 /**

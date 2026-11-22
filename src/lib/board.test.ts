@@ -149,10 +149,10 @@ describe("RFP cells", () => {
     expect(cellText(f, "company")).toBe("Austin");
     expect(cellText(f, "role")).toBe("Website redesign");
     expect(cellText(f, "comp")).toBe("$100 – $200");
-    expect(cellText(f, "listed")).toBe("3d ago");
+    expect(cellText(f, "listed", Date.now())).toBe("3d ago");
     expect(cellText(f, "location")).toBe("Austin, TX");
     expect(cellText(f, "value")).toBe("$90,000");
-    expect(cellText(f, "due")).toBe("3d left");
+    expect(cellText(f, "due", Date.now())).toBe("3d left");
     expect(cellText(f, "setAside")).toBe("8(a)");
     expect(cellText(f, "unknown")).toBe("");
     expect(cellText(rfp({}), "location")).toBe("\u2014");
@@ -180,5 +180,17 @@ describe("stageStyle and scoreStyle", () => {
     expect(scoreStyle(6).bg).toBe("#99220F");
     expect(scoreStyle(4).bg).toBe("#F8A865");
     expect(scoreStyle(3)).toEqual({ bg: "#fff", ink: "#1D1A0F", border: "#D8D0C4" });
+  });
+});
+
+describe("dates wait for the browser while the page hydrates (#1531)", () => {
+  it("leaves day cells and the new dot empty until there is a time", () => {
+    const f = find({ postedAt: "2026-11-20", addedAt: new Date().toISOString() });
+    expect(cellText(f, "listed", null)).toBe("");
+    expect(cellText(f, "company", null)).toBe(f.company);
+    expect(isNewFind(f, 7, null)).toBe(false);
+    const noon = new Date("2026-11-21T12:00:00").getTime();
+    expect(cellText(f, "listed", noon)).toBe("1d ago");
+    expect(isNewFind(f, 7)).toBe(true);
   });
 });
