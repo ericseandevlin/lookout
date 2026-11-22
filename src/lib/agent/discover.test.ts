@@ -132,6 +132,29 @@ describe("save", () => {
     expect(await board()).toEqual([expect.objectContaining({ title: "Director of Design", score: 5 })]);
   });
 
+  it("counts one job at two links cut as a dealbreaker once (#1637)", async () => {
+    const r = await save(ctx(), [find({ dealbreaker: true }), find({ url: "https://www.linkedin.com/jobs/view/4012345678", dealbreaker: true })], "agent");
+    expect(r).toMatchObject({ postings: 1, dealbreaker: 1, added: 0, known: 0 });
+    expect(await board()).toHaveLength(0);
+    expect(await db.select().from(schema.opportunities)).toHaveLength(0);
+  });
+
+  it("counts one job at two links cut under the floor once, and skips a later copy that reads no pay (#1637)", async () => {
+    const under = { comp_min: 120000, comp_max: 150000 };
+    const r = await save(
+      ctx({ floor: 180000 }),
+      [
+        find({ url: "https://job-boards.greenhouse.io/acme/jobs/4012345", ...under }),
+        find({ url: "https://www.linkedin.com/jobs/view/4012345678", ...under }),
+        find({ url: "https://boards.example.org/acme-director", comp_min: null, comp_max: null }),
+      ],
+      "agent",
+    );
+    expect(r).toMatchObject({ postings: 1, belowFloor: 1, added: 0, known: 0 });
+    expect(await board()).toHaveLength(0);
+    expect(await db.select().from(schema.opportunities)).toHaveLength(0);
+  });
+
   it("drops dealbreakers on a search but keeps them when the person adds the link", async () => {
     expect(await save(ctx(), [find({ dealbreaker: true })], "agent")).toMatchObject({ dealbreaker: 1, added: 0 });
     const manual = await save(ctx({ knownUrls: ["https://jobs.example.com/acme/123"] }), [find({ dealbreaker: true })], "manual");

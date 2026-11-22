@@ -472,6 +472,8 @@ export async function save(ctx: Context, finds: ScoredT[], via: "agent" | "manua
   // Added in this run: a second copy of one of these is a repeat, not something already on the board (#1531).
   const fresh = new Set<string>();
   const freshIds = new Set<string>();
+  // Posting keys cut in this run, by the rules or the floor: one job at two links is cut once, not twice (#1637).
+  const cut = new Set<string>();
   const t = emptyTally();
   const newFinds: { id: string; score: number }[] = [];
   for (const raw of finds) {
@@ -490,6 +492,11 @@ export async function save(ctx: Context, finds: ScoredT[], via: "agent" | "manua
       continue;
     }
     const key = await postingKey(f);
+    // A copy of a find this run already cut by the rules or the floor isn't a second posting (#1637).
+    if (cut.has(key)) {
+      t.postings--;
+      continue;
+    }
     // A shared posting keeps the pay already stored (#846), so the rules and the floor judge that pay, not this read's (#879).
     const [stored] = await db
       .select({
@@ -583,6 +590,7 @@ export async function save(ctx: Context, finds: ScoredT[], via: "agent" | "manua
     );
     if (!ruled) {
       t.dealbreaker++;
+      cut.add(key);
       continue;
     }
     // A range that tops out under the floor does not make the board (#740). A link the person adds still goes on, marked down.
@@ -590,7 +598,10 @@ export async function save(ctx: Context, finds: ScoredT[], via: "agent" | "manua
     const top = pay.max ?? pay.min;
     if (floor && top && top < floor) {
       t.belowFloor++;
-      if (via !== "manual") continue;
+      if (via !== "manual") {
+        cut.add(key);
+        continue;
+      }
     }
     if (!f.location_fit) t.offLocation++;
     const opp = await upsert();
