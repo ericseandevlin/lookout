@@ -44,6 +44,17 @@ describe("jobKey (#169)", () => {
       expect(jobKey(u), u).toBe(li);
     expect(jobKey("https://www.linkedin.com/jobs/search?keywords=designer")).toMatch(/^url:/);
   });
+  it("keys a LinkedIn job open beside a search or collection like its own page (#1583)", () => {
+    for (const u of [
+      "https://www.linkedin.com/jobs/search/?currentJobId=3812345678&keywords=designer",
+      "https://www.linkedin.com/jobs/collections/recommended/?currentJobId=3812345678",
+      "https://ca.linkedin.com/jobs/search?geoId=101174742&currentJobId=3812345678",
+    ])
+      expect(jobKey(u), u).toBe("linkedin:3812345678");
+    expect(sameJob(["https://www.linkedin.com/jobs/search/?currentJobId=3812345678"], ["https://www.linkedin.com/jobs/view/3812345678/"])).toBe(true);
+    expect(jobKey("https://www.linkedin.com/jobs/search/?currentJobId=abc")).toMatch(/^url:/);
+    expect(jobKey("https://example.com/jobs?currentJobId=3812345678")).toMatch(/^url:/);
+  });
   it("keys a Workday job by tenant and job slug, ignoring locale and the apply steps (#622)", () => {
     const post = "https://acme.wd5.myworkdayjobs.com/en-US/External/job/New-York-NY/Senior-Designer_R12345";
     const key = "workday:acme.wd5.myworkdayjobs.com:senior-designer_r12345";
