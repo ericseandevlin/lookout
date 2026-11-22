@@ -76,14 +76,25 @@ const normPart = (fold: boolean) => (s: string) => withOtherScript(s.replace(/\(
 /** A title with its parentheticals kept, to tell "Designer (Payments)" from "Designer (Identity)" (#838). */
 export const fullTitle = (t: string) => withOtherScript(t);
 
-const key = (company: string, title: string, location: string, fold: boolean) =>
+// A legal form after the name: "Acme, Inc." on the ATS page is "Acme" on LinkedIn (#1645). Only at the end, so "Co-op" and
+// "Limited Brands" keep theirs; "Pty Ltd" goes as a pair.
+const LEGAL_FORM = /(?:[\s,]+(?:inc|incorporated|llc|l\.l\.c|ltd|limited|corp|corporation|co|company|gmbh|plc|ag|s\.a|sa|b\.v|bv|pty|llp|l\.p|lp)\.?)+\s*$/i;
+export const bareCompany = (c: string) => c.replace(LEGAL_FORM, "").trim() || c;
+
+const key = (company: string, title: string, location: string, fold: boolean, bare = fold) =>
   // nosemgrep: javascript.lang.security.audit.node-sha1.node_sha1 -- SHA-1 here only fingerprints postings for dedupe, not security
   createHash("sha1")
     // The legacy key (fold false) keeps the location as written, so postings stored before #1514 are still matched.
-    .update([company, title, (fold ? remoteFirst(location) : location).split(",")[0]].map(normPart(fold)).join("|"))
+    .update([bare ? bareCompany(company) : company, title, (fold ? remoteFirst(location) : location).split(",")[0]].map(normPart(fold)).join("|"))
     .digest("hex");
 
 export const fingerprint = (company: string, title: string, location: string) => key(company, title, location, true);
+
+/**
+ * The key stored from #1269 until #1645, with the company's legal form kept ("acme inc"). The same as fingerprint for a
+ * company with none. postingKey looks it up so a posting saved under it is matched, not saved again.
+ */
+export const suffixedFingerprint = (company: string, title: string, location: string) => key(company, title, location, true, false);
 
 /**
  * The key stored before #1269, when an accented letter became a space ("montr al"). The same as fingerprint for text with
