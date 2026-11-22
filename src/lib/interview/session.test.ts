@@ -415,6 +415,10 @@ describe("one interview, opened from an application's keywords (#1485)", () => {
     replies = [ask("event sales")];
     v = await interviewView(user.id, (await act(user.id, v.current!.id, "answer", "yes", APP)).note);
     expect(v.current).toMatchObject({ question: "Where was that, what was your part, and how big was it?", followUp: true });
+    // A second bare yes doesn't get the same line again.
+    replies = [ask("event sales", "Tell me about events you sold.")];
+    v = await interviewView(user.id, (await act(user.id, v.current!.id, "answer", "yes", APP)).note);
+    expect(v.current?.question).toBe("Tell me about events you sold.");
   });
 
   it("saves the story as detailed facts, and a fact that backs a keyword becomes its experience note", async () => {

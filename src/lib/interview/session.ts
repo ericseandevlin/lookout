@@ -199,7 +199,8 @@ async function interviewStep(userId: string, answered: { turn: Turn; root: Turn;
   if (isYesNoQuestion(out.next.question)) out.next = { ...out.next, question: `${out.next.question.trim()} ${STORY_ASK}` };
   if (answered) await db.update(schema.interviewTurns).set({ costUsd: addUsd(usage) ?? answered.turn.costUsd }).where(eq(schema.interviewTurns.id, answered.turn.id));
   // A bare yes backs nothing: Lookout always asks for the story, even when the model moved on (#1485).
-  if (answered && isBareYes(answered.turn.answer ?? "") && followUpsLeft > 0 && out.next.type !== "follow_up") out.next = { type: "follow_up", topic: answered.root.topic, question: STORY_FOLLOW_UP, why: "", closest: "" };
+  // Only once per topic, so the same line never comes twice in a row.
+  if (answered && !answered.turn.parentId && isBareYes(answered.turn.answer ?? "") && followUpsLeft > 0 && out.next.type !== "follow_up") out.next = { type: "follow_up", topic: answered.root.topic, question: STORY_FOLLOW_UP, why: "", closest: "" };
   const n = out.next;
   if (n.type === "done" || !n.question.trim()) return { note: DONE_NOTE };
   const follow = n.type === "follow_up" && answered;
