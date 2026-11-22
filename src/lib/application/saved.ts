@@ -11,8 +11,8 @@ import { sameOption } from "./fillPlan";
 const COMMON =
   /authori[sz]ed to work|work authori[sz]ation|legally (authorized|eligible)|sponsor|\bvisa\b|\bzip\b|postal|state of residence|^state$|\bcity\b|address|phone|mobile|country|relocat|notice period|start date|earliest.*start|when can you start|previously (worked|employed)|ever (been )?employed by|criminal|background check|\bdrug|18 years|\bage of\b|\b(over|at least) 18\b|\b18 (or|and) (older|over|above)\b|\b18\+|security clearance|how did you hear|referr|pronoun|preferred (first )?name/i;
 // Never kept: salary and essays change per role; commute and office questions depend on where each job is.
-// "years of" is experience, not "18 years of age" (#1059).
-const NEVER = /salary|compensation|pay|expected|why|describe|tell us|cover letter|portfolio|years of(?! age)|commut|in.?office|hybrid|remote|location (listed|of the)|this (role|position|location)/i;
+// "years of" is experience, not "18 years of age" (#1059). "Expected" is the pay ask, not an expected start or notice period (#1595).
+const NEVER = /salary|compensation|pay|expected(?!\s+(start|notice|availability))|why|describe|tell us|cover letter|portfolio|years of(?! age)|commut|in.?office|hybrid|remote|location (listed|of the)|this (role|position|location)/i;
 // Voluntary self-identification is never kept or shown to a model, even when a form asks it as a plain question (#1059).
 const EEO = /ethnic|\brace\b|racial|hispanic|latin[oax]|gender|\bsex\b|sexual orientation|transgender|veteran|disabilit|self[- ]identif/i;
 
