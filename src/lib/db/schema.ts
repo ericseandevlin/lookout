@@ -36,8 +36,10 @@ export const users = pgTable(
     lastActiveAt: timestamp("last_active_at", { withTimezone: true }),
     /** When the 12-month inactivity email went out (#26). Deleting the account after that is by hand. */
     inactiveWarnedAt: timestamp("inactive_warned_at", { withTimezone: true }),
+    /** Their personal referral link's code (#527), made the first time Settings shows it. See lib/referral.ts. */
+    referralCode: text("referral_code"),
   },
-  (t) => [uniqueIndex("users_email_idx").on(sql`lower(${t.email})`)],
+  (t) => [uniqueIndex("users_email_idx").on(sql`lower(${t.email})`), uniqueIndex("users_referral_code_idx").on(t.referralCode)],
 );
 
 export const loginTokens = pgTable("login_tokens", {
@@ -116,6 +118,8 @@ export const settings = pgTable("settings", {
   setupMode: text("setup_mode").$type<SetupMode>().notNull().default("Until complete"),
   newDays: integer("new_days").notNull().default(7),
   railClosed: boolean("rail_closed").notNull().default(false),
+  /** The person closed the interview banner on the Auto-apply page (#1449). */
+  interviewBannerClosed: boolean("interview_banner_closed").notNull().default(false),
   /** Auto-apply beta: off by default. Threshold = lowest match score queued automatically; cap = per day. */
   autoApply: jsonb("auto_apply").$type<AutoApplySettings>().notNull().default({ enabled: false, threshold: 5, dailyCap: 3 }),
 });
@@ -150,6 +154,8 @@ export const profiles = pgTable("profiles", {
   masterResume: jsonb("master_resume").$type<MasterResume>(),
   /** Current yearly pay (#109), AES-GCM encrypted. Only for the board's range comparison: never sent to a model, never exported. */
   currentComp: text("current_comp"),
+  /** When the setup answers were first copied in as interview facts (#1449), so a deleted one isn't copied back. */
+  factsImportedAt: timestamp("facts_imported_at", { withTimezone: true }),
 });
 
 export type SavedAnswer = { key: string; question: string; answer: string; updatedAt: string };
@@ -260,6 +266,8 @@ export const userOpportunities = pgTable(
     pinned: boolean("pinned").notNull().default(false),
     archived: boolean("archived").notNull().default(false),
     notes: text("notes").notNull().default(""),
+    /** The stage it was at when the link check closed it; a repost brings back only one they hadn't applied to (#922). */
+    closedFrom: text("closed_from"),
     /** "Not a fit" from the user, fed back into later searches. */
     feedback: jsonb("feedback").$type<{ reason: string; at: string }>(),
     seenAt: timestamp("seen_at", { withTimezone: true }),
@@ -271,7 +279,8 @@ export const userOpportunities = pgTable(
 
 export type RunProgress = { pct: number; step: string; log: { at: string; text: string }[] };
 /** What happened to the postings a search read. Floor and location only mark a find down; the rest keep it off the board. */
-export type RunTally = { postings: number; notPostings: number; known: number; dealbreaker: number; belowFloor: number; offLocation: number; added: number; closed?: number };
+/** unscored: pages read but never scored, from a failed scoring batch or one the model skipped (#1456). */
+export type RunTally = { postings: number; notPostings: number; known: number; dealbreaker: number; belowFloor: number; offLocation: number; added: number; closed?: number; unscored?: number };
 export type RunTip = { text: string; href?: string; label?: string };
 /** The after-search report: the funnel, the queries used, and what to change. */
 export type RunReport = { queries: string[]; results: number; picked: number; read: number; tally: RunTally; tips: RunTip[] };
@@ -329,6 +338,12 @@ export const accessRequests = pgTable("access_requests", {
     kind: text("kind").notNull().default("job"),
     /** Where they came from (#527): the landing link's ?ref= or ?utm_source=, kept from their first request. */
     channel: text("channel"),
+    /** Who referred them (#527), when they came through someone's personal link; their channel is then "referral". */
+    referredBy: uuid("referred_by").references(() => users.id, { onDelete: "set null" }),
+    /** In their own words, what they'd want it to search for (#9). Free text, optional. */
+    searchFor: text("search_for"),
+    /** When they clicked the confirm link in the waitlist email (#9, double opt-in). Null until then. */
+    confirmedAt: timestamp("confirmed_at", { withTimezone: true }),
   status: text("status").$type<"pending" | "approved" | "declined">().notNull().default("pending"),
   createdAt: createdAt(),
   decidedAt: timestamp("decided_at", { withTimezone: true }),
@@ -414,6 +429,8 @@ export type ApplicationReport = {
   recruiter?: Record<string, import("@/lib/application/recruiter").RecruiterAnalysis>;
   /** The strategy the current cover letter was written with (#738). Older letters have none. */
   letterStrategy?: import("@/lib/application/letterStrategy").LetterStrategy;
+  /** Each cover letter's letters by strategy, by item id (#1484). Server only; never sent to the page. */
+  letters?: Record<string, import("@/lib/application/letterStrategy").LetterSet>;
 };
 
 export const APPLICATION_ITEM_KINDS = ["resume", "cover_letter", "answer", "portfolio", "outreach", "field", "eeo"] as const;
@@ -678,4 +695,70 @@ export const serverErrors = pgTable(
     at: timestamp("at", { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [index("server_errors_at_idx").on(t.at)],
+);
+
+// --- Interview (#1449) ------------------------------------------------------------
+
+/** Where a fact came from: the resume, an interview answer, or one of the five setup questions. */
+export type FactSource = "resume" | "interview" | "setup";
+/** What a fact is, for the filters on What Lookout knows. "pay" is always private and never reaches a model. */
+export type FactKind = "result" | "skill" | "project" | "background" | "next_role" | "dealbreaker" | "pay";
+
+/**
+ * What Lookout knows about a person (#1449), one fact per row, in their words. Shareable facts may go into resumes,
+ * letters and application answers; private ones never reach a drafting step. Deleted with the account.
+ */
+export const profileFacts = pgTable(
+  "profile_facts",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    text: text("text").notNull(),
+    kind: text("kind").$type<FactKind>().notNull(),
+    source: text("source").$type<FactSource>().notNull(),
+    /** The person's own words the fact came from, shown behind the quote link. */
+    quote: text("quote").notNull().default(""),
+    /** The interview turn it came from, for the quote link; null for resume and setup facts. */
+    turnId: uuid("turn_id").references(() => interviewTurns.id, { onDelete: "set null" }),
+    /** Setup question key ("q1", "comp"...) for setup facts, so an edited answer replaces its fact. */
+    setupKey: text("setup_key"),
+    shareable: boolean("shareable").notNull().default(true),
+    /** Why Lookout kept it private by itself ("a complaint about a person"); null when the person chose. */
+    lockReason: text("lock_reason"),
+    createdAt: createdAt(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index("profile_facts_user_idx").on(t.userId, t.createdAt), index("profile_facts_turn_idx").on(t.turnId)],
+);
+
+export type TurnOutcome = "pending" | "answered" | "skipped" | "not_applicable";
+
+/**
+ * One interview question and what happened to it (#1449). A topic that was skipped or doesn't apply is never asked
+ * again. Follow-ups point at the turn that opened the topic.
+ */
+export const interviewTurns = pgTable(
+  "interview_turns",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    /** Short, normalized name of what the question is about ("food and beverage programs"). */
+    topic: text("topic").notNull(),
+    question: text("question").notNull(),
+    /** "Why this question?", one line. */
+    why: text("why").notNull().default(""),
+    /** One of the five setup questions ("q1", "comp", "where", "q4", "q5"), or null for a gap question. */
+    setupKey: text("setup_key"),
+    parentId: uuid("parent_id"),
+    outcome: text("outcome").$type<TurnOutcome>().notNull().default("pending"),
+    answer: text("answer"),
+    costUsd: numeric("cost_usd", { precision: 10, scale: 4 }).notNull().default("0"),
+    createdAt: createdAt(),
+    answeredAt: timestamp("answered_at", { withTimezone: true }),
+  },
+  (t) => [index("interview_turns_user_idx").on(t.userId, t.createdAt)],
 );

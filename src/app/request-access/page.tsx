@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { getSessionUser } from "@/lib/auth/session";
 import { Login } from "@/components/Login";
 import { env } from "@/lib/env";
+import { featureOn } from "@/lib/features";
 import { getAccessConfig } from "@/lib/config";
 import { channelOf } from "@/lib/metrics";
 import { turnstileSiteKey } from "@/lib/turnstile";
@@ -17,7 +18,7 @@ export default async function RequestAccessPage({ searchParams }: { searchParams
   const inviteOnly = signupMode === "invite";
   return (
     <main>
-      <Login start={inviteOnly ? "request" : "signin"} emailEnabled={!!env.smtpUrl || env.logEmails} inviteOnly={inviteOnly} turnstileSiteKey={turnstileSiteKey()} channel={channelOf(ref ?? utm_source)} />
+      <Login start={inviteOnly ? "request" : "signin"} emailEnabled={!!env.smtpUrl || env.logEmails} inviteOnly={inviteOnly} turnstileSiteKey={turnstileSiteKey()} channel={channelOf(ref ?? utm_source)} waitlist={featureOn("WAITLIST")} />
     </main>
   );
 }

@@ -71,6 +71,15 @@ describe("Experience shape in code (#137)", () => {
     expect(s.fixed.join(" ")).toContain("titles at Acme under one heading");
   });
 
+  it("keeps a title with a comma whole in the agency wording (#1367)", () => {
+    expect(agencyWording("Director, UX, Acme (via Photon)")).toBe("Director, UX (contract via Photon), Acme");
+    expect(agencyWording("Director, UX, Photon (client: Acme)")).toBe("Director, UX (contract via Photon), Acme");
+    expect(agencyWording("Designer, Globex, Inc. (via Photon)")).toBe("Designer (contract via Photon), Globex, Inc.");
+    expect(agencyWording("Designer (via Photon)")).toBe("Designer (via Photon)");
+    const md = `# A\n\n## Experience\n### Director, UX, Acme (via Photon) | NYC | 2019 – Present\n- Led the design system.\n`;
+    expect(parseDraft(shapeResume(md).md).find((b) => b.t === "role")?.text).toBe("Director, UX (contract via Photon), Acme | NYC");
+  });
+
   it("leaves a company note that starts like a keyword alone (#1152)", () => {
     for (const line of ["Product Designer, Meta (formerly Facebook)", "UX Lead, Acme (Fortune 500 retailer)", "Engineer, Initech (Atlanta office)", "Designer, Globex (Client Services)"])
       expect(agencyWording(line)).toBe(line);

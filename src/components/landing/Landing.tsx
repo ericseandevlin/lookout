@@ -1,28 +1,22 @@
 import Image from "next/image";
 import Link from "next/link";
-import { LegalLinks } from "@/components/LegalLinks";
+import { BRAND } from "@/lib/brand";
 import { Clip, FiveQuestions, Playable, ProductVideo } from "./Motion";
+import { joinHref, SiteFooter, SiteHeader } from "./Site";
 import s from "./landing.module.css";
 
-import { font } from "@/lib/tokens";
 /**
  * The one-page site at / (#600). Sign-in and request access live on their own pages (/signin, /request-access).
  * Every screen and clip is the real app on a demo account ("Maya Ortiz", made-up companies): no real user data.
  */
-export function Landing({ inviteOnly, channel }: { inviteOnly: boolean; channel: string | null }) {
-  const cta = inviteOnly ? "Request access" : "Get started";
-  const join = channel ? `/request-access?ref=${encodeURIComponent(channel)}` : "/request-access";
+export function Landing({ inviteOnly, channel, pages = false }: { inviteOnly: boolean; channel: string | null; pages?: boolean }) {
+  // pages: FEATURE_WAITLIST (#9) links the Jobs and "What it finds" pages and calls the list a waitlist.
+  const cta = inviteOnly ? (pages ? "Join the waitlist" : "Request access") : "Get started";
+  const join = joinHref(channel);
   return (
     <div className={s.page}>
       <div className={s.wrap}>
-        <header className={s.nav}>
-          <Link href="/" className="wordmark" style={{ fontSize: font["3xl"], color: "#1D1A0F", textDecoration: "none" }}>Lookout</Link>
-          <nav className={s.navLinks} aria-label="Site">
-            <a href="#how" className={s.hideSm}>How it works</a>
-            <Link href="/signin">Sign in</Link>
-            <Link href={join} className={s.navCta}>{cta}</Link>
-          </nav>
-        </header>
+        <SiteHeader inviteOnly={inviteOnly} channel={channel} pages={pages} />
 
         <main>
           <section className={s.hero}>
@@ -30,7 +24,7 @@ export function Landing({ inviteOnly, channel }: { inviteOnly: boolean; channel:
               <div className={s.eyebrow}>In testing · {inviteOnly ? "invite only" : "free"}</div>
               <h1 className={s.h1}>Stop refreshing job boards.</h1>
               <p className={s.lede}>
-                Answer five questions. Twice a week Lookout goes looking, reads every posting, and puts the ones that fit on your board, each with a
+                Answer five questions. Every week {BRAND.name} goes looking, reads every posting, and puts the ones that fit on your board, each with a
                 score and a plain reason why.
               </p>
               <div className={s.ctas}>
@@ -63,7 +57,7 @@ export function Landing({ inviteOnly, channel }: { inviteOnly: boolean; channel:
                 if you want. That&apos;s the setup.
               </Step>
               <Step n={2} title="It goes looking" media={<Clip src="/landing/how-looking.mp4" poster="/landing/how-looking.jpg" label="The board filling with new finds, best match first." />}>
-                Job boards and company career pages, twice a week. It reads the full posting, not the title, and tells you what it looked at and what it
+                Job boards and company career pages, every week. It reads the full posting, not the title, and tells you what it looked at and what it
                 threw out.
               </Step>
               <Step n={3} title="You decide" media={<Clip src="/landing/how-decide.mp4" poster="/landing/how-decide.jpg" label="Turning on the pay filter, archiving two low matches and pinning a strong one." />}>
@@ -84,7 +78,7 @@ export function Landing({ inviteOnly, channel }: { inviteOnly: boolean; channel:
                 <ul className={s.list}>
                   <li>Mark a find &ldquo;not a fit&rdquo; and say why. The next search knows.</li>
                   <li>Notes you leave on a find become corrections to how it scores.</li>
-                  <li>See exactly what Lookout thinks you want, and edit it.</li>
+                  <li>See exactly what {BRAND.name} thinks you want, and edit it.</li>
                 </ul>
               </div>
             </div>
@@ -96,9 +90,9 @@ export function Landing({ inviteOnly, channel }: { inviteOnly: boolean; channel:
                 <div className={s.eyebrow}>Applying <span className={s.beta}>Beta</span></div>
                 <h2 className={s.h2}>Drafted for you. Sent by you.</h2>
                 <ul className={s.list}>
-                  <li>For the roles you want, Lookout drafts the application from your resume and the posting.</li>
+                  <li>For the roles you want, {BRAND.name} drafts the application from your resume and the posting.</li>
                   <li>A recruiter&apos;s read flags the gaps before a recruiter does.</li>
-                  <li>You review every line and press Submit. Nothing goes out on its own.</li>
+                  <li>You review every line. Nothing goes out until you approve it.</li>
                 </ul>
               </div>
               <Playable className={s.shot}>
@@ -114,21 +108,18 @@ export function Landing({ inviteOnly, channel }: { inviteOnly: boolean; channel:
               <div className={s.trustItem}><b>No passwords</b>Sign in with a one-time link to your email.</div>
               <div className={s.trustItem}><b>Not for sale</b>No ads, no tracking cookies, and your data is never sold.</div>
               <div className={s.trustItem}><b>Leave any time</b>Export your board, or delete everything from Settings.</div>
-              <div className={s.trustItem}><b>Open source</b>Read every line on <a href="https://github.com/ericseandevlin/lookout">GitHub</a>.</div>
+              <div className={s.trustItem}><b>Open source</b>Read every line on <a href={BRAND.repo}>GitHub</a>.</div>
             </div>
           </section>
 
           <section className={s.final}>
             <h2 className={s.h2} style={{ maxWidth: "12em" }}>Let&apos;s find it.</h2>
-            <p className={s.sub}>Free while Lookout is in testing.</p>
+            <p className={s.sub}>Free while {BRAND.name} is in testing.</p>
             <Link href={join} className={s.finalBtn}>{cta}</Link>
           </section>
         </main>
 
-        <footer className={s.foot}>
-          <span>Lookout is built by <a href="https://ericdevlin.co">Eric Devlin</a>.</span>
-          <LegalLinks />
-        </footer>
+        <SiteFooter pages={pages} />
       </div>
     </div>
   );

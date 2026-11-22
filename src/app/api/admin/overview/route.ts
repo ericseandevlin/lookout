@@ -2,6 +2,7 @@ import { desc, eq, gte, isNull, sql } from "drizzle-orm";
 import { adminRoute, json } from "@/lib/api";
 import { db, schema } from "@/lib/db";
 import { env } from "@/lib/env";
+import { featureOn } from "@/lib/features";
 import { isAdmin } from "@/lib/users";
 import { NEXT_MOVES } from "@/lib/onboarding";
 
@@ -75,7 +76,14 @@ export const GET = adminRoute(async () => {
 
   return json({
     inbox,
-    requests: requests.map((r) => ({ email: r.email, nextMove: NEXT_MOVES.find((m) => m.key === r.nextMove)?.label ?? null, createdAt: r.createdAt })),
+    requests: requests.map((r) => ({
+      email: r.email,
+      nextMove: NEXT_MOVES.find((m) => m.key === r.nextMove)?.label ?? null,
+      createdAt: r.createdAt,
+      searchFor: r.searchFor,
+      // Double opt-in (#9): null when it's off, so the list doesn't call every older request unconfirmed.
+      confirmed: r.confirmedAt ? true : featureOn("WAITLIST") ? false : null,
+    })),
     totals: { users: users.length, usdDay: Number(d.usd), usdWeek: Number(w.usd), usdMonth: Number(m.usd) },
     emailEnabled: !!env.smtpUrl,
     users: users.map(({ isAdminFlag, ...u }) => ({ ...u, isAdmin: isAdmin({ isAdmin: isAdminFlag, email: u.email }), usd30: Number(u.usd30) })),

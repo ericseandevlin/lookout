@@ -3,7 +3,7 @@ import type { StoryTheme } from "./stories";
 
 /**
  * Cover letter strategies (#738): three ways to write a short letter. Lookout suggests one for the
- * role and the person can switch, which redrafts the letter with that strategy.
+ * role and writes all three once (#1484), so a switch shows the stored letter with no model call.
  */
 
 export const LETTER_STRATEGIES = ["proof", "match", "why"] as const;
@@ -33,10 +33,10 @@ const SENIOR = /\b(senior|sr\.?|staff|principal|lead|head|director|vp|vice presi
 const THEME_WORDS: Partial<Record<StoryTheme, RegExp>> = {
   health: /\b(health|healthcare|patients?|care|clinical|medical|wellness|hospitals?)\b/gi,
   education: /\b(education|students?|learners?|learning|teachers?|schools?)\b/gi,
-  finance: /\b(financ\w*|banking|payments?|money|savings|invest\w*)\b/gi,
+  finance: /\b(financ\w*|banking|payments?|money|savings|invest(?:ing|ments?|ors?)?)\b/gi,
   accessibility: /\b(accessib\w*|disabilit\w*|assistive|inclusive)\b/gi,
   entertainment: /\b(entertainment|games?|gaming|music|film|streaming|media)\b/gi,
-  family: /\b(famil\w*|parents?|children|kids|caregiv\w*)\b/gi,
+  family: /\b(famil(?:y|ies)|parents?|children|kids|caregiv\w*)\b/gi,
   community: /\b(communit\w*|nonprofit|civic|neighbou?rhoods?|volunteer\w*)\b/gi,
 };
 
@@ -51,6 +51,10 @@ const NOT_THEME = [
   /\blearning\s+(?:budgets?|stipends?|allowances?)\b/gi,
   /\bcontinuous learning\b/gi,
   /\bsocial media\b/gi,
+  // "Familiarity with", "investigate", "streaming APIs" and "media queries" are tech words (#1496).
+  /\bmedia\s+quer(?:y|ies)\b/gi,
+  /\bstreaming\s+(?:data|pipelines?|apis?|analytics|systems?|jobs?|ingestion)\b/gi,
+  /\b(?:kafka|event|data|log|real-?time)\s+streaming\b/gi,
   /\b(?:paid\s+)?(?:family|parental)\s+(?:leave|planning|medical leave)\b/gi,
   /\bfamily[- ]friendly\b/gi,
   /\binvest(?:s|ing|ed)?\s+in\s+(?:our|its|your|you|their|the growth)\b/gi,
@@ -80,3 +84,27 @@ export function suggestStrategy(posting: { title: string; text: string }, storie
 }
 
 export const isStrategy = (s: unknown): s is LetterStrategy => typeof s === "string" && (LETTER_STRATEGIES as readonly string[]).includes(s);
+
+/** One strategy's letter, kept so a switch needs no model call (#1484). */
+export type LetterDraft = { content: string; note: string; sources: string[]; question: string | null; author: "ai" | "user" };
+
+/**
+ * A cover letter item's three letters (#1484). `current` is the strategy its latest version was written with.
+ * `gen` names one round of drafting; background work from an older round never writes over a newer one.
+ * `writing` is set while the other strategies are still being written.
+ */
+export type LetterSet = { current: LetterStrategy; gen: string; drafts: Partial<Record<LetterStrategy, LetterDraft>>; writing?: string };
+
+/** Background drafts older than this count as failed, so the review page writes them again. */
+export const WRITING_MS = 5 * 60_000;
+
+export const isWriting = (set: LetterSet | undefined, now = Date.now()) => !!set?.writing && now - Date.parse(set.writing) < WRITING_MS;
+
+/** What the strategy buttons need for one letter: the current pick, which are stored, and whether more are on the way. */
+export function letterButtons(set: LetterSet | undefined, fallback: LetterStrategy | null, now = Date.now()) {
+  return {
+    strategy: set?.current ?? fallback,
+    ready: LETTER_STRATEGIES.filter((s) => !!set?.drafts[s]),
+    writing: isWriting(set, now),
+  };
+}

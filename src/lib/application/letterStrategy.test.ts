@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { PersonalStory } from "@/lib/db/schema";
-import { fittingStory, isStrategy, suggestStrategy } from "./letterStrategy";
+import { fittingStory, isStrategy, letterButtons, suggestStrategy, WRITING_MS, type LetterSet } from "./letterStrategy";
 import { answersPrompt, type DraftInputs } from "./draft";
 
 const story = (theme: PersonalStory["theme"], text = "My mother's care team changed how I think about software."): PersonalStory => ({ id: "s1", theme, story: text, updatedAt: "2026-11-01" });
@@ -53,5 +53,38 @@ describe("cover letter strategies (#738)", () => {
     const inp: DraftInputs = { name: "A", email: "a@x.co", linkedinUrl: null, links: [], brief: "", resume: "", posting: { company: "Co", title: "Designer", text: "" }, letterStrategy: "why" };
     expect(answersPrompt(inp, [{ index: 0, kind: "cover_letter", prompt: "Cover letter", required: false }])).toContain("Cover letter strategy: why this team.");
     expect(answersPrompt(inp, [{ index: 0, kind: "answer", prompt: "Why us?", required: false }])).not.toContain("Cover letter strategy");
+  });
+});
+
+describe("tech words are not a story's theme (#1496)", () => {
+  it("does not read familiarity, investigate, streaming data or media queries as a theme", () => {
+    expect(fittingStory([story("family")], "Senior Frontend Engineer. Familiarity with design systems. Familiarity with GraphQL is a plus. Familiar with React.")).toBeNull();
+    expect(fittingStory([story("finance")], "You will investigate production incidents and lead investigations into outages.")).toBeNull();
+    expect(fittingStory([story("entertainment")], "CSS media queries. Streaming data pipelines (Kafka streaming) and streaming APIs.")).toBeNull();
+  });
+
+  it("still fits a company that works in the theme", () => {
+    expect(fittingStory([story("family")], "We help families find childcare. Parents and families use our app every day.")?.id).toBe("s1");
+    expect(fittingStory([story("finance")], "An investment platform for everyday investors. Investing made simple.")?.id).toBe("s1");
+    expect(fittingStory([story("entertainment")], "A music streaming service. Music and games for millions.")?.id).toBe("s1");
+  });
+});
+
+describe("strategy buttons (#1484)", () => {
+  const draft = { content: "Dear team.", note: "", sources: [], question: null, author: "ai" as const };
+  const now = Date.parse("2026-11-21T12:00:00Z");
+  const set = (writing?: string): LetterSet => ({ current: "proof", gen: "g1", drafts: { proof: draft }, writing });
+
+  it("shows the current pick and which strategies are stored", () => {
+    expect(letterButtons({ ...set(), drafts: { proof: draft, why: draft } }, null, now)).toEqual({ strategy: "proof", ready: ["proof", "why"], writing: false });
+  });
+
+  it("is writing until the background work finishes or runs too long", () => {
+    expect(letterButtons(set(new Date(now - 1000).toISOString()), null, now).writing).toBe(true);
+    expect(letterButtons(set(new Date(now - WRITING_MS - 1).toISOString()), null, now).writing).toBe(false);
+  });
+
+  it("falls back to the application's strategy on letters from before #1484", () => {
+    expect(letterButtons(undefined, "match", now)).toEqual({ strategy: "match", ready: [], writing: false });
   });
 });

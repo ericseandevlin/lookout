@@ -7,7 +7,7 @@ import type { SearchProfile } from "@/lib/db/schema";
 import { kinds } from "@/lib/kinds";
 import { AiConfigError, completeJSON, type Usage } from "@/lib/ai/llm";
 import { getAiConfig } from "@/lib/config";
-import { CLOSED_NOTE_SQL, ownNotes } from "./linkState";
+import { LOOKOUT_NOTES_SQL, ownNotes } from "./linkState";
 
 /**
  * The search profile is what every search actually uses: one compact picture of
@@ -70,12 +70,12 @@ export async function loadRawInputs(searchId: string): Promise<RawInputs & { sto
     .from(schema.userOpportunities)
     .innerJoin(schema.opportunities, eq(schema.opportunities.id, schema.userOpportunities.opportunityId))
     // Notes that are only Lookout's closed line are dropped here, before the limit: every find the link check closes gets
-    // one, and 60 of them pushed the person's own older corrections out of the window (#1050).
-    .where(and(eq(schema.userOpportunities.searchId, searchId), sql`regexp_replace(${schema.userOpportunities.notes}, ${CLOSED_NOTE_SQL}, '', 'gn') ~ '\\S'`))
+    // one, and 60 of them pushed the person's own older corrections out of the window (#1050). The reposted line too (#1362).
+    .where(and(eq(schema.userOpportunities.searchId, searchId), sql`regexp_replace(${schema.userOpportunities.notes}, ${LOOKOUT_NOTES_SQL}, '', 'gn') ~ '\\S'`))
     .orderBy(desc(schema.userOpportunities.addedAt))
     .limit(60);
   // Each note travels with the bullets Lookout showed on that find, so the model can tell when a note is correcting one.
-  // Only what they wrote: Lookout's own closed line would rebuild the profile and crowd out real corrections (#792).
+  // Only what they wrote: Lookout's own closed or reposted line would rebuild the profile and crowd out real corrections (#792).
   const notes = noted
     .map((n) => ({ ...n, own: ownNotes(n.notes) }))
     .filter((n) => n.own)

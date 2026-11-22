@@ -3,7 +3,7 @@ import { eq } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/pglite";
 import { migrate } from "drizzle-orm/pglite/migrator";
 import path from "node:path";
-import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
+import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import * as schema from "@/lib/db/schema";
 import type { Usage } from "@/lib/ai/llm";
 
@@ -42,10 +42,12 @@ const findOutreach = vi.fn(async () => [] as unknown[]);
 vi.mock("./outreach", () => ({ findOutreach }));
 
 const { scanPosting, processApplication, sweepApplications, resumeFor, redraftLetter, redraftResume, LOST_SUBMIT } = await import("./run");
-const { keywordState } = await import("./review");
+const { keywordState, draftFacts } = await import("./review");
+const { deleteFact, updateFact } = await import("@/lib/interview/facts");
 const { finalTerms } = await import("./evidence");
 const { answerKey } = await import("./saved");
 const { emptyUsage } = await import("@/lib/ai/llm");
+const { lettersWritten, fillLetters } = await import("./run");
 
 const GH_URL = "https://job-boards.greenhouse.io/engines/jobs/123";
 const GH_API = "https://boards-api.greenhouse.io/v1/boards/engines/jobs/123?questions=true";
@@ -90,6 +92,10 @@ beforeAll(async () => {
 afterAll(async () => {
   await pg.close();
 });
+// Background letter strategies (#1484) finish inside the test that started them.
+afterEach(async () => {
+  await lettersWritten();
+});
 beforeEach(async () => {
   await db.delete(schema.users);
   await db.delete(schema.opportunities);
@@ -125,6 +131,23 @@ describe("scanPosting (#378)", () => {
     pages.delete(GH_API);
     fetchPage.mockRejectedValueOnce(new Error("Page answered 404"));
     await expect(scanPosting(GH_URL, emptyUsage())).rejects.toThrow("This posting is closed");
+  });
+
+  it("calls a posting closed when the board API answers 410 (#1464)", async () => {
+    fetchPage.mockRejectedValueOnce(new Error("The page answered 410"));
+    await expect(scanPosting(GH_URL, emptyUsage())).rejects.toThrow("This posting is closed");
+    expect(completeJSON).not.toHaveBeenCalled();
+  });
+
+  it.each([404, 410])("calls a posting closed when its page answers %i, not the raw status (#1464)", async (status) => {
+    fetchPage.mockRejectedValueOnce(new Error(`The page answered ${status}`));
+    await expect(scanPosting("https://jobs.lever.co/engines/abc-123", emptyUsage())).rejects.toThrow("This posting is closed: its page is gone.");
+    expect(completeJSON).not.toHaveBeenCalled();
+  });
+
+  it("keeps other page errors as they are (#1464)", async () => {
+    fetchPage.mockRejectedValueOnce(new Error("The page answered 503"));
+    await expect(scanPosting("https://jobs.lever.co/engines/abc-123", emptyUsage())).rejects.toThrow("The page answered 503");
   });
 
   it("falls back to reading the page with the model when the form API fails", async () => {
@@ -195,8 +218,8 @@ describe("processApplication (#378)", () => {
     expect(done.report).toMatchObject({ source: "form", letterAdded: true, applyUrl: GH_URL, scannedAt: expect.any(String), draftedAt: expect.any(String) });
     expect(done.report.error).toBeUndefined();
     expect(done.report.keywordPlan).toBeDefined();
-    // keywords + answers, a cent each.
-    expect(done.report.usd).toBeCloseTo(0.02);
+    // keywords + answers + the two other letter strategies (#1484), a cent each.
+    expect(done.report.usd).toBeCloseTo(0.04);
 
     const items = await itemsOf(app.id);
     const by = (p: RegExp) => items.find((i) => p.test(i.prompt))!;
@@ -255,7 +278,8 @@ describe("processApplication (#378)", () => {
     await processApplication(app.id);
     const failed = await getApp(app.id);
     expect(failed).toMatchObject({ status: "failed", report: { error: "Model timed out", source: "form" } });
-    expect(failed.report.usd).toBeCloseTo(0.02);
+    // The two other letter strategies ran beside the answers and are paid for too (#1484).
+    expect(failed.report.usd).toBeCloseTo(0.04);
   });
 
   it("still drafts when people research is down", async () => {
@@ -322,7 +346,8 @@ describe("redrafts (#378)", () => {
     expect(after.approvedVersionId).toBeNull();
     const a = await getApp(app.id);
     expect(a.status).toBe("needs_review");
-    expect(a.report.usd).toBeCloseTo(before + 0.01);
+    // All three strategies at once (#1484).
+    expect(a.report.usd).toBeCloseTo(before + 0.03);
   });
 
   it("redrafts the cover letter that was pressed when the form has two (#870)", async () => {
@@ -370,13 +395,174 @@ describe("redrafts (#378)", () => {
     expect(after.approvedVersionId).toBe(letter.versions[0].id);
     const a = await getApp(app.id);
     expect(a.status).toBe("submitting");
-    expect(a.report.usd).toBeCloseTo(before + 0.01);
+    expect(a.report.usd).toBeCloseTo(before + 0.03);
   });
 
   it("refuses a redraft on an application with no such item", async () => {
     const { app } = await seedApp({ status: "failed" });
     await expect(redraftLetter(app.id)).rejects.toThrow("No cover letter on this application");
     await expect(redraftResume(app.id)).rejects.toThrow("No resume on this application");
+  });
+});
+
+describe("cover letter strategies written once (#1484)", () => {
+  // Each strategy writes its own letter, so a test can tell which one is on screen.
+  const byStrategy = (c: { user: string }) => {
+    const s = /Cover letter strategy: (lead with proof|match the asks|why this team)/.exec(c.user)?.[1] ?? "none";
+    return { items: [{ index: 0, content: `Dear team, ${s}.`, sources: ["resume"], question: "", note: "" }] };
+  };
+  const letterOf = async (id: string) => (await itemsOf(id)).find((i) => i.kind === "cover_letter")!;
+  const letterCalls = () => completeJSON.mock.calls.filter((c) => c[0].name === "apply-letter").length;
+  /** A draft from before #1484: one letter, nothing stored. */
+  async function oldDraft() {
+    replies["apply-letter"] = byStrategy;
+    const { app } = await seedApp();
+    await processApplication(app.id);
+    const r = (await getApp(app.id)).report;
+    await db.update(schema.applications).set({ report: { ...r, letters: undefined } }).where(eq(schema.applications.id, app.id));
+    completeJSON.mockClear();
+    return { app, letter: await letterOf(app.id) };
+  }
+
+  it("writes all three strategies before the draft is ready for review", async () => {
+    replies["apply-letter"] = byStrategy;
+    const { app } = await seedApp();
+    await processApplication(app.id);
+    const drafted = await getApp(app.id);
+    expect(drafted.status).toBe("needs_review");
+    const letter = await letterOf(app.id);
+    expect(letter.versions).toHaveLength(1);
+    const set = drafted.report.letters![letter.id];
+    // "Lead" in the title: Lookout suggests leading with proof.
+    expect(set.current).toBe("proof");
+    expect(set.writing).toBeUndefined();
+    expect(set.drafts.proof?.content).toBe("I have built design systems for 40 teams.");
+    expect(set.drafts.match?.content).toBe("Dear team, match the asks.");
+    expect(set.drafts.why?.content).toBe("Dear team, why this team.");
+    expect(letterCalls()).toBe(2);
+  });
+
+  it("switches to a stored strategy with no model call and clears the approval", async () => {
+    replies["apply-letter"] = byStrategy;
+    const { app } = await seedApp();
+    await processApplication(app.id);
+    const letter = await letterOf(app.id);
+    await db.update(schema.applicationItems).set({ approvedVersionId: letter.versions[0].id }).where(eq(schema.applicationItems.id, letter.id));
+    await db.update(schema.applications).set({ status: "approved" }).where(eq(schema.applications.id, app.id));
+    completeJSON.mockClear();
+    assertBudget.mockClear();
+
+    await redraftLetter(app.id, "match", letter.id);
+
+    expect(completeJSON).not.toHaveBeenCalled();
+    expect(assertBudget).not.toHaveBeenCalled();
+    const after = await letterOf(app.id);
+    expect(after.versions.map((v) => v.content)).toEqual(["I have built design systems for 40 teams.", "Dear team, match the asks."]);
+    expect(after.approvedVersionId).toBeNull();
+    const a = await getApp(app.id);
+    expect(a.status).toBe("needs_review");
+    expect(a.report.letters![letter.id].current).toBe("match");
+    expect(a.report.letterStrategy).toBe("match");
+  });
+
+  it("keeps the person's edits with the strategy they made them in", async () => {
+    replies["apply-letter"] = byStrategy;
+    const { app } = await seedApp();
+    await processApplication(app.id);
+    const letter = await letterOf(app.id);
+    await db.insert(schema.itemVersions).values({ itemId: letter.id, version: 2, content: "My own proof letter.", note: "Edited by you.", author: "user", sources: ["you"] });
+    completeJSON.mockClear();
+
+    await redraftLetter(app.id, "why", letter.id);
+    await redraftLetter(app.id, "proof", letter.id);
+
+    const after = await letterOf(app.id);
+    expect(after.versions.map((v) => v.content)).toEqual(["I have built design systems for 40 teams.", "My own proof letter.", "Dear team, why this team.", "My own proof letter."]);
+    expect(after.versions[3].author).toBe("user");
+    expect(completeJSON).not.toHaveBeenCalled();
+  });
+
+  it("refuses a pick that isn't stored, with no model call in the request, and writes it in the background", async () => {
+    const { app, letter } = await oldDraft();
+
+    await expect(redraftLetter(app.id, "why", letter.id)).rejects.toMatchObject({ status: 409 });
+    expect(letterCalls()).toBe(0);
+    expect((await getApp(app.id)).report.letters![letter.id].writing).toBeTruthy();
+
+    await lettersWritten();
+    const set = (await getApp(app.id)).report.letters![letter.id];
+    expect(set.writing).toBeUndefined();
+    expect(Object.keys(set.drafts).sort()).toEqual(["match", "proof", "why"]);
+    expect((await letterOf(app.id)).versions).toHaveLength(1);
+  });
+
+  it("fills a draft from before #1484 once, keeping the letter on screen under its strategy", async () => {
+    const { app, letter } = await oldDraft();
+
+    await fillLetters(app.id);
+    // The claim is saved before the page reads the draft, so it shows the other two as busy.
+    const claimed = (await getApp(app.id)).report.letters![letter.id];
+    expect(claimed).toMatchObject({ current: "proof" });
+    expect(claimed.writing).toBeTruthy();
+    expect(Object.keys(claimed.drafts)).toEqual(["proof"]);
+    // A poll while it's writing starts nothing more.
+    await fillLetters(app.id);
+    await lettersWritten();
+    await fillLetters(app.id);
+    await lettersWritten();
+
+    expect(letterCalls()).toBe(2);
+    const set = (await getApp(app.id)).report.letters![letter.id];
+    expect(set.writing).toBeUndefined();
+    expect(set.drafts.proof?.content).toBe("I have built design systems for 40 teams.");
+    expect(set.drafts.why?.content).toBe("Dear team, why this team.");
+    expect((await letterOf(app.id)).versions).toHaveLength(1);
+  });
+
+  it("fills a strategy that failed in the draft", async () => {
+    replies["apply-letter"] = (c) => {
+      if (c.user.includes("why this team")) throw new Error("model down");
+      return byStrategy(c);
+    };
+    const { app } = await seedApp();
+    await processApplication(app.id);
+    const letter = await letterOf(app.id);
+    expect(Object.keys((await getApp(app.id)).report.letters![letter.id].drafts).sort()).toEqual(["match", "proof"]);
+
+    replies["apply-letter"] = byStrategy;
+    await fillLetters(app.id);
+    await lettersWritten();
+    expect((await getApp(app.id)).report.letters![letter.id].drafts.why?.content).toBe("Dear team, why this team.");
+  });
+
+  it("refreshes all three on a plain redraft, and an older round never writes over it", async () => {
+    const { app, letter } = await oldDraft();
+    let round = "first";
+    let open!: () => void;
+    const gate = new Promise<void>((r) => (open = r));
+    replies["apply-letter"] = async (c) => {
+      const mine = round;
+      // The page's fill waits until the redraft is saved.
+      if (mine === "first") await gate;
+      const d = byStrategy(c);
+      d.items[0].content += ` (${mine})`;
+      return d;
+    };
+    await fillLetters(app.id);
+    round = "second";
+    await redraftLetter(app.id, undefined, letter.id);
+    open();
+    await lettersWritten();
+
+    const set = (await getApp(app.id)).report.letters![letter.id];
+    expect(set.current).toBe("proof");
+    expect(set.writing).toBeUndefined();
+    expect(set.drafts.proof?.content).toBe("Dear team, lead with proof. (second)");
+    expect(set.drafts.match?.content).toBe("Dear team, match the asks. (second)");
+    expect(set.drafts.why?.content).toBe("Dear team, why this team. (second)");
+    expect((await letterOf(app.id)).versions.at(-1)?.content).toBe("Dear team, lead with proof. (second)");
+    // The fill's two letters and the redraft's three, all paid for.
+    expect(letterCalls()).toBe(5);
   });
 });
 
@@ -397,6 +583,31 @@ describe("embedded Greenhouse boards and Ashby outages (#438)", () => {
     const scan = await scanPosting(PAGE, emptyUsage());
     expect(scan.applyUrl).toBe("https://job-boards.greenhouse.io/embed/job_app?for=analyticalengines&token=123");
     expect(fetchPage.mock.calls.map((c) => c[0])).toEqual([PAGE, api("analytical-engines"), api("analyticalengines")]);
+    expect(completeJSON).not.toHaveBeenCalled();
+  });
+
+  it("still tries board names from the host when the company page won't load (#1462)", async () => {
+    // PAGE is not served, so fetching it fails the way a bot wall or a timeout does.
+    pages.set(api("analyticalengines"), ghJob(FORM));
+    const scan = await scanPosting(PAGE, emptyUsage());
+    expect(scan).toMatchObject({ source: "form", applyUrl: "https://job-boards.greenhouse.io/embed/job_app?for=analyticalengines&token=123" });
+    expect(fetchPage.mock.calls.map((c) => c[0])).toEqual([PAGE, api("analytical-engines"), api("analyticalengines")]);
+    expect(completeJSON).not.toHaveBeenCalled();
+  });
+
+  it("calls the posting closed when the company page itself is gone (#1462)", async () => {
+    fetchPage.mockRejectedValueOnce(new Error("Page answered 404"));
+    await expect(scanPosting(PAGE, emptyUsage())).rejects.toThrow("This posting is closed");
+    expect(fetchPage.mock.calls.map((c) => c[0])).toEqual([PAGE]);
+  });
+
+  it("still guesses the Ashby org when the company page won't load (#1462)", async () => {
+    const id = "ec0690d5-be5e-4e8b-be78-d832f166b242";
+    const page = `https://careers.analytical-engines.com/jobs?ashby_jid=${id}`;
+    const form = { data: { jobPosting: { applicationForm: { sections: [{ title: "Apply", fieldEntries: [{ isRequired: true, field: { title: "Name", type: "String" } }] }] } } } };
+    ashby.mockResolvedValueOnce({ ok: true, json: async () => form });
+    const scan = await scanPosting(page, emptyUsage());
+    expect(scan).toMatchObject({ ats: "ashby", source: "form", applyUrl: `https://jobs.ashbyhq.com/analytical-engines/${id}/application` });
     expect(completeJSON).not.toHaveBeenCalled();
   });
 
@@ -634,5 +845,77 @@ describe("planted words, salary asks and saved answers in drafts (#569)", () => 
     expect(why.versions[0].sources).toEqual(["saved answer"]);
     const answers = completeJSON.mock.calls.find((c) => c[0].name === "apply-answers")![0];
     expect(answers.user).not.toMatch(/^\d+\. \[.*Why do you want to work here\?/m);
+  });
+});
+
+describe("interview facts in drafts (#1449)", () => {
+  const SHARED = "Ran a 12-dinner touring supper series, about 1,400 covers";
+  const PRIVATE = "My manager was skeptical of the series at first";
+  const PAY = "Pay floor $140,000; would move for $180,000.";
+  async function seedFacts(userId: string) {
+    return db
+      .insert(schema.profileFacts)
+      .values([
+        { userId, text: SHARED, kind: "project", source: "interview", quote: "I ran our touring supper series.", shareable: true },
+        { userId, text: PRIVATE, kind: "background", source: "interview", quote: "Dana, my boss, hated the idea.", shareable: false, lockReason: "a complaint" },
+        { userId, text: PAY, kind: "pay", source: "setup", shareable: false },
+      ])
+      .returning();
+  }
+  const draftPrompts = () => completeJSON.mock.calls.map((c) => c[0]).filter((c) => /^apply-/.test(c.name));
+
+  beforeEach(() => {
+    process.env.FEATURE_INTERVIEW = "on";
+  });
+  afterAll(() => {
+    delete process.env.FEATURE_INTERVIEW;
+  });
+
+  it("never sends a private fact or pay to a drafting step; shareable facts go in", async () => {
+    const { user, app } = await seedApp();
+    await seedFacts(user.id);
+    await processApplication(app.id);
+    replies["apply-letter"] = () => ({ items: [{ index: 0, content: "Dear team.", sources: ["resume"], question: "", note: "" }] });
+    await redraftLetter(app.id);
+    const prompts = draftPrompts();
+    expect(prompts.map((p) => p.name)).toEqual(expect.arrayContaining(["apply-keywords", "apply-answers", "apply-letter"]));
+    for (const p of prompts) {
+      expect(p.user).not.toContain(PRIVATE);
+      expect(p.user).not.toContain("Dana");
+      expect(p.user).not.toContain(PAY);
+    }
+    expect(prompts.find((p) => p.name === "apply-answers")!.user).toContain(SHARED);
+    // Revise and Recruiter Analysis read facts from draftFacts.
+    const { facts } = await draftFacts(user.id);
+    expect(facts).toContain(SHARED);
+    expect(facts).not.toContain(PRIVATE);
+    expect(facts).not.toContain(PAY);
+  });
+
+  it("drops a fact from every later draft once it is deleted, and once it is switched to private", async () => {
+    const { user, app } = await seedApp();
+    const [shared] = await seedFacts(user.id);
+    await processApplication(app.id);
+    expect(completeJSON.mock.calls.find((c) => c[0].name === "apply-answers")![0].user).toContain(SHARED);
+
+    const [other] = await db.insert(schema.profileFacts).values({ userId: user.id, text: "Built and led a team of 9", kind: "result", source: "resume", shareable: true }).returning();
+    await updateFact(user.id, other.id, { shareable: false });
+    await deleteFact(user.id, shared.id);
+    completeJSON.mockClear();
+    replies["apply-letter"] = () => ({ items: [{ index: 0, content: "Dear team.", sources: ["resume"], question: "", note: "" }] });
+    await redraftLetter(app.id);
+    for (const p of draftPrompts()) {
+      expect(p.user).not.toContain(SHARED);
+      expect(p.user).not.toContain("team of 9");
+    }
+    expect((await draftFacts(user.id)).facts).not.toContain(SHARED);
+  });
+
+  it("leaves drafts as they were with the feature off", async () => {
+    delete process.env.FEATURE_INTERVIEW;
+    const { user, app } = await seedApp();
+    await seedFacts(user.id);
+    await processApplication(app.id);
+    expect(completeJSON.mock.calls.find((c) => c[0].name === "apply-answers")![0].user).not.toContain(SHARED);
   });
 });

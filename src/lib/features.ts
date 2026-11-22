@@ -4,7 +4,12 @@
  * - FEATURE_EVENTS: the Events page, its API, and event searches inside scheduled runs (#7, #264, #265).
  * - FEATURE_SEARCHES: more than one search per account, the search switcher, and the kind picker at sign-up (#8).
  * - FEATURE_PREVIEW: the /next page that shows features still being built, for demos (#602). Turn it off after.
+ * - FEATURE_DEMO: the public, read-only /demo board of the made-up Maya Ortiz account, rebuilt at startup (#1317). Staging only.
+ * - FEATURE_WAITLIST: the /jobs and /what-it-finds pages, the "what would you search for" question, and double opt-in
+ *   (a confirm email) on the waitlist form (#9). Off in prod until Eric opens the waitlist.
+ * - FEATURE_INTERVIEW: the /interview page, What Lookout knows (/profile/knows), the Finds board card, and interview
+ *   facts in drafts (#1449). Staging only until Eric approves.
  */
-export type Feature = "EVENTS" | "SEARCHES" | "PREVIEW";
+export type Feature = "EVENTS" | "SEARCHES" | "PREVIEW" | "DEMO" | "WAITLIST" | "INTERVIEW";
 
 export const featureOn = (name: Feature) => process.env[`FEATURE_${name}`] === "on";

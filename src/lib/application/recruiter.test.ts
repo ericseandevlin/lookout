@@ -103,6 +103,41 @@ Design Systems Lead
     expect(bareOf("Led the twentieth-anniversary site."), "twentieth").toBe(true);
   });
 
+  it("doesn't read 1:1s or one-on-ones as a number, but keeps a real number beside them (#1445)", () => {
+    const bareOf = (line: string) =>
+      recruiterChecks("resume", resume.replace("Built the design system site used across the firm.", line)).some((x) => x.dim === "impact" && x.line === line);
+    for (const line of ["Ran weekly 1:1s and career plans for the design team.", "Led 1-on-1s with the team.", "Coached designers through one-on-one sessions.", "Held one on one coaching with designers.", "Ran 1:1 reviews."]) {
+      expect(bareOf(line), line).toBe(true);
+    }
+    for (const line of ["Ran 1:1s with 8 designers.", "Held one-on-ones with twelve reports.", "Kept a 1:10 manager ratio.", "Led one team of designers."]) {
+      expect(bareOf(line), line).toBe(false);
+    }
+  });
+
+  it("doesn't read a year or a version as a number, but keeps real scale (#1653)", () => {
+    const bareOf = (line: string) =>
+      recruiterChecks("resume", resume.replace("Built the design system site used across the firm.", line)).some((x) => x.dim === "impact" && x.line === line);
+    for (const line of [
+      "Led the 2023 rebrand across the product line.",
+      "Brought the checkout to WCAG 2.1 AA.",
+      "Migrated the app to React 18.",
+      "Built the Section 508 audit process.",
+      "Led the COVID-19 response site.",
+      "Shipped the v2.1 design tokens in 2024.",
+      "Ran the 1990s archive redesign.",
+    ])
+      expect(bareOf(line), line).toBe(true);
+    for (const line of [
+      "Rolled the rebrand out to 2,000 stores.",
+      "Served 2000 users in the pilot.",
+      "Moved 12 teams to React 18.",
+      "Lifted Android 30% retention in 2023.",
+      "Brought 40 screens to WCAG 2.1 AA.",
+      "Grew revenue to $2020 per seat.",
+    ])
+      expect(bareOf(line), line).toBe(false);
+  });
+
   it("doesn't read names like B2B or HTML5, or one-click, as a number (#1265)", () => {
     const bareOf = (line: string) =>
       recruiterChecks("resume", resume.replace("Built the design system site used across the firm.", line)).some((x) => x.dim === "impact" && x.line === line);
@@ -248,5 +283,33 @@ describe("fix now or needs a fact (#738)", () => {
   it("keeps the model's needsFact flag", () => {
     const a = finishAnalysis("v1", "Some text here.", { scores: { scan: 5, impact: 5, relevance: 5, honesty: 5, length: 5 }, verdict: "", findings: [{ dim: "impact", line: "", what: "No team size.", why: "x", fix: "Ask me for the team size.", needsFact: true }] }, []);
     expect(a.findings[0].needsFact).toBe(true);
+  });
+});
+
+describe("recruiterChecks: a greeting with no comma (#1396)", () => {
+  const whats = (text: string) => recruiterChecks("cover_letter", text).map((x) => x.what);
+  const body = "I am writing to apply for the Staff Designer role at Acme, where I can help.\n\nBest,\nEric";
+
+  it.each(["Hello! ", "Hi there! ", "Dear Ms. Lee, "])("finds the stock opening after %j", (greeting) => {
+    expect(whats(greeting + body)).toContain("The opening line is the stock one.");
+  });
+});
+
+describe("recruiterChecks: length counts words, not markdown marks (#1447)", () => {
+  // 15 words with a number, so the impact checks stay quiet.
+  const bullet = "Led the redesign of the checkout flow for 12 markets with design and engineering partners";
+  const draft = (roles: number, bullets: number) =>
+    `# Pat Lee\nDesign Director\n## Experience\n` +
+    Array.from({ length: roles }, (_, i) => `### Acme ${i} | New York, NY | 201${i % 10} – 201${(i + 1) % 10}\n` + Array.from({ length: bullets }, () => `- ${bullet}`).join("\n")).join("\n");
+  const length = (md: string) => recruiterChecks("resume", md).find((x) => x.dim === "length");
+
+  it("a resume under 900 real words isn't called too long for its bullets, bars and dashes", () => {
+    // 9 roles of 6 bullets: 878 words, and 970 tokens when every "-", "###", "|" and "–" counted.
+    expect(length(draft(9, 6))).toBeUndefined();
+  });
+
+  it("a resume over 900 real words still is, and the count is of words", () => {
+    // 10 roles of 6 bullets: 975 words.
+    expect(length(draft(10, 6))?.what).toBe("About 975 words, likely more than two pages.");
   });
 });

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { applyRules, fingerprint, legacyFingerprint, normUrl, placeId, placesDiffer } from "./rules";
+import { applyRules, bareCompany, fingerprint, legacyFingerprint, listPage, normUrl, placeId, placesDiffer, remoteFirst, suffixedFingerprint } from "./rules";
 
 const base = { score: 5, reasonsMatch: ["Director title"], reasonsGap: [], locationFit: true, dealbreaker: false, compMin: 140000, compMax: 160000 };
 
@@ -11,6 +11,12 @@ describe("applyRules", () => {
     const r = applyRules({ ...base, compMin: 90000, compMax: 95000 }, 120000)!;
     expect(r.score).toBe(3);
     expect(r.reasonsGap[0]).toMatch(/below your floor/);
+  });
+  it("treats a lone starting pay under the floor as the top of the range (#877)", () => {
+    const r = applyRules({ ...base, compMin: 150000, compMax: null }, 180000)!;
+    expect(r.score).toBe(3);
+    expect(r.reasonsGap[0]).toMatch(/below your floor/);
+    expect(applyRules({ ...base, compMin: 190000, compMax: null }, 180000)!.score).toBe(5);
   });
   it("does not penalize missing comp, only notes it", () => {
     const r = applyRules({ ...base, compMin: null, compMax: null }, 120000)!;
@@ -61,6 +67,21 @@ describe("dedupe keys", () => {
     expect(fingerprint("Acme", "Designer", "Montréal")).not.toBe(legacyFingerprint("Acme", "Designer", "Montréal"));
     expect(fingerprint("Acme", "Designer", "Montreal")).toBe(legacyFingerprint("Acme", "Designer", "Montreal"));
   });
+  it("keys a company without its legal form, so 'Acme, Inc.' and 'Acme' are one job (#1645)", () => {
+    const k = (c: string) => fingerprint(c, "Senior Product Designer", "New York, NY");
+    for (const c of ["Acme Inc.", "Acme, Inc.", "ACME INC", "Acme LLC", "Acme, L.L.C.", "Acme Ltd", "Acme Limited", "Acme Corp.", "Acme Corporation", "Acme Co.", "Acme GmbH", "Acme PLC", "Acme AG", "Acme S.A.", "Acme B.V.", "Acme Pty Ltd"]) expect(k(c)).toBe(k("Acme"));
+    expect(bareCompany("Procter & Gamble Co.")).toBe("Procter & Gamble");
+    // Not a legal form at the end, or nothing left without it.
+    expect(bareCompany("Acme Co-op")).toBe("Acme Co-op");
+    expect(bareCompany("Limited Brands")).toBe("Limited Brands");
+    expect(bareCompany("Incorporated")).toBe("Incorporated");
+    expect(bareCompany("Agco")).toBe("Agco");
+    expect(k("Acme Labs")).not.toBe(k("Acme"));
+    // The key from before #1645 keeps the legal form, and is the same as the new one for a bare name.
+    expect(suffixedFingerprint("Acme, Inc.", "Designer", "Paris")).not.toBe(fingerprint("Acme, Inc.", "Designer", "Paris"));
+    expect(suffixedFingerprint("Acme", "Designer", "Paris")).toBe(fingerprint("Acme", "Designer", "Paris"));
+    expect(legacyFingerprint("Acme, Inc.", "Designer", "Paris")).toBe(suffixedFingerprint("Acme, Inc.", "Designer", "Paris"));
+  });
   it("keeps marks in non-Latin text, so डिज़ाइनर and डिजाइन stay apart (#1269)", () => {
     expect(fingerprint("मेरा", "डिज़ाइनर", "दिल्ली")).toBe(legacyFingerprint("मेरा", "डिज़ाइनर", "दिल्ली"));
     expect(fingerprint("メルカリ", "ガイド", "東京")).not.toBe(fingerprint("メルカリ", "カイト", "東京"));
@@ -80,6 +101,12 @@ describe("dedupe keys", () => {
     expect(normUrl("https://jobs.lever.co/x/1?lever-source=LinkedIn&lever-origin=applied&ref=hn&src=feed&source=x")).toBe("jobs.lever.co/x/1");
     expect(normUrl("https://example.com/job/1?refId=a1&trackingId=b2&trk=c3")).toBe("example.com/job/1");
   });
+  it("drops Lever's array source tag, lever-source[], encoded or not (#1431)", () => {
+    expect(normUrl("https://jobs.lever.co/acme/123?lever-source%5B%5D=LinkedIn")).toBe("jobs.lever.co/acme/123");
+    expect(normUrl("https://jobs.lever.co/acme/123?lever-origin=applied&lever-source[]=Glassdoor")).toBe("jobs.lever.co/acme/123");
+    // A job ID passed as an array stays in the key.
+    expect(normUrl("https://acme.com/careers?jobId%5B%5D=9")).toBe("acme.com/careers?jobid%5b%5d=9");
+  });
   it("drops ad and email click IDs, so a known job found through an ad stays known (#1193)", () => {
     expect(normUrl("https://jobs.lever.co/acme/abc?fbclid=xyz")).toBe("jobs.lever.co/acme/abc");
     // #1252
@@ -89,6 +116,13 @@ describe("dedupe keys", () => {
     expect(normUrl("https://acme.com/careers?jobId=9&GCLID=x")).toBe("acme.com/careers?jobid=9");
     // A job ID that only starts like a click ID stays.
     expect(normUrl("https://acme.com/careers?gclid_job=9")).toBe("acme.com/careers?gclid_job=9");
+  });
+
+  it("drops Google's srsltid, the _ga linker, more click IDs and Lever's lever-via (#1615)", () => {
+    expect(normUrl("https://acme.com/careers/designer?srsltid=AfmBOoq123")).toBe("acme.com/careers/designer");
+    expect(normUrl("https://acme.com/careers/1?_ga=2.1234.5678&gad_source=1&ttclid=a&twclid=b&yclid=c&rdt_cid=d&epik=e")).toBe("acme.com/careers/1");
+    expect(normUrl("https://jobs.lever.co/acme/abc?lever-via=xyz")).toBe("jobs.lever.co/acme/abc");
+    expect(normUrl("https://acme.com/careers?jobId=9&srsltid=x")).toBe("acme.com/careers?jobid=9");
   });
 
   it("leaves the rest of the query as written when it drops a tracking tag (#1166)", () => {
@@ -111,12 +145,67 @@ describe("dedupe keys", () => {
 });
 
 describe("placesDiffer (#1285)", () => {
+  it("reads a state or country in parentheses (#1426)", () => {
+    expect(placesDiffer("Remote (US)", "Remote (Canada)")).toBe(true);
+    expect(placesDiffer("Remote (United States)", "Remote (Canada)")).toBe(true);
+    expect(placesDiffer("Remote (US)", "Remote, Canada")).toBe(true);
+    expect(placesDiffer("Portland (OR)", "Portland (ME)")).toBe(true);
+    expect(placesDiffer("Remote (US)", "Remote, United States")).toBe(false);
+    expect(placesDiffer("New York (NYC)", "New York, NY")).toBe(false);
+    expect(placesDiffer("New York, NY (hybrid)", "New York, NY")).toBe(false);
+    expect(placeId("Remote (Canada)")).toBe("ca");
+  });
+
+  it("reads an unknown country in parentheses after Remote (#1555)", () => {
+    expect(placesDiffer("Remote (US)", "Remote (Germany)")).toBe(true);
+    expect(placesDiffer("Remote (US)", "Remote (Mexico)")).toBe(true);
+    expect(placesDiffer("Remote (India)", "Remote (Germany)")).toBe(true);
+    expect(placesDiffer("Remote (Germany)", "Remote, Germany")).toBe(false);
+    expect(placesDiffer("Remote (Germany)", "Remote (Germany)")).toBe(false);
+    expect(placesDiffer("Remote (US)", "Remote (hybrid)")).toBe(false);
+    expect(placesDiffer("Remote (US)", "Remote (Full-time)")).toBe(false);
+    expect(placesDiffer("Remote (US)", "Remote (contract)")).toBe(false);
+    expect(placesDiffer("New York (NYC)", "New York, NY")).toBe(false);
+    expect(placesDiffer("New York, NY (Manhattan)", "New York, NY")).toBe(false);
+  });
+
+  it("reads a country's ISO code that is also a state's as that country (#1561)", () => {
+    expect(placesDiffer("Berlin, DE", "Berlin, Germany")).toBe(false);
+    expect(placesDiffer("Berlin, Germany", "Berlin, DE")).toBe(false);
+    expect(placesDiffer("Munich, Bavaria, DE", "Munich, Germany")).toBe(false);
+    expect(placesDiffer("Tel Aviv, IL", "Tel Aviv, Israel")).toBe(false);
+    expect(placesDiffer("Bengaluru, IN", "Bengaluru, India")).toBe(false);
+    expect(placesDiffer("Bogota, CO", "Bogota, Colombia")).toBe(false);
+    expect(placesDiffer("Amsterdam, NL", "Amsterdam, Netherlands")).toBe(false);
+    expect(placesDiffer("Amsterdam, NL", "Amsterdam, The Netherlands")).toBe(false);
+    expect(placesDiffer("Remote (DE)", "Remote (Germany)")).toBe(false);
+    // A real state pair, a named US state, or a code with its own country beside it still differs.
+    expect(placesDiffer("Wilmington, DE", "Wilmington, NC")).toBe(true);
+    expect(placesDiffer("Berlin, DE", "Berlin, NY")).toBe(true);
+    expect(placesDiffer("Wilmington, DE, US", "Wilmington, Germany")).toBe(true);
+    expect(placesDiffer("Wilmington, Delaware", "Wilmington, Germany")).toBe(true);
+    expect(placesDiffer("Berlin, DE", "Berlin, India")).toBe(true);
+    expect(placesDiffer("Bogota, CO", "Bogota, Mexico")).toBe(true);
+  });
+
   it("tells apart the same city in another state or country", () => {
     expect(placesDiffer("Remote, US", "Remote, Canada")).toBe(true);
     expect(placesDiffer("Cambridge, MA", "Cambridge, United Kingdom")).toBe(true);
     expect(placesDiffer("Portland, OR", "Portland, ME")).toBe(true);
     expect(placesDiffer("Paris, TX", "Paris, France")).toBe(true);
     expect(placesDiffer("Remote, US", "Remote, Mexico")).toBe(true);
+  });
+  it("reads a known place inside filler words: 'Anywhere in the US' is the US (#1466)", () => {
+    expect(placesDiffer("Remote, US", "Remote, Anywhere in the US")).toBe(false);
+    expect(placesDiffer("Remote, United States", "Remote, Within the United States")).toBe(false);
+    expect(placesDiffer("Remote, US", "Remote (anywhere in the US)")).toBe(false);
+    expect(placesDiffer("Remote, Canada", "Remote, Anywhere in the US")).toBe(true);
+    expect(placesDiffer("Remote, Canada", "Remote (anywhere in the US)")).toBe(true);
+    expect(placeId("Remote, Anywhere in the US")).toBe("us");
+    expect(placeId("Remote, across Canada")).toBe("ca");
+    // "in" alone is still Indiana, and words that name no known place stay as they are.
+    expect(placeId("Fort Wayne, IN")).toBe("us-in");
+    expect(placeId("Remote, Anywhere in LATAM")).toBe("anywhere in latam");
   });
   it("keeps one place written two ways as one", () => {
     expect(placesDiffer("New York, NY", "New York, New York")).toBe(false);
@@ -145,5 +234,220 @@ describe("placesDiffer (#1285)", () => {
     expect(placeId("Portland, ME")).toBe("us-me");
     expect(placeId("Remote, Canada")).toBe("ca");
     expect(placeId("Paris, Île-de-France, France")).toBe("france");
+  });
+});
+
+describe("placesDiffer: a work mode or 'metro area' after the place (#1374)", () => {
+  it.each([
+    ["New York, NY", "New York, NY - Hybrid"],
+    ["New York, NY", "New York, NY or Remote"],
+    ["Austin, TX", "Austin, TX · Hybrid"],
+    ["Chicago, IL", "Chicago, IL Metro Area"],
+    ["Remote, US", "Remote, US-based"],
+    ["Remote, United States", "Remote, United States only"],
+    ["Portland, OR", "Portland, OR - Hybrid"],
+    ["Toronto, ON", "Toronto, ON - On site"],
+  ])("%s and %s are one place", (a, b) => {
+    expect(placesDiffer(a, b)).toBe(false);
+  });
+
+  it.each([
+    ["Portland, OR", "Portland, ME - Hybrid"],
+    ["Remote, US", "Remote, Canada only"],
+  ])("%s and %s are still two places", (a, b) => {
+    expect(placesDiffer(a, b)).toBe(true);
+  });
+});
+
+describe("placesDiffer: a work mode after an unknown country, or on its own (#1385)", () => {
+  it.each([
+    ["Berlin, Germany", "Berlin, Germany - Hybrid"],
+    ["Mexico City, Mexico", "Mexico City, Mexico or Remote"],
+    ["New York, NY", "New York, Remote"],
+  ])("%s and %s are one place", (a, b) => {
+    expect(placesDiffer(a, b)).toBe(false);
+  });
+
+  it.each([
+    ["Remote, Mexico", "Remote, Germany - Hybrid"],
+    ["Berlin, Germany - Hybrid", "Berlin, Mexico"],
+  ])("%s and %s are still two places", (a, b) => {
+    expect(placesDiffer(a, b)).toBe(true);
+  });
+});
+
+describe("placesDiffer: a coast or time zone after the place (#1510)", () => {
+  it.each([
+    ["Remote, US", "Remote, US - East Coast"],
+    ["Remote, United States", "Remote, United States - Eastern Time"],
+    ["Remote (US)", "Remote (US East Coast)"],
+    ["Remote, USA", "Remote, USA (PST)"],
+    ["Remote, Canada", "Remote, Canada - Pacific Time Zone"],
+    ["Remote, US", "Remote, US Midwest"],
+  ])("%s and %s are one place", (a, b) => {
+    expect(placesDiffer(a, b)).toBe(false);
+    expect(placeId(b)).toBe(placeId(a));
+  });
+
+  it.each([
+    ["Remote, US - East Coast", "Remote, Canada"],
+    ["Raleigh, North Carolina", "Raleigh, NY"],
+    ["Charleston, West Virginia", "Charleston, SC"],
+    ["Remote, Europe - Central Time", "Remote, US"],
+  ])("%s and %s are still two places", (a, b) => {
+    expect(placesDiffer(a, b)).toBe(true);
+  });
+});
+
+describe("dedupe: remote and a country before the first comma (#1514)", () => {
+  const fp = (loc: string) => fingerprint("Acme", "Product Designer", loc);
+
+  it("keys every way of writing a remote US job as one find", () => {
+    for (const loc of ["Remote - US", "US Remote", "USA (Remote)", "Remote – United States", "Remote U.S.", "Remote (US)", "US-based Remote"]) {
+      expect(fp(loc), loc).toBe(fp("Remote, US"));
+      expect(placesDiffer(loc, "Remote, US"), loc).toBe(false);
+    }
+    expect(fp("United States (Remote)")).toBe(fp("Remote, United States"));
+  });
+
+  it("keeps a remote job in another country apart", () => {
+    expect(fp("Remote - Canada")).toBe(fp("Remote, US"));
+    expect(placesDiffer("Remote - Canada", "Remote, US")).toBe(true);
+    expect(placeId("Remote - Canada")).toBe("ca");
+    expect(placesDiffer("UK Remote", "Remote (US)")).toBe(true);
+  });
+
+  it("leaves a city, a bare Remote and an unknown place as written", () => {
+    expect(remoteFirst("New York (Remote)")).toBe("New York (Remote)");
+    expect(remoteFirst("Remote")).toBe("Remote");
+    expect(remoteFirst("Remote, US")).toBe("Remote, US");
+    expect(remoteFirst("Remote - Mexico")).toBe("Remote - Mexico");
+    expect(remoteFirst("United States")).toBe("United States");
+    expect(remoteFirst("Remote - US, Eastern Time")).toBe("Remote, us, Eastern Time");
+    expect(fp("New York (Remote)")).toBe(fp("New York, NY"));
+  });
+
+  it("keeps the legacy key as written, so postings stored before are still matched", () => {
+    expect(legacyFingerprint("Acme", "Product Designer", "Remote - US")).not.toBe(fp("Remote - US"));
+    expect(legacyFingerprint("Acme", "Product Designer", "Remote, US")).toBe(fp("Remote, US"));
+  });
+});
+
+describe("no em dashes in match reasons (#1531)", () => {
+  it("turns em and en dashes into commas", () => {
+    const r = applyRules({ score: 4, reasonsMatch: ["Design systems — your core strength"], reasonsGap: ["Heavy mobile focus – check fit"], locationFit: true, dealbreaker: false, compMin: 150000, compMax: 180000 }, null)!;
+    expect(r.reasonsMatch).toEqual(["Design systems, your core strength"]);
+    expect(r.reasonsGap).toEqual(["Heavy mobile focus, check fit"]);
+  });
+});
+
+describe("listPage: search and board pages are not jobs (#1537)", () => {
+  it("drops Wellfound role and location list pages, not its postings (#1577)", () => {
+    for (const u of ["https://wellfound.com/role/l/product-designer/new-york", "https://wellfound.com/role/r/product-designer", "https://wellfound.com/location/new-york"])
+      expect(listPage(u), u).toBe(true);
+    for (const u of ["https://wellfound.com/jobs/3123456-senior-product-designer", "https://wellfound.com/company/acme/jobs/3123456-senior-product-designer"])
+      expect(listPage(u), u).toBe(false);
+  });
+
+  it("drops job board search pages, on any country site", () => {
+    for (const u of [
+      "https://www.glassdoor.com/Job/new-york-ny-ux-director-jobs-SRCH_IL.0,11_IC1132348_KO12,23.htm",
+      "https://www.glassdoor.co.uk/Job/london-ux-director-jobs-SRCH_IL.0,6_IC2671300.htm",
+      "https://www.indeed.com/l-New-York,-NY-jobs.html",
+      "https://www.indeed.com/q-UX-Director-jobs.html",
+      "https://uk.indeed.com/jobs?q=ux+director",
+      "https://www.indeed.co.uk/jobs?q=ux+director",
+      "https://ca.linkedin.com/jobs/ux-director-jobs",
+      "https://www.linkedin.com/jobs/search?keywords=ux%20director&location=New%20York",
+      "https://www.linkedin.com/jobs/",
+      "https://www.ziprecruiter.com/Jobs/UX-Director",
+      "https://www.simplyhired.com/search?q=ux+director",
+      "https://careers.acme.com/jobs/",
+    ])
+      expect(listPage(u), u).toBe(true);
+  });
+
+  it("drops Built In, Dice, YC, RemoteOK and We Work Remotely list pages, not their postings (#1614)", () => {
+    for (const u of [
+      "https://www.builtinnyc.com/jobs/design-ux",
+      "https://builtin.com/jobs/remote/design-ux",
+      "https://builtin.com/jobs?search=product+designer",
+      "https://www.dice.com/jobs?q=designer",
+      "https://www.ycombinator.com/jobs/role/design",
+      "https://www.ycombinator.com/jobs",
+      "https://remoteok.com/remote-design-jobs",
+      "https://weworkremotely.com/categories/remote-design-jobs",
+    ])
+      expect(listPage(u), u).toBe(true);
+    for (const u of [
+      "https://builtin.com/job/product-designer/123456",
+      "https://www.builtinnyc.com/job/senior-product-designer/987654",
+      "https://www.dice.com/job-detail/0c3f1a2b-4d5e-6f70-8a9b-0c1d2e3f4a5b",
+      "https://www.ycombinator.com/companies/acme/jobs/AbC123-product-designer",
+      "https://remoteok.com/remote-jobs/123456-remote-product-designer-acme",
+      "https://weworkremotely.com/remote-jobs/acme-product-designer",
+    ])
+      expect(listPage(u), u).toBe(false);
+  });
+
+  it("drops an ATS board home that names no job", () => {
+    for (const u of [
+      "https://jobs.lever.co/acme",
+      "https://jobs.eu.lever.co/acme?team=Design",
+      "https://job-boards.greenhouse.io/acme",
+      "https://boards.greenhouse.io/embed/job_board?for=acme",
+      "https://jobs.ashbyhq.com/acme",
+      "https://acme.wd1.myworkdayjobs.com/External",
+      "https://acme.wd1.myworkdayjobs.com/en-US/External?q=design",
+      "https://wd3.myworkdaysite.com/recruiting/acme/External",
+    ])
+      expect(listPage(u), u).toBe(true);
+  });
+
+  it("keeps single postings, on those sites too", () => {
+    for (const u of [
+      "https://www.glassdoor.com/job-listing/ux-director-acme-JV_IC1132348_KO0,11_KE12,16.htm?jl=1009",
+      "https://www.indeed.com/viewjob?jk=abc123",
+      "https://www.linkedin.com/jobs/view/4012345678",
+      "https://www.linkedin.com/jobs/view/senior-ux-director-at-acme-4012345678",
+      "https://ca.linkedin.com/jobs/view/ux-director-at-acme-4012345678?trk=public_jobs",
+      "https://jobs.lever.co/acme/0c3f1a2b-4d5e-6f70-8a9b-0c1d2e3f4a5b",
+      "https://jobs.lever.co/acme/0c3f1a2b-4d5e-6f70-8a9b-0c1d2e3f4a5b/apply",
+      "https://job-boards.greenhouse.io/acme/jobs/4001234005",
+      "https://boards.greenhouse.io/embed/job_app?for=acme&token=4001234005",
+      "https://jobs.ashbyhq.com/acme/0c3f1a2b-4d5e-6f70-8a9b-0c1d2e3f4a5b",
+      "https://acme.wd1.myworkdayjobs.com/en-US/External/job/New-York-NY/UX-Director_R12345",
+      "https://wd3.myworkdaysite.com/recruiting/acme/External/job/New-York/UX-Director_R12345",
+      "https://careers.acme.com/jobs/101-ux-director",
+      "not a url",
+    ])
+      expect(listPage(u), u).toBe(false);
+  });
+
+  it("drops SmartRecruiters, Workable, Teamtailor, iCIMS, Taleo and Paylocity board pages, not their postings (#1613)", () => {
+    for (const u of [
+      "https://careers.smartrecruiters.com/Acme",
+      "https://jobs.smartrecruiters.com/Acme",
+      "https://apply.workable.com/acme/",
+      "https://acme.teamtailor.com/",
+      "https://acme.teamtailor.com/departments/design",
+      "https://careers-acme.icims.com/jobs/intro",
+      "https://acme.taleo.net/careersection/2/jobsearch.ftl",
+      "https://recruiting.paylocity.com/Recruiting/Jobs/All/0c3f1a2b-4d5e-6f70-8a9b-0c1d2e3f4a5b/Acme-Inc",
+    ])
+      expect(listPage(u), u).toBe(true);
+    for (const u of [
+      "https://jobs.smartrecruiters.com/Acme/743999912345678-product-designer",
+      "https://jobs.smartrecruiters.com/oneclick-ui/company/Acme/publication/0c3f1a2b-4d5e-6f70-8a9b-0c1d2e3f4a5b",
+      "https://apply.workable.com/acme/j/ABC123DEF/",
+      "https://acme.workable.com/jobs/123456",
+      "https://jobs.workable.com/view/abc/product-designer-at-acme",
+      "https://acme.teamtailor.com/jobs/12345-designer",
+      "https://careers-acme.icims.com/jobs/1234/designer/job",
+      "https://acme.taleo.net/careersection/2/jobdetail.ftl?job=ABC",
+      "https://chk.tbe.taleo.net/chk01/ats/careers/v2/viewRequisition?org=ACME&cws=39&rid=1234",
+      "https://recruiting.paylocity.com/Recruiting/Jobs/Details/123456",
+    ])
+      expect(listPage(u), u).toBe(false);
   });
 });

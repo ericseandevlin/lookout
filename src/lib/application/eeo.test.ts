@@ -49,6 +49,15 @@ describe("classify", () => {
     expect(classify("Is your sex offender registration current?")).toBeNull();
   });
 
+  it("leaves a pronouns question unclassified, so it never gets the gender answer (#1450)", () => {
+    expect(classify("Gender pronouns")).toBeNull();
+    expect(classify("What gender pronouns do you use?")).toBeNull();
+    expect(classify("Pronouns")).toBeNull();
+    expect(classify("Preferred pronoun")).toBeNull();
+    expect(classify("Gender (pronouns optional)")).toBe("gender");
+    expect(classify("What is your gender?")).toBe("gender");
+  });
+
   it("leaves an LGBTQ+ question and a military-spouse question unclassified (#909)", () => {
     expect(classify("Do you identify as LGBTQ+ (lesbian, gay, bisexual, transgender, queer or another identity)?")).toBeNull();
     expect(classify("Do you identify as a member of the LGBTQIA+ community?")).toBeNull();
@@ -57,6 +66,30 @@ describe("classify", () => {
     expect(classify("Do you identify as transgender?")).toBe("transgender");
     expect(classify("What is your sexual orientation? (e.g. gay, lesbian, bisexual)")).toBe("orientation");
     expect(classify("Protected veteran status")).toBe("veteran");
+  });
+});
+
+describe("classify: questions that only sound like EEO (#1512)", () => {
+  it("leaves accommodation, discharge and active-duty questions unclassified", () => {
+    expect(classify("Do you require a reasonable accommodation for a disability to complete the application process?")).toBeNull();
+    expect(classify("Will you need any accommodations due to a disability during the interview?")).toBeNull();
+    expect(classify("Have you ever been discharged from the military under other than honorable conditions?")).toBeNull();
+    expect(classify("Are you currently serving on active duty in the U.S. Armed Forces?")).toBeNull();
+    expect(classify("Are you currently a member of the military or a reservist?")).toBeNull();
+    expect(classify("Sex offender registry: have you ever been convicted?")).toBeNull();
+  });
+
+  it("still reads the real questions", () => {
+    expect(classify("Disability status. If you need an accommodation, contact us.")).toBe("disability");
+    expect(classify("Are you a veteran or active member of the United States Armed Forces?")).toBe("veteran");
+    expect(classify("Have you served in the U.S. military?")).toBe("veteran");
+    expect(classify("Sex")).toBe("gender");
+  });
+
+  it("never answers them from the profile", () => {
+    const profile = { answers: { disability: "Yes", veteran: "Veteran" }, exact: {} };
+    expect(resolve(profile, "Do you require a reasonable accommodation for a disability?", ["Yes", "No"])).toBeNull();
+    expect(resolve(profile, "Have you ever been discharged from the military under other than honorable conditions?", ["Yes", "No"])).toBeNull();
   });
 });
 
@@ -198,6 +231,15 @@ describe("a non-veteran never gets a veteran's answer (#961)", () => {
     const opts = ["I identify as a veteran, just not a protected veteran", "I am not a veteran", "I identify as one or more of the classifications of protected veteran", "I don't wish to answer"];
     expect(matchOption("Not a veteran", opts)).toBe("I am not a veteran");
   });
+  it("also asks for short labels: 'Veteran, not protected' and 'Non-Protected Veteran' (#1639)", () => {
+    for (const split of ["Veteran, not protected", "Non-Protected Veteran", "Non Protected Veteran", "Veteran - Not Protected"]) {
+      const opts = ["Not a Veteran", "Protected Veteran", split, "Decline to answer"];
+      expect(matchOption("Veteran", opts)).toBeNull();
+      expect(matchOption("Not a veteran", opts)).toBe("Not a Veteran");
+    }
+    // A list without the split still answers.
+    expect(matchOption("Veteran", ["Not a Veteran", "Protected Veteran", "Decline to answer"])).toBe("Protected Veteran");
+  });
 });
 
 
@@ -206,5 +248,41 @@ describe("a veteran never gets the decline option (#1142)", () => {
     const opts = ["I decline to self-identify as a protected veteran", "I identify as one or more of the classifications of protected veteran", "I am not a protected veteran"];
     expect(matchOption("Veteran", opts)).toBe("I identify as one or more of the classifications of protected veteran");
     expect(matchOption(DECLINE, opts)).toBe("I decline to self-identify as a protected veteran");
+  });
+});
+
+describe("a veteran is asked when the list splits protected and not protected (#1244)", () => {
+  const workday = ["I am not a veteran", "I identify as a veteran, just not a protected veteran", "I identify as one or more of the classifications of protected veterans", "I don't wish to answer"];
+  it("does not claim protected status", () => {
+    expect(matchOption("Veteran", workday)).toBeNull();
+    expect(resolve({ answers: { veteran: "Veteran" }, exact: {} }, "Veteran Status", workday)).toBeNull();
+  });
+  it("uses the remembered wording", () => {
+    expect(resolve({ answers: { veteran: "Veteran" }, exact: { [answerKey("Veteran Status")]: workday[1] } }, "Veteran Status", workday)).toBe(workday[1]);
+  });
+  it("also asks for the \"but not a protected veteran\" wording", () => {
+    const opts = ["I am a veteran, but not a protected veteran", "I am not a veteran", "I identify as one or more of the classifications of protected veteran", "I do not wish to self-identify"];
+    expect(matchOption("Veteran", opts)).toBeNull();
+    expect(matchOption("Not a veteran", opts)).toBe("I am not a veteran");
+  });
+});
+
+describe("options worded as a sentence (#1432)", () => {
+  const gender = ["I identify as a woman", "I identify as a man", "I identify as a transgender man", "I don't wish to answer"];
+  it("finds the answer after \"I identify as\"", () => {
+    expect(matchOption("Woman", gender)).toBe("I identify as a woman");
+    expect(matchOption("Man", gender)).toBe("I identify as a man");
+    expect(matchOption("White", ["I am Asian", "I am White", "I am Black or African American"])).toBe("I am White");
+    expect(matchOption("Heterosexual or straight", ["I identify as gay", "I identify as straight"])).toBe("I identify as straight");
+  });
+  it("still keeps a transgender answer apart, and veteran lists as they were", () => {
+    expect(matchOption("Man", ["I identify as a transgender man", "I don't wish to answer"])).toBeNull();
+    const vet = ["I am not a protected veteran", "I identify as one or more of the classifications of protected veteran", "I don't wish to answer"];
+    expect(matchOption("Veteran", vet)).toBe(vet[1]);
+    expect(matchOption("Not a veteran", vet)).toBe(vet[0]);
+  });
+  it("reads \"I am not Hispanic or Latino\" as No", () => {
+    expect(matchOption("No", ["I am Hispanic or Latino", "I am not Hispanic or Latino"])).toBe("I am not Hispanic or Latino");
+    expect(matchOption("Yes", ["I am Hispanic or Latino", "I am not Hispanic or Latino"])).toBe("I am Hispanic or Latino");
   });
 });

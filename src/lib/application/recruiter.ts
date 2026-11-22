@@ -41,7 +41,8 @@ export type RecruiterAnalysis = {
   findings: Finding[];
 };
 
-const words = (s: string) => s.split(/\s+/).filter(Boolean).length;
+// Words only: markdown marks ("-", "###", "|") and dashes are not words, or a two-page resume counts ~10% long (#1447).
+const words = (s: string) => s.split(/\s+/).filter((w) => /[\p{L}\p{N}]/u.test(w)).length;
 const short = (s: string) => (s.length > 90 ? `${s.slice(0, 87).trimEnd()}…` : s);
 const SKILLS = /skills|tools|expertise|competenc/i;
 // Sections whose bullets aren't work results, so the number checks skip them (#704).
@@ -64,6 +65,14 @@ const COUNT_WORDS =
 // "Cut it in half" and "by a third" say what "halved" says (#1273).
 const FRACTION = String.raw`\b(?:in|by)\s+half\b(?!-)|\bby\s+a\s+(?:third|quarter)\b(?!-)`;
 const HAS_NUMBER = new RegExp(`(?<![a-z])\\d|\\b(?:one(?!\\s+of\\b)|${COUNT_WORDS})\\b(?!-(?!(?:thirds?|quarters?|halves|fold|one|two|three|four|five|six|seven|eight|nine)\\b))|${FRACTION}`, "i");
+// A meeting, not a scale: "1:1s", "1-on-1s", "one-on-one coaching" say nothing about size or result (#1445).
+const ONE_ON_ONE = /(?<![\w:])(?:1|one)(?:\s*:\s*|-on-|\s+on\s+)(?:1|one)(?:['’]?s)?(?![\w:])/gi;
+// A date or a version, not a scale either: "the 2023 rebrand", "WCAG 2.1", "React 18", "Section 508", "COVID-19" (#1653).
+// A year-shaped number with a unit or a plural count after it is still scale: "2000 users", "2,000 stores", "2020%".
+const YEAR = /(?<![$£€\d.,])\b(?:19[89]\d|20[0-3]\d)(?:['’]?s)?\b(?![.,]\d|\s*[%+]|\s*[kmb]\b|\s+(?:[a-z]+s|people|staff)\b)/gi;
+const VERSION =
+  /\b(?:wcag|aria|section|react|angular|vue|next(?:\.js)?|node(?:\.js)?|ios|ipados|android|macos|windows|python|java|php|ruby|rails|swift|kotlin|html|css|es|ecmascript|http|oauth|web|industry|covid)[\s-]?v?\d+(?:\.\d+)*\b(?!\s*[%+x×]|\s*[kmb]\b)|\bv\d+(?:\.\d+)*\b/gi;
+const hasNumber = (l: string) => HAS_NUMBER.test(l.replace(ONE_ON_ONE, " ").replace(VERSION, " ").replace(YEAR, " "));
 
 /** Checks on a resume draft's markdown. */
 function resumeChecks(md: string): Finding[] {
@@ -135,7 +144,7 @@ function resumeChecks(md: string): Finding[] {
   }
 
   // Numbers: recruiters scan for scale. The latest role counts most, so its bullets are named one by one.
-  const bare = latest.filter((l) => !HAS_NUMBER.test(l));
+  const bare = latest.filter((l) => !hasNumber(l));
   for (const l of bare.slice(0, 3))
     out.push({
       dim: "impact",
@@ -146,7 +155,7 @@ function resumeChecks(md: string): Finding[] {
       from: "code",
       needsFact: true,
     });
-  const withNumber = all.filter((l) => HAS_NUMBER.test(l)).length;
+  const withNumber = all.filter(hasNumber).length;
   if (all.length >= 6 && withNumber < all.length / 3)
     out.push({
       dim: "impact",
@@ -169,7 +178,8 @@ function resumeChecks(md: string): Finding[] {
   return out;
 }
 
-const GREETING = /^(dear|hi|hello|to whom)\b[^,:\n]{0,60}([,:]\s*|$)/i;
+// The greeting stops at "!" or "?" too: "Hello! I am writing to apply..., " keeps its opening line (#1396).
+const GREETING = /^(dear|hi|hello|to whom)\b[^,:!?\n]{0,60}([,:!]\s*|$)/i;
 // A sign-off on its own line ("Best regards,", "Thanks,"), with the name and contact lines under it.
 const SIGN_OFF = /^(sincerely|best|thanks|thank you|regards|kind regards|warm regards|warmly|cheers|all the best)\b[\w ]{0,15},?$/i;
 

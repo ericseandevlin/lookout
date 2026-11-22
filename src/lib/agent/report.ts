@@ -25,6 +25,10 @@ export function buildTips(
     tips.push({ text: `Lookout couldn't open any of the ${job ? "job pages" : "pages"} it found, so nothing could be scored. That's on our end, not your profile, and it's been logged.` });
     return tips;
   }
+  // Read but never scored (#1456): on our end too, and they're read again next search.
+  if (t.unscored) {
+    tips.push({ text: `Lookout couldn't score ${plural(t.unscored, job ? "posting" : "page")} it read. That's on our end, not your profile. It'll read ${t.unscored === 1 ? "it" : "them"} again next search.` });
+  }
   if (r.results === 0) {
     tips.push(
       job

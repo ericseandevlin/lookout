@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { answerKey, isCommon, match, savedBlock, upsert } from "./saved";
+import { onlyThisOne, answerKey, isCommon, match, savedBlock, upsert } from "./saved";
 
 describe("saved answers", () => {
   it("keeps common facts, never salary or essays", () => {
@@ -9,6 +9,8 @@ describe("saved answers", () => {
     // #1123: "for this role" doesn't make work authorization role-specific; "this location" still can.
     expect(isCommon("Are you legally authorized to work in the United States for this position?", "Yes")).toBe(true);
     expect(isCommon("Will you now or in the future require visa sponsorship for this role?", "No")).toBe(true);
+    expect(isCommon("Are you legally authorized to work in the United States?", "Yes")).toBe(true);
+    expect(isCommon("What country are you applying from?", "United States")).toBe(true);
     expect(isCommon("Will you require sponsorship to work in this location?", "No")).toBe(false);
     expect(isCommon("Are you willing to relocate for this role?", "Yes")).toBe(false);
     expect(isCommon("What is your desired base salary?", "$220,000")).toBe(false);
@@ -32,6 +34,8 @@ describe("saved answers", () => {
     const list = upsert([], "Are you authorized to work in the US?", "yes");
     expect(match(list, "Are you authorized to work in the US?", ["Yes", "No"])).toBe("Yes");
     expect(match(list, "Are you authorized to work in the US?", ["Authorized", "Not authorized"])).toBeNull();
+    // The form's own spelling of the saved answer (#1524).
+    expect(match([...list, { key: answerKey("Employment type"), question: "Employment type", answer: "Full time", updatedAt: "" }], "Employment type", ["Full-time", "Part-time"])).toBe("Full-time");
   });
 
   it("keeps a No about one employer, never a Yes or a referrer's name (#1032)", () => {
@@ -44,6 +48,11 @@ describe("saved answers", () => {
   it("keeps a general answer to how they heard of the job, never a referral (#1097)", () => {
     expect(isCommon("How did you hear about this job?", "LinkedIn")).toBe(true);
     expect(isCommon("How did you hear about us?", "Company website")).toBe(true);
+    // "This position" and "this role" are the same question as "this job" (#1545).
+    expect(isCommon("How did you hear about this position?", "LinkedIn")).toBe(true);
+    expect(isCommon("How did you hear about this role?", "Indeed")).toBe(true);
+    expect(isCommon("How did you hear about this opportunity?", "Company website")).toBe(true);
+    expect(isCommon("How did you hear about this role?", "Employee referral")).toBe(false);
     for (const a of ["Referred by Jane Doe (Design Manager)", "Employee Referral", "A friend who works there", "Recruiter reached out", "Former colleague on the team"])
       expect(isCommon("How did you hear about this job?", a)).toBe(false);
     // Saved before the fix: never reused or shown to the model.
@@ -62,6 +71,20 @@ describe("saved answers", () => {
       expect(isCommon("Earliest start date", a)).toBe(false);
     for (const a of ["Immediately", "2 weeks after an offer", "After a final decision, with 30 days notice", "1 month", "I may need 3 weeks"])
       expect(isCommon("When can you start?", a)).toBe(true);
+  });
+
+  it("keeps a span of weeks, which is not a day and month (#1575)", () => {
+    for (const a of ["2-3 weeks after an offer", "4-6 weeks", "2-4 business days", "1-2 months notice", "2/3 weeks", "4.6 weeks"]) {
+      expect(isCommon("What is your earliest start date?", a), a).toBe(true);
+      expect(onlyThisOne("When can you start?", a), a).toBe(false);
+    }
+    for (const a of ["12/1", "12-1", "1/15/2027", "12/1, then 2 weeks of onboarding"]) expect(isCommon("Earliest start date", a), a).toBe(false);
+  });
+
+  it("keeps the age check however it is worded (#1576)", () => {
+    for (const q of ["Are you 18 or older?", "Are you over 18?", "Are you at least 18?", "Are you 18+?", "Are you 18 years of age or older?", "Are you 18 and over?"])
+      expect(isCommon(q, "Yes"), q).toBe(true);
+    expect(isCommon("Do you have 18 or more years of experience?", "Yes")).toBe(false);
   });
 
   it("never reuses an older saved Yes about one employer (#1032)", () => {
@@ -106,6 +129,32 @@ describe("saved answers that depend on where the job is (#1227)", () => {
     expect(isCommon("Are you legally authorized to work in the country where this job is located?", "Yes")).toBe(false);
     expect(isCommon("Do you have the right to work in the position's country?", "Yes")).toBe(false);
   });
+  it("never keeps one asked for the country you are applying to (#1572)", () => {
+    for (const q of [
+      "Are you legally authorized to work in the country for which you are applying?",
+      "Are you legally authorized to work in the country in which you are applying?",
+      "Will you now or in the future require sponsorship to work in the country you are applying to?",
+      "Are you authorized to work in the country you're applying for?",
+      "Are you legally authorized to work in the location of this role?",
+      "Do you require visa sponsorship to work in the country of this position?",
+    ]) {
+      expect(isCommon(q, "Yes"), q).toBe(false);
+      expect(match(upsert([], q, "Yes"), q), q).toBeNull();
+    }
+  });
+  it("never keeps one asked for the country of employment or where you will work (#1590)", () => {
+    for (const q of [
+      "Are you legally authorized to work in the country of employment?",
+      "Are you authorized to work in the country this role is in?",
+      "Are you legally eligible to work in the country where you will be working?",
+      "Are you authorized to work in the country where you'll work?",
+      "Will you require visa sponsorship to work in the hiring country?",
+    ]) {
+      expect(isCommon(q, "Yes"), q).toBe(false);
+      expect(match(upsert([], q, "Yes"), q), q).toBeNull();
+    }
+    expect(isCommon("Are you authorized to work in the United States?", "Yes")).toBe(true);
+  });
   it("never reuses one saved before the fix", () => {
     const q = "Will you require sponsorship to work in the country where this role is based?";
     expect(match(upsert([], q, "No"), q)).toBeNull();
@@ -113,5 +162,56 @@ describe("saved answers that depend on where the job is (#1227)", () => {
   it("still keeps the same question about where the person lives", () => {
     expect(isCommon("Are you legally authorized to work in the country where you live?", "Yes")).toBe(true);
     expect(isCommon("Will you now or in the future require visa sponsorship for this role?", "No")).toBe(true);
+  });
+});
+
+describe("expected start and notice questions (#1595)", () => {
+  it("keeps an expected start or notice period", () => {
+    expect(isCommon("What is your expected start date?", "2 weeks after an offer")).toBe(true);
+    expect(isCommon("Expected notice period?", "2 weeks")).toBe(true);
+  });
+  it("still keeps an expected start date that is a calendar date with one application", () => {
+    expect(isCommon("What is your expected start date?", "12/1")).toBe(false);
+  });
+  it("still never keeps the expected pay", () => {
+    expect(isCommon("Expected salary?", "$150k")).toBe(false);
+    expect(isCommon("Expected start salary in your country?", "$150k")).toBe(false);
+  });
+});
+
+describe("available to start (#1596)", () => {
+  it("keeps a start span asked as availability", () => {
+    expect(isCommon("When would you be available to start?", "2 weeks after an offer")).toBe(true);
+    expect(isCommon("What is your availability to start?", "Immediately")).toBe(true);
+  });
+  it("keeps a calendar date with one application", () => {
+    expect(onlyThisOne("When would you be available to start?", "12/1")).toBe(true);
+    expect(isCommon("When are you available to start?", "January 2027")).toBe(false);
+  });
+});
+
+describe("other ways to ask work authorization (#1597)", () => {
+  it("keeps legally able, eligible and right to work", () => {
+    expect(isCommon("Are you legally able to work in the US?", "Yes")).toBe(true);
+    expect(isCommon("Are you eligible to work in the US?", "Yes")).toBe(true);
+    expect(isCommon("Do you have the right to work in the UK?", "Yes")).toBe(true);
+    expect(isCommon("Are you eligible to work in the United States for this position?", "Yes")).toBe(true);
+  });
+  it("still never keeps one tied to where the job is", () => {
+    expect(isCommon("Are you eligible to work in the country where this role is based?", "Yes")).toBe(false);
+    expect(isCommon("Do you have the right to work in the country of employment?", "Yes")).toBe(false);
+  });
+});
+
+describe("work permit questions are work authorization (#1619)", () => {
+  it("keeps them", () => {
+    expect(isCommon("Do you need a work permit?", "No")).toBe(true);
+    expect(isCommon("Do you require a work permit to work in Germany?", "Yes")).toBe(true);
+    expect(isCommon("Do you hold a valid work permit for the UK?", "Yes")).toBe(true);
+    expect(isCommon("Do you need a work permit for this position?", "No")).toBe(true);
+  });
+  it("still never keeps one tied to where the job is", () => {
+    expect(isCommon("Do you require a work permit for the country where this role is based?", "Yes")).toBe(false);
+    expect(isCommon("Do you hold a work permit for the country of employment?", "Yes")).toBe(false);
   });
 });

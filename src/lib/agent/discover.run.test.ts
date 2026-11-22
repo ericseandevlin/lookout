@@ -43,7 +43,10 @@ const webSearch = vi.fn(async (q: string) => {
 vi.mock("@/lib/ai/search", async (orig) => ({ ...(await orig<typeof import("@/lib/ai/search")>()), webSearch }));
 
 const pages = new Map<string, string>();
-const fetchPage = vi.fn(async (url: string) => {
+/** Where a URL redirects; the page is read and returned under the address it lands on. */
+const redirects = new Map<string, string>();
+const fetchPage = vi.fn(async (asked: string) => {
+  const url = redirects.get(asked) ?? asked;
   const html = pages.get(url);
   if (html === undefined) throw new Error("Page answered 403");
   return { url, html };
@@ -116,6 +119,7 @@ beforeEach(async () => {
   searchProfile = null;
   results.clear();
   pages.clear();
+  redirects.clear();
   verdicts.clear();
   for (const k of Object.keys(replies)) delete replies[k];
   replies.queries = () => ({ queries: ["design systems lead", "design systems lead site:greenhouse.io"] });
@@ -188,6 +192,43 @@ describe("discover (#379)", () => {
     expect(fetchPage.mock.calls.map((c) => c[0]).sort()).toEqual(["https://jobs.example.com/a?id=1", "https://jobs.example.com/a?id=2", "https://jobs.lever.co/beta/0f4c3a2e-1b2c-4d5e-8f90-123456789abc"]);
   });
 
+  it("scores a page two results redirect to once, and doesn't score one that lands on a find on the board (#1475)", async () => {
+    const [old] = await db.insert(schema.opportunities).values({ company: "Old Co", title: "Lead", fingerprint: "old", sourceUrl: "https://jobs.example.com/old" }).returning();
+    await db.insert(schema.userOpportunities).values({ userId, searchId, opportunityId: old.id, score: 4, addedVia: "agent" });
+    results.set("design systems lead", [hit("https://jobs.example.com/x1"), hit("https://jobs.example.com/x2"), hit("https://go.example.com/old")]);
+    results.set("design systems lead site:greenhouse.io", [hit("https://jobs.example.com/b")]);
+    redirects.set("https://jobs.example.com/x1", "https://jobs.example.com/careers");
+    redirects.set("https://jobs.example.com/x2", "https://jobs.example.com/careers/");
+    redirects.set("https://go.example.com/old", "https://jobs.example.com/old");
+    for (const u of ["https://jobs.example.com/careers", "https://jobs.example.com/careers/", "https://jobs.example.com/old", "https://jobs.example.com/b"]) pages.set(u, posting());
+
+    await expect(discover(searchId)).resolves.toMatchObject({ found: 2, added: 2 });
+
+    const scored = completeJSON.mock.calls.map((c) => c[0] as Call).filter((c) => c.name === "score");
+    const sent = scored.flatMap((c) => [...c.user.matchAll(/^\[\d+\] URL: (\S+)/gm)].map((m) => m[1].replace(/\/$/, ""))).sort();
+    expect(sent).toEqual(["https://jobs.example.com/b", "https://jobs.example.com/careers"]);
+    const run = await runRow();
+    // Three different pages opened: two scored, one on the board (#1649).
+    expect(run.report).toMatchObject({ read: 3 });
+    expect(run.report?.tally).toMatchObject({ postings: 2, known: 1, added: 2, unscored: 0 });
+  });
+
+  it("counts a page that opens onto a find on the board as read, so the report doesn't say no page opened (#1649)", async () => {
+    const [old] = await db.insert(schema.opportunities).values({ company: "Old Co", title: "Lead", fingerprint: "old", sourceUrl: "https://jobs.example.com/old" }).returning();
+    await db.insert(schema.userOpportunities).values({ userId, searchId, opportunityId: old.id, score: 4, addedVia: "agent" });
+    results.set("design systems lead", [hit("https://go.example.com/old"), hit("https://careers.example.com/role?gh_jid=1")]);
+    redirects.set("https://go.example.com/old", "https://jobs.example.com/old");
+    redirects.set("https://careers.example.com/role?gh_jid=1", "https://jobs.example.com/old");
+    pages.set("https://jobs.example.com/old", posting());
+
+    await discover(searchId);
+
+    const run = await runRow();
+    expect(run.report).toMatchObject({ picked: 2, read: 1 });
+    expect(run.report?.tally).toMatchObject({ postings: 0, known: 1, added: 0 });
+    expect(run.report?.tips.map((t) => t.text).join(" ")).not.toMatch(/couldn't open/);
+  });
+
   it("fills pay from the page when the model misses it", async () => {
     results.set("design systems lead", [hit("https://jobs.example.com/a")]);
     results.set("design systems lead site:greenhouse.io", []);
@@ -222,6 +263,14 @@ describe("discover (#379)", () => {
     results.set("design systems lead site:greenhouse.io", []);
     pages.set("https://jobs.example.com/a", posting("<p>Salary: $120,000 - $150,000 per year.</p>"));
     verdicts.set("https://jobs.example.com/a", { comp_min: 120000, comp_max: 150000 });
+    await expect(discover(searchId)).resolves.toMatchObject({ found: 1, added: 0 });
+  });
+
+  it("cuts a lone starting pay under the floor, like \"$150,000+\" against $180k (#877)", async () => {
+    results.set("design systems lead", [hit("https://jobs.example.com/a")]);
+    results.set("design systems lead site:greenhouse.io", []);
+    pages.set("https://jobs.example.com/a", posting());
+    verdicts.set("https://jobs.example.com/a", { comp_min: 150000, comp_max: null });
     await expect(discover(searchId)).resolves.toMatchObject({ found: 1, added: 0 });
   });
 
@@ -277,6 +326,26 @@ describe("discover (#379)", () => {
     expect((await runRow()).report?.tally).toMatchObject({ postings: 1, notPostings: 0, known: 0, added: 1 });
   });
 
+  it("puts each score on its own posting when the scorer numbers its reply from 1 (#1477)", async () => {
+    const urls = ["a", "b", "c"].map((x) => `https://jobs.example.com/${x}`);
+    results.set("design systems lead", urls.map(hit));
+    results.set("design systems lead site:greenhouse.io", []);
+    for (const u of urls) pages.set(u, posting());
+    replies.score = (c) => ({ finds: scoreReply(c).finds.map((f) => ({ ...f, index: f.index + 1 })) });
+    await expect(discover(searchId)).resolves.toMatchObject({ found: 3, added: 3 });
+    expect((await board()).map((f) => [f.url, f.company]).sort()).toEqual(urls.map((u) => [u, `Co ${u.split("/").pop()}`]));
+  });
+
+  it("reads a reply that counts from 0 as written, even when it skips the first page (#1477)", async () => {
+    const urls = ["a", "b", "c"].map((x) => `https://jobs.example.com/${x}`);
+    results.set("design systems lead", urls.map(hit));
+    results.set("design systems lead site:greenhouse.io", []);
+    for (const u of urls) pages.set(u, posting());
+    replies.score = (c) => ({ finds: scoreReply(c).finds.slice(1) });
+    await discover(searchId);
+    expect((await board()).map((f) => [f.url, f.company]).sort()).toEqual(urls.slice(1).map((u) => [u, `Co ${u.split("/").pop()}`]));
+  });
+
   it("keeps going when one search fails, and fails the run only when every search does", async () => {
     results.set("design systems lead", [hit("https://jobs.example.com/a")]);
     pages.set("https://jobs.example.com/a", posting());
@@ -294,6 +363,22 @@ describe("discover (#379)", () => {
     results.set("Design Systems Lead jobs", [hit("https://jobs.example.com/a")]);
     pages.set("https://jobs.example.com/a", posting());
     await expect(discover(searchId)).resolves.toMatchObject({ added: 1 });
+    expect(webSearch.mock.calls.map((c) => c[0])).toEqual(["Design Systems Lead jobs"]);
+  });
+
+  it("runs a query the model wrote twice once, and the repeat doesn't take a real query's slot (#1476)", async () => {
+    const qs = ["Design Systems Lead jobs", "design systems  lead JOBS", " Design Systems Lead jobs ", "a", "b", "c", "d", "e"];
+    replies.queries = () => ({ queries: qs });
+    for (const q of ["Design Systems Lead jobs", "a", "b", "c", "d", "e"]) results.set(q, []);
+    await discover(searchId);
+    expect(webSearch.mock.calls.map((c) => c[0])).toEqual(["Design Systems Lead jobs", "a", "b", "c", "d", "e"]);
+  });
+
+  it("searches a target title listed twice once (#1476)", async () => {
+    replies.queries = () => ({ queries: [] });
+    searchProfile = { summary: "", targetTitles: ["Design Systems Lead", "design systems lead"], seniority: "", industries: [], strengths: [], proof: [], where: "", pay: "", avoid: [], searchTerms: [] };
+    results.set("Design Systems Lead jobs", []);
+    await discover(searchId);
     expect(webSearch.mock.calls.map((c) => c[0])).toEqual(["Design Systems Lead jobs"]);
   });
 

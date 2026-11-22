@@ -100,7 +100,7 @@ export async function metrics(now = new Date()) {
   // any event in the last full week; and invites not revoked, accepted meaning they signed in.
   const lastWeekActive = new Set(events.filter((e) => weekOf(e.at) === last.week).map((e) => e.userId));
   const signups = await db
-    .select({ channel: schema.accessRequests.channel, userId: schema.users.id })
+    .select({ channel: schema.accessRequests.channel, referredBy: schema.accessRequests.referredBy, userId: schema.users.id })
     .from(schema.accessRequests)
     .leftJoin(schema.users, sql`lower(${schema.users.email}) = ${schema.accessRequests.email}`)
     .where(or(isNull(schema.users.id), eq(schema.users.disabled, false)));
@@ -158,6 +158,8 @@ export async function metrics(now = new Date()) {
     growth: {
       channels: byChannel(signups.map((r) => ({ channel: r.channel, joined: !!r.userId, active: !!r.userId && lastWeekActive.has(r.userId) }))),
       invites: { ...invited, rate: invited.sent ? invited.accepted / invited.sent : null },
+      // Referrals (#527): their signups are the "referral" channel row; this is how many people have sent someone.
+      referrers: new Set(signups.flatMap((r) => (r.referredBy ? [r.referredBy] : []))).size,
     },
   };
 }

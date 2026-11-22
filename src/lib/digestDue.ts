@@ -1,4 +1,19 @@
 import { daysUntil } from "./board";
+import { kinds } from "@/lib/kinds";
+
+// The stage each kind's application or bid is sent at, and every stage after it (#1539).
+const SENT = new Set(
+  Object.values(kinds).flatMap((k) => {
+    const i = k.stages.findIndex((s) => /^(applied|submitted)$/i.test(s));
+    return i < 0 ? [] : k.stages.slice(i);
+  }),
+);
+
+/**
+ * Whether a find still has its deadline ahead of the person: it hasn't been applied to or submitted (#1539). A job at
+ * Applied, Interview or Offer, or an RFP at Submitted or Awarded, has nothing left due. A stage no kind knows stays in.
+ */
+export const stillDue = (stage: string | null | undefined) => !stage || !SENT.has(stage);
 
 /** How far ahead the digest looks for deadlines (#304). */
 export const DUE_SOON_DAYS = 7;

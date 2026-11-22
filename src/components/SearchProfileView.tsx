@@ -59,7 +59,7 @@ export function SearchProfileView() {
       <PageHead
         eyebrow="Search profile"
         title="What Lookout sees"
-        intro="Every search works from this picture of you. Lookout builds it from your answers and materials and updates it when they change. To change it, edit those; each section links to the right place."
+        intro="Built from your answers and materials. Edit those to change it."
       />
 
       {!data && !err && (

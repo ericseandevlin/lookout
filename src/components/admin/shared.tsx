@@ -8,7 +8,7 @@ import { color, font } from "@/lib/tokens";
 /** Shared by the admin pages: response types, small formatters and styles, the tab bar and the message line. */
 export type Overview = {
   inbox: { id: string; from: string; subject: string; receivedAt: string; status: string; triage: { kind: string; summary: string; draftReply?: string | null } | null }[];
-  requests: { email: string; nextMove: string | null; createdAt: string }[];
+  requests: { email: string; nextMove: string | null; createdAt: string; searchFor: string | null; confirmed: boolean | null }[];
   totals: { users: number; usdDay: number; usdWeek: number; usdMonth: number };
   emailEnabled: boolean;
   users: {
@@ -22,9 +22,12 @@ export type Overview = {
   }[];
 };
 
+/** The model for text a person reads (#1532); empty model id = the main model. */
+export type Writing = { model: string; priceIn: number; priceOut: number; jsonMode: "schema" | "object" };
+
 export type Config = {
   agent: { tokenSet: boolean; lastSeen: string | null };
-  ai: { provider: "openai" | "anthropic" | "agent"; baseUrl: string; model: string; apiKey: string; apiKeyHint: string; apiKeyUnreadable?: boolean; priceIn: number; priceOut: number; jsonMode: "schema" | "object"; privacy: "strict" | "standard" };
+  ai: { provider: "openai" | "anthropic" | "agent"; baseUrl: string; model: string; apiKey: string; apiKeyHint: string; apiKeyUnreadable?: boolean; priceIn: number; priceOut: number; jsonMode: "schema" | "object"; privacy: "strict" | "standard"; writing?: Writing };
   search: { provider: "searxng" | "brave" | "none"; searxngUrl: string; braveKey: string; braveKeyHint: string; braveKeyUnreadable?: boolean; pricePerQuery: number };
   access: { signupMode: "open" | "invite"; dailyBudgetUsd: number; userDailyBudgetUsd: number };
 };

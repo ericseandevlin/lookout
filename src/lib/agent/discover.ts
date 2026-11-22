@@ -15,12 +15,15 @@ import { traceAs } from "@/lib/ai/trace";
 import { startBudgetedRun, finishRun, progress, startRun } from "@/lib/ai/runs";
 import { webSearch, type SearchHit } from "@/lib/ai/search";
 import { getAiConfig } from "@/lib/config";
-import { applyRules, fingerprint, fullTitle, legacyFingerprint, normUrl, placeId, placesDiffer } from "./rules";
+import { applyRules, fingerprint, fullTitle, legacyFingerprint, listPage, normUrl, placeId, placesDiffer, suffixedFingerprint } from "./rules";
 import { closeGonePostings } from "./linkCheck";
 import { findEventsIfDue } from "./networking";
 import { featureOn } from "@/lib/features";
 import { discoverRfp } from "./rfp";
 import { jobKey } from "@/lib/extension/match";
+import { CLOSED_NOTE_SQL, repostedNote } from "./linkState";
+import { dayKey } from "@/lib/spend";
+import { env } from "@/lib/env";
 
 /**
  * Discovery pipeline, built to work with small, cheap models:
@@ -90,17 +93,34 @@ export async function loadContext(searchId: string): Promise<Context> {
 export const profileBlock = (c: Context) =>
   `<profile>\n${c.brief}\n</profile>\n` +
   (c.searchProfile
-    ? `<search_profile>\n${renderSearchProfile(c.searchProfile)}\n</search_profile>`
+    ? `<search_profile>\n${renderSearchProfile(c.searchProfile)}\n</search_profile>` +
+      // The summary drops details, and a gap must not contradict the resume, so its text goes along too (#1531).
+      (c.resume ? `\n<resume>\n${c.resume.slice(0, 6000)}\n</resume>` : "")
     : `<resume>\n${c.resume || "(no resume uploaded)"}\n</resume>` +
       (c.linkedin ? `\n<linkedin_profile>\n${c.linkedin}\n</linkedin_profile>` : "") +
       (c.links.length ? `\n<their_links>\n${c.links.map((l) => `${l.url}\n${l.text}`).join("\n---\n")}\n</their_links>` : "")) +
   (c.rejected.length ? `\n<marked_not_a_fit>\nThey said these roles were not a fit. Avoid similar ones.\n${c.rejected.join("\n")}\n</marked_not_a_fit>` : "");
 
-const today = () => new Date().toISOString().slice(0, 10);
+// The app's own date, not UTC: after 7pm in New York UTC is already tomorrow (#1388).
+const today = () => dayKey(new Date(), env.timezone);
 
 // --- 1. queries --------------------------------------------------------------
 
 const Queries = z.object({ queries: z.array(z.string()).describe("4 to 6 web search queries") });
+
+/**
+ * Trimmed, blank ones out, and one of each: a repeat that differs only in case or spacing runs the same search again and
+ * takes a slot from a real query, so it goes before the cap (#1476).
+ */
+const distinct = (list: string[]) => {
+  const seen = new Set<string>();
+  return list
+    .map((q) => q.trim())
+    .filter((q) => {
+      const k = q.toLowerCase().replace(/\s+/g, " ");
+      return q && !seen.has(k) && !!seen.add(k);
+    });
+};
 
 async function makeQueries(ctx: Context, usage: Usage) {
   const out = await completeJSON({
@@ -116,22 +136,20 @@ Write 4 to 6 search queries for open roles that fit. Mix:
 - queries aimed at employer job pages, e.g. "Director of Events" New York site:greenhouse.io OR site:lever.co OR site:myworkdayjobs.com OR site:ashbyhq.com
 Use the candidate's target titles, close variants, and their city. Keep each under 120 characters.`,
   });
-  const queries = out.queries.map((q) => q.trim()).filter(Boolean).slice(0, MAX_QUERIES);
+  const queries = distinct(out.queries).slice(0, MAX_QUERIES);
   if (queries.length) return queries;
   // No usable queries from the model: search the profile's target titles instead (#609).
-  const titles = (ctx.searchProfile?.targetTitles ?? []).map((t) => t.trim()).filter(Boolean).slice(0, MAX_QUERIES);
+  const titles = distinct(ctx.searchProfile?.targetTitles ?? []).slice(0, MAX_QUERIES);
   if (!titles.length) throw new Error("Couldn't plan any searches from your profile. Try again, or add target titles to your profile.");
   return titles.map((t) => `${t} jobs`);
 }
 
 // --- 2+3. search and pick ----------------------------------------------------
 
-const AGGREGATOR = /(indeed|linkedin|glassdoor|ziprecruiter|simplyhired|monster|careerbuilder)\.com\/(jobs|q-|m\/jobs)|\/search\?|\/jobs\/?$/i;
-
 type Report = (pct: number, step: string) => Promise<void>;
 
 /**
- * One key per job on Greenhouse, Lever, Ashby, Workday and iCIMS, whatever host or path the link uses. A posting is saved
+ * One key per job on Greenhouse, Lever, Ashby, Workday, iCIMS, Paylocity (#1435), SmartRecruiters (#1520), Workable and Teamtailor (#1522), whatever host or path the link uses. A posting is saved
  * under the URL it redirected to, and search often returns the old one (boards.greenhouse.io for job-boards.greenhouse.io),
  * so text alone missed it and the run read and scored it again (#670). Other sites keep the exact URL match.
  */
@@ -155,7 +173,7 @@ async function gatherHits(ctx: Context, queries: string[], usage: Usage, report:
     if (r.status !== "fulfilled") continue;
     for (const h of r.value) {
       const keys = [normUrl(h.url), atsKey(h.url)].filter((k): k is string => !!k);
-      if (AGGREGATOR.test(h.url) || keys.some((k) => seen.has(k))) continue;
+      if (listPage(h.url) || keys.some((k) => seen.has(k))) continue;
       if (keys.some((k) => known.has(k))) {
         for (const k of keys) seen.add(k);
         onBoard.add(keys[0]);
@@ -254,7 +272,8 @@ export type ScoredT = z.infer<typeof Scored> & { url: string; currency?: string 
 // Built per call: the server runs for days between deploys, and the date decides what still looks open (#608).
 const scorerSystem = () => `You score job postings for one candidate. Today is ${today()}.
 Only use facts on the page. Never invent pay or dates; use null when the page doesn't state them. Annualize hourly pay only if it is clearly full time.
-Reasons are read on a phone: short, concrete, no filler.`;
+Reasons are read on a phone: short, concrete, no filler. No em dashes.
+Read the resume before you write a reason it may not fit. Never claim a gap the resume contradicts: if it lists an iOS app, the person is not "web only".`;
 
 /**
  * strict: a failed scoring call throws instead of skipping the batch, for a single page someone added (#628).
@@ -281,10 +300,13 @@ export async function scorePages(ctx: Context, pages: Page[], usage: Usage, repo
       });
       // One entry per page: small models sometimes repeat an index, which would count the posting twice (#612).
       const seen = new Set<number>();
+      // Pages go out as [0] to [n-1]. A reply with an entry at [n] and none at [0] counted from 1, and read as written it
+      // put each score on the posting before its own (#1477).
+      const shift = !res.finds.some((f) => f.index === 0) && res.finds.some((f) => f.index === batch.length) ? 1 : 0;
       for (const f of res.finds) {
         if (seen.has(f.index)) continue;
         seen.add(f.index);
-        const page = batch[f.index];
+        const page = batch[f.index - shift];
         // The model sometimes misses pay even when it's on the page, or gives the hourly rate of a part-time role (#702);
         // the deterministic read fills the gap. It also replaces a range missing one end: a lone low end read as the top
         // and cut the find as below the floor (#851).
@@ -293,7 +315,7 @@ export async function scorePages(ctx: Context, pages: Page[], usage: Usage, repo
         // Pay posted in another currency: the model copies the posted numbers as dollars, so the page's read and its
         // currency win, and the USD floor leaves it alone (#1095).
         if (page.pay && page.pay.currency !== "USD") out.push({ ...f, comp_min: page.pay.min, comp_max: page.pay.max, currency: page.pay.currency, url: page.url });
-        else out.push({ ...f, ...comp, url: page.url, ...((comp.comp_min == null || comp.comp_max == null) && page.pay && { comp_min: page.pay.min, comp_max: page.pay.max }) });
+        else out.push({ ...f, ...comp, url: page.url, ...((comp.comp_min == null || comp.comp_max == null || unconverted(comp, page.pay)) && page.pay && { comp_min: page.pay.min, comp_max: page.pay.max }) });
       }
     } catch (e) {
       console.error("[discover] scoring batch failed", e);
@@ -304,6 +326,12 @@ export async function scorePages(ctx: Context, pages: Page[], usage: Usage, repo
   if (batches && failed === batches) throw new Error(`Lookout read ${pages.length} postings but couldn't score any of them. It will try again later.`);
   return out;
 }
+
+/** How many read pages got no score: scorePages gives each scored page one entry, carrying the page's URL (#1456). */
+export const unscoredCount = (pages: Pick<Page, "url">[], scored: Pick<ScoredT, "url">[]) => {
+  const got = new Set(scored.map((s) => s.url));
+  return pages.filter((p) => !got.has(p.url)).length;
+};
 
 // --- save ----------------------------------------------------------------------
 
@@ -321,6 +349,16 @@ export const realDate = (d: string | null) => {
  * An annual salary, or null. Under $10,000 is an hourly or monthly rate, not a year's pay: stored as annual it read as
  * below the floor and capped the score (#702). Over the integer column is a range in cents (#626).
  */
+/**
+ * The model copied a monthly, biweekly, weekly, daily or hourly range as written ("$12,000 - $15,000 per month" as 12000-15000),
+ * and the page's own read already turned it into a year. Both ends times one pay period give the page's range (#1636).
+ */
+function unconverted(comp: { comp_min: number | null; comp_max: number | null }, pay: { min: number; max: number } | null): boolean {
+  if (!pay || comp.comp_min == null || comp.comp_max == null || comp.comp_max >= pay.min) return false;
+  const near = (a: number, b: number) => Math.abs(a - b) <= 0.02 * b;
+  return [12, 24, 26, 52, 260, 2080].some((k) => near(comp.comp_min! * k, pay.min) && near(comp.comp_max! * k, pay.max));
+}
+
 const annualPay = (n: number | null) => (n != null && Number.isFinite(n) && n >= 10_000 && n < 2 ** 31 ? Math.round(n) : null);
 
 /** In an insert's conflict update: the shared row's link check says gone and the new find is at another URL (#830). */
@@ -330,18 +368,19 @@ const reposted = sql`(${schema.opportunities.attributes} -> 'linkCheck' ->> 'sta
 const noPay = sql`(${schema.opportunities.compMin} is null and ${schema.opportunities.compMax} is null)`;
 
 /**
- * The fingerprint, or the key from before #1269 when a posting with an accented name is stored under that one and none is
- * under the new key, so "Montréal" saved last week is matched, not saved again.
+ * The fingerprint, or an older key a posting is stored under when none is under the new one: the key from before #1645
+ * ("Acme, Inc." keyed with its legal form), then the one from before #1269 ("Montréal" saved with the é as a space). So a
+ * posting saved last week is matched, not saved again.
  */
 async function baseKey(f: { company: string; title: string; location: string }) {
   const fp = fingerprint(f.company, f.title, f.location);
-  const old = legacyFingerprint(f.company, f.title, f.location);
-  if (old === fp) return fp;
+  const keys = [...new Set([fp, suffixedFingerprint(f.company, f.title, f.location), legacyFingerprint(f.company, f.title, f.location)])];
+  if (keys.length === 1) return fp;
   const rows = await db
     .select({ fp: schema.opportunities.fingerprint })
     .from(schema.opportunities)
-    .where(inArray(schema.opportunities.fingerprint, [fp, old]));
-  return rows.some((r) => r.fp === fp) || !rows.length ? fp : old;
+    .where(inArray(schema.opportunities.fingerprint, keys));
+  return keys.find((k) => rows.some((r) => r.fp === k)) ?? fp;
 }
 
 /**
@@ -371,30 +410,104 @@ async function postingKey(f: { company: string; title: string; location: string;
   return `${fp}:${mine}`;
 }
 
+/** Finds the link check closed before they applied: a repost brings these back (Eric, #922). */
+const REOPENABLE = ["Not applied", "Auto-applying"];
+
+/**
+ * A job the link check closed came back at a new link (#922). On this board, a find closed before they applied is back as
+ * "Not applied", unarchived and without Lookout's closed line; returns its score, or null. One closed after they applied
+ * (Ghosted, Not selected) stays closed with a note of the new link.
+ */
+async function reopenReposted(searchId: string, opportunityId: string, url: string): Promise<number | null> {
+  const uo = schema.userOpportunities;
+  const mine = and(eq(uo.searchId, searchId), eq(uo.opportunityId, opportunityId), eq(uo.stage, "Closed"));
+  const [back] = await db
+    .update(uo)
+    .set({
+      stage: "Not applied",
+      archived: false,
+      closedFrom: null,
+      notes: sql`btrim(regexp_replace(regexp_replace(${uo.notes}, ${CLOSED_NOTE_SQL}, '', 'gn'), '\n{3,}', '\n\n', 'g'), E' \t\r\n')`,
+      // Added again now: the run counts it as new, so the finds email, which takes finds added since the last one, has it too (#1363).
+      addedAt: new Date(),
+    })
+    .where(and(mine, inArray(uo.closedFrom, REOPENABLE)))
+    .returning({ score: uo.score });
+  if (back) return back.score;
+  // Closed before #922 recorded the stage: Lookout's closed line says it was Lookout's, so it gets the note, not a guess.
+  const line = repostedNote(dayKey(new Date(), env.timezone), url);
+  await db
+    .update(uo)
+    .set({ notes: sql`case when ${uo.notes} ~ '\\S' then regexp_replace(${uo.notes}, '\\s+$', '') || ${`\n\n${line}`} else ${line} end` })
+    .where(and(mine, sql`(${uo.closedFrom} is not null or ${uo.notes} ~ ${`(?n)${CLOSED_NOTE_SQL}`})`));
+  return null;
+}
+
 /** A link's URL text and, on a known ATS, its job key: both say "already on the board" (#670, #1146). */
 const keysOf = (u: string) => [normUrl(u), atsKey(u)].filter((k): k is string => !!k);
+
+/**
+ * One page per address the reads landed on, and none that landed on a find already on the board. Search results are
+ * deduped before reading, but a redirect can send two of them to one page (closed postings that all go to the careers
+ * home) or one to a find already saved, and each was scored again (#1475). onBoard counts the second kind.
+ */
+export function uniquePages<P extends { url: string }>(pages: P[], knownUrls: string[]) {
+  const known = new Set(knownUrls.flatMap(keysOf));
+  const seen = new Set<string>();
+  const out: P[] = [];
+  let onBoard = 0;
+  for (const p of pages) {
+    const keys = keysOf(p.url);
+    if (keys.some((k) => seen.has(k))) continue;
+    for (const k of keys) seen.add(k);
+    if (keys.some((k) => known.has(k))) onBoard++;
+    else out.push(p);
+  }
+  return { pages: out, onBoard };
+}
 
 export async function save(ctx: Context, finds: ScoredT[], via: "agent" | "manual"): Promise<RunTally & { newFinds: { id: string; score: number }[] }> {
   // Same check as gatherHits: in agent mode this is the only one, so a board job sent back at another link for the same
   // ATS job (boards.greenhouse.io for job-boards, a company ?gh_jid= page) is known, not a second find (#1146).
   const known = new Set(ctx.knownUrls.flatMap(keysOf));
+  // Added in this run: a second copy of one of these is a repeat, not something already on the board (#1531).
+  const fresh = new Set<string>();
+  const freshIds = new Set<string>();
+  // Posting keys cut in this run, by the rules or the floor: one job at two links is cut once, not twice (#1637).
+  const cut = new Set<string>();
   const t = emptyTally();
   const newFinds: { id: string; score: number }[] = [];
   for (const raw of finds) {
-    const f = { ...raw, comp_min: annualPay(raw.comp_min), comp_max: annualPay(raw.comp_max) };
-    if (!f.is_open_job_posting || !f.company || !f.title) {
+    // A reply with the ends the wrong way round ($200,000 low, $150,000 high) is one range: the top judges the floor (#1526).
+    const [lo, hi] = [annualPay(raw.comp_min), annualPay(raw.comp_max)];
+    const f = { ...raw, ...(lo != null && hi != null && lo > hi ? { comp_min: hi, comp_max: lo } : { comp_min: lo, comp_max: hi }) };
+    // In agent mode this is the only list-page check gatherHits would have made; a link the person added is theirs (#1631).
+    if (!f.is_open_job_posting || !f.company || !f.title || (via === "agent" && listPage(f.url))) {
       t.notPostings++;
       continue;
     }
+    if (keysOf(f.url).some((k) => fresh.has(k))) continue;
     t.postings++;
     if (via === "agent" && keysOf(f.url).some((k) => known.has(k))) {
       t.known++;
       continue;
     }
     const key = await postingKey(f);
+    // A copy of a find this run already cut by the rules or the floor isn't a second posting (#1637).
+    if (cut.has(key)) {
+      t.postings--;
+      continue;
+    }
     // A shared posting keeps the pay already stored (#846), so the rules and the floor judge that pay, not this read's (#879).
     const [stored] = await db
-      .select({ id: schema.opportunities.id, min: schema.opportunities.compMin, max: schema.opportunities.compMax, currency: schema.opportunities.currency })
+      .select({
+        id: schema.opportunities.id,
+        min: schema.opportunities.compMin,
+        max: schema.opportunities.compMax,
+        currency: schema.opportunities.currency,
+        sourceUrl: schema.opportunities.sourceUrl,
+        attributes: schema.opportunities.attributes,
+      })
       .from(schema.opportunities)
       .where(eq(schema.opportunities.fingerprint, key));
     // The shared posting row: new, or an existing one that takes what this read adds.
@@ -438,14 +551,25 @@ export async function save(ctx: Context, finds: ScoredT[], via: "agent" | "manua
       )[0];
     // Already on this board at another link: it is known, not a dealbreaker, under the floor or off location (#1109).
     // The shared row still takes this read, so a repost's new link reaches the board (#830).
+    if (stored && freshIds.has(stored.id)) {
+      t.postings--;
+      continue;
+    }
     if (stored) {
       const [mine] = await db
         .select({ id: schema.userOpportunities.opportunityId })
         .from(schema.userOpportunities)
         .where(and(eq(schema.userOpportunities.searchId, ctx.searchId), eq(schema.userOpportunities.opportunityId, stored.id)));
       if (mine) {
+        // Same test as `reposted` in the upsert, read before the upsert drops the old check (#922).
+        const lc = (stored.attributes as { linkCheck?: { state?: string } } | null)?.linkCheck;
+        const isRepost = lc?.state === "gone" && stored.sourceUrl !== f.url.slice(0, 1000);
         await upsert();
-        t.known++;
+        const score = isRepost ? await reopenReposted(ctx.searchId, stored.id, f.url.slice(0, 1000)) : null;
+        if (score != null) {
+          t.added++;
+          newFinds.push({ id: stored.id, score });
+        } else t.known++;
         for (const k of keysOf(f.url)) known.add(k);
         continue;
       }
@@ -467,14 +591,18 @@ export async function save(ctx: Context, finds: ScoredT[], via: "agent" | "manua
     );
     if (!ruled) {
       t.dealbreaker++;
+      cut.add(key);
       continue;
     }
     // A range that tops out under the floor does not make the board (#740). A link the person adds still goes on, marked down.
-    // A lone starting pay like "$150,000+" has no max and is unbounded above (#877).
-    const top = pay.max;
+    // One number counts as the top, so a lone starting pay like "$150,000+" under the floor is cut too (Eric, #877).
+    const top = pay.max ?? pay.min;
     if (floor && top && top < floor) {
       t.belowFloor++;
-      if (via !== "manual") continue;
+      if (via !== "manual") {
+        cut.add(key);
+        continue;
+      }
     }
     if (!f.location_fit) t.offLocation++;
     const opp = await upsert();
@@ -494,7 +622,9 @@ export async function save(ctx: Context, finds: ScoredT[], via: "agent" | "manua
     if (inserted.length) {
       t.added++;
       newFinds.push({ id: opp.id, score: ruled.score });
-    }
+      freshIds.add(opp.id);
+      for (const k of keysOf(f.url)) fresh.add(k);
+    } else if (freshIds.has(opp.id)) t.postings--;
     else t.known++;
     for (const k of keysOf(f.url)) known.add(k);
   }
@@ -541,12 +671,16 @@ export async function discover(searchId: string, trigger: "scheduled" | "manual"
     const { hits, onBoard } = await gatherHits(ctx, queries, usage, report);
     await report(37, `Found ${hits.length} new results. Picking the most promising`);
     const picks = await pickHits(ctx, hits, usage);
-    const pages = await fetchAll(picks.map((h) => h.url), report);
+    const landed = uniquePages(await fetchAll(picks.map((h) => h.url), report), ctx.knownUrls);
+    const pages = landed.pages;
     await report(75, `Read ${pages.length} postings`);
     const scored = await scorePages(ctx, pages, usage, report);
     await report(97, "Saving new finds");
     const { newFinds, ...tally } = await save(ctx, scored, "agent");
-    tally.known += onBoard;
+    tally.known += onBoard + landed.onBoard;
+    // Pages a failed batch or the model skipped have no entry. They aren't saved, so the next search reads them again,
+    // but this run says so rather than calling everything "already on your board" (#1456).
+    tally.unscored = unscoredCount(pages, scored);
     const { added, postings: found } = tally;
     await autoQueue(search.userId, newFinds).catch((e) => console.error("[auto-apply] queue failed", e));
     await report(98, "Checking that your open finds are still posted");
@@ -555,7 +689,9 @@ export async function discover(searchId: string, trigger: "scheduled" | "manual"
     const events = !featureOn("EVENTS") ? null : await findEventsIfDue(ctx, usage, (step) => report(99, step)).catch((e) => (console.error("[events] failed", e), null));
     const eventsNote = events ? `, plus ${events} ${events === 1 ? "event" : "events"}` : "";
     await progress(run.id, 100, doneStep(tally) + eventsNote);
-    const summary = makeReport(ctx, { queries, results: hits.length + onBoard, picked: picks.length, read: pages.length, tally });
+    // A page that opened onto a find already on the board was still read: without it, a run whose every pick redirects
+    // to the board reported read 0, told the person no page could be opened, and counted as failed in Metrics (#1649).
+    const summary = makeReport(ctx, { queries, results: hits.length + onBoard, picked: picks.length, read: pages.length + landed.onBoard, tally });
     await finishRun(run.id, usage, { found, added, report: summary });
     return { found, added, runId: run.id };
   } catch (e) {

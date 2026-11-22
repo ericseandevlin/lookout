@@ -1,5 +1,5 @@
 import { createHash } from "node:crypto";
-import { hashRoute } from "@/lib/extension/match";
+import { hashRoute, jobKey } from "@/lib/extension/match";
 
 export type Scored = {
   score: number;
@@ -14,6 +14,9 @@ export type Scored = {
 // A gap already about pay. Whole words, so "Company is early stage" or "payments experience" don't count (#658).
 const PAY_GAP = /\b(comp|compensation|pay|salary|salaries|wages?)\b/i;
 
+/** Em and en dashes become a comma: reasons are read as plain copy, and Lookout never writes one (#1531). */
+export const noDashes = (s: string) => s.replace(/\s*[\u2014\u2013]\s*/g, ", ").replace(/,\s*,/g, ",").trim();
+
 /**
  * Hard rules applied on top of the model's score. The model's score is a
  * ceiling candidate; rules can only lower it. Returns null when the find
@@ -23,7 +26,7 @@ export function applyRules(s: Scored, floor: number | null) {
   if (s.dealbreaker) return null;
   let cap = 5;
   const gap = [...s.reasonsGap];
-  const topComp = s.compMax; // null (only a starting pay) is unbounded above (#877).
+  const topComp = s.compMax ?? s.compMin; // One number counts as the top, even a starting pay (Eric, #877).
   if (floor && topComp && topComp < floor) {
     cap = Math.min(cap, 3);
     if (!gap.some((g) => /floor/i.test(g))) gap.unshift("Top of the posted range is below your floor");
@@ -31,7 +34,7 @@ export function applyRules(s: Scored, floor: number | null) {
   if (!s.locationFit) cap = Math.min(cap, 3);
   if (!topComp && !gap.some((g) => PAY_GAP.test(g))) gap.push("No comp posted");
   const score = Math.max(1, Math.min(5, Math.round(s.score), cap));
-  return { score, reasonsMatch: s.reasonsMatch.slice(0, 5), reasonsGap: gap.slice(0, 5) };
+  return { score, reasonsMatch: s.reasonsMatch.slice(0, 5).map(noDashes), reasonsGap: gap.slice(0, 5).map(noDashes) };
 }
 
 /**
@@ -73,13 +76,25 @@ const normPart = (fold: boolean) => (s: string) => withOtherScript(s.replace(/\(
 /** A title with its parentheticals kept, to tell "Designer (Payments)" from "Designer (Identity)" (#838). */
 export const fullTitle = (t: string) => withOtherScript(t);
 
-const key = (company: string, title: string, location: string, fold: boolean) =>
+// A legal form after the name: "Acme, Inc." on the ATS page is "Acme" on LinkedIn (#1645). Only at the end, so "Co-op" and
+// "Limited Brands" keep theirs; "Pty Ltd" goes as a pair.
+const LEGAL_FORM = /(?:[\s,]+(?:inc|incorporated|llc|l\.l\.c|ltd|limited|corp|corporation|co|company|gmbh|plc|ag|s\.a|sa|b\.v|bv|pty|llp|l\.p|lp)\.?)+\s*$/i;
+export const bareCompany = (c: string) => c.replace(LEGAL_FORM, "").trim() || c;
+
+const key = (company: string, title: string, location: string, fold: boolean, bare = fold) =>
   // nosemgrep: javascript.lang.security.audit.node-sha1.node_sha1 -- SHA-1 here only fingerprints postings for dedupe, not security
   createHash("sha1")
-    .update([company, title, location.split(",")[0]].map(normPart(fold)).join("|"))
+    // The legacy key (fold false) keeps the location as written, so postings stored before #1514 are still matched.
+    .update([bare ? bareCompany(company) : company, title, (fold ? remoteFirst(location) : location).split(",")[0]].map(normPart(fold)).join("|"))
     .digest("hex");
 
 export const fingerprint = (company: string, title: string, location: string) => key(company, title, location, true);
+
+/**
+ * The key stored from #1269 until #1645, with the company's legal form kept ("acme inc"). The same as fingerprint for a
+ * company with none. postingKey looks it up so a posting saved under it is matched, not saved again.
+ */
+export const suffixedFingerprint = (company: string, title: string, location: string) => key(company, title, location, true, false);
 
 /**
  * The key stored before #1269, when an accented letter became a space ("montr al"). The same as fingerprint for text with
@@ -118,16 +133,89 @@ const COUNTRIES = new Map<string, string>([
   ["canada", "ca"],
 ]);
 
+// Words that say how someone works in a place, not which place. "or", "in" and "on" alone are Oregon, Indiana and
+// Ontario, so they go only as a joining word ("NY or Remote") or as "in office" and "on site".
+const QUALIFIER = /\b(?:remote|hybrid|on ?site|in ?office|metro(?:politan)?|area|only|based)\b/g;
+const withoutQualifier = (p: string) =>
+  p
+    .replace(QUALIFIER, " ")
+    .replace(/\s+/g, " ")
+    .trim()
+    .replace(/^(?:or|and) (?=\S)|(?<=\S) (?:or|and)$/g, "");
+
+// Words in "Remote (...)" that are terms of the job, not a place (#1555).
+const NOT_PLACE = /^(?:(?:full|part) ?time|contract(?:or)?|temporary|temp|permanent|freelance|flexible|anywhere|ft|pt)$/;
+
+const known = (p: string) => STATES.has(p) || COUNTRIES.has(p);
+
+// Countries whose ISO code is also a US state's or Canadian province's: ATS feeds write "Berlin, DE" and LinkedIn
+// writes "Berlin, Germany", and DE alone reads as Delaware (#1561). Each code with the names that country goes by.
+const ISO_CLASH: Record<string, string[]> = {
+  al: ["albania"], ar: ["argentina"], az: ["azerbaijan"], co: ["colombia"], de: ["germany", "deutschland"],
+  ga: ["gabon"], id: ["indonesia"], il: ["israel"], in: ["india"], ky: ["cayman islands"], la: ["laos"],
+  ma: ["morocco"], md: ["moldova"], me: ["montenegro"], mn: ["mongolia"], mo: ["macao", "macau"], mt: ["malta"],
+  nc: ["new caledonia"], ne: ["niger"], nl: ["netherlands", "the netherlands", "holland"], pa: ["panama"],
+  pe: ["peru"], sc: ["seychelles"], sd: ["sudan"], sk: ["slovakia"], tn: ["tunisia"], va: ["vatican", "vatican city"],
+};
+
+/**
+ * "Remote - US", "US Remote", "USA (Remote)" and "Remote – United States" as "Remote, US", the way "Remote, US" and
+ * "Remote (US)" already key: the fingerprint keeps only the text before the first comma, so one remote job written two
+ * ways was two finds (#1514). Only a known country: "New York (Remote)" names a city and stays as it is.
+ */
+export function remoteFirst(location: string) {
+  const i = location.indexOf(",");
+  const first = i < 0 ? location : location.slice(0, i);
+  if (!/\bremote\b/i.test(first)) return location;
+  const rest = normPart(true)(first.replace(/[()]/g, " "))
+    .replace(/\bremote\b/g, " ")
+    .replace(/\s+/g, " ")
+    .trim()
+    .replace(/\b([a-z]) (?=[a-z]\b)/g, "$1");
+  // "US-based", "anywhere in the US", "US East Coast": the same filler region() drops after a comma.
+  const place = withoutZone(withPlace(withoutQualifier(rest)));
+  if (!COUNTRIES.has(place)) return location;
+  return `Remote, ${place}${i < 0 ? "" : location.slice(i)}`;
+}
+
+/** "anywhere in the us" and "within the united states" name a known place once their filler goes (#1466); anything else stays as it is. */
+const withPlace = (p: string) => {
+  const t = p.replace(/^(?:anywhere )?(?:in |within |across |throughout )?(?:the )?(?=\S)/, "");
+  return known(t) ? t : p;
+};
+
+// A coast, part of the country or time zone after a known place: "US - East Coast", "United States, Eastern Time",
+// "US (PST)" (#1510). Whole trailing words only, so "North Carolina" and "West Virginia" stay the states they are.
+const ZONE =
+  /^(.+?) (?:(?:east(?:ern)?|west(?:ern)?|central|mountain|pacific|atlantic|midwest(?:ern)?|(?:north|south)(?:east|west)?(?:ern)?)(?: (?:coast|time(?: ?zones?)?|time ?zones?|region|states|us))?|[ecmp][sd]?t)$/;
+const withoutZone = (p: string) => {
+  const m = p.match(ZONE);
+  return m && known(m[1]) ? m[1] : p;
+};
+
 /**
  * The state and country after a location's first comma: "Portland, OR" is { state: "us-or", country: "us" }, "Remote,
  * Canada" is { country: "ca" }. A country not known here stands as its own text, so "Remote, Mexico" still differs from
  * "Remote, US". ZIP codes are dropped ("NY 10001").
  */
-export function region(location: string) {
+export function region(raw: string) {
+  const location = remoteFirst(raw);
   let state: string | null = null;
   let country: string | null = null;
   let other: string | null = null;
-  for (const part of location.split(",").slice(1)) {
+  let code: string | null = null;
+  // A known state or country in parentheses names the place too: "Remote (US)" is not "Remote (Canada)" (#1426). Other
+  // words there ("(hybrid)", "(NYC)") say nothing, so they never make two places of one. After "Remote" or nothing, an
+  // unknown word is the place itself: "Remote (Germany)" is not "Remote (US)" (#1555).
+  const parts = [
+    ...location.split(",").slice(1).map((text) => ({ text, paren: false, open: false })),
+    ...[...location.matchAll(/\(([^()]*)\)/g)].map((m) => ({
+      text: m[1],
+      paren: true,
+      open: /^(?:remote)?$/i.test(location.slice(0, m.index).split(",").pop()!.replace(/[^\p{L}]+/gu, "")),
+    })),
+  ];
+  for (const { text: part, paren, open } of parts) {
     // Dotted codes come out of normPart as single letters: "D.C." is "d c", read as "dc" (#1303).
     const p = normPart(true)(part)
       .replace(/\b\d+\b/g, " ")
@@ -135,13 +223,23 @@ export function region(location: string) {
       .trim()
       .replace(/\b([a-z]) (?=[a-z]\b)/g, "$1");
     if (!p) continue;
-    const s = STATES.get(p);
-    if (s) state ??= s;
-    else if (COUNTRIES.has(p)) country ??= COUNTRIES.get(p)!;
-    else other = p;
+    // A work mode or "metro area" after a known place is not part of it: "NY - Hybrid", "IL Metro Area", "US-based" (#1374).
+    const q = known(p) ? p : withoutZone(withPlace(withoutQualifier(p)));
+    // A work mode on its own ("New York, Remote") or after an unknown country ("Germany - Hybrid") is not a place (#1385).
+    if (!q || (paren && !known(q) && (!open || NOT_PLACE.test(q)))) continue;
+    const s = STATES.get(q);
+    if (s) {
+      if (!state && q.length === 2) code = q;
+      state ??= s;
+    } else if (COUNTRIES.has(q)) country ??= COUNTRIES.get(q)!;
+    else other = q;
   }
-  return { state, country: country ?? state?.slice(0, 2) ?? other };
+  return { state, country: country ?? state?.slice(0, 2) ?? other, code: country ? null : code };
 }
+
+/** "DE" on one side, with no country named beside it, and "Germany" on the other, with no state on that side: one place written two ways (#1561). */
+const isoMatch = (x: ReturnType<typeof region>, y: ReturnType<typeof region>) =>
+  !!x.code && !y.state && !!y.country && !!ISO_CLASH[x.code]?.includes(y.country);
 
 /**
  * Two locations that share the fingerprint's city but are in different places: both name a country and they differ, or
@@ -151,6 +249,7 @@ export function region(location: string) {
 export function placesDiffer(a: string, b: string) {
   const x = region(a);
   const y = region(b);
+  if (isoMatch(x, y) || isoMatch(y, x)) return false;
   return (!!x.country && !!y.country && x.country !== y.country) || (!!x.state && !!y.state && x.state !== y.state);
 }
 
@@ -162,18 +261,21 @@ export const placeId = (location: string) => {
 
 // Tracking params only, matched by exact name, so job IDs like referenceId or refnum stay in the key (#487). Ad and email
 // click IDs too: Google, Meta, Microsoft, LinkedIn, Instagram, HubSpot, Mailchimp, Marketo and the Google linker (#1193).
-// Jobvite's source tags __jvst and __jvsd (#1252).
+// Jobvite's source tags __jvst and __jvsd (#1252). Google's result tag srsltid, the older _ga linker, gad_source, the
+// TikTok, X, Yandex, Reddit and Pinterest click IDs, and Lever's share tag lever-via (#1615).
 const TRACKING =
-  /^(utm_.*|gh_src|source|src|ref|refid|ref_src|referrer|trk|trackingid|lever-source|lever-origin|gclid|gbraid|wbraid|dclid|fbclid|msclkid|li_fat_id|igshid|_hsenc|_hsmi|mc_cid|mc_eid|mkt_tok|_gl|__jvst|__jvsd)$/i;
+  /^(utm_.*|gh_src|source|src|ref|refid|ref_src|referrer|trk|trackingid|lever-source|lever-origin|lever-via|gclid|gbraid|wbraid|dclid|fbclid|msclkid|li_fat_id|igshid|_hsenc|_hsmi|mc_cid|mc_eid|mkt_tok|_gl|_ga|gad_source|srsltid|ttclid|twclid|yclid|rdt_cid|epik|__jvst|__jvsd)$/i;
 
-/** A query pair's name, decoded when it can be. */
+/** A query pair's name, decoded when it can be. An array name ("lever-source[]", Lever's shared links) is its plain name (#1431). */
 const pairName = (p: string) => {
   const k = p.split("=")[0].replace(/\+/g, " ");
+  let name = k;
   try {
-    return decodeURIComponent(k);
+    name = decodeURIComponent(k);
   } catch {
-    return k;
+    // keep the raw name
   }
+  return name.replace(/\[\]$/, "");
 };
 
 export function normUrl(u: string) {
@@ -187,4 +289,49 @@ export function normUrl(u: string) {
   } catch {
     return u.toLowerCase();
   }
+}
+
+// LinkedIn's /jobs/view/<id> is one posting with a public page, not a list (#1547).
+// Job board search and list pages, on any country site (indeed.co.uk, ca.linkedin.com): /jobs, /q-<title>-jobs.html,
+// Indeed's /l-<place>-jobs.html, the mobile /m/jobs; Glassdoor's /Job/...-SRCH_... pages; any /search? page or path
+// that ends in /jobs (#1537). Wellfound's /role/ and /location/ pages ("Product Designer Jobs in New York") (#1577).
+const AGGREGATOR =
+  /(indeed|linkedin|glassdoor|ziprecruiter|simplyhired|monster|careerbuilder)\.[a-z]{2,3}(\.[a-z]{2})?\/(jobs(?!\/view\/)|q-|l-|m\/jobs)|glassdoor\.[a-z]{2,3}(\.[a-z]{2})?\/(job\/|.*SRCH_)|wellfound\.com\/(role|location)s?\/|\/search\?|\/jobs\/?$/i;
+
+// Other boards' list pages (#1614): Built In's /jobs/<category> on any city site, Dice's /jobs search, YC's /jobs and
+// /jobs/role/<role>, RemoteOK's /remote-<tag>-jobs and We Work Remotely's /categories/. Their postings are /job/<slug>/<id>,
+// /job-detail/<id>, /companies/<co>/jobs/<id>, /remote-jobs/<id> and /remote-jobs/<slug>.
+const BOARD_LIST =
+  /^(?:[a-z]+\.)?builtin[a-z]*\.com\/jobs(?:[/?]|$)|^dice\.com\/jobs(?:[/?]|$)|^ycombinator\.com\/jobs(?:[/?]|$)|^remoteok\.(?:com|io)\/remote-[^/?]+-jobs(?:[/?]|$)|^weworkremotely\.com\/categories\//i;
+
+// ATS hosts where every posting has an ID jobKey reads, so an address there without one is the board, not a job.
+const ATS_HOST = /(^|\.)(greenhouse\.io|lever\.co|ashbyhq\.com|myworkdayjobs\.com|myworkdaysite\.com)$/i;
+
+// More ATS hosts whose postings jobKey keys by ID (#1613). Their other job pages (SmartRecruiters' one-click form,
+// Workable's old /jobs/<id>, Taleo Business Edition's viewRequisition?rid=) still hold a long number or a UUID, so only
+// an address with neither is the board. jobs.workable.com is Workable's own job board: its postings have no /j/ code.
+const ATS_MORE = /(^|\.)(smartrecruiters\.com|workable\.com|teamtailor\.com|icims\.com|taleo\.net)$/i;
+const NAMES_ID = /\d{4,}|[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i;
+// Paylocity's board for one company is /Recruiting/Jobs/All/<company id>.
+const PAYLOCITY_BOARD = /(^|\.)paylocity\.com\/recruiting\/jobs\/all(\/|$)/i;
+
+/**
+ * A search result that lists jobs rather than being one: a job board search page, or an ATS board home such as
+ * jobs.lever.co/acme or acme.wd1.myworkdayjobs.com/External (#1537). Dropped before triage so it doesn't take a pick.
+ */
+export function listPage(u: string): boolean {
+  if (AGGREGATOR.test(u)) return true;
+  let host: string;
+  try {
+    const url = new URL(u);
+    host = url.hostname;
+    if (BOARD_LIST.test(host.replace(/^www\./i, "") + url.pathname + url.search)) return true;
+  } catch {
+    return false;
+  }
+  if (!jobKey(u)?.startsWith("url:")) return false;
+  if (ATS_HOST.test(host)) return true;
+  const { pathname, search } = new URL(u);
+  if (PAYLOCITY_BOARD.test(host + pathname)) return true;
+  return ATS_MORE.test(host) && !/^jobs\.workable\.com$/i.test(host) && !NAMES_ID.test(pathname + search);
 }

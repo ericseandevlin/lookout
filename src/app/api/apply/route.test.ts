@@ -21,7 +21,7 @@ vi.mock("@/lib/apply", async (orig) => ({ ...(await orig<typeof import("@/lib/ap
 // Drafting and submitting are not under test: record which applications were started.
 const kick = vi.fn();
 const resumeFor = vi.fn(async () => {});
-vi.mock("@/lib/application/run", () => ({ kick, resumeFor }));
+vi.mock("@/lib/application/run", () => ({ kick, resumeFor, fillLetters: async () => {} }));
 
 const queue = await import("./route");
 const one = await import("./[id]/route");

@@ -6,6 +6,29 @@ Every production release of Lookout, newest first. The format follows [Keep a Ch
 
 Work merged to `main` (staging) and waiting for the weekly release.
 
+## [0.7.0] - 2026-11-22
+
+The interview, a simpler Auto-apply, and about 170 changes since 0.6.2. Database changes: migrations 0033 to 0038. Set `FEATURE_INTERVIEW=on` to turn the interview on.
+
+### Added
+- Interview, behind `FEATURE_INTERVIEW`: Lookout asks one open question at a time, the way a recruiter would, and saves each answer as facts. A short answer gets one follow-up. "What Lookout knows" lists every fact and every saved application answer, with edit, delete and a private switch (#1449, #1474, #1660, #1661).
+- Auto-apply (admins): "Interview me" on the keyword panel opens the interview with the missing keywords first, and a keyword moves to "In your resume" when a saved fact supports it (#1485, #1660).
+- Cover letter (admins): all three strategies are written with the draft, so a switch needs no wait (#1484).
+- AI settings: an optional writing model for the text people read. Empty means the main model writes (#1532).
+- Referral links: Settings > Invite a friend shows each person's own link. Someone who requests access through it lands on the waitlist tagged as a referral from that person, and Admin > Metrics counts referral signups, how many joined and were active, and how many people have referred someone. Database change: migration 0033 (#527).
+- Waitlist, behind `FEATURE_WAITLIST` (off in prod): `/jobs` and `/what-it-finds` pages, a "What would you want it to look for?" question, and double opt-in with a confirm email. Admin > People downloads every request as CSV. The product name now lives in `src/lib/brand.ts` for the marketing pages and waitlist. Database change: migration 0034 (#9).
+
+### Changed
+- Auto-apply (admins): each row is company and role with Review and Cancel. The on/off switch and a Settings gear sit on the title row (#1486, #1660).
+- Sidebar: Search profile opens to Interview, Resume and materials, and What Lookout knows.
+- Shorter text across the interview, the profile and the review page (#1531, #1534, #1535, #1536).
+
+### Fixed
+- Search: a repost brings back a find that the link check had closed (#922). "Acme, Inc." and "Acme" are one job (#1645).
+- Posting text no longer shows raw HTML or escaped characters (#1481).
+- Resume reading, Recruiter Analysis and People to reach: fewer false flags (#1638, #1651, #1653, #1655, #1656).
+- Extension 0.2.1 and Submit: more forms are filled, and more "sent" pages are read as sent (#1647).
+
 ## [0.6.2] - 2026-11-16
 
 Tracing and the first scaling work after the group demo, plus about 150 small fixes. No database changes. Everyone agrees to the privacy page again on their next visit, because it now lists PostHog.

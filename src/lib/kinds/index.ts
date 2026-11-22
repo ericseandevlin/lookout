@@ -66,8 +66,8 @@ export const job: KindConfig = {
       key: "q1",
       kind: "text",
       prompt: "What's the next role, and what would make it a real step up?",
-      helper: "Title, scope, team size, the kind of venue or company.",
-      placeholder: "e.g. Director of Events at a flagship venue, owning sales and production",
+      helper: "Title, scope, team size, the kind of company.",
+      placeholder: "e.g. A senior title at a bigger company, leading a team of 10",
       starters: {
         mode: "append",
         options: [
@@ -103,7 +103,7 @@ export const job: KindConfig = {
       kind: "text",
       prompt: "What's the win you'd lead with in an interview?",
       helper: "One result from the last few years, with a number if you have one.",
-      placeholder: "e.g. Rebuilt the banquet sales team and grew private-event revenue 40% in two years",
+      placeholder: "e.g. Led a project that grew revenue 40% in two years",
       starters: {
         mode: "insert",
         options: [
@@ -111,8 +111,8 @@ export const job: KindConfig = {
           { label: "Cut costs", text: "Cut costs by ${s:200k} a year[ by {t:renegotiating vendor contracts}]" },
           { label: "Launched something", text: "Launched {s:a new booking app}[, which reached {s:10,000 users}]" },
           { label: "Built a team", text: "Built and led a team of {n:8}[ that {t:shipped the new design system}]" },
-          { label: "Turned it around", text: "Took {s:the venue} from {s:a loss} to {s:a profit}[ by {t:cutting slow menus}]" },
-          { label: "Landed a big client", text: "Won {s:a national hotel group}[, a ${s:2M} account,][ by {t:pitching a custom package}]" },
+          { label: "Turned it around", text: "Took {s:the business} from {s:a loss} to {s:a profit}[ by {t:cutting what didn't sell}]" },
+          { label: "Landed a big client", text: "Won {s:a national client}[, a ${s:2M} account,][ by {t:pitching a custom package}]" },
         ],
       },
     },
@@ -269,12 +269,13 @@ export function answeredCount(cfg: KindConfig, a: Record<string, string | string
 const SCALE: Record<string, number> = { k: 1e3, m: 1e6, b: 1e9 };
 // A pay rate per hour, week or month right after the number (or after the top of a range, "85-95/hr"). The floor is
 // compared with yearly salaries, so it is annualized the way ai/pay.ts does it: 2080 hours, 52 weeks, 12 months (#941).
-// Day rates (260 working days), biweekly (26) and semimonthly (24) pay too, named before weekly and monthly (#982).
+// Day rates (260 working days), biweekly (26) and semimonthly (24) pay too, named before weekly and monthly (#982),
+// short forms included: "/d", "/biweek", "/semimonth" (#1351). "p/h" is "per hour" too, as in salary answers (#1386).
 const PER_UNIT =
-  /^(?:\s*(?:-|–|—|to)\s*\d+(?:\.\d+)?\s*k?)?\s*(?:(?:\/\s?|\b(?:per|an?|each)\s+)(hours?|hrs?|h|days?|weeks?|wks?|months?|mos?)\b|(hourly|daily|bi-?weekly|every (?:two|2) weeks|semi-?monthly|twice (?:a|per|each) month|weekly|monthly)\b)/;
+  /^(?:\s*(?:-|–|—|to)\s*\d+(?:\.\d+)?\s*k?)?\s*(?:(?:p?\/\s?|\b(?:per|an?|each)\s+)(hours?|hrs?|h|days?|d|weeks?|wks?|bi-?weeks?|bi-?wks?|months?|mos?|semi-?months?)\b|(hourly|daily|bi-?weekly|every (?:two|2) weeks|semi-?monthly|twice (?:a|per|each) month|weekly|monthly)\b)/;
 // An en or em dash marks a range like a hyphen does: "$60–70/hr" (#1081).
 // "$95 per project", "500/visit": a rate per something Lookout can't turn into a year (#982).
-const OTHER_UNIT = /^(?:\s*(?:-|–|—|to)\s*\d+(?:\.\d+)?\s*k?)?\s*(?:\/\s?|\bper\s+)(?!y(?:ea)?rs?\b|annum\b|annual)[a-z]/;
+const OTHER_UNIT = /^(?:\s*(?:-|–|—|to)\s*\d+(?:\.\d+)?\s*k?)?\s*(?:p?\/\s?|\bper\s+)(?!y(?:ea)?rs?\b|annum\b|annual|a\b)[a-z]/;
 const periods = (unit: string) => (/^(bi|every)/.test(unit) ? 26 : /^(semi|twice)/.test(unit) ? 24 : /^h/.test(unit) ? 2080 : /^d/.test(unit) ? 260 : /^w/.test(unit) ? 52 : 12);
 
 /**
@@ -286,10 +287,21 @@ const periods = (unit: string) => (/^(bi|every)/.test(unit) ? 26 : /^(semi|twice
  * rate is turned into a year ("$85/hr" is $176,800), and "6 figures" is not a number to filter on (#941). So is a day
  * rate, biweekly or semimonthly pay; a rate per anything else ("per project") is unread (#982).
  */
+// A number that is part of a label isn't pay: "W2 $90/hr", "W-2 only", "L6 $200k", "Senior (IC4) 180k", "Level 5, $180k"
+// (#1562). "USD 150,000" and "US$150k" are still amounts.
+const NOT_PAY = /(?:\b(?!usd?\b)[a-z]{1,3}-?|\b(?:level|lvl|grade|band|tier|step)\s*)$/;
+const labelNumber = (a: RegExpMatchArray, rest: string) =>
+  a[1] === "1099" ||
+  (/^(401|403|457)$/.test(a[1]) && (/^[kb]$/.test(a[2] ?? "") || /^\s*\(\s*[kb]\s*\)/.test(rest))) ||
+  (/^(19|20)\d{2}$/.test(a[1]) && !a[2] && !PER_UNIT.test(rest));
 export function parseMoney(v: unknown): number | null {
   const s = str(v).toLowerCase().replace(/[,$]/g, "").replace(/(\d)\s+(?=\d{3}\b)/g, "$1");
   if (!s || /[€£¥₹]|\b(eur|euros?|gbp|pounds?|inr|jpy)\b/.test(s) || /\bfigures?\b/.test(s)) return null;
-  const m = /(\d+(?:\.\d+)?)(?![\d.])\s*(k|mm|mil|million|m|bn|billion|b)?s?(?![a-z])/.exec(s);
+  const AMOUNT = /(\d+(?:\.\d+)?)(?![\d.])\s*(k|mm|mil|million|m|bn|billion|b)?s?(?![a-z])/g;
+  const found = [...s.matchAll(AMOUNT)].filter((a) => !NOT_PAY.test(s.slice(0, a.index)));
+  // A tax form, a retirement plan or a year before the pay is not the pay: "1099 $90/hr", "401k + 150k", "2026 target:
+  // 150k" (#1567). Only when another number follows, so "2000/month" alone is still read.
+  const m = found.find((a) => !labelNumber(a, s.slice(a.index + a[0].length))) ?? found[0];
   if (!m) return null;
   const bare = parseFloat(m[1]);
   const rest = s.slice(m.index + m[0].length);

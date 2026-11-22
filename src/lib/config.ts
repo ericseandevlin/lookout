@@ -27,6 +27,13 @@ export const AiConfigSchema = z.object({
    * (zero data retention), trying US hosts first. Resumes go through here, so strict is the default.
    */
   privacy: z.enum(["strict", "standard"]).default("strict"),
+  /**
+   * The model for text a person reads or sends (#1532): resumes, letters, answers, outreach, the interview. Same
+   * provider, endpoint and key as the main model. An empty model id means the main model writes too.
+   */
+  writing: z
+    .object({ model: z.string().max(200), priceIn: z.number().min(0).max(1000), priceOut: z.number().min(0).max(1000), jsonMode: z.enum(["schema", "object"]) })
+    .optional(),
 });
 export type AiConfig = z.infer<typeof AiConfigSchema>;
 

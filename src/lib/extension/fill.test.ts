@@ -229,6 +229,10 @@ describe("extension fill: choices", () => {
       ["No", ["Select", "None of the above", "No, I do not have a disability"]],
       ["None", ["Select", "No", "None of the above"]],
       ["They/them", ["She/her", "He/him"]],
+      ["Full time", ["Select", "Full-time", "Part-time"]],
+      ["Onsite", ["Remote", "Hybrid", "On-site"]],
+      ["Bachelors", ["Associate's", "Bachelor's"]],
+      ["Non", ["Man", "Non-binary"]],
     ];
     for (const [content, options] of cases) {
       const p = page(`<label for="s">Q</label><select id="s">${options.map((o, i) => `<option value="${i}">${o}</option>`).join("")}</select>`);
@@ -544,6 +548,34 @@ describe("extension fill: choices", () => {
     expect(ticked(p, 2)).toEqual([false, true]);
   });
 
+  // The same boxes with no fieldset or group around them; the worker fills these since #1209 (#1369).
+  const loose = (q: string, opts: string[]) =>
+    `<span id="q">${q}</span>${opts.map((o, i) => `<input type="checkbox" id="b${i}" aria-labelledby="q l${i}"><span id="l${i}">${o}</span>`).join("")}`;
+
+  it.each([
+    ["Yes", [false, true]],
+    ["No", [true, false]],
+  ])("checks the %s box labeled question + option with no group around it (#1369)", async (answer, want) => {
+    const p = page(loose("Are you 18 or older?", ["No", "Yes"]));
+    const [r] = await p.fill({ steps: [{ prompt: "Are you 18 or older?", kind: "choice", content: answer, options: ["No", "Yes"], required: true }] });
+    expect(r).toMatchObject({ ok: true, how: "checked 1" });
+    expect(ticked(p, 2)).toEqual(want);
+  });
+
+  it("checks every line of a multi-select answer labeled question + option with no group (#1369)", async () => {
+    const p = page(loose("Which days can you work? (required)", ["Weekdays", "Weekends", "Nights"]));
+    const [r] = await p.fill({ steps: [{ prompt: "Which days can you work?", kind: "choice", content: "Weekdays\nNights", options: ["Weekdays", "Weekends", "Nights"] }] });
+    expect(r).toMatchObject({ ok: true, how: "checked 2" });
+    expect(ticked(p, 3)).toEqual([true, false, true]);
+  });
+
+  it("reports an answer that is none of the loose boxes' options, and ticks nothing (#1369)", async () => {
+    const p = page(loose("Are you 18 or older?", ["No", "Yes"]));
+    const [r] = await p.fill({ steps: [{ prompt: "Are you 18 or older?", kind: "choice", content: "Maybe", options: ["No", "Yes"], required: true }] });
+    expect(r.ok).toBe(false);
+    expect(ticked(p, 2)).toEqual([false, false]);
+  });
+
   it("does not untick a lone checkbox that is already ticked", async () => {
     const p = page(`<label><input type="checkbox" id="t" checked> I agree to the terms</label>`);
     const [r] = await p.fill({ steps: [{ prompt: "I agree to the terms", kind: "text", content: "Yes" }] });
@@ -580,7 +612,82 @@ function combobox(w: JSDOM["window"], id: string, options: string[], multi = fal
   });
 }
 
+describe("extension fill: character limits (#1421)", () => {
+  it("reports an answer longer than a textarea's maxlength as not filled", async () => {
+    const p = page(`<label for="t">Why us?</label><textarea id="t" maxlength="20"></textarea><span>0/20</span>`);
+    const [row] = await p.fill({ steps: [{ prompt: "Why us?", kind: "text", content: "A".repeat(50) }] });
+    expect(row).toMatchObject({ ok: false, how: "answer is 50 characters, the field takes 20" });
+  });
+
+  it("reports an answer longer than an input's maxlength as not filled", async () => {
+    const p = page(`<label for="c">City</label><input id="c" maxlength="5">`);
+    const [row] = await p.fill({ steps: [{ prompt: "City", kind: "text", content: "Brooklyn" }] });
+    expect(row).toMatchObject({ ok: false, how: "answer is 8 characters, the field takes 5" });
+  });
+
+  it("types an answer that fits, and a field with no limit", async () => {
+    const p = page(`<label for="t">Why us?</label><textarea id="t" maxlength="20"></textarea><label for="u">Anything else?</label><textarea id="u"></textarea>`);
+    const log = await p.fill({ steps: [{ prompt: "Why us?", kind: "text", content: "Short answer" }, { prompt: "Anything else?", kind: "text", content: "B".repeat(500) }] });
+    expect(log.map((r) => r.ok)).toEqual([true, true]);
+    expect(p.value("#t")).toBe("Short answer");
+  });
+});
+
+describe("extension fill: Lever questions with no fieldset (#1419)", () => {
+  const form = `<ul><li class="application-question custom-question"><div class="application-label"><div class="text">Are you authorized to work in the US?<span class="required">✱</span></div></div><div class="application-field"><ul data-qa="multiple-choice"><li><label><input type="radio" id="f0-0" name="cards[a][f0]" value="Yes"><span>Yes</span></label></li><li><label><input type="radio" id="f0-1" name="cards[a][f0]" value="No"><span>No</span></label></li></ul></div></li><li class="application-question custom-question"><div class="application-label"><div class="text">Do you require sponsorship?<span class="required">✱</span></div></div><div class="application-field"><ul data-qa="multiple-choice"><li><label><input type="radio" id="f1-0" name="cards[a][f1]" value="Yes"><span>Yes</span></label></li><li><label><input type="radio" id="f1-1" name="cards[a][f1]" value="No"><span>No</span></label></li></ul></div></li><li class="application-question custom-question"><div class="application-label"><div class="text">Which areas interest you?<span class="required">✱</span></div></div><div class="application-field"><ul data-qa="checkboxes"><li><label><input type="checkbox" id="f2-0" name="cards[a][f2]" value="Research"><span>Research</span></label></li><li><label><input type="checkbox" id="f2-1" name="cards[a][f2]" value="Design systems"><span>Design systems</span></label></li><li><label><input type="checkbox" id="f2-2" name="cards[a][f2]" value="Prototyping"><span>Prototyping</span></label></li></ul></div></li></ul>`;
+  const checked = (doc: Document) => [...doc.querySelectorAll("input:checked")].map((e) => e.id);
+
+  it("checks the radio under a plain heading, not the next question's", async () => {
+    const p = page(form);
+    const log = await p.fill({ steps: [
+      { prompt: "Are you authorized to work in the US?", kind: "choice", content: "Yes", options: ["Yes", "No"] },
+      { prompt: "Do you require sponsorship?", kind: "choice", content: "No", options: ["Yes", "No"] },
+    ] });
+    expect(log.map((r) => r.ok)).toEqual([true, true]);
+    expect(checked(p.doc)).toEqual(["f0-0", "f1-1"]);
+  });
+
+  it("ticks the checkboxes the answer means", async () => {
+    const p = page(form);
+    const [row] = await p.fill({ steps: [{ prompt: "Which areas interest you?", kind: "choice", content: "Research\nPrototyping", options: ["Research", "Design systems", "Prototyping"] }] });
+    expect(row).toMatchObject({ ok: true, how: "checked 2" });
+    expect(checked(p.doc)).toEqual(["f2-0", "f2-2"]);
+    expect(await p.probe({ steps: [{ prompt: "Which areas interest you?", kind: "choice" }] })).toEqual({ score: 1 });
+  });
+
+  it("never borrows boxes from further up the form for a heading whose own block has a text field", async () => {
+    const p = page(`<div><div class="q"><div class="text">Preferred start date</div><input id="d"></div><div><label><input type="radio" name="x" id="x0">Yes</label></div></div>`);
+    const [row] = await p.fill({ steps: [{ prompt: "Preferred start date", kind: "choice", content: "Yes", options: ["Yes"] }] });
+    expect(row.ok).toBe(false);
+    expect(checked(p.doc)).toEqual([]);
+  });
+});
+
 describe("extension fill: custom dropdowns", () => {
+  it("opens a Workday dropdown, a button with aria-haspopup=listbox, and picks the option (#1420)", async () => {
+    const p = page(`<label for="b">Phone Device Type<abbr title="required">*</abbr></label><button type="button" id="b" aria-haspopup="listbox">Select One</button>`);
+    combobox(p.w, "b", ["Landline", "Mobile"]);
+    const [row] = await p.fill({ steps: [{ prompt: "Phone Device Type", kind: "choice", content: "Mobile", options: ["Landline", "Mobile"] }] });
+    expect(row).toMatchObject({ ok: true, how: "picked option" });
+    expect((p.doc.getElementById("b") as HTMLElement).dataset.picked).toBe("Mobile");
+    expect(await p.probe({ steps: [{ prompt: "Phone Device Type", kind: "choice" }] })).toEqual({ score: 1 });
+  });
+
+  it("never types into a Workday dropdown, even for a text step", async () => {
+    const p = page(`<label for="b">State</label><button type="button" id="b" aria-haspopup="listbox">Select One</button>`);
+    combobox(p.w, "b", ["New Jersey", "New York"]);
+    const [row] = await p.fill({ steps: [{ prompt: "State", kind: "text", content: "New York" }] });
+    expect(row).toMatchObject({ ok: true, how: "picked option" });
+    expect((p.doc.getElementById("b") as HTMLElement).textContent).toBe("Select One");
+    expect((p.doc.getElementById("b") as HTMLElement).dataset.picked).toBe("New York");
+  });
+
+  it("still leaves a plain button alone", async () => {
+    const p = page(`<label for="b">State</label><button type="button" id="b">Upload</button>`);
+    const [row] = await p.fill({ steps: [{ prompt: "State", kind: "text", content: "New York" }] });
+    expect(row).toMatchObject({ ok: false, how: "field not found" });
+  });
+
   it("opens a combobox with a real-looking click and picks the matching option", async () => {
     const p = page(`<label for="loc">Which office?</label><input id="loc" role="combobox">`);
     combobox(p.w, "loc", ["Austin", "New York", "Remote"]);
@@ -645,6 +752,19 @@ describe("extension fill: custom dropdowns", () => {
     expect(p.value("#cc")).toBe("us");
   });
 
+  it("puts a Country answer in the question, not the phone's picker of the same name (#1498)", async () => {
+    const opts = `<option value="">Select</option><option value="us">United States</option><option value="ca">Canada</option>`;
+    const p = page(`<label for="ph">Phone</label>
+      <label for="pcc">Country</label><select id="pcc">${opts}</select>
+      <input id="ph" type="tel">
+      <label for="loc">Location (City)</label><input id="loc">
+      <label for="q1">Country</label><select id="q1">${opts}</select>`);
+    const log = await p.fill({ steps: [text("Phone", "555-0100"), { prompt: "Country", kind: "choice", content: "Canada", options: ["United States", "Canada"], required: true }] });
+    expect(p.value("#q1")).toBe("ca");
+    expect(p.value("#pcc")).toBe("us");
+    expect(log.find((r) => r.prompt === "Phone country")).toEqual({ prompt: "Phone country", ok: true, how: "selected" });
+  });
+
   it("leaves the country alone when the form asks Country as its own question", async () => {
     const p = page(`<label for="ph">Phone</label><input id="ph"><label for="cc">Country</label><input id="cc">`);
     const log = await p.fill({ steps: [text("Phone", "555-0100"), text("Country", "Canada")] });
@@ -673,6 +793,38 @@ describe("extension fill: uploads", () => {
       expect(log.map((r) => r.how)).toEqual(["uploaded .docx", "uploaded .docx"]);
       expect([fileName(p, "cv"), fileName(p, "cl")]).toEqual(["Pat Lee - Acme Resume.docx", "Pat Lee - Acme Cover Letter.docx"]);
     });
+
+  it("never puts the letter over the resume in a combined Resume/Cover Letter upload (#1633)", async () => {
+    const p = page(`<form><div><label for="f">Resume/Cover Letter *</label><input type="file" id="f"></div><div><label for="e">Email</label><input id="e"></div></form>`);
+    const log = await p.fill({
+      steps: [
+        { prompt: "Resume/Cover Letter", kind: "file", itemKind: "resume", file: docx("Pat Lee - Acme Resume.docx") },
+        { prompt: "Cover letter", kind: "file", itemKind: "cover_letter", content: "Dear team", file: docx("Pat Lee - Acme Cover Letter.docx") },
+      ],
+    });
+    expect(fileName(p, "f")).toBe("Pat Lee - Acme Resume.docx");
+    expect(log.map((r) => r.ok)).toEqual([true, false]);
+  });
+
+  it("starts each fill with every upload free, so a second fill can replace a file (#1633)", async () => {
+    const p = page(`<div><label>Resume/CV</label><input type="file" id="cv"></div>`);
+    await p.fill({ steps: [{ prompt: "Resume/CV", kind: "file", itemKind: "resume", file: docx("old.docx") }] });
+    await p.fill({ steps: [{ prompt: "Resume/CV", kind: "file", itemKind: "resume", file: docx("new.docx") }] });
+    expect(fileName(p, "cv")).toBe("new.docx");
+  });
+
+  it("types a cover letter into its own text box, not a Portfolio upload (#1635)", async () => {
+    const p = page(`<form><div><label for="cv">Resume</label><input type="file" id="cv"></div><div><label for="pf">Portfolio</label><input type="file" id="pf"></div><div><label for="t">Cover Letter</label><textarea id="t"></textarea></div></form>`);
+    const log = await p.fill({
+      steps: [
+        { prompt: "Resume", kind: "file", itemKind: "resume", file: docx("Resume.docx") },
+        { prompt: "Cover Letter", kind: "file", itemKind: "cover_letter", content: "Dear team,\nI build design systems.", file: docx("Letter.docx") },
+      ],
+    });
+    expect(fileName(p, "pf")).toBeUndefined();
+    expect((p.doc.getElementById("t") as unknown as { value: string }).value).toBe("Dear team,\nI build design systems.");
+    expect(log[1].how).toBe("typed the letter");
+  });
 
   it("falls back to the first input for the resume and the second for the letter", async () => {
     const p = page(`<input type="file" id="a"><input type="file" id="b">`);
@@ -886,6 +1038,23 @@ describe("extension probe and submit watch", () => {
     expect(log[0]).toMatchObject({ ok: false, how: "field rejected the answer" });
   });
 
+  it("a select inside its label is labeled by the label's words, not its options (#1398)", async () => {
+    const p = page(`<label for="cc">Country code</label><input id="cc">
+      <label>Country <select id="c"><option value="">Select</option><option value="ca">Canada</option><option value="us">United States</option></select></label>`);
+    const log = await p.fill({ steps: [{ prompt: "Country", kind: "text", content: "Canada", required: true }] });
+    expect(log[0]).toMatchObject({ ok: true });
+    expect(p.value("#c")).toBe("ca");
+    expect(p.value("#cc")).toBe("");
+  });
+
+  it("finds a phone Country select wrapped in its label (#1398)", async () => {
+    const p = page(`<label for="ph">Phone</label><input id="ph" type="tel">
+      <label>Country <select id="c"><option value="">Select</option><option value="ca">Canada</option><option value="us">United States</option></select></label>`);
+    const log = await p.fill({ steps: [{ prompt: "Phone", kind: "text", content: "555 123 4567", required: true }] });
+    expect(log.find((r) => r.prompt === "Phone country")).toMatchObject({ ok: true, how: "selected" });
+    expect(p.value("#c")).toBe("us");
+  });
+
   for (const legend of ["How did you hear about us? (required)", "How did you hear about us?✱"])
     it(`radio group "${legend}" beats the "If other" text box (#1150)`, async () => {
       const p = page(`<fieldset><legend>${legend}</legend>
@@ -896,4 +1065,89 @@ describe("extension probe and submit watch", () => {
       expect((p.doc.getElementById("li") as HTMLInputElement).checked).toBe(true);
       expect(p.value("#o")).toBe("");
     });
+});
+
+describe("extension fill: button inputs are not fields (#1399)", () => {
+  it.each(["button", "submit"])("never types into an input of type %s", async (type) => {
+    const p = page(`<input type="${type}" id="b" value="Apply with LinkedIn" aria-label="Apply with LinkedIn">
+      <label for="li">LinkedIn Profile URL</label><input id="li">`);
+    await p.fill({ steps: [text("LinkedIn", "https://linkedin.com/in/pat")] });
+    expect(p.value("#b")).toBe("Apply with LinkedIn");
+    expect(p.value("#li")).toBe("https://linkedin.com/in/pat");
+  });
+});
+
+describe("extension fill: a label made of separate elements (#1397)", () => {
+  it("reads a label whose parts have no whitespace between them", async () => {
+    const p = page(`<label><span>Website</span><span class="hint">Include https://</span><input id="w"></label>`);
+    const [r] = await p.fill({ steps: [text("Website", "https://pat.dev")] });
+    expect(r.ok).toBe(true);
+    expect(p.value("#w")).toBe("https://pat.dev");
+  });
+
+  it("checks a question + option box whose label parts have no whitespace", async () => {
+    const box = (id: string, o: string) => `<label><input type="checkbox" id="${id}"><span>Are you 18 or older?</span><span>${o}</span></label>`;
+    const p = page(box("y", "Yes") + box("n", "No"));
+    const [r] = await p.fill({ steps: [{ prompt: "Are you 18 or older?", kind: "choice", content: "Yes", options: ["Yes", "No"], required: true }] });
+    expect(r.ok).toBe(true);
+    expect((p.doc.querySelector("#y") as HTMLInputElement).checked).toBe(true);
+    expect((p.doc.querySelector("#n") as HTMLInputElement).checked).toBe(false);
+  });
+});
+
+describe("extension fill: a checkbox that only mentions the question (#1407)", () => {
+  it("answers the radio group named by the question, not the consent box beside it", async () => {
+    const p = page(`<fieldset><legend>Gender</legend><label><input type="radio" name="g" id="m">Male</label><label><input type="radio" name="g" id="f">Female</label></fieldset>
+      <label><input type="checkbox" id="c">I agree to share my gender for EEO reporting</label>`);
+    const [r] = await p.fill({ steps: [{ prompt: "Gender", kind: "choice", content: "Female", options: ["Male", "Female"], required: true }] });
+    expect(r.ok).toBe(true);
+    expect((p.doc.querySelector("#f") as HTMLInputElement).checked).toBe(true);
+    expect((p.doc.querySelector("#c") as HTMLInputElement).checked).toBe(false);
+  });
+
+  it("still ticks the box when no group asks the question", async () => {
+    const p = page(`<label><input type="checkbox" id="c">I agree to share my gender for EEO reporting</label>`);
+    const [r] = await p.fill({ steps: [{ prompt: "Gender", kind: "choice", content: "Yes", options: ["Yes", "No"], required: true }] });
+    expect(r.ok).toBe(true);
+    expect((p.doc.querySelector("#c") as HTMLInputElement).checked).toBe(true);
+  });
+});
+
+describe("extension fill: aria-labelledby and <label for> on the same radio (#1408)", () => {
+  it("reads the question from aria-labelledby first and checks the option the answer means", async () => {
+    const p = page(`<span id="q">Can you work onsite?</span>
+      <input type="radio" name="o" id="y" aria-labelledby="q ly"><label id="ly" for="y">Yes</label>
+      <input type="radio" name="o" id="n" aria-labelledby="q ln"><label id="ln" for="n">No</label>`);
+    const [r] = await p.fill({ steps: [{ prompt: "Can you work onsite?", kind: "choice", content: "No", options: ["Yes", "No"], required: true }] });
+    expect(r.ok).toBe(true);
+    expect((p.doc.querySelector("#n") as HTMLInputElement).checked).toBe(true);
+    expect((p.doc.querySelector("#y") as HTMLInputElement).checked).toBe(false);
+  });
+});
+
+describe("extension fill: legend-less groups whose questions start the same (#1409)", () => {
+  it("answers the group whose own question is the step, not the later one that extends it", async () => {
+    const a = "Please confirm that you have read our policy about relocation";
+    const p = page(`<fieldset><div>${a}</div><label><input type="radio" name="a" id="ay">Yes</label><label><input type="radio" name="a" id="an">No</label></fieldset>
+      <fieldset><div>${a} benefits too *</div><label><input type="radio" name="b" id="by">Yes</label><label><input type="radio" name="b" id="bn">No</label></fieldset>`);
+    const log = await p.fill({
+      steps: [
+        { prompt: a, kind: "choice", content: "Yes", options: ["Yes", "No"], required: true },
+        { prompt: `${a} benefits too`, kind: "choice", content: "No", options: ["Yes", "No"], required: true },
+      ],
+    });
+    expect(log.map((r) => r.ok)).toEqual([true, true]);
+    const checked = (s: string) => (p.doc.querySelector(s) as HTMLInputElement).checked;
+    expect([checked("#ay"), checked("#an"), checked("#by"), checked("#bn")]).toEqual([true, false, false, true]);
+  });
+
+  it("picks the group with the shortest question text that holds the step, even with a number before it", async () => {
+    const a = "Please confirm that you have read our policy about relocation";
+    const p = page(`<fieldset><div>1. ${a}</div><label><input type="radio" name="a" id="ay">Yes</label><label><input type="radio" name="a" id="an">No</label></fieldset>
+      <fieldset><div>2. ${a} benefits too</div><label><input type="radio" name="b" id="by">Yes</label><label><input type="radio" name="b" id="bn">No</label></fieldset>`);
+    const log = await p.fill({ steps: [{ prompt: a, kind: "choice", content: "Yes", options: ["Yes", "No"], required: true }] });
+    expect(log.map((r) => r.ok)).toEqual([true]);
+    const checked = (s: string) => (p.doc.querySelector(s) as HTMLInputElement).checked;
+    expect([checked("#ay"), checked("#by")]).toEqual([true, false]);
+  });
 });

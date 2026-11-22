@@ -38,6 +38,16 @@ const words = (s: string) => s.split(/\s+/).filter(Boolean).length;
 // With no network import, these claims are never safe to put in front of an applicant.
 const INVENTED_RELATIONSHIP = /\b(?:mutual (?:connection|contact)|you (?:know|met) (?:him|her|them|each other)|you two|your (?:former )?(?:colleague|coworker|teammate|manager|connection)|we (?:know|met|worked together)|we both|my (?:former )?(?:colleague|coworker|teammate|manager|connection))\b/i;
 
+// Scripts written without spaces between words, where a name can only be found inside the text.
+const NO_SPACES = /[\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}\p{Script=Thai}]/u;
+/** Whole words only: "box" is not in "dropbox", so a Dropbox recruiter isn't a contact at Box (#1655). */
+// A plural still counts: "Technical Recruiter" in "one of our technical recruiters".
+const has = (evidence: string, t: string) => {
+  if (NO_SPACES.test(t)) return evidence.includes(t);
+  const e = ` ${evidence} `;
+  return e.includes(` ${t} `) || e.includes(` ${t}s `);
+};
+
 /**
  * Keep only source-backed people, even if the model overstates the evidence. One source must carry
  * the name, public role and company together; the code, not the model, enforces the two-person cap.
@@ -58,7 +68,7 @@ export function finishOutreach(d: z.infer<typeof OutreachDraft>, sources: Public
       if (!s) return false;
       const evidence = norm(`${s.title}\n${s.text}`);
       const need = [norm(name), norm(role), norm(company)];
-      return need.every((t) => t && evidence.includes(t));
+      return need.every((t) => t && has(evidence, t));
     });
     if (!source) continue;
     seen.add(key);

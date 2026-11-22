@@ -2,6 +2,7 @@ import { z } from "zod";
 import type { ApplicationItemKind } from "@/lib/db/schema";
 import { isJunkKeyword } from "./posting";
 import { bullets } from "./notes";
+import { sameOption } from "./fillPlan";
 import { storiesBlock } from "./stories";
 import { STRATEGY, suggestStrategy } from "./letterStrategy";
 
@@ -64,7 +65,12 @@ export const PREFERRED_NAME = /preferred (first )?name/i;
 
 /** Name, email and profile links come straight from the account. Returns null when the model should handle it. */
 export function fillField(prompt: string, inp: DraftInputs): Drafted | null {
-  const p = prompt.toLowerCase();
+  // "Legal first name" is the account name, never a saved preferred name (#1489).
+  const p = prompt
+    .toLowerCase()
+    .replace(/^legal (?=(first |last |full )?name)/, "")
+    .replace(/^given name/, "first name")
+    .replace(/^(family name|surname)/, "last name");
   const [first, ...rest] = inp.name.trim().split(/\s+/);
   const fact = (content: string, source: string): Drafted => ({ content, note: `From your ${source}.`, sources: [source], question: null });
   if (PREFERRED_NAME.test(p)) return first ? fact(first, "account name") : null;
@@ -144,15 +150,18 @@ export function hasKeyword(text: string, keyword: string) {
  * "C-suite", which would back a skill the person never named (#1087). "AI-driven" and "R/Python" still count.
  */
 function shortWordIn(text: string, k: string) {
-  for (let i = text.indexOf(k); i >= 0; i = text.indexOf(k, i + 1)) {
-    const before = text[i - 1] ?? " ";
-    const after = text[i + k.length] ?? " ";
-    if (/[a-z0-9&+#]/.test(before) || /[a-z0-9&+#]/.test(after)) continue;
-    if (k.length === 1 && (before === "-" || after === "-")) continue;
-    if (k === "go" && text.startsWith("-to", i + k.length)) continue;
-    return true;
-  }
+  for (let i = text.indexOf(k); i >= 0; i = text.indexOf(k, i + 1)) if (shortWordAt(text, i, k)) return true;
   return false;
+}
+
+/** The short skill k (lowercase) at index i of the lowercase text is its own word, by the rule above. */
+export function shortWordAt(text: string, i: number, k: string) {
+  const before = text[i - 1] ?? " ";
+  const after = text[i + k.length] ?? " ";
+  if (/[a-z0-9&+#]/.test(before) || /[a-z0-9&+#]/.test(after)) return false;
+  if (k.length === 1 && (before === "-" || after === "-")) return false;
+  if (k === "go" && text.startsWith("-to", i + k.length)) return false;
+  return true;
 }
 
 export type KeywordReport = { term: string; before: boolean; after: boolean; where?: string; choice?: "include" | "exclude" }[];
@@ -190,7 +199,13 @@ export function newNumbers(master: string, draft: string): string[] {
       .replace(/\b(?:over|more than)\s+(\$?\d[\d,.]*(?:%|k|m|b)?)(?![\w+])/gi, "$1+");
   const nums = (raw: string) => {
     const s = norm(raw);
-    return new Set((s.match(/\$?\d[\d,.]*(?:\s?(?:%|mm|k|m|b|x|\+)(?![a-z]))?/gi) ?? []).map((n) => n.toLowerCase().replace(/[,\s]/g, "").replace(/\.$/, "").replace(/mm$/, "m")));
+    // A digit inside a word is part of a name, not a number: B2B, HTML5, CSS3, S3 (#1393, as #1265).
+    // A "+" may follow a unit too: "50K+" is "50k+", the way "over 50,000" is "50,000+", so the two meet (#1611).
+    return new Set(
+      (s.match(/(?<![a-z\d])\$?\d[\d,.]*(?:\s?(?:%|mm|k|m|b|x)(?![a-z]))?(?:\s?\+)?/gi) ?? []).map((n) =>
+        n.toLowerCase().replace(/[,\s]/g, "").replace(/\.$/, "").replace(/mm(\+?)$/, "m$1"),
+      ),
+    );
   };
   // Round numbers in one spelling: "1,000,000" is "1m" and "250,000" is "250k", like "1M" and "250K" (#1148).
   const short = (n: string) => {
@@ -201,7 +216,7 @@ export function newNumbers(master: string, draft: string): string[] {
     return n;
   };
   // A year is written bare, as in the text: "2,000" has a thousands comma, so it is a count, not the year 2000 (#1218).
-  const years = new Set((norm(draft).match(/\$?\d[\d,.]*/g) ?? []).map((n) => n.replace(/\.$/, "")).filter((n) => /^(19|20)\d\d$/.test(n)));
+  const years = new Set((norm(draft).match(/(?<![a-z\d])\$?\d[\d,.]*/gi) ?? []).map((n) => n.replace(/\.$/, "")).filter((n) => /^(19|20)\d\d$/.test(n)));
   const have = new Set([...nums(master)].map(short));
   // The master's "over 20" is "20+": a plain "20" in the draft says no more than that (#1148).
   return [...nums(draft)].filter((n) => n && !years.has(n) && !have.has(short(n)) && !have.has(short(n) + "+"));
@@ -229,7 +244,7 @@ export const AnswersDraft = z.object({
       index: z.number().int(),
       content: z.string().describe("The answer, ready to paste. For a choice question, exactly one of the options; for a select-any question, one option per line. Empty if you need to ask"),
       sources: z.array(z.string()).describe("Where each fact came from: 'resume: <role or line>', 'profile: <field>', 'posting', 'LinkedIn'"),
-      question: z.string().describe("If you can't answer from the materials, the one question to ask the person. Else empty"),
+      question: z.string().describe("If you can't answer from the materials, the one question to ask the person, in a few words. Say what the materials don't include (\"Your materials don't include a LinkedIn URL\"), never that the person doesn't have it. Else empty"),
       note: z.string().describe("One short sentence on how you approached it, speaking to the person as 'you'"),
       storyId: z.string().describe("Cover letter only: the id of the personal story its opening line comes from. Empty if none fits").optional(),
       storyAsk: z.string().describe("Cover letter only, when no story fits: one question about this company that could draw out a real personal connection. Else empty").optional(),
@@ -263,7 +278,7 @@ export function answersPrompt(inp: DraftInputs, items: DraftItem[]) {
   const letter = items.some((i) => i.kind === "cover_letter");
   const stories = letter ? storiesBlock(inp.stories ?? []) : "";
   const strategy = letter ? `\n\n${STRATEGY[inp.letterStrategy ?? suggestStrategy(inp.posting, inp.stories ?? []).strategy].rule}` : "";
-  return `Person: ${inp.name || "(no name on file)"}, ${inp.email}\nLinkedIn: ${inp.linkedinUrl ?? "(none)"}\n\n<profile>\n${inp.brief}\n</profile>\n\n<resume>\n${inp.resume}\n</resume>${stories}\n\n<links>\n${links}\n</links>\n\nPosting: ${inp.posting.title} at ${inp.posting.company}\n<posting>\n${inp.posting.text}\n</posting>\n\nDraft each of these, by index:\n${list}${strategy}`;
+  return `Person: ${inp.name || "(no name on file)"}, ${inp.email}\nLinkedIn: ${inp.linkedinUrl ?? "(not in their materials)"}\n\n<profile>\n${inp.brief}\n</profile>\n\n<resume>\n${inp.resume}\n</resume>${stories}\n\n<links>\n${links}\n</links>\n\nPosting: ${inp.posting.title} at ${inp.posting.company}\n<posting>\n${inp.posting.text}\n</posting>\n\nDraft each of these, by index:\n${list}${strategy}`;
 }
 
 /** Keep a model answer only if it's usable: choice answers must be real options; otherwise it becomes a question. */
@@ -272,7 +287,8 @@ export function checkAnswer(item: DraftItem, a: z.infer<typeof AnswersDraft>["it
   let content = a.content.trim();
   let question = a.question.trim() || null;
   if (content && item.options?.length) {
-    const exact = (t: string) => item.options!.find((o) => o.toLowerCase() === t.toLowerCase());
+    // Spelled like the filler compares it: "I don't" is the option "I don’t", "Full time" is "Full-time" (#1524).
+    const exact = (t: string) => sameOption(t, item.options!);
     // Select-any answers come one option per line; every line must be a real option (#624).
     const lines = item.multi ? content.split(/\n+/).map((t) => t.replace(/^[•·*-]\s*/, "").trim()).filter(Boolean) : [content];
     const hits = lines.map(exact);

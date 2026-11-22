@@ -3,7 +3,7 @@ import { lookup } from "node:dns";
 import { isIP, type LookupFunction } from "node:net";
 // undici's own fetch: Node 22's built-in fetch rejects an Agent from a newer undici.
 import { Agent, fetch } from "undici";
-import { decodeEntities } from "./entities";
+import { decodeEntities, stripHtml } from "./entities";
 import { findPay, payLine } from "./pay";
 
 /**
@@ -209,19 +209,79 @@ export function decodeBody(bytes: Uint8Array, contentType = "") {
 }
 
 /** Readable text plus any schema.org JobPosting data, which most ATS pages embed. */
+
+/** Parse a JSON-LD block and strip HTML from all string values. Falls back to the raw text when parsing fails (#1311). */
+function cleanJsonLd(json: string): string {
+  try {
+    const clean = (obj: unknown): unknown => {
+      if (typeof obj === "string") return stripHtml(obj);
+      if (Array.isArray(obj)) return obj.map(clean);
+      if (obj && typeof obj === "object") {
+        const result: Record<string, unknown> = {};
+        for (const [k, v] of Object.entries(obj)) result[k] = clean(v);
+        return result;
+      }
+      return obj;
+    };
+    return JSON.stringify(clean(JSON.parse(json)));
+  } catch {
+    return json;
+  }
+}
+
+// Page chrome around a posting (#1312): dialogs ("you must be 18... Acknowledge"), buttons ("Refer a friend") and
+// lone close marks. A dialog is dropped only when it is short: some boards show the whole job in a dialog.
+const DIALOG = /\brole\s*=\s*["']?(?:alert)?dialog\b|\baria-modal\s*=\s*["']?true\b/i;
+const CLOSE_MARK = /^\s*(?:[×✕✖✗]+|x)\s*$/i;
+
+function closeOf(html: string, tag: string, from: number) {
+  const re = new RegExp(`<(/?)${tag}\\b[^>]*>`, "gi");
+  re.lastIndex = from;
+  let depth = 1;
+  for (let m = re.exec(html); m; m = re.exec(html)) {
+    if (m[1]) {
+      if (--depth === 0) return re.lastIndex;
+    } else if (!m[0].endsWith("/>")) depth++;
+  }
+  return -1;
+}
+
+/** Cut dialogs and buttons out of the page before it becomes text (#1312). */
+export function dropChrome(html: string) {
+  let out = "";
+  let at = 0;
+  const re = /<(\w+)\b([^>]*)>/g;
+  for (let m = re.exec(html); m; m = re.exec(html)) {
+    const tag = m[1].toLowerCase();
+    const isButton = tag === "button";
+    if (m[0].endsWith("/>") || !(isButton || tag === "dialog" || DIALOG.test(m[2]))) continue;
+    const end = closeOf(html, m[1], re.lastIndex);
+    if (end < 0) continue;
+    if (!isButton && html.slice(re.lastIndex, end).replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").length > 600) continue;
+    out += `${html.slice(at, m.index)} `;
+    at = re.lastIndex = end;
+  }
+  return out + html.slice(at);
+}
+
 export function pageToText(html: string, maxChars = 9000) {
   const ld: string[] = [];
   for (const m of html.matchAll(/<script[^>]+application\/ld\+json[^>]*>([\s\S]*?)<\/script>/gi)) {
-    if (/JobPosting/i.test(m[1])) ld.push(m[1].trim().slice(0, 6000));
+    // Clean, then cut: cut first, a long description is no longer valid JSON and keeps its HTML (#1387).
+    if (/JobPosting/i.test(m[1])) ld.push(cleanJsonLd(m[1].trim()).slice(0, 6000));
   }
   const title = decodeEntities(html.match(/<title[^>]*>([\s\S]*?)<\/title>/i)?.[1] ?? "").replace(/\s+/g, " ").trim();
   const text = decodeEntities(
-    html
+    dropChrome(html)
       .replace(/<(script|style|noscript|svg|nav|footer|header)[\s\S]*?<\/\1>/gi, " ")
       .replace(/<br\s*\/?>|<\/(p|div|li|h\d|tr)>/gi, "\n")
       .replace(/<[^>]+>/g, " "),
   )
     .replace(/[ \t]+/g, " ")
+    .replace(/\n\s*\n+/g, "\n")
+    .split("\n")
+    .filter((line) => !CLOSE_MARK.test(line))
+    .join("\n")
     .replace(/\n\s*\n+/g, "\n")
     .trim();
   // Pay goes right under the title: ATS pages often list it last, where the length cap would cut it off.

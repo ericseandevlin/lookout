@@ -5,12 +5,12 @@ import { emailShell, escapeHtml, sendMail } from "@/lib/email";
 import { unsubscribeParts } from "@/lib/bulkMail";
 import { env } from "@/lib/env";
 import { goLink } from "./digestLinks";
-import { dueLabel, pickDueSoon } from "./digestDue";
+import { dueLabel, pickDueSoon, stillDue } from "./digestDue";
 import { compLabel } from "./digestComp";
 import { color } from "@/lib/tokens";
 import { scheduleLabel } from "./firstWeek";
 
-/** Email the finds added in the last day, plus pinned finds due in the next week (#304), if the user has the summary turned on. Links go through /go so clicks count (#34).
+/** Email the finds a search added in the last day, plus pinned finds due in the next week (#304), if the user has the summary turned on. Links go through /go so clicks count (#34).
  * Due-soon finds alone send it too, but at most once a day, since this runs after every scheduled search. */
 export async function sendDigest(userId: string, runId?: string) {
   const [u] = await db.select().from(schema.users).where(eq(schema.users.id, userId));
@@ -34,16 +34,18 @@ export async function sendDigest(userId: string, runId?: string) {
         .from(schema.userOpportunities)
         .where(and(eq(schema.userOpportunities.userId, userId), lte(schema.userOpportunities.addedAt, since), inArray(schema.userOpportunities.opportunityId, scored.map((r) => r.opportunities.id))))
     : [];
-  const seen = new Set<string>(earlier.map((r) => r.id));
-  const rows = scored.filter((r) => !seen.has(r.opportunities.id) && !!seen.add(r.opportunities.id));
+  // Only finds a search added count (#1127): links they added by hand or imported are already on their board, even if a search found them too.
+  const own = scored.filter((r) => r.user_opportunities.addedVia !== "agent").map((r) => r.opportunities.id);
+  const seen = new Set<string>([...earlier.map((r) => r.id), ...own]);
+  const rows = scored.filter((r) => r.user_opportunities.addedVia === "agent" && !seen.has(r.opportunities.id) && !!seen.add(r.opportunities.id));
   const pinned = await db
     .select()
     .from(schema.userOpportunities)
     .innerJoin(schema.opportunities, eq(schema.opportunities.id, schema.userOpportunities.opportunityId))
     .where(and(eq(schema.userOpportunities.userId, userId), eq(schema.userOpportunities.pinned, true), eq(schema.userOpportunities.archived, false)));
   const newIds = new Set(rows.map((r) => r.opportunities.id));
-  // A find pinned on two searches is one deadline.
-  const pinnedFinds = [...new Map(pinned.map((r) => [r.opportunities.id, r.opportunities])).values()];
+  // A find pinned on two searches is one deadline. One already applied to or submitted has nothing left due (#1539).
+  const pinnedFinds = [...new Map(pinned.filter((r) => stillDue(r.user_opportunities.stage)).map((r) => [r.opportunities.id, r.opportunities])).values()];
   const due = pickDueSoon(pinnedFinds.filter((o) => !newIds.has(o.id)), Date.now(), env.timezone);
   if (!rows.length && !due.length) return;
   if (!rows.length) {

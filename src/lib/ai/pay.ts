@@ -151,9 +151,10 @@ const UNITS: [string, RegExp][] = [
 const SCHEDULE = /\bpaid\s+(?:on\s+an?\s+)?(?:bi-?weekly|weekly|semi-?monthly|monthly|every (?:two|2) weeks|twice (?:a|per|each) month)\b/gi;
 // "3 days a week" or "40 hours per week" is how much you work, not what the range is per (#732), and so is "8 hours a day" (#1187).
 const WORKLOAD = /\b(?:\d+(?:\.\d+)?|one|two|three|four|five)(?:\s?(?:-|to)\s?\d+)?\s+(?:days?|hours?|hrs?)\s*(?:a|per|each|\/)\s*(?:week|day)\b/gi;
-// Only punctuation and a currency code between the numbers and the unit: "/mo", " USD per month", "(monthly)". A "+" or
-// "&" joins something else to the pay.
-const RIGHT_AFTER = /^[\s,.;:()[\]\/-]*(?:(?:usd|cad|aud|eur|gbp|sgd|nzd|hkd|chf|jpy|inr|mxn)\b[\s,.;:()[\]\/-]*)?$/i;
+// Only spaces, a currency code, "/" or "-" between the numbers and the unit: "/mo", " USD per month". After a comma or
+// "(" the word starts something else: "$95,000 - $115,000, monthly bonus eligible", "(daily standups)" (#1373). A "+"
+// or "&" joins something else to the pay.
+const RIGHT_AFTER = /^[\s\/-]*(?:(?:usd|cad|aud|eur|gbp|sgd|nzd|hkd|chf|jpy|inr|mxn)\b[\s\/-]*)?$/i;
 
 /**
  * A range that already looks like a year's pay takes another unit only when it comes right after the numbers. Further

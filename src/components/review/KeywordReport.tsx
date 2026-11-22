@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useState } from "react";
 import type { KeywordRow } from "@/lib/application/evidence";
+import { keywordAction } from "@/lib/application/flowRules";
 import { btn } from "../Settings";
 import { api } from "../store";
 import { card, muted, type Detail } from "./shared";
@@ -53,7 +54,7 @@ export function KeywordReport({ d, rows, reload, locked }: { d: Detail; rows: Ke
   };
 
   return (
-    <div style={{ ...card, display: "flex", flexDirection: "column", gap: 12 }}>
+    <div id="keywords" style={{ scrollMarginTop: 80, ...card, display: "flex", flexDirection: "column", gap: 12 }}>
       <div style={{ fontSize: font.md, fontWeight: 700 }}>Keywords for this resume</div>
       <div style={{ ...muted, lineHeight: 1.5 }}>
         {d.keywordsApproved
@@ -99,13 +100,14 @@ export function KeywordReport({ d, rows, reload, locked }: { d: Detail; rows: Ke
             {sel.mine && <span style={{ ...muted, fontSize: font.sm }}>added by you</span>}
             {!locked && (
               <button onClick={() => send(sel.term, { action: sel.removed ? "restore" : "remove", term: sel.term })} disabled={!!busy} style={{ ...btn("text"), marginLeft: "auto" }}>
-                {sel.removed ? "Put back" : "Remove"}
+                {keywordAction(sel).label}
               </button>
             )}
             <button onClick={() => setOpen(null)} aria-label="Close keyword detail" style={{ ...btn("text"), textDecoration: "none", padding: "0 4px", marginLeft: locked ? "auto" : 0 }}>
               ×
             </button>
           </div>
+          {!locked && <div style={{ ...muted, fontSize: font.sm }}>{keywordAction(sel).note}</div>}
           <div style={line}>
             <span style={{ fontWeight: 600 }}>Posting: </span>
             {sel.snippet ? `\u201c${sel.snippet}\u201d` : <span style={muted}>{sel.mine ? "You added this one." : "Not found in the posting text."}</span>}

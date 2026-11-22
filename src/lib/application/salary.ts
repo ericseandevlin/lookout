@@ -4,6 +4,7 @@
  * note can show it.
  */
 
+import { compLabel } from "@/lib/digestComp";
 import { parseMoney } from "@/lib/kinds";
 
 const round5k = (n: number) => Math.round(n / 5000) * 5000;
@@ -15,14 +16,26 @@ const sentences = (t: string) => t.split(/(?<=[.?!])\s+|\n+/);
 const INCLUDES_BONUS = /\b(includ|reflect)\w*\b[^.?!]{0,40}?\b(bonus|commission|incentive)/i;
 const ABOUT_PAY = /\b(range|salary|pay|compensation|amount|figure)\b/i;
 // "In addition to", "on top of" and "separate" put the bonus outside the range only when they are about the bonus:
-// "includes base and bonus, in addition to equity" is still total cash (#937).
+// "includes base and bonus, in addition to equity" is still total cash (#937). "Base salary only, not bonus" and "bonus and
+// equity are separate" leave it out too (#1487).
 const NEGATED =
-  /(\bnot|n't)\s+(includ|reflect)|\bexclud|\b(in addition to|on top of|separate(ly)? from)\b[^.?!]{0,60}?\b(bonus|commission|incentive)|\b(bonus|commission|incentive)\w*\s+(is|are)\s+(\w+\s+)?separate/i;
+  /(\bnot|n't)\s+(includ|reflect)|\bexclud|\b(in addition to|on top of|separate(ly)? from)\b[^.?!]{0,60}?\b(bonus|commission|incentive)|\b(only|solely)\b[^.?!]{0,20}?\b(not|excluding|without)\b[^.?!]{0,30}?\b(bonus|commission|incentive)|\b(bonus|commission|incentive)\w*(?:,?\s+(?:and|or|&)\s+\w+|,\s*\w+)*\s+(is|are)\s+(\w+\s+)?separate/i;
 // Other ways a posting says its range is total cash (#690): "base pay plus bonus", "on-target earnings",
-// "Total compensation range: $200,000 - $250,000".
-const BASE_PLUS = /\bbase\b[^.?!]{0,30}?(\+|\bplus\b|\band\b)[^.?!]{0,20}?\b(bonus|commission|incentive)/i;
+// "Total compensation range: $200,000 - $250,000". A bonus added after an amount sits on top of it, so the range is base:
+// "Base salary range: $150K - $180K + bonus" or "$150k-$180k base + bonus + equity" (#1425).
+const BASE_PLUS = /(?<!\d[km]?\s{0,2})\bbase\b[^.?!$\d]{0,30}?(\+|\bplus\b|\band\b)[^.?!]{0,20}?\b(bonus|commission|incentive)/i;
 const THE_RANGE = /\b(range|figure|amount)s?\b/i;
-const ON_TARGET = /\bon[- ]target earnings\b|\btotal (target )?(cash|compensation|comp|pay)\b[^.?!]{0,10}(range|:|\$)/i;
+// "Our total compensation package: medical, dental, 401(k)" heads a benefits list, not the range: a benefits word before
+// the colon counts only when an amount follows it ("Total compensation package: $200k-$250k") (#1556).
+const TOTAL_PAY_HEAD = /\btotal (target )?(cash|compensation|comp|pay)\b([^.?!]{0,10}?)(range|:|\$)(\s*\$?\s*\d)?/i;
+const BENEFITS_HEAD = /\b(package|rewards?|benefits?|perks)\b/i;
+const ON_TARGET = {
+  test: (s: string) => {
+    if (/\bon[- ]target earnings\b/i.test(s)) return true;
+    const m = s.match(TOTAL_PAY_HEAD);
+    return !!m && !(m[4] !== "$" && BENEFITS_HEAD.test(m[3]) && !m[5]);
+  },
+};
 // "Total cash" and "OTE" count only where they name the range: in a sentence with the range or an amount, or as a short
 // heading over it. "Beyond base pay, a bonus means total cash compensation may be higher" is about base (#795).
 const TOTAL_CASH = /\btotal cash\b|\bOTE\b/i;
@@ -33,8 +46,8 @@ const NAMES_TOTAL = (s: string) =>
 // equity" lists benefits; it says nothing about what the range covers (#815).
 const PACKAGE = /\b(rewards?|benefits?|package|perks|offerings?)\b/i;
 // "Total compensation also includes a bonus" is about the whole offer, not the posted range, unless it gives the amount
-// itself: "Total compensation of $200k-$250k includes a bonus" (#927).
-const WHOLE_OFFER = /\btotal (compensation|comp|pay)\b/i;
+// itself: "Total compensation of $200k-$250k includes a bonus" (#927). "Total target (cash) compensation" too (#1438).
+const WHOLE_OFFER = /\btotal (target )?(cash )?(compensation|comp|pay)\b/i;
 // Pay on top of the range: "also eligible for additional compensation, including a bonus", "Other compensation may
 // include a bonus" (#1074). "Total compensation of $200k-$250k also includes a bonus" is left to WHOLE_OFFER.
 const EXTRA_PAY = /\b(eligib\w*|additional|other|also)\b/i;
@@ -47,14 +60,38 @@ const PAY_INCLUDES_BONUS = (s: string) => {
   if (EXTRA_PAY.test(subject)) return false;
   return ABOUT_PAY.test(s) && !PACKAGE.test(subject);
 };
+// The same said the other way round: "Bonus is included in this range", "Commission is reflected in the posted pay" (#1566).
+// "Is not included" never matches: the verb must follow "is" or "are" right away.
+const BONUS_INCLUDED =
+  /\b(bonus|commission|incentive)\w*(?:\s+(?:pay|payments?|target|eligibility))?\s+(is|are)\s+(also\s+)?(included|reflected)\s+in\s+(the|this|that|our)\s+(?:(?:posted|above|listed|stated)\s+)?(?:(?:compensation|pay|salary)\s+)?(range|figure|amount|salary|pay)\b/i;
 const SAYS_TOTAL = (s: string) =>
-  !NEGATED.test(s) && (PAY_INCLUDES_BONUS(s) || (BASE_PLUS.test(s) && THE_RANGE.test(s)) || ON_TARGET.test(s) || NAMES_TOTAL(s));
+  !NEGATED.test(s) && (PAY_INCLUDES_BONUS(s) || BONUS_INCLUDED.test(s) || (BASE_PLUS.test(s) && THE_RANGE.test(s)) || ON_TARGET.test(s) || NAMES_TOTAL(s));
 
-/** What the posted range covers: total cash (bonus included), base, or the posting doesn't say. */
+// A sentence about the pay that puts the bonus outside it says the range is base: "The salary range is $150,000 to
+// $180,000 and does not include bonus or equity" (#650, #1411).
+const SAYS_BASE = (s: string) => NEGATED.test(s) && ABOUT_PAY.test(s) && /\b(bonus|commission|incentive)/i.test(s);
+
+// A bonus added right after an amount sits on top of it, word "base" or not: "Salary range: $150,000 - $180,000 + bonus" (#1528).
+// A currency code, a period word or a comma can sit between: "$150,000 - $180,000 per year, plus bonus" (#1602).
+const AMOUNT_PLUS_BONUS = /\d[km]?(\s*(usd|cad|gbp|eur))?(\s*(per (year|annum)|annually|a year|\/\s?y(ea)?r\b))?\s{0,2},?\s{0,2}(\+|\bplus\b)\s*(an?\s+)?((annual|target|performance|quarterly|sales)\s+)?(bonus|commission|incentive)/i;
+
+/** What the posted range covers: total cash (bonus included), base, or the posting doesn't say. "$150k-$180k base" names it base (#1425). */
+// An explicit "base salary range" beats a total heading with no amount in another sentence: "Total compensation: our
+// package covers..." then "The base salary range for this position is $150,000 - $180,000" is a base range (#1556).
+const BASE_RANGE = /\bbase (salary|pay|compensation) range\b/i;
+const HAS_AMOUNT = /\$\s?\d|\d[km]\b/i;
+const totalWins = (posting: string) => {
+  const all = sentences(posting);
+  const totals = all.filter(SAYS_TOTAL);
+  if (!totals.length) return false;
+  const baseElsewhere = all.some((s) => BASE_RANGE.test(s) && !totals.includes(s));
+  return !baseElsewhere || totals.some((s) => HAS_AMOUNT.test(s) || BASE_RANGE.test(s));
+};
+
 export const rangeBasis = (posting: string): "total" | "base" | null =>
-  sentences(posting).some(SAYS_TOTAL)
+  totalWins(posting)
     ? "total"
-    : /\bbase (salary|pay|compensation)\b/i.test(posting)
+    : /\bbase (salary|pay|compensation)\b|\d[km]?\s{0,2}base\b/i.test(posting) || AMOUNT_PLUS_BONUS.test(posting) || sentences(posting).some(SAYS_BASE)
       ? "base"
       : null;
 
@@ -75,10 +112,11 @@ const TO_BE_PAID = /\b(how much|what)\b[^.?!]{0,40}?\b(expect\w*|need|want|like|
 // "What pay are you looking for?", "What hourly rate would you accept?" (#1192). Plain "pay" and "rate" are too common
 // to count alone, so only as the thing "what" asks for, followed by what they seek or expect.
 const WHAT_PAY_SOUGHT = /\bwhat (\w+ ){0,2}(pay|rate)\b[^.?!]{0,30}?\b(looking for|seek\w*|expect\w*|want\w*|hop\w*|need|accept)\b/i;
-// Rate wording ("Desired hourly rate", "Expected rate per hour", "Desired day rate") is an ask too (#953, #1194).
+// Rate wording ("Desired hourly rate", "Expected rate per hour", "Desired day rate") is an ask too (#953, #1194), and so
+// is a period word before "pay" ("Desired hourly pay") (#1376), and so are "pay range", "base pay" and "target pay" (#1437).
 const SALARY_ASK = {
   test: (s: string) =>
-    /salary|compensation|wages?\b|pay (expectation|requirement)|expected (base|annual|pay)|desired (base|pay)|expect to (earn|make)\b|\b(hourly|pay|bill|day|daily) rate\b|\brate (expectation|requirement)|\b(desired|expected) rate\b/i.test(s) ||
+    /salary|compensation|wages?\b|pay (expectation|requirement)|expected (base|annual|pay)|desired (base|pay)|\b(desired|expected) (hourly|daily|weekly|monthly|annual|yearly) (base|pay)\b|expect to (earn|make)\b|\b(hourly|pay|bill|day|daily) rate\b|\brate (expectation|requirement)|\b(desired|expected) rate\b|\bpay range\b|\b(base|annual|target|ideal|preferred) pay\b/i.test(s) ||
     TO_BE_PAID.test(s) ||
     WHAT_PAY_SOUGHT.test(s) ||
     (HOPE_TO_EARN.test(s) && !MAKES_SOMETHING.test(s)),
@@ -91,11 +129,11 @@ const PAST_PAY =
 const YES_NO = /^\W*(are|is|does|do|would|will|can)\b/i;
 const ABOUT_THEIR_RANGE = /\b(range|posted|listed|stated|above|acceptable|comfortable|work for you|align|meets?)\b/i;
 // "What" asks for the number only right before the pay word: "What salary...", not "What questions do you have about
-// compensation?" (#1069). "Target", "seeking" and "looking for" likewise only near the pay word.
+// compensation?" (#1069). "Target", "targeting", "seeking" and "looking for" likewise only near the pay word (#1437).
 const PAY_WORD = "(salary|compensation|pay|rate|wages?)";
 const WHAT_PAY = new RegExp(`\\bwhat (\\w+ ){0,2}${PAY_WORD}\\b`, "i");
 const SEEK_PAY = new RegExp(
-  `\\btarget (\\w+ )?${PAY_WORD}\\b|\\b(looking for|seek\\w*)\\W+(\\w+\\W+){0,4}?${PAY_WORD}\\b|\\b${PAY_WORD}\\W+(\\w+\\W+){0,4}?(looking for|seek\\w*)\\b`,
+  `\\btarget (\\w+ )?${PAY_WORD}\\b|\\b(looking for|seek\\w*|targeting)\\W+(\\w+\\W+){0,4}?${PAY_WORD}\\b|\\b${PAY_WORD}\\W+(\\w+\\W+){0,4}?(looking for|seek\\w*|targeting)\\b`,
   "i",
 );
 const NAMES_A_NUMBER = /\b(expectations?|requirements?|desired|expected|how much)\b/i;
@@ -158,9 +196,12 @@ export function askPer(prompt: string): Per | null {
 
 // A short instruction about the answer with no pay word: "Please answer monthly.", "Monthly, before tax.",
 // "Hourly is fine." Only the -ly words count, so "We will get back to you in a week" still doesn't (#1245).
+// "Per month" and "/hour" count too when the sentence says how to answer: "Please answer in USD per month." (#1601).
 const ADVERB = /\b(hourly|daily|weekly|monthly|annually|yearly)\b/i;
+const PER_UNIT = /\bper (hour|hr|day|week|wk|month|mo|year|annum)\b|\/\s?(hour|hr|day|week|wk|month|mo|year|yr)\b/i;
 const HOW_TO_ANSWER = /\b(answer|enter|give|provide|before tax|after tax|gross|net|is fine)\b/i;
-const answerHint = (s: string) => ADVERB.test(s) && (HOW_TO_ANSWER.test(s) || s.trim().split(/\s+/).length <= 4);
+const answerHint = (s: string) =>
+  (ADVERB.test(s) && (HOW_TO_ANSWER.test(s) || s.trim().split(/\s+/).length <= 4)) || (PER_UNIT.test(s) && HOW_TO_ANSWER.test(s));
 
 const orYear = (p: ReturnType<typeof periodIn>) => (p === "year" ? null : p);
 
@@ -168,30 +209,42 @@ type Per = "hour" | "day" | "week" | "month";
 
 function periodIn(prompt: string): "year" | Per | null {
   // "This role is salaried, not hourly" and "(non-hourly)" rule a period out, not in (#974).
-  prompt = prompt.replace(/\b(not|non)[\s-]+(hourly|daily|weekly|monthly|(per|an|a|each) (hour|hr|day|week|month))\b/gi, " ");
+  prompt = prompt.replace(/\b(not|non)[\s-]+(hourly|daily|weekly|monthly|(per|an|a|each) (hour|hr|day|week|wk|month|mo|mth))\b/gi, " ");
   // Working hours ("40 hours per week", "37.5 hrs/week") and a contract's length ("expected to last a year") are not
   // the pay period (#1002), nor is "2,080 hours per year" (#1156).
   prompt = prompt.replace(/\b(hours?|hrs?|days?)\s*(per|a|each|\/)\s*(week|wk|month|day|year|yr)\b/gi, " ");
   // "May extend to a year" and "could run a year" are a contract's length too (#1248).
   prompt = prompt.replace(/\b(last(s|ing)?|for|within|after|over|least|to|run(s|ning)?|extend(s|ed|ing)?|renew(s|ed|able)?)\s+(about\s+|up to\s+|roughly\s+)?(a|one)\s+(year|month|week)\b/gi, " ");
+  // "Annual" on another thing is not the pay period: "monthly salary (excluding annual bonus)", "annual 13th month",
+  // "2,000 hours annually" (#1565). "Annual salary (paid monthly)" is still yearly.
+  prompt = prompt.replace(/\bannual(ly)?\s+(bonus(es)?|raises?|reviews?|leave|13th|holidays?|vacation|pto|incentives?|increases?|performance|hours?)\b|\b(hours?|hrs?)\s+(annually|yearly)\b/gi, " ");
   // "a year-end bonus" and "a year-long contract" are not a yearly ask (#1060).
   // "/yr" after a space or "(" has no word boundary before the slash (#1121).
   if (/(\b(annual(ly)?|yearly|per (year|annum)|a year)|\/\s?y(ea)?r)\b(?!-)/i.test(prompt)) return "year";
-  if (/\bhourly\b|\b(per|an|each) (hour|hr)\b|\/\s?h(ou)?r\b/i.test(prompt)) return "hour";
+  // "p/h" and "$/h" are an hourly rate too (#1376).
+  if (/\bhourly\b|\b(per|an|each) (hour|hr)\b|\/\s?h(ou)?r\b|\/\s?h\b/i.test(prompt)) return "hour";
   // A day rate (#1194). "Day-to-day" is not a period; "8 hours a day" and "5 days a week" were taken out above.
   if (/\bdaily\b|\b(per|a|each) day\b(?!-)|\/\s?day\b|\bday rate\b/i.test(prompt)) return "day";
-  if (/\bweekly\b|\b(per|a|each) week\b|\/\s?w(ee)?k\b/i.test(prompt) && !/\bbi-?weekly\b/i.test(prompt)) return "week";
+  if (/\bweekly\b|\b(per|a|each) w(ee)?k\b|\/\s?w(ee)?k\b/i.test(prompt) && !/\bbi-?weekly\b/i.test(prompt)) return "week";
   // Semi-monthly is paid twice a month: left yearly, like bi-weekly (#1002).
-  if (/\bmonthly\b|\b(per|a|each) month\b|\/\s?mo(nth)?\b/i.test(prompt) && !/\bsemi-?monthly\b/i.test(prompt)) return "month";
+  // Short forms as with "per hr": "per mo", "per wk" (#1395).
+  if (/\bmonthly\b|\b(per|a|each) (month|mo|mth)\b|\/\s?mo(nth)?\b/i.test(prompt) && !/\bsemi-?monthly\b/i.test(prompt)) return "month";
   return null;
 }
 
 /**
  * The ask wants its number in thousands: "Desired salary (in thousands)", "Salary expectations in $K", "Base (000s)"
- * (#1188). "401(k)" is a retirement plan, not a unit.
+ * (#1188). "401(k)" is a retirement plan, not a unit, and "in K-12" is a school grade range (#1557).
  */
-export const asksThousands = (prompt: string) =>
-  /\bin (?:\$\s?|usd\s)?(?:thousands|k)\b|(?<![\d\w])\(\s*(?:in\s+)?(?:\$\s?)?(?:000s|000's|k|thousands)\s*\)|\bin 000s\b/i.test(prompt);
+export const asksThousands = (prompt: string) => THOUSANDS.test(prompt);
+
+// "(in 1000s)", "(thousands USD)", "(USD, thousands)", "(£'000)" and "in thousand USD" too (#1488).
+const CUR = String.raw`(?:usd|us\$|\$|£|€|eur|gbp|cad)`;
+const UNIT = String.raw`(?:000s|000's|'000s?|1,?000s|k|thousands?)`;
+const THOUSANDS = new RegExp(
+  String.raw`\bin (?:\$\s?|usd\s)?(?:thousands?|k(?![-–]?\d)|1,?000s)\b|(?<![\d\w])\(\s*(?:in\s+)?(?:${CUR}\s*,?\s*)?${UNIT}(?:\s*,?\s*${CUR})?\s*\)|\bin 000s\b`,
+  "i",
+);
 
 // 260 working days a year, the same rule discovery uses to read a day rate on a posting (#1187).
 const PER: Record<Per, { n: number; how: string }> = {
@@ -220,7 +273,7 @@ export function suggestSalary(i: Parameters<typeof yearlyAsk>[0] & { per?: Per |
   return { ...r, amount, ...(r.question ? { question: r.question.replace(r.amount, `${amount} per ${i.per}`) } : {}), note: `${r.note}\n• This question asks per ${i.per}, so the ask is ${r.amount} a year divided by ${p.how}: ${amount} per ${i.per}.` };
 }
 
-function yearlyAsk(i: { floor?: unknown; target?: unknown; min?: number | null; max?: number | null; basis?: "total" | "base" | null; asksBase?: boolean; asksMinimum?: boolean }): { amount: string | null; note: string; question?: string } | null {
+function yearlyAsk(i: { floor?: unknown; target?: unknown; min?: number | null; max?: number | null; basis?: "total" | "base" | null; asksBase?: boolean; asksMinimum?: boolean; currency?: string | null }): { amount: string | null; note: string; question?: string } | null {
   // The same reading discovery uses for the floor, so "150" is $150,000 in both places (#761).
   const floor = parseMoney(i.floor);
   const target = parseMoney(i.target);
@@ -229,6 +282,13 @@ function yearlyAsk(i: { floor?: unknown; target?: unknown; min?: number | null; 
   if (!lo || !hi) {
     const pick = target ?? floor;
     return pick ? { amount: usd(pick), note: `The posting gives no range, so this is your ${target ? "target" : "floor"}.` } : null;
+  }
+  // A range in another currency can't be held against a USD floor or target, and Lookout doesn't convert (#914).
+  // The person decides, with their range shown in its own currency.
+  if (i.currency && i.currency.toUpperCase() !== "USD") {
+    const theirs = `${compLabel(lo, hi, i.currency.toUpperCase())}${i.basis === "total" ? " total cash including bonus" : ""}`;
+    const note = `Their range (${theirs}) is not in US dollars, so Lookout left this blank. It doesn't convert currencies or compare your floor with it.`;
+    return { amount: null, note, question: `${note} What do you want to ask for, in ${i.currency.toUpperCase()}?` };
   }
   const range = `${usd(lo)} – ${usd(hi)}${i.basis === "total" ? " total cash including bonus" : ""}`;
   if (floor && floor > hi) {

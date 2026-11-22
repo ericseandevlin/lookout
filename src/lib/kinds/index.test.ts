@@ -164,13 +164,50 @@ describe("parseMoney", () => {
     ["$4000 every two weeks", 104000],
     ["$6,250 semi-monthly", 150000],
     ["$6,250 twice a month", 150000],
+    // Short forms (#1351).
+    ["$650/d", 169000],
+    ["$250 per day", 65000],
+    ["$3,000/biweek", 78000],
+    ["$4,000/semimonth", 96000],
+    ["$4,000 semimonthly", 96000],
     ["$150,000 per year", 150000],
     ["150k/yr", 150000],
+    // A number inside a label is not the floor (#1562).
+    ["W2 $90/hr", 187200],
+    ["W-2 only, $90/hr", 187200],
+    ["Level 5, $180k", 180000],
+    ["L6 $200k", 200000],
+    ["Senior (IC4) 180k", 180000],
+    ["usd150k", 150000],
+    // A tax form, retirement plan or year before the pay is not the floor (#1567).
+    ["1099 $90/hr", 187200],
+    ["1099 contractor, $90/hr", 187200],
+    ["$90/hr 1099", 187200],
+    ["401k + 150k", 150000],
+    ["150k + 401(k)", 150000],
+    ["401(k) match, 150k base", 150000],
+    ["403b and 150k", 150000],
+    ["2026 target: 150k", 150000],
+    ["150k in 2026", 150000],
+    ["2000/month", 24000],
+    ["2,000 per month", 24000],
   ])("reads %s as %d", (v, n) => {
     expect(parseMoney(v)).toBe(n);
   });
 
   it.each([[""], ["  "], ["0"], ["€90k"], ["90k EUR"], ["£80,000"], ["negotiable"], ["6 figures"], ["low 6 figures"], [null], [120000], [["120k"]], ["$95 per project"], ["500/visit"]])("returns null for %j", (v) => {
     expect(parseMoney(v)).toBeNull();
+  });
+});
+
+describe("parseMoney: 'p/h' is per hour (#1386)", () => {
+  it("annualizes p/h like /h", () => {
+    expect(parseMoney("$85/h")).toBe(176800);
+    expect(parseMoney("$85 p/h")).toBe(176800);
+    expect(parseMoney("$60-70 p/h")).toBe(parseMoney("$60-70/hr"));
+  });
+
+  it("reads p/a as a yearly number, not an unknown rate", () => {
+    expect(parseMoney("150 p/a")).toBe(150000);
   });
 });

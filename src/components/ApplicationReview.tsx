@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useState, useSyncExternalStore } from "react";
 import type { ApplicationStatus } from "@/lib/db/schema";
 import { applicationLabel } from "@/lib/applyLabels";
 import { useConfirm } from "./Confirm";
@@ -12,7 +12,7 @@ import { card, muted, resumeText, type Detail } from "./review/shared";
 import { Checklist } from "./review/Checklist";
 import { EeoSection } from "./review/EeoSection";
 import { ItemCard } from "./review/ItemCard";
-import { KeywordReport } from "./review/KeywordReport";
+import { KeywordSection } from "./review/KeywordPanel";
 import { PostingText } from "./review/PostingText";
 import { QuestionRow } from "./review/QuestionRow";
 import { SendForMe } from "./review/SendForMe";
@@ -25,9 +25,9 @@ const POLL: ApplicationStatus[] = [...WORKING, "submitting"];
 const SECTIONS: { title: string; kinds: string[]; help?: string }[] = [
   { title: "Resume", kinds: ["resume"] },
   { title: "Cover letter", kinds: ["cover_letter"] },
-  { title: "People to reach", kinds: ["outreach"], help: "Drafts only. Lookout never sends these. Check the person and public source, then copy the message you want to send yourself." },
+  { title: "People to reach", kinds: ["outreach"], help: "Drafts only. Lookout never sends these." },
   { title: "Questions", kinds: ["answer", "portfolio"] },
-  { title: "Basic fields", kinds: ["field"], help: "Filled from your account, resume and saved answers. No approval needed; edit any of them." },
+  { title: "Basic fields", kinds: ["field"], help: "No approval needed." },
 ];
 
 /** /apply/[id]: everything Lookout drafted for one application, to edit, revise with AI and approve, then send. */
@@ -43,7 +43,9 @@ export function ApplicationReview({ id }: { id: string }) {
   }, [load]);
   const working = !!d && WORKING.includes(d.status);
   const [testing, setTesting] = useState<string | null>(null);
-  const polling = (!!d && POLL.includes(d.status)) || (!!testing && (d?.report.fill?.at ?? "none") === testing);
+  // Also while the other cover letter strategies are being written, so their buttons turn on (#1484).
+  const writingLetters = !!d?.letter && Object.values(d.letter.items).some((l) => l.writing);
+  const polling = (!!d && POLL.includes(d.status)) || (!!testing && (d?.report.fill?.at ?? "none") === testing) || writingLetters;
   useEffect(() => {
     if (!polling) return;
     const t = setInterval(load, 4000);
@@ -156,10 +158,15 @@ export function ApplicationReview({ id }: { id: string }) {
                   <div style={{ fontSize: font.md, fontWeight: 700 }}>
                     {approved} of {required.length} required items approved
                   </div>
-                  <div style={muted}>{d.status === "manual" ? "Ready. Use the checklist at the bottom to send it." : d.status === "approved" ? "Ready. Lookout can send it for you, or use the checklist." : "Approve the exact version of each one you want sent. Editing makes a new version."}</div>
+                  <div style={muted}>{d.status === "manual" ? "Ready. Use the checklist at the bottom to send it." : d.status === "approved" ? "Ready. Lookout can send it for you, or use the checklist." : "Approve each item you want sent."}</div>
                 </div>
                 <div style={{ flexBasis: "100%" }}>
                   <SubmitModeNote submit={d.submit} />
+                  {d.submit.mode === "press" && (
+                    <p style={{ ...muted, margin: "8px 0 0" }}>
+                      To send, open the job in Firefox with the Lookout extension: it fills the form and you press Submit. No extension? Use the two-minute checklist at the bottom.
+                    </p>
+                  )}
                 </div>
               </div>
             )}
@@ -167,7 +174,6 @@ export function ApplicationReview({ id }: { id: string }) {
             {open.length > 0 && !locked && (
               <section aria-labelledby="qs" style={{ ...card, borderColor: color.orange, background: "#FFF9F3" }}>
                 <h2 id="qs" style={{ margin: "0 0 4px", fontSize: font.xl, fontWeight: 700 }}>Lookout needs you for {open.length === 1 ? "one thing" : `${open.length} things`}</h2>
-                <p style={{ ...muted, margin: "0 0 12px" }}>It won&apos;t guess facts. Answer here and it becomes a version you can approve.</p>
                 <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
                   {open.map((i) => (
                     <QuestionRow key={i.id} item={i} onSave={(content) => act(i.id, { action: "edit", content, note: "Answered by you." }, "Saved. Common answers like this one are kept on your profile for next time.")} />
@@ -180,7 +186,7 @@ export function ApplicationReview({ id }: { id: string }) {
               <section aria-labelledby="traps" style={{ ...card, borderColor: "#E8B4AA", background: "#FFF6F4" }}>
                 <h2 id="traps" style={{ margin: "0 0 4px", fontSize: font.xl, fontWeight: 700 }}>This posting tries to catch automated applications</h2>
                 <p style={{ ...muted, margin: "0 0 10px" }}>
-                  Lookout found {d.report.traps.length === 1 ? "an instruction" : `${d.report.traps.length} instructions`} planted for applicants or AI tools and did not follow {d.report.traps.length === 1 ? "it" : "them"}. Hidden ones are invisible to people, so following them gives you away. Visible ones may be an attention check for careful readers; if you want to follow one, add it yourself.
+                  Lookout didn&apos;t follow {d.report.traps.length === 1 ? "it" : "them"}. Follow a visible one yourself if you want to.
                 </p>
                 <ul style={{ margin: 0, paddingLeft: 18, display: "flex", flexDirection: "column", gap: 6, fontSize: font.base }}>
                   {d.report.traps.map((t, i) => (
@@ -194,15 +200,16 @@ export function ApplicationReview({ id }: { id: string }) {
             {d.items.some((i) => i.kind === "eeo") && !locked && <EeoSection d={d} act={act} />}
 
             {SECTIONS.map((s) => {
-              const list = d.items.filter((i) => s.kinds.includes(i.kind));
+              // An item waiting on an answer sits in the box above, so it isn't asked twice (#1531).
+              const list = sectionItems(d.items, s.kinds, locked);
               if (!list.length) return null;
               return (
                 <section key={s.title} aria-labelledby={`sec-${s.title}`} style={{ display: "flex", flexDirection: "column", gap: 10 }}>
                   <h2 id={`sec-${s.title}`} style={{ margin: "6px 0 0", fontSize: font.xl, fontWeight: 700 }}>{s.title}</h2>
                   {s.help && !locked && <div style={{ ...muted, marginTop: -4 }}>{s.help}</div>}
-                  {s.title === "Resume" && d.keywordRows && <KeywordReport d={d} rows={d.keywordRows} reload={load} locked={locked} />}
+                  {s.title === "Resume" && d.keywordRows && <KeywordSection d={d} rows={d.keywordRows} reload={load} locked={locked} />}
                   {list.map((i) => (
-                    <ItemCard key={i.id} appId={d.id} item={i} locked={locked} act={act} analysis={d.report.recruiter?.[i.id]} template={d.template} accent={d.accent} header={i.kind === "cover_letter" ? letterHeaderFrom(resumeText(d), "") : null} letter={i.kind === "cover_letter" ? d.letter : null} onTemplate={pickTemplate} onAccent={pickAccent} />
+                    <ItemCard key={i.id} appId={d.id} item={i} locked={locked} act={act} analysis={d.report.recruiter?.[i.id]} template={d.template} accent={d.accent} header={i.kind === "cover_letter" ? letterHeaderFrom(resumeText(d), "") : null} letter={i.kind === "cover_letter" && d.letter ? { ...(d.letter.items[i.id] ?? { strategy: d.letter.strategy, ready: [], writing: false }), suggested: d.letter.suggested, why: d.letter.why } : null} onTemplate={pickTemplate} onAccent={pickAccent} needsKeywords={!!d.keywordRows && !d.keywordsApproved} />
                   ))}
                 </section>
               );
@@ -219,10 +226,36 @@ export function ApplicationReview({ id }: { id: string }) {
                 Open the original ↗
               </a>
             )}
-            {d.posting ? <PostingText text={d.posting} /> : <div style={muted}>No description saved for this role.</div>}
+            {d.posting ? <PostingFold text={d.posting} /> : <div style={muted}>No description saved for this role.</div>}
           </aside>
         </div>
       )}
     </div>
   );
 }
+
+const narrowQuery = "(max-width: 999.98px)";
+const onNarrow = (cb: () => void) => {
+  const m = window.matchMedia(narrowQuery);
+  m.addEventListener("change", cb);
+  return () => m.removeEventListener("change", cb);
+};
+
+/**
+ * The posting beside the drafts on desktop. Below them on a phone it was thousands of pixels of text, so it folds
+ * there and opens on a tap (#1531).
+ */
+function PostingFold({ text }: { text: string }) {
+  const narrow = useSyncExternalStore(onNarrow, () => window.matchMedia(narrowQuery).matches, () => false);
+  if (!narrow) return <PostingText text={text} />;
+  return (
+    <details>
+      <summary style={{ cursor: "pointer", minHeight: 44, display: "flex", alignItems: "center", fontSize: font.base, fontWeight: 600 }}>Show the full posting</summary>
+      <PostingText text={text} />
+    </details>
+  );
+}
+
+/** One section's items. An item waiting on an answer sits in the box at the top instead, so it isn't asked twice (#1531). */
+export const sectionItems = <T extends { kind: string; question: string | null }>(items: T[], kinds: string[], locked: boolean) =>
+  items.filter((i) => kinds.includes(i.kind) && (locked || !i.question));

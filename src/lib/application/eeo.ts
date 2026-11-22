@@ -37,6 +37,9 @@ export const EEO_CHOICES: Record<EeoCategory, { label: string; choices: string[]
 /** Which category a form question asks about, or null when it isn't an EEO question we know. */
 export function classify(prompt: string): EeoCategory | null {
   const p = prompt.toLowerCase();
+  // "Gender pronouns" and "What gender pronouns do you use?" ask pronouns, not gender: a free-text box would get "Woman"
+  // (#1450). A pronoun aside in parentheses, "Gender (pronouns optional)", still leaves the gender question.
+  if (/\bpronouns?\b/.test(p.replace(/\([^)]*\)/g, " "))) return null;
   // "Do you identify as LGBTQ+ (lesbian, gay, bisexual, transgender...)?" asks neither one alone; ask the person (#909).
   if (/\blgbt|\blesbian|\bgay\b|\bbisexual|\bqueer\b/.test(p) && !/sexual orientation/.test(p)) return null;
   // "Transgender" among a gender question's examples, "Gender identity (e.g. woman, man, transgender)", is not the question (#929).
@@ -46,6 +49,12 @@ export function classify(prompt: string): EeoCategory | null {
   // "Do you have a disability? Veterans with service-connected disabilities should also answer here." asks about
   // disability; the question is the first sentence, the rest is guidance (#973).
   const first = p.split(/(?<=[.?!])\s+/)[0];
+  // "Do you need a reasonable accommodation for a disability?" asks for help, not for disability status; "discharged
+  // under other than honorable conditions" and "currently serving on active duty" are not veteran status. The EEO
+  // answer must never fill them: ask the person (#1512).
+  if (/accommodat/.test(first)) return null;
+  if (/discharg|honorabl|court.?martial/.test(p)) return null;
+  if (!/veteran/.test(p) && /\b(currently|active duty|now serving|reservists?|national guard)\b/.test(p)) return null;
   if (/disabilit/.test(first) && !/veteran|armed forces|military/.test(first)) return "disability";
   // "Are you a military spouse?" is about family, not the person's own service (#909).
   if (/veteran|armed forces|military/.test(p)) return /spouse|dependent|family member/.test(p) ? null : "veteran";
@@ -53,8 +62,8 @@ export function classify(prompt: string): EeoCategory | null {
   if (/\brace\b|racial|ethnic/.test(p)) return "race";
   if (/hispanic|latin[oax]/.test(p)) return "hispanic";
   // "Sex" alone asks gender; "sexual orientation" was caught above (#816). So do "What is your sex?" and "Please select
-  // your legal sex", but not "convicted of a sex offense" (#1275).
-  if (/gender|^\W*sex\b|\byour (\w+ )?sex\b(?! offen)/.test(p)) return "gender";
+  // your legal sex", but not "convicted of a sex offense" (#1275) or "Sex offender registry" (#1512).
+  if (/gender|^\W*sex\b(?! offen)|\byour (\w+ )?sex\b(?! offen)/.test(p)) return "gender";
   return null;
 }
 
@@ -88,6 +97,13 @@ const SYNONYMS: Record<string, RegExp> = {
   Yes: /^yes\b|i have a|^(hispanic|latin)/i,
 };
 
+// Options worded as a sentence, "I identify as a woman" or "I am Asian": the answer is what follows (#1432).
+const bare = (o: string) => o.replace(/^\s*i (?:(?:self-)?identify as|am)\s+(?:an?\s+)?/i, "");
+
+// "I am a veteran, but not a protected veteran", "I identify as a veteran, just not a protected veteran", and the short
+// labels "Veteran, not protected" and "Non-Protected Veteran" (#1639).
+const VETERAN_NOT_PROTECTED = /\b(am|identify as) a veteran\b.*\bnot\b.*\bprotected\b|^\s*veteran\b.*\bnot\b.*\bprotected\b|\bnon-?\s*protected\s+veteran\b/i;
+
 /** The form option for the person's answer, if one clearly matches. */
 export function matchOption(choice: string, options: string[]): string | null {
   if (choice === DECLINE) return options.find((o) => DECLINES.test(o)) ?? null;
@@ -96,14 +112,19 @@ export function matchOption(choice: string, options: string[]): string | null {
   const re = SYNONYMS[choice];
   // "Not a veteran" must not match "I am a veteran", and the reverse: test the negative form first. "I decline to
   // self-identify as a protected veteran" is not a veteran's answer either (#1142).
-  if (choice === "Veteran") return options.find((o) => !DECLINES.test(o) && !SYNONYMS["Not a veteran"].test(o) && re.test(o)) ?? null;
+  if (choice === "Veteran") {
+    // "Veteran" does not say whether the person is a protected veteran. A list that offers "a veteran, just not a
+    // protected veteran" asks exactly that: ask once and remember the wording rather than claim protected status (#1244).
+    if (options.some((o) => !DECLINES.test(o) && VETERAN_NOT_PROTECTED.test(o))) return null;
+    return options.find((o) => !DECLINES.test(o) && !SYNONYMS["Not a veteran"].test(o) && re.test(o)) ?? null;
+  }
   // Workday race lists say "White (Not Hispanic or Latino)": a Hispanic person must not get one of those (#662).
   const negated = (o: string) =>
     (choice === "Hispanic or Latino" && /\bnot\s+(hispanic|latin)/i.test(o)) ||
     // "I am a veteran, but not a protected veteran" and "I identify as a veteran, just not a protected veteran" hold
     // "not ... veteran" but are a veteran's answer (#961, #1003).
     (choice === "Not a veteran" && /\b(am|identify as) a veteran\b|^yes\b/i.test(o));
-  const hits = re ? options.filter((o) => !DECLINES.test(o) && re.test(o) && !negated(o)) : [];
+  const hits = re ? options.filter((o) => !DECLINES.test(o) && (re.test(o) || re.test(bare(o))) && !negated(o)) : [];
   // A race answer that fits several options ("Asian" on a list with East, South and Southeast Asian) is not a guess
   // to make: ask once and remember the exact wording (#954).
   if (hits.length > 1 && RACES.has(choice)) return null;

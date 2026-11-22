@@ -9,9 +9,10 @@ import { normalizeEmail } from "@/lib/users";
 // Sending and stopping bulk mail (#28). Everything that isn't a sign-in link, invite or email
 // change goes through here, so the unsubscribe link, postal address and opt-out check can't be skipped.
 
-function secrets() {
+/** Keys for signed email links (unsubscribe, waitlist confirm): the current APP_SECRET, then the previous one during a rotation. */
+export function secrets() {
   const now = process.env.APP_SECRET;
-  if (!now || now.length < 32) throw new Error("APP_SECRET must be set (32+ chars) to sign unsubscribe links");
+  if (!now || now.length < 32) throw new Error("APP_SECRET must be set (32+ chars) to sign email links");
   const prev = process.env.APP_SECRET_PREVIOUS;
   return prev && prev.length >= 32 ? [now, prev] : [now];
 }

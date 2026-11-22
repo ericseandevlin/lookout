@@ -119,4 +119,15 @@ Staff Engineer, Acme Corp
 Staff Engineer | 2010 - 2011`;
     expect(looseDates(md, source)).toEqual([]);
   });
+
+  it("checks each title's dates under an employer with several titles, not the employer span (#1629)", () => {
+    const src = "Senior Product Designer, Acme 03/2021 – Present\n- Led the checkout redesign.\nProduct Designer, Acme 06/2018 – 02/2021";
+    const md = "### Acme | New York, NY | 06/2018 – Present\n#### Senior Product Designer | 03/2021 – Present\n#### Product Designer | 06/2018 – 02/2021";
+    expect(looseDates(md, src)).toEqual([]);
+    const out = looseDates("### Acme | New York\n#### Product Designer | 06/2018 – 02/2021", "Acme\nProduct Designer\n06/2018 – 02/2021\n- Built the design system.");
+    expect(out).toHaveLength(1);
+    expect(out[0]).toContain('"Product Designer"');
+    // A one-title employer heading is still checked.
+    expect(looseDates("### Acme | New York | 06/2018 – 02/2021\n- Built it.", "Acme\n06/2018 – 02/2021")).toHaveLength(1);
+  });
 });

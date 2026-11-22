@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { jobKey, sameJob } from "./match";
+import { normUrl } from "@/lib/agent/rules";
 
 describe("jobKey (#169)", () => {
   it("reduces every Greenhouse URL for one job to the same key", () => {
@@ -22,6 +23,52 @@ describe("jobKey (#169)", () => {
     expect(jobKey("https://www.indeed.com/viewjob?jk=abc123&from=serp&utm_source=x")).toBe("url:indeed.com/viewjob?jk=abc123");
     expect(jobKey("https://careers.example.com/job?ref=li&jobId=R-42")).toBe("url:careers.example.com/job?jobid=r-42");
     expect(jobKey("https://careers.example.com/job?job_id=R-42")).toBe(jobKey("https://careers.example.com/job?jobId=R-42&src=mail"));
+  });
+  it("keys an Indeed or LinkedIn posting by its job ID, however the link is written (#1578)", () => {
+    const jk = "indeed:0a1b2c3d4e5f6789";
+    for (const u of [
+      "https://www.indeed.com/viewjob?jk=0a1b2c3d4e5f6789",
+      "https://www.indeed.com/viewjob?jk=0A1B2C3D4E5F6789&from=serp&vjs=3",
+      "https://indeed.com/viewjob?from=serp&tk=1h2j3k&jk=0a1b2c3d4e5f6789&advn=123",
+      "https://www.indeed.com/jobs?q=designer&vjk=0a1b2c3d4e5f6789",
+    ])
+      expect(jobKey(u), u).toBe(jk);
+    expect(jobKey("https://www.indeed.com/viewjob?jk=1111111111111111")).not.toBe(jk);
+    const li = "linkedin:3812345678";
+    for (const u of [
+      "https://www.linkedin.com/jobs/view/3812345678",
+      "https://www.linkedin.com/jobs/view/3812345678/?trk=public_jobs",
+      "https://www.linkedin.com/jobs/view/senior-product-designer-at-acme-3812345678",
+      "https://uk.linkedin.com/jobs/view/senior-product-designer-at-acme-3812345678/",
+    ])
+      expect(jobKey(u), u).toBe(li);
+    expect(jobKey("https://www.linkedin.com/jobs/search?keywords=designer")).toMatch(/^url:/);
+  });
+  it("keys a LinkedIn job open beside a search or collection like its own page (#1583)", () => {
+    for (const u of [
+      "https://www.linkedin.com/jobs/search/?currentJobId=3812345678&keywords=designer",
+      "https://www.linkedin.com/jobs/collections/recommended/?currentJobId=3812345678",
+      "https://ca.linkedin.com/jobs/search?geoId=101174742&currentJobId=3812345678",
+    ])
+      expect(jobKey(u), u).toBe("linkedin:3812345678");
+    expect(sameJob(["https://www.linkedin.com/jobs/search/?currentJobId=3812345678"], ["https://www.linkedin.com/jobs/view/3812345678/"])).toBe(true);
+    expect(jobKey("https://www.linkedin.com/jobs/search/?currentJobId=abc")).toMatch(/^url:/);
+    expect(jobKey("https://example.com/jobs?currentJobId=3812345678")).toMatch(/^url:/);
+  });
+  it("keys a Glassdoor job by its listing ID, and keeps ?jobRequisitionId= (#1605)", () => {
+    for (const u of [
+      "https://www.glassdoor.com/partner/jobListing.htm?pos=101&ao=1136043&guid=abc&jobListingId=1009012345678&jrtk=xyz",
+      "https://www.glassdoor.com/job-listing/senior-designer-acme-JV_IC1132348_KO0,15_KE16,20.htm?jl=1009012345678",
+      "https://www.glassdoor.com/Job/new-york-ny-designer-jobs-SRCH_IL.0,11_IC1132348_KO12,20.htm?jl=1009012345678",
+      "https://www.glassdoor.co.uk/partner/jobListing.htm?jobListingId=1009012345678",
+    ])
+      expect(jobKey(u), u).toBe("glassdoor:1009012345678");
+    expect(jobKey("https://www.glassdoor.com/partner/jobListing.htm?jobListingId=1009000000001")).not.toBe(jobKey("https://www.glassdoor.com/partner/jobListing.htm?jobListingId=1009000000002"));
+    expect(jobKey("https://www.glassdoor.com/Job/new-york-ny-designer-jobs-SRCH_IL.0,11.htm")).toMatch(/^url:/);
+    expect(jobKey("https://example.com/jobs?jl=1009012345678")).toMatch(/^url:/);
+    const req = (id: string) => jobKey(`https://careers.acme.com/jobs/job-details?jobRequisitionId=${id}&utm_source=x`);
+    expect(req("R-12345")).toBe("url:careers.acme.com/jobs/job-details?jobrequisitionid=r-12345");
+    expect(req("R-12345")).not.toBe(req("R-67890"));
   });
   it("keys a Workday job by tenant and job slug, ignoring locale and the apply steps (#622)", () => {
     const post = "https://acme.wd5.myworkdayjobs.com/en-US/External/job/New-York-NY/Senior-Designer_R12345";
@@ -75,6 +122,12 @@ describe("sameJob", () => {
     expect(sameJob([up("11111111-2222-3333-4444-555555555555")], [up("99999999-2222-3333-4444-555555555555")])).toBe(false);
     expect(sameJob([up("11111111-2222-3333-4444-555555555555").replace("opportunityId", "opportunityid")], [up("11111111-2222-3333-4444-555555555555")])).toBe(true);
   });
+  it("tells Phenom apply pages apart by ?jobSeqNo=, not as the careers home (#1584)", () => {
+    const ph = (seq: string, extra = "") => `https://careers.acme.com/us/en/apply?jobSeqNo=${seq}${extra}`;
+    expect(sameJob([ph("ACMEUSR123EXTERNALENUS")], [ph("ACMEUSR456EXTERNALENUS")])).toBe(false);
+    expect(sameJob([ph("ACMEUSR123EXTERNALENUS", "&step=1&stepname=personalInformation")], [ph("ACMEUSR123EXTERNALENUS")])).toBe(true);
+    expect(sameJob(["https://careers.acme.com/us/en"], [ph("ACMEUSR123EXTERNALENUS")])).toBe(false);
+  });
   it("tells SuccessFactors jobs apart by ?career_job_req_id= (#840)", () => {
     const sf = (id: number, extra = "") => `https://career4.successfactors.com/career?company=acme&career_ns=job_listing${extra}&career_job_req_id=${id}`;
     expect(sameJob([sf(101)], [sf(202)])).toBe(false);
@@ -105,6 +158,39 @@ describe("sameJob", () => {
     // The search list isn't one job.
     expect(jobKey("https://careers-acme.icims.com/jobs/search?ss=1")).toMatch(/^url:/);
   });
+  it("matches Taleo and UltiPro forms to their postings (#1497)", () => {
+    const taleo = "https://acme.taleo.net/careersection/2/jobdetail.ftl?job=12345&lang=en";
+    expect(jobKey(taleo)).toBe("taleo:acme.taleo.net:12345");
+    expect(sameJob(["https://acme.taleo.net/careersection/2/jobapply.ftl?job=12345&lang=en"], [taleo])).toBe(true);
+    expect(sameJob(["https://acme.taleo.net/careersection/2/jobapply.ftl?job=99999&lang=en"], [taleo])).toBe(false);
+    const ulti = "https://recruiting.ultipro.com/ACM1000ACME/JobBoard/0b6b7c8e-1a2b-4c3d-9e8f-123456789abc/OpportunityDetail?opportunityId=1f2e3d4c-5b6a-4789-8abc-def012345678";
+    expect(sameJob([ulti.replace("OpportunityDetail", "OpportunityApply")], [ulti])).toBe(true);
+    expect(sameJob([ulti.replace("OpportunityDetail", "OpportunityApply").replace("1f2e3d4c", "aaaaaaaa")], [ulti])).toBe(false);
+  });
+
+  it("matches a Paylocity form to its posting by job ID (#1435)", () => {
+    const job = "https://recruiting.paylocity.com/Recruiting/Jobs/Details/1234567";
+    expect(jobKey(job)).toBe("paylocity:1234567");
+    expect(sameJob(["https://recruiting.paylocity.com/Recruiting/Jobs/Apply/1234567"], [job])).toBe(true);
+    expect(sameJob(["https://recruiting.paylocity.com/recruiting/jobs/apply/1234567?source=LinkedIn"], [job])).toBe(true);
+    expect(sameJob(["https://recruiting.paylocity.com/Recruiting/Jobs/Apply/7654321"], [job])).toBe(false);
+    // A company's job list isn't one job.
+    expect(jobKey("https://recruiting.paylocity.com/Recruiting/Jobs/All/abc-123")).toMatch(/^url:/);
+  });
+
+  it("keys a SmartRecruiters posting by its ID, with or without the title slug, on either host (#1520)", () => {
+    const job = "https://jobs.smartrecruiters.com/Acme/743999912345678-product-designer";
+    expect(jobKey(job)).toBe("smartrecruiters:acme:743999912345678");
+    expect(sameJob(["https://jobs.smartrecruiters.com/Acme/743999912345678"], [job])).toBe(true);
+    expect(sameJob(["https://careers.smartrecruiters.com/acme/743999912345678-product-designer/?trid=abc"], [job])).toBe(true);
+    // Retitled: the slug changed, the ID did not.
+    expect(sameJob(["https://jobs.smartrecruiters.com/Acme/743999912345678-senior-product-designer"], [job])).toBe(true);
+    expect(sameJob(["https://jobs.smartrecruiters.com/Acme/743999912399999-product-designer"], [job])).toBe(false);
+    expect(sameJob(["https://jobs.smartrecruiters.com/Other/743999912345678-product-designer"], [job])).toBe(false);
+    // A company's job list isn't one job.
+    expect(jobKey("https://careers.smartrecruiters.com/Acme")).toMatch(/^url:/);
+    expect(jobKey("https://jobs.smartrecruiters.com/oneclick-ui/company/Acme/publication/1b2c3d4e-1111-2222-3333-444455556666")).toMatch(/^url:/);
+  });
 });
 
 describe("Recruitee and Teamtailor apply steps (#1200)", () => {
@@ -116,6 +202,24 @@ describe("Recruitee and Teamtailor apply steps (#1200)", () => {
     expect(sameJob(["https://career.acme.com/jobs/4521337-senior-product-designer/applications/new"], [tt])).toBe(true);
     expect(sameJob(["https://acme.teamtailor.com/jobs/4521337-senior-product-designer/applications/new/"], ["https://acme.teamtailor.com/jobs/4521337-senior-product-designer"])).toBe(true);
     expect(sameJob(["https://career.acme.com/jobs/9999999-staff-designer/applications/new"], [tt])).toBe(false);
+  });
+
+  it("keys a Workable job by its shortcode and a Teamtailor job by its ID, slug or not (#1522)", () => {
+    const wk = "https://apply.workable.com/acme/j/1A2B3C4D5E/";
+    expect(jobKey(wk)).toBe("workable:1a2b3c4d5e");
+    expect(sameJob(["https://apply.workable.com/j/1A2B3C4D5E"], [wk])).toBe(true);
+    expect(sameJob(["https://acme.workable.com/j/1A2B3C4D5E"], [wk])).toBe(true);
+    expect(sameJob(["https://apply.workable.com/acme/j/1A2B3C4D5E/apply/"], [wk])).toBe(true);
+    expect(sameJob(["https://apply.workable.com/acme/j/9Z8Y7X6W5V/"], [wk])).toBe(false);
+    // The company's job list isn't one job.
+    expect(jobKey("https://apply.workable.com/acme/")).toMatch(/^url:/);
+    const tt = "https://acme.teamtailor.com/jobs/4521337-senior-product-designer";
+    expect(jobKey(tt)).toBe("teamtailor:acme.teamtailor.com:4521337");
+    expect(sameJob(["https://acme.teamtailor.com/jobs/4521337"], [tt])).toBe(true);
+    expect(sameJob(["https://acme.teamtailor.com/en/jobs/4521337-lead-product-designer/applications/new"], [tt])).toBe(true);
+    expect(sameJob(["https://acme.teamtailor.com/jobs/9999999-senior-product-designer"], [tt])).toBe(false);
+    expect(sameJob(["https://other.teamtailor.com/jobs/4521337-senior-product-designer"], [tt])).toBe(false);
+    expect(jobKey("https://acme.teamtailor.com/jobs")).toMatch(/^url:/);
   });
 
   it("keeps a path that only ends in new", () => {
@@ -130,5 +234,24 @@ describe("a link with a bad % escape (#1162)", () => {
     expect(sameJob([wd], [wd])).toBe(true);
     expect(() => jobKey("https://acme.wd1.myworkdayjobs.com/job/Paris/Caf%E9-Manager_R9")).not.toThrow();
     expect(jobKey("https://acme.wd1.myworkdayjobs.com/job/New-York/Senior%20Designer_R1")).toBe("workday:acme.wd1.myworkdayjobs.com:senior designer_r1");
+  });
+});
+
+describe("a query inside a hash route (#1375)", () => {
+  it("drops tracking tags from it, in jobKey and normUrl", () => {
+    const plain = "https://careers.acme.com/#/jobs/101";
+    const tagged = "https://careers.acme.com/#/jobs/101?utm_source=linkedin&gh_src=abc";
+    expect(jobKey(tagged)).toBe(jobKey(plain));
+    expect(normUrl(tagged)).toBe(normUrl(plain));
+    expect(normUrl(tagged)).toBe("careers.acme.com#/jobs/101");
+  });
+
+  it("keeps a job ID param in it, so two jobs stay two", () => {
+    expect(jobKey("https://acme.com/#/job?id=101")).not.toBe(jobKey("https://acme.com/#/job?id=202"));
+    expect(jobKey("https://acme.com/#/job?id=101&utm_source=x")).toBe(jobKey("https://acme.com/#/job?id=101"));
+  });
+
+  it("still drops the apply step before the query", () => {
+    expect(jobKey("https://acme.com/#/jobs/101/apply?utm_source=x")).toBe(jobKey("https://acme.com/#/jobs/101"));
   });
 });

@@ -34,6 +34,17 @@ describe("finishOutreach", () => {
     expect(finishOutreach({ people: [person("Maya Ortiz", "Recruiter")] }, [source("Maya Ortiz", "Recruiter")], "—")).toEqual([]);
   });
 
+  it("matches the company as a whole word, so a Dropbox recruiter isn't a contact at Box (#1655)", () => {
+    const at = (company: string, n = 1): PublicSource => ({ url: `https://example.com/team/${n}`, title: `Jane Smith - Technical Recruiter - ${company} | LinkedIn`, text: `Jane Smith is a Technical Recruiter at ${company}.` });
+    const jane = person("Jane Smith", "Technical Recruiter");
+    expect(finishOutreach({ people: [jane] }, [at("Dropbox")], "Box")).toEqual([]);
+    expect(finishOutreach({ people: [jane] }, [at("Squarespace")], "Square")).toEqual([]);
+    expect(finishOutreach({ people: [jane] }, [at("Box")], "Box")).toHaveLength(1);
+    expect(finishOutreach({ people: [jane] }, [at("Box's talent team")], "Box")).toHaveLength(1);
+    const plural = { url: "https://example.com/team/1", title: "Our team", text: "Jane Smith is one of the technical recruiters at Box." };
+    expect(finishOutreach({ people: [jane] }, [plural], "Box")).toHaveLength(1);
+  });
+
   it("caps the list at two people", () => {
     const people = [person("Maya Ortiz", "Design Director", 1), person("Lee Chen", "Recruiter", 2), person("Sam Jones", "Product Lead", 3)];
     const sources = [source("Maya Ortiz", "Design Director", 1), source("Lee Chen", "Recruiter", 2), source("Sam Jones", "Product Lead", 3)];

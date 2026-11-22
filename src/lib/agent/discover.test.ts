@@ -12,7 +12,7 @@ const db = drizzle(pg, { schema });
 vi.mock("@/lib/db", () => ({ db, schema }));
 
 const { loadContext, save, realDate } = await import("./discover");
-const { fingerprint, legacyFingerprint } = await import("./rules");
+const { fingerprint, legacyFingerprint, suffixedFingerprint } = await import("./rules");
 type Ctx = Awaited<ReturnType<typeof loadContext>>;
 type Find = Parameters<typeof save>[1][number];
 
@@ -92,15 +92,27 @@ describe("save", () => {
     expect(await board()).toHaveLength(0);
   });
 
+  it("on a search, skips list pages and board home pages the agent sent as postings (#1631)", async () => {
+    const r = await save(ctx(), [find({ url: "https://jobs.lever.co/acme" }), find({ url: "https://www.linkedin.com/jobs/search/?keywords=director%20of%20design", company: "Beta" })], "agent");
+    expect(r).toMatchObject({ notPostings: 2, postings: 0, added: 0 });
+    expect(await board()).toHaveLength(0);
+  });
+
   it("on a search, skips URLs already on the board, ignoring tracking params and www", async () => {
     const r = await save(ctx({ knownUrls: ["https://www.jobs.example.com/acme/123/?utm_source=x"] }), [find()], "agent");
     expect(r).toMatchObject({ postings: 1, known: 1, added: 0 });
     expect(await board()).toHaveLength(0);
   });
 
-  it("counts the same URL twice in one search once", async () => {
+  it("counts the same URL twice in one search once, and not as already on the board (#1531)", async () => {
     const r = await save(ctx(), [find(), find({ title: "Director, Design" })], "agent");
-    expect(r).toMatchObject({ added: 1, known: 1 });
+    expect(r).toMatchObject({ added: 1, known: 0, postings: 1 });
+  });
+
+  it("counts one posting at two links in one search once, and not as already on the board (#1531)", async () => {
+    const r = await save(ctx(), [find(), find({ url: "https://boards.example.org/acme-director" })], "agent");
+    expect(r).toMatchObject({ added: 1, known: 0, postings: 1 });
+    expect(await board()).toHaveLength(1);
   });
 
   it("counts the same posting at a different URL as known when it is already on the board", async () => {
@@ -120,11 +132,41 @@ describe("save", () => {
     expect(await board()).toEqual([expect.objectContaining({ title: "Director of Design", score: 5 })]);
   });
 
+  it("counts one job at two links cut as a dealbreaker once (#1637)", async () => {
+    const r = await save(ctx(), [find({ dealbreaker: true }), find({ url: "https://www.linkedin.com/jobs/view/4012345678", dealbreaker: true })], "agent");
+    expect(r).toMatchObject({ postings: 1, dealbreaker: 1, added: 0, known: 0 });
+    expect(await board()).toHaveLength(0);
+    expect(await db.select().from(schema.opportunities)).toHaveLength(0);
+  });
+
+  it("counts one job at two links cut under the floor once, and skips a later copy that reads no pay (#1637)", async () => {
+    const under = { comp_min: 120000, comp_max: 150000 };
+    const r = await save(
+      ctx({ floor: 180000 }),
+      [
+        find({ url: "https://job-boards.greenhouse.io/acme/jobs/4012345", ...under }),
+        find({ url: "https://www.linkedin.com/jobs/view/4012345678", ...under }),
+        find({ url: "https://boards.example.org/acme-director", comp_min: null, comp_max: null }),
+      ],
+      "agent",
+    );
+    expect(r).toMatchObject({ postings: 1, belowFloor: 1, added: 0, known: 0 });
+    expect(await board()).toHaveLength(0);
+    expect(await db.select().from(schema.opportunities)).toHaveLength(0);
+  });
+
   it("drops dealbreakers on a search but keeps them when the person adds the link", async () => {
     expect(await save(ctx(), [find({ dealbreaker: true })], "agent")).toMatchObject({ dealbreaker: 1, added: 0 });
     const manual = await save(ctx({ knownUrls: ["https://jobs.example.com/acme/123"] }), [find({ dealbreaker: true })], "manual");
     expect(manual).toMatchObject({ dealbreaker: 0, added: 1, known: 0 });
     expect((await board())[0].via).toBe("manual");
+  });
+
+  it("reads a range given high to low as low to high, so its top judges the floor (#1526)", async () => {
+    const r = await save(ctx({ floor: 180000 }), [find({ comp_min: 200000, comp_max: 150000 })], "agent");
+    expect(r).toMatchObject({ added: 1, belowFloor: 0 });
+    const [o] = await db.select({ min: schema.opportunities.compMin, max: schema.opportunities.compMax }).from(schema.opportunities);
+    expect(o).toEqual({ min: 150000, max: 200000 });
   });
 
   it("leaves off pay that tops out under the floor; marks down off-location roles (#740)", async () => {
@@ -276,6 +318,80 @@ describe("save", () => {
     expect(o).toMatchObject({ sourceUrl: "https://jobs.example.com/acme/123", description: "Lead the design team.", attributes: goneCheck });
   });
 
+  describe("a repost of a find the link check closed (#922)", () => {
+    const closedLine = "Closed: the posting was gone (404) as of 2026-10-31. Lookout archived it.";
+    const repost = () => find({ url: "https://jobs.example.com/acme/456" });
+    // The find saved, then closed the way closeGonePostings closes it.
+    const closeIt = async (closedFrom: string | null, notes = `Ask Sam.\n\n${closedLine}`) => {
+      await save(ctx(), [find()], "agent");
+      const goneCheck = { linkCheck: { checkedAt: "2026-11-01T00:00:00.000Z", state: "gone", reason: "404", goneSince: "2026-10-30T00:00:00.000Z" } };
+      await db.update(schema.opportunities).set({ attributes: goneCheck });
+      await db.update(schema.userOpportunities).set({ stage: "Closed", archived: true, closedFrom, notes });
+    };
+    const mine = async () => (await db.select().from(schema.userOpportunities))[0];
+
+    it("brings back one closed before they applied, as new", async () => {
+      await closeIt("Not applied");
+      const r = await save(ctx({ knownUrls: ["https://jobs.example.com/acme/123"] }), [repost()], "agent");
+      expect(r).toMatchObject({ postings: 1, added: 1, known: 0 });
+      expect(r.newFinds).toHaveLength(1);
+      expect(await mine()).toMatchObject({ stage: "Not applied", archived: false, closedFrom: null, notes: "Ask Sam." });
+    });
+
+    it("dates one it brings back today, so the finds email has it (#1363)", async () => {
+      await closeIt("Not applied");
+      await db.update(schema.userOpportunities).set({ addedAt: new Date(Date.now() - 14 * 864e5) });
+      const before = Date.now();
+      await save(ctx(), [repost()], "agent");
+      expect((await mine()).addedAt.getTime()).toBeGreaterThanOrEqual(before - 1000);
+    });
+
+    it("keeps the date of one it keeps closed", async () => {
+      await closeIt("Ghosted");
+      const old = new Date(Date.now() - 14 * 864e5);
+      await db.update(schema.userOpportunities).set({ addedAt: old });
+      await save(ctx(), [repost()], "agent");
+      expect((await mine()).addedAt).toEqual(old);
+    });
+
+    it("brings back one closed while auto-applying", async () => {
+      await closeIt("Auto-applying", closedLine);
+      const r = await save(ctx(), [repost()], "agent");
+      expect(r.added).toBe(1);
+      expect(await mine()).toMatchObject({ stage: "Not applied", archived: false, notes: "" });
+    });
+
+    it("keeps one closed after they applied closed, with a note of the new link", async () => {
+      await closeIt("Ghosted");
+      const r = await save(ctx(), [repost()], "agent");
+      expect(r).toMatchObject({ added: 0, known: 1 });
+      const uo = await mine();
+      expect(uo).toMatchObject({ stage: "Closed", archived: true, closedFrom: "Ghosted" });
+      expect(uo.notes).toMatch(new RegExp(`^Ask Sam\\.\\n\\n${closedLine.replace(/[.()]/g, "\\$&")}\\n\\nReposted on \\d{4}-\\d{2}-\\d{2}: https://jobs\\.example\\.com/acme/456$`));
+    });
+
+    it("keeps one closed before the stage was recorded closed, with the note", async () => {
+      await closeIt(null);
+      const r = await save(ctx(), [repost()], "agent");
+      expect(r.added).toBe(0);
+      expect(await mine()).toMatchObject({ stage: "Closed", archived: true });
+      expect((await mine()).notes).toContain("Reposted on ");
+    });
+
+    it("leaves a find they closed themselves alone", async () => {
+      await closeIt(null, "Not for me.");
+      await save(ctx(), [repost()], "agent");
+      expect(await mine()).toMatchObject({ stage: "Closed", notes: "Not for me." });
+    });
+
+    it("does nothing when it is found again at the same link", async () => {
+      await closeIt("Not applied");
+      const r = await save(ctx(), [find()], "agent");
+      expect(r.added).toBe(0);
+      expect(await mine()).toMatchObject({ stage: "Closed", archived: true });
+    });
+  });
+
   it("keeps two jobs apart when only a title parenthetical and the ATS job differ (#838)", async () => {
     const gh = (id: number) => `https://job-boards.greenhouse.io/acme/jobs/${id}`;
     await save(ctx(), [find({ url: gh(111), title: "Senior Product Designer (Payments)" })], "agent");
@@ -313,6 +429,21 @@ describe("save", () => {
     const old = legacyFingerprint("L'Oréal", "Director of Design", "Montréal, QC");
     await db.insert(schema.opportunities).values({ company: "L'Oréal", title: "Director of Design", sourceUrl: "https://jobs.example.com/a", fingerprint: old });
     await save(ctx(), [find({ url: "https://jobs.example.com/b", company: "L'Oréal", location: "Montréal, QC" })], "agent");
+    const opps = await db.select().from(schema.opportunities);
+    expect(opps.map((o) => [o.fingerprint, o.sourceUrl])).toEqual([[old, "https://jobs.example.com/a"]]);
+  });
+
+  it("merges 'Acme, Inc.' and 'Acme' as one job (#1645)", async () => {
+    await save(ctx(), [find({ url: "https://jobs.example.com/a", company: "Acme, Inc." })], "agent");
+    const t = await save(ctx(), [find({ url: "https://jobs.example.com/b", company: "Acme" })], "agent");
+    expect(t.added).toBe(0);
+    expect(await db.select().from(schema.opportunities)).toHaveLength(1);
+  });
+
+  it("matches a posting stored under the key from before #1645, not a second row", async () => {
+    const old = suffixedFingerprint("Acme, Inc.", "Director of Design", "New York, NY");
+    await db.insert(schema.opportunities).values({ company: "Acme, Inc.", title: "Director of Design", sourceUrl: "https://jobs.example.com/a", fingerprint: old });
+    await save(ctx(), [find({ url: "https://jobs.example.com/b", company: "Acme, Inc.", location: "New York, NY" })], "agent");
     const opps = await db.select().from(schema.opportunities);
     expect(opps.map((o) => [o.fingerprint, o.sourceUrl])).toEqual([[old, "https://jobs.example.com/a"]]);
   });
@@ -407,9 +538,9 @@ describe("save: a board job at another link for the same ATS job (#1146)", () =>
     expect(r).toMatchObject({ known: 1, added: 0 });
     expect(await board()).toHaveLength(1);
   });
-  it("agent: the same ATS job twice in one run is added once", async () => {
+  it("agent: the same ATS job twice in one run is added once, and not as already on the board (#1531)", async () => {
     const r = await save(ctx(), [find({ url: saved }), find({ url: "https://boards.greenhouse.io/acme/jobs/4012345", title: "Design Director" })], "agent");
-    expect(r).toMatchObject({ added: 1, known: 1 });
+    expect(r).toMatchObject({ added: 1, known: 0 });
     expect(await board()).toHaveLength(1);
   });
 });

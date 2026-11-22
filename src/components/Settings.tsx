@@ -136,6 +136,11 @@ export function Settings() {
         <button onClick={signOut} style={btn("outline")}>Sign out</button>
       </Row>
 
+      <Section>Invite a friend</Section>
+      <Row title="Your link" help="Send it to someone who's looking. They join the waitlist, and Lookout knows you sent them.">
+        <ReferralLink />
+      </Row>
+
       <Section id="discovery">Discovery</Section>
       <Row title="How often to search" help="Lookout checks job boards and company sites on this schedule.">
         <Seg opts={[["Weekly", "Weekly"], ["Twice a week", "Twice a week"], ["Daily", "Daily"]]} cur={st.freq} pick={(v) => put({ freq: v })} />
@@ -312,6 +317,26 @@ const ago = (iso: string, now: number) => {
   const d = Math.floor((now - new Date(iso).getTime()) / 864e5);
   return d < 1 ? "Active today" : d === 1 ? "Active yesterday" : `Active ${d} days ago`;
 };
+
+/** Settings > Invite a friend (#527): the person's own referral link, with a copy button. */
+function ReferralLink() {
+  const [link, setLink] = useState<string | null>(null);
+  const [copied, setCopied] = useState(false);
+  useEffect(() => {
+    api<{ link: string }>("/api/account/referral").then((r) => setLink(r.link)).catch(() => {});
+  }, []);
+  const copy = async () => {
+    if (!link) return;
+    await navigator.clipboard.writeText(link).then(() => setCopied(true), () => {});
+  };
+  if (!link) return <span style={{ fontSize: font.base, color: color.t2 }}>Loading…</span>;
+  return (
+    <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+      <input readOnly value={link} aria-label="Your referral link" onFocus={(e) => e.target.select()} style={{ width: "100%", maxWidth: 360, height: 42, border: `1.5px solid ${color.border}`, background: "#fff", borderRadius: 10, padding: "0 13px", fontSize: font.base, color: color.ink }} />
+      <button onClick={copy} style={btn("outline")}>{copied ? "Copied" : "Copy link"}</button>
+    </div>
+  );
+}
 
 function Devices({ onSignOutHere }: { onSignOutHere: () => void }) {
   const ask = useConfirm();

@@ -26,9 +26,17 @@ function sameDates(line: string, dates: string): boolean {
 export function looseDates(md: string, source: string): string[] {
   const lines = source.split("\n").map(dashes);
   const out: string[] = [];
-  for (const l of md.split("\n")) {
-    const m = l.match(/^###\s+(.+?)\s*\|.*\|\s*([^|]*\d{4}[^|]*)$/) ?? l.match(/^###\s+(.+?)\s*\|\s*([^|]*\d{4}[^|]*)$/);
-    if (!m) continue;
+  const rows = md.split("\n");
+  // An employer with several titles is "### Company | City | span", one "#### Title | dates" per title.
+  // The span is worked out from the titles, so it is rarely in the file as written; each title's own
+  // dates are what the file must back (#1629).
+  const hasTitles = (i: number) => {
+    for (let j = i + 1; j < rows.length && !/^#{1,3}\s/.test(rows[j]); j++) if (/^####\s/.test(rows[j])) return true;
+    return false;
+  };
+  for (const [i, l] of rows.entries()) {
+    const m = l.match(/^#{3,4}\s+(.+?)\s*\|.*\|\s*([^|]*\d{4}[^|]*)$/) ?? l.match(/^#{3,4}\s+(.+?)\s*\|\s*([^|]*\d{4}[^|]*)$/);
+    if (!m || (l.startsWith("### ") && hasTitles(i))) continue;
     const [, title, dates] = m;
     const d = dashes(dates.trim());
     // Only the title's words: the middle part is often a location, which sits on many date lines.

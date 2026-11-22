@@ -40,7 +40,7 @@ beforeEach(async () => {
 });
 
 /** A find on the board, added `ago` ms back. */
-async function find(title: string, o: { ago?: number; score?: number; due?: string; pinned?: boolean; archived?: boolean; compMin?: number; compMax?: number; currency?: string; location?: string } = {}) {
+async function find(title: string, o: { ago?: number; score?: number; due?: string; pinned?: boolean; archived?: boolean; compMin?: number; compMax?: number; currency?: string; location?: string; via?: "agent" | "manual" | "import"; stage?: string } = {}) {
   const [opp] = await db
     .insert(schema.opportunities)
     .values({ company: "Acme <Labs>", title, location: o.location ?? "Remote", fingerprint: title, compMin: o.compMin, compMax: o.compMax, currency: o.currency, attributes: o.due ? { due: o.due } : {} })
@@ -53,6 +53,8 @@ async function find(title: string, o: { ago?: number; score?: number; due?: stri
     pinned: o.pinned ?? false,
     archived: o.archived ?? false,
     addedAt: new Date(Date.now() - (o.ago ?? 0)),
+    addedVia: o.via ?? "agent",
+    ...(o.stage ? { stage: o.stage } : {}),
   });
   return opp.id;
 }
@@ -209,6 +211,20 @@ describe("sendDigest", () => {
     expect(m.text).toContain(`/go/${dg.id}/${dueId}`);
   });
 
+  it("leaves out pinned finds already applied to (#1539)", async () => {
+    await find("Applied", { ago: 5 * DAY, pinned: true, due: inDays(1), stage: "Applied" });
+    await find("Interview", { ago: 5 * DAY, pinned: true, due: inDays(2), stage: "Interview" });
+    await sendDigest(userId);
+    expect(sent()).toHaveLength(0);
+    const id = await find("Still to apply", { ago: 5 * DAY, pinned: true, due: inDays(1) });
+    await sendDigest(userId);
+    const [m] = sent();
+    expect(m.subject).toBe("Lookout: 1 pinned find due soon");
+    expect(m.text).toContain(`/${id}`);
+    expect(m.text).not.toContain("Applied");
+    expect(m.text).not.toContain("Interview");
+  });
+
   it("sends a due-soon-only email at most once a day", async () => {
     await find("Due today", { ago: 5 * DAY, pinned: true, due: inDays(0) });
     await sendDigest(userId);
@@ -269,6 +285,37 @@ describe("sendDigest", () => {
     const [m] = sent();
     expect(m.subject).toBe("Lookout: 1 new find");
     expect(m.text).not.toContain("Archived");
+  });
+
+  it("leaves out links they added themselves and imports (#1127)", async () => {
+    await find("Found by search");
+    await find("Added by link", { via: "manual", score: 5 });
+    await find("Imported", { via: "import", score: 5 });
+    await sendDigest(userId);
+    const [m] = sent();
+    expect(m.subject).toBe("Lookout: 1 new find");
+    expect(m.text).toContain("Found by search");
+    expect(m.text).not.toContain("Added by link");
+    expect(m.text).not.toContain("Imported");
+    expect((await digests())[0].finds).toBe(1);
+  });
+
+  it("sends nothing when the only new finds are their own links (#1127)", async () => {
+    await find("Added by link", { via: "manual" });
+    await sendDigest(userId);
+    expect(sendMail).not.toHaveBeenCalled();
+    expect(await digests()).toHaveLength(0);
+  });
+
+  it("leaves out a link they added by hand that another search found later (#1127)", async () => {
+    const id = await find("Added by link", { via: "manual", ago: 3600_000 });
+    const [s2] = await db.insert(schema.searches).values({ userId, name: "Second search", answers: {} }).returning();
+    await db.insert(schema.userOpportunities).values({ userId, searchId: s2.id, opportunityId: id, score: 5 });
+    await find("Really new", { score: 4 });
+    await sendDigest(userId);
+    const [m] = sent();
+    expect(m.subject).toBe("Lookout: 1 new find");
+    expect(m.text).not.toContain("Added by link");
   });
 
   it("drops the digest record when the send fails", async () => {

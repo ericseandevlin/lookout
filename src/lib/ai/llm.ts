@@ -38,13 +38,35 @@ type JsonReq<T extends z.ZodType> = {
   cfg?: AiConfig;
 };
 
+/**
+ * Calls whose text a person reads or sends (#1532). They go to the writing model when one is set; everything else
+ * (search queries, scoring, picks, scans, events, keyword picking) stays on the main model.
+ */
+export const WRITING_CALLS = new Set([
+  "apply-resume",
+  "master-resume",
+  "apply-letter",
+  "apply-answers",
+  "apply-outreach",
+  "apply-revise",
+  "apply-recruiter",
+  "interview-turn",
+]);
+
+/** The config one call runs on: the writing model for a writing call, when one is set, priced at its own rates. */
+export function configFor(cfg: AiConfig, name: string): AiConfig {
+  const w = cfg.writing;
+  if (!w?.model.trim() || !WRITING_CALLS.has(name)) return cfg;
+  return { ...cfg, model: w.model.trim(), priceIn: w.priceIn, priceOut: w.priceOut, jsonMode: w.jsonMode };
+}
+
 /** One structured call to whichever model is configured. Validates with zod and retries once on bad JSON. */
 /** OpenRouter routing for user data: zero-retention, no-training hosts only, US hosts first. */
 const PRIVATE_ROUTING = { data_collection: "deny", zdr: true, order: ["deepinfra", "together", "fireworks"], allow_fallbacks: true };
 const strictRouting = (cfg: { baseUrl: string; privacy?: string }) => /openrouter\.ai/.test(cfg.baseUrl) && cfg.privacy !== "standard";
 
 export async function completeJSON<T extends z.ZodType>(req: JsonReq<T>): Promise<z.infer<T>> {
-  const cfg = req.cfg ?? (await getAiConfig());
+  const cfg = configFor(req.cfg ?? (await getAiConfig()), req.name);
   if (cfg.provider === "agent") throw new AiConfigError("Searches run through the external agent, not a model API.");
   if (!cfg.model) throw new AiConfigError("No AI model is set. An admin can set one under Admin > AI settings.");
   if (!cfg.apiKey && !/localhost|127\.0\.0\.1|host\.docker\.internal|ollama/.test(cfg.baseUrl) && cfg.provider === "openai")

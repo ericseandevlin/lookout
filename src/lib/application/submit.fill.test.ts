@@ -19,7 +19,7 @@ vi.mock("@/lib/db", () => ({ db, schema }));
  * A fake application form in place of Chromium (#385). It answers the Playwright calls submit.ts
  * makes: controls found by label or role, a Submit button, and what the page shows after Submit.
  */
-type El = { kind: "control" | "file" | "button" | "option" | "confirm" | "captcha" | "group" | "wrapper"; label: string; tag?: string; type?: string; role?: string; after?: boolean; options?: string[]; children?: El[]; multi?: boolean };
+type El = { kind: "control" | "file" | "button" | "option" | "confirm" | "captcha" | "group" | "wrapper"; label: string; tag?: string; type?: string; role?: string; after?: boolean; options?: string[]; children?: El[]; multi?: boolean; maxLength?: number };
 type Page = ReturnType<typeof fakePage>;
 
 /** The full text content of an element: its own label plus all descendants' labels. */
@@ -34,6 +34,30 @@ function fakePage(els: El[]) {
   /** All descendant elements, flat for discovery. */
   const allEls = (el: El): El[] => [el, ...(el.children ?? []).flatMap(allEls)];
   const shown = () => els.flatMap(allEls).filter((e) => !e.after || submitted);
+  // One stand-in DOM element per El, the same object each time, so in-page code can compare them (#1505).
+  const nodes = new Map<El, FakeNode>();
+  const doc = { querySelectorAll: () => shown().filter((c) => c.kind === "control" || c.kind === "file").map(node), getElementById: () => null };
+  function node(e: El): FakeNode {
+    let n = nodes.get(e);
+    if (!n) {
+      n = {
+        tagName: (e.tag ?? "input").toUpperCase(),
+        getAttribute: (a) => (a === "type" ? (e.type ?? null) : a === "role" ? (e.role ?? null) : a === "aria-multiselectable" ? (e.multi ? "true" : null) : a === "multiple" ? (e.multi ? "" : null) : null),
+        maxLength: e.maxLength ?? -1,
+        labels: [{ textContent: e.label }],
+        ownerDocument: doc,
+        attrs: new Set<string>(),
+        hasAttribute(a) {
+          return this.attrs.has(a);
+        },
+        setAttribute(a) {
+          this.attrs.add(a);
+        },
+      };
+      nodes.set(e, n);
+    }
+    return n;
+  }
   const loc = (find: () => El[]): Loc => {
     const one = () => {
       const e = find()[0];
@@ -67,10 +91,7 @@ function fakePage(els: El[]) {
       isVisible: async () => find().length > 0,
       // Present: resolves now. Absent: fails a moment later, like a Playwright timeout.
       waitFor: () => (find().length ? Promise.resolve() : new Promise((_, no) => setTimeout(() => no(new Error("timeout")), 20))),
-      evaluate: async (fn) => {
-        const e = one();
-        return fn({ tagName: (e.tag ?? "input").toUpperCase(), getAttribute: (a) => (a === "type" ? (e.type ?? null) : a === "role" ? (e.role ?? null) : a === "aria-multiselectable" ? (e.multi ? "true" : null) : a === "multiple" ? (e.multi ? "" : null) : null) });
-      },
+      evaluate: async (fn) => fn(node(one())),
       innerText: async () => one().label,
       allTextContents: async () => find().map((e) => e.label),
       click: async () => {
@@ -123,6 +144,7 @@ function fakePage(els: El[]) {
   };
   return page;
 }
+type FakeNode = { tagName: string; maxLength: number; getAttribute: (a: string) => string | null; attrs: Set<string>; hasAttribute(a: string): boolean; setAttribute(a: string, v?: string): void; labels: { textContent: string }[]; ownerDocument: { querySelectorAll: () => FakeNode[]; getElementById: () => null } };
 type Loc = {
   first(): Loc;
   last(): Loc;
@@ -135,7 +157,8 @@ type Loc = {
   count(): Promise<number>;
   isVisible(): Promise<boolean>;
   waitFor(o?: unknown): Promise<unknown>;
-  evaluate(fn: (e: { tagName: string; getAttribute: (a: string) => string | null }) => string): Promise<string>;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  evaluate<T>(fn: (e: any) => T): Promise<T>;
   innerText(): Promise<string>;
   allTextContents(): Promise<string[]>;
   click(): Promise<void>;
@@ -315,6 +338,12 @@ describe("runFill (#385)", () => {
 
   it("a range's k covers its bare first end (#1254)", () => {
     expect(["$120-150k", "120 to 150K", "$120 – $150k", "$1-1.5M", "$120,000 - 150k", "5 - 10 years"].map(numberAnswer)).toEqual(["120000", "120000", "120000", "1000000", "120000", "5"]);
+  });
+
+  it("a k or M after a space, or spelled out, still counts (#1585)", () => {
+    expect(["$120 K", "$120 K - $150 K", "120 - 150 k", "165 thousand", "1.2 million", "$2 M"].map(numberAnswer)).toEqual(["120000", "120000", "120000", "165000", "1200000", "2000000"]);
+    // A lone lowercase m after a space reads as months or minutes, not millions.
+    expect(["5 m", "5 months", "2 Months", "3 mo"].map(numberAnswer)).toEqual(["5", "5", "2", "3"]);
   });
 
   it("a date field gets the answer as yyyy-mm-dd, not \"12/01/2026\" (#1242)", async () => {
@@ -680,6 +709,48 @@ describe("runFill controls (#567)", () => {
     expect(page.did).not.toContain("click United States");
   });
 
+  it("a Country question goes to its own field, and the phone's picker still gets United States (#1505)", async () => {
+    const id = await seed("approved", [
+      { kind: "field", prompt: "Phone", content: "555-0100" },
+      { kind: "field", prompt: "Country", content: "Canada", options: ["Canada", "United States"] },
+    ]);
+    page = fakePage([
+      { kind: "control", label: "Country", role: "combobox" },
+      { kind: "control", label: "Phone", type: "tel" },
+      { kind: "control", label: "Email" },
+      { kind: "control", label: "Country", tag: "select", options: ["Canada", "United States"] },
+      { kind: "option", label: "United States", role: "option" },
+    ]);
+    const r = await runFill(id, "test");
+    expect(r.log.map((l) => [l.prompt, l.ok])).toEqual([
+      ["Phone", true],
+      ["Country", true],
+      ["Phone country", true],
+    ]);
+    expect(page.did).toContain("select Country=Canada");
+    expect(page.did).toContain("click United States");
+    expect(page.did).not.toContain("fill Country=Canada");
+  });
+
+  it("an answer over the field's maxlength is not typed, and says the limit (#1508)", async () => {
+    const id = await seed("approved", [
+      { kind: "answer", prompt: "Why Acme?", content: "x".repeat(30) },
+      { kind: "answer", prompt: "Anything else?", content: "Short.", required: false },
+    ]);
+    page = fakePage([
+      { kind: "control", label: "Why Acme?", tag: "textarea", maxLength: 20 },
+      { kind: "control", label: "Anything else?", tag: "textarea", maxLength: 20 },
+    ]);
+    const r = await runFill(id, "test");
+    expect(r.log.map((l) => [l.prompt, l.ok, l.how])).toEqual([
+      ["Why Acme?", false, "answer is 30 characters, the field takes 20"],
+      ["Anything else?", true, "typed"],
+    ]);
+    expect(r.missing).toEqual(["Why Acme?"]);
+    expect(page.did).not.toContain(`fill Why Acme?=${"x".repeat(30)}`);
+    expect(page.did).toContain("fill Anything else?=Short.");
+  });
+
   it("an upload with nothing to upload counts as not filled", async () => {
     const id = await seed("approved", [{ kind: "answer", prompt: "Portfolio", content: "", fieldType: "file" }]);
     page = fakePage([{ kind: "file", label: "Portfolio", type: "file" }]);
@@ -702,6 +773,14 @@ describe("runFill controls (#567)", () => {
     const RESUME = ITEMS[0];
     const uploads = () => page.did.filter((d) => d.startsWith("upload "));
 
+    it("never goes over the resume in a combined Resume/Cover Letter upload (#1633)", async () => {
+      const id = await seed("approved", [{ ...RESUME, prompt: "Resume/Cover Letter" }, LETTER]);
+      page = fakePage([{ kind: "file", label: "Resume/Cover Letter", type: "file" }]);
+      const r = await runFill(id, "test");
+      expect(uploads()).toEqual(["upload Resume/Cover Letter=Pat Lee - Acme Inc. Resume.docx"]);
+      expect(r.log.find((l) => l.prompt === "Cover Letter")).toMatchObject({ ok: false });
+    });
+
     it("goes in its own upload box", async () => {
       const id = await seed("approved", [RESUME, LETTER]);
       page = fakePage([{ kind: "file", label: "Resume", type: "file" }, { kind: "file", label: "Cover Letter", type: "file" }]);
@@ -718,6 +797,14 @@ describe("runFill controls (#567)", () => {
       expect(r.log.find((l) => l.prompt === "Cover Letter")).toMatchObject({ ok: true, how: "typed the letter" });
       expect(uploads()).toEqual(["upload Resume=Pat Lee - Acme Inc. Resume.docx"]);
       expect(page.did).toContain(`fill Cover Letter=${LETTER.content}`);
+    });
+
+    it("is typed into its own text box, not a Portfolio upload, when the form has two uploads (#1635)", async () => {
+      const id = await seed("approved", [RESUME, LETTER]);
+      page = fakePage([{ kind: "file", label: "Resume", type: "file" }, { kind: "file", label: "Portfolio", type: "file" }, { kind: "control", label: "Cover Letter", tag: "textarea" }]);
+      const r = await runFill(id, "test");
+      expect(r.log.find((l) => l.prompt === "Cover Letter")).toMatchObject({ ok: true, how: "typed the letter" });
+      expect(uploads()).toEqual(["upload Resume=Pat Lee - Acme Inc. Resume.docx"]);
     });
 
     it("takes the second upload when no box names it", async () => {

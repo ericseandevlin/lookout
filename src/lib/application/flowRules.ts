@@ -45,3 +45,12 @@ export function autoApproveField(kind: ApplicationItemKind, content: string): bo
 export function statusAfterFill(fill: { confirmation?: string; stopped?: string }): Extract<ApplicationStatus, "submitted" | "manual"> {
   return fill.confirmation !== undefined && !fill.stopped ? "submitted" : "manual";
 }
+
+/**
+ * The keyword detail's button and the line under it (#1313). A red keyword (no backing line) already stays out of
+ * the resume, so its button hides it from suggestions and the match count; a green one is kept out of this resume.
+ */
+export function keywordAction(r: { support: unknown; removed: boolean }): { label: string; note: string } {
+  if (r.removed) return { label: "Put back", note: r.support ? "Left out of this resume. Put back to use it again." : "Hidden from suggestions and the keyword match. Put back to count it again." };
+  return r.support ? { label: "Leave out", note: "Keeps this keyword out of this resume." } : { label: "Not relevant", note: "Hides it from suggestions and the keyword match. It's already out of the resume." };
+}

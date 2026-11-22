@@ -13,6 +13,7 @@ const Input = z.object({
   setup: z.enum(["Until complete", "Always", "Never"]).optional(),
   newDays: z.union([z.literal(3), z.literal(7), z.literal(14)]).optional(),
   railClosed: z.boolean().optional(),
+  interviewBannerClosed: z.boolean().optional(),
 });
 
 export const PATCH = authed(async (req, { user }) => {
@@ -26,6 +27,7 @@ export const PATCH = authed(async (req, { user }) => {
     setupMode: p.setup,
     newDays: p.newDays,
     railClosed: p.railClosed,
+    interviewBannerClosed: p.interviewBannerClosed,
   };
   const clean = Object.fromEntries(Object.entries(set).filter(([, v]) => v !== undefined));
   await db
@@ -33,6 +35,6 @@ export const PATCH = authed(async (req, { user }) => {
     .values({ userId: user.id, ...clean })
     .onConflictDoUpdate({ target: schema.settings.userId, set: clean });
   // Which settings people find in their first week (#992). Opening or closing the sidebar isn't a choice about Lookout.
-  for (const k of Object.keys(p) as (keyof typeof p)[]) if (k !== "railClosed" && p[k] !== undefined) await track(user.id, "settings_change", k);
+  for (const k of Object.keys(p) as (keyof typeof p)[]) if (k !== "railClosed" && k !== "interviewBannerClosed" && p[k] !== undefined) await track(user.id, "settings_change", k);
   return json({ ok: true });
 });

@@ -232,6 +232,48 @@
       "when": 1795219200000,
       "tag": "0032_waitlist_channel",
       "breakpoints": true
+    },
+    {
+      "idx": 33,
+      "version": "7",
+      "when": 1795305600000,
+      "tag": "0033_referral_links",
+      "breakpoints": true
+    },
+    {
+      "idx": 34,
+      "version": "7",
+      "when": 1795392000000,
+      "tag": "0034_waitlist_optin",
+      "breakpoints": true
+    },
+    {
+      "idx": 35,
+      "version": "7",
+      "when": 1795478400000,
+      "tag": "0035_closed_from",
+      "breakpoints": true
+    },
+    {
+      "idx": 36,
+      "version": "7",
+      "when": 1795564800000,
+      "tag": "0036_interview",
+      "breakpoints": true
+    },
+    {
+      "idx": 37,
+      "version": "7",
+      "when": 1795651200000,
+      "tag": "0037_interview_paging",
+      "breakpoints": true
+    },
+    {
+      "idx": 38,
+      "version": "7",
+      "when": 1795737600000,
+      "tag": "0038_interview_banner",
+      "breakpoints": true
     }
   ]
 }

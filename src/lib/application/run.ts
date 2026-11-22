@@ -1,5 +1,6 @@
 import "server-only";
-import { and, eq, inArray, lt, max, sql } from "drizzle-orm";
+import { and, desc, eq, inArray, lt, max, sql } from "drizzle-orm";
+import { randomUUID } from "node:crypto";
 import { fetch } from "undici";
 import { db, schema } from "@/lib/db";
 import type { ApplicationReport, ApplicationStatus } from "@/lib/db/schema";
@@ -11,8 +12,9 @@ import { kinds } from "@/lib/kinds";
 import { humanize, shapeResume } from "./resumeLayout";
 import { match, savedBlock } from "./saved";
 import { notesBlock } from "./skills";
+import { draftFactsBlock } from "@/lib/interview/facts";
 import { checkStory } from "./stories";
-import { STRATEGY, suggestStrategy, type LetterStrategy } from "./letterStrategy";
+import { LETTER_STRATEGIES, STRATEGY, isWriting, suggestStrategy, type LetterDraft, type LetterSet, type LetterStrategy } from "./letterStrategy";
 import { HttpError } from "@/lib/api";
 import { KEYWORD_PLAN_SYSTEM, KeywordPlanDraft, approvedBlock, approvedFor, finalTerms, keywordPlanPrompt, planFrom, unapprovedIn, type KeywordRow } from "./evidence";
 import { keywordState, lockEditable } from "./review";
@@ -55,10 +57,23 @@ async function ghJob(board: string, id: string) {
   return JSON.parse(html) as unknown;
 }
 
+/**
+ * The company page that embeds a board, or "" when it won't load (a bot wall, a timeout), so the board names
+ * guessed from its host still get tried (#1462). A page that's gone (404, 410) means the posting is closed.
+ */
+async function companyPage(url: string) {
+  try {
+    return (await fetchPage(url)).html;
+  } catch (e) {
+    if (e instanceof Error && /answered (404|410)/.test(e.message)) throw e;
+    return "";
+  }
+}
+
 /** A company page with ?gh_jid=: find its board on the page, else try the obvious names. */
 async function ghEmbedOrJob(board: string, id: string, postingUrl: string) {
   if (board) return { board, job: await ghJob(board, id) };
-  const found = boardFromHtml((await fetchPage(postingUrl)).html);
+  const found = boardFromHtml(await companyPage(postingUrl));
   const host = new URL(postingUrl).hostname;
   // A greenhouse.io host says nothing about the company, so there is nothing to guess (#674).
   const guesses = /(^|\.)greenhouse\.io$/i.test(host) ? [] : boardGuesses(host);
@@ -87,7 +102,7 @@ async function ashbyForm(org: string, id: string) {
 /** A company page with ?ashby_jid=: find its org on the page, else try the obvious names (#676). */
 async function ashbyEmbedOrForm(org: string, id: string, postingUrl: string) {
   if (org) return { org, form: parseAshby(await ashbyForm(org, id)) };
-  const found = ashbyOrgFromHtml((await fetchPage(postingUrl)).html);
+  const found = ashbyOrgFromHtml(await companyPage(postingUrl));
   if (found) return { org: found, form: parseAshby(await ashbyForm(found, id)) };
   for (const o of boardGuesses(new URL(postingUrl).hostname)) {
     try {
@@ -98,6 +113,9 @@ async function ashbyEmbedOrForm(org: string, id: string, postingUrl: string) {
   }
   throw new Error("Couldn't find this company's Ashby board");
 }
+
+/** A 404 or 410 from a job board or a posting page: the posting is gone (#1464). */
+const isGone = (e: unknown) => e instanceof Error && /answered (404|410)\b/.test(e.message);
 
 /** Read the application. Published forms first; the model reads the page only when there is no form to fetch. */
 export async function scanPosting(postingUrl: string, usage: Usage): Promise<ScanResult> {
@@ -118,11 +136,18 @@ export async function scanPosting(postingUrl: string, usage: Usage): Promise<Sca
     }
   } catch (e) {
     // A closed posting is final; anything else (API change, outage) falls back to reading the page.
-    if (e instanceof Error && /answered 404/.test(e.message)) throw new Error("This posting is closed: the job board no longer lists it.");
+    if (isGone(e)) throw new Error("This posting is closed: the job board no longer lists it.");
     if (e instanceof Error && /closed|doesn't exist/.test(e.message)) throw e;
     console.error(`[apply] ${ref.ats} form read failed, reading the page`, e);
   }
-  const { html } = await fetchPage(applyUrl);
+  let html: string;
+  try {
+    ({ html } = await fetchPage(applyUrl));
+  } catch (e) {
+    // The link check reads 404 and 410 as gone too (#1464); the person sees why, not the HTTP status.
+    if (isGone(e)) throw new Error("This posting is closed: its page is gone.");
+    throw e;
+  }
   const r = await completeJSON({
     name: "apply-scan",
     schema: PageItems,
@@ -176,7 +201,8 @@ export async function processApplication(id: string) {
     await setStatus(id, "drafting", report);
 
     await assertBudget(app.userId);
-    Object.assign(report, await draftAll(id, app.userId, opp, usage, scan.postingHtml));
+    const drafted = await draftAll(id, app.userId, opp, usage, scan.postingHtml);
+    Object.assign(report, drafted);
     report.draftedAt = new Date().toISOString();
     report.usd = (report.usd ?? 0) + usage.usd;
     await setStatus(id, "needs_review", report);
@@ -225,13 +251,15 @@ async function loadInputs(userId: string, opp: typeof schema.opportunities.$infe
   const pay = compLabel(opp.compMin, opp.compMax, opp.currency) ?? "";
   const facts = [`Role: ${opp.title}`, `Company: ${opp.company}`, opp.location && `Location: ${opp.location}`, opp.workMode && `Work mode: ${opp.workMode}`, pay && `Pay range on file: ${pay}`].filter(Boolean).join("\n");
   text = `${facts}\n\n${text}`;
+  // What the interview learned (#1449): shareable facts only; private ones are never read here.
+  const interviewFacts = await draftFactsBlock(userId);
   return {
     name: user?.name ?? "",
     email: user?.email ?? "",
     linkedinUrl: li?.url ? linkedinUrl(li.url) : null,
     links: mats.filter((m) => m.kind === "link" && m.url).map((m) => ({ url: m.url!, text: m.extracted?.text ?? "" })),
-    brief: (kinds[search?.kind ?? "job"]?.brief(search?.answers ?? {}) ?? "") + savedBlock(profile?.applyAnswers ?? []) + notesBlock(profile?.skillNotes ?? []),
-    notes: notesBlock(profile?.skillNotes ?? []),
+    brief: (kinds[search?.kind ?? "job"]?.brief(search?.answers ?? {}) ?? "") + savedBlock(profile?.applyAnswers ?? []) + notesBlock(profile?.skillNotes ?? []) + interviewFacts,
+    notes: notesBlock(profile?.skillNotes ?? []) + interviewFacts,
     saved: profile?.applyAnswers ?? [],
     stories: profile?.personalStories ?? [],
     pay: { floor: search?.answers?.floor, target: search?.answers?.target },
@@ -313,11 +341,168 @@ async function writeRedraft(appId: string, usd: number, write: (tx: Tx, status: 
   }
 }
 
-/** Write a fresh cover letter from the posting as a new version, with the current letter rules (#129). */
+/** Background letter work still running. Tests wait on it. */
+const letterWork = new Set<Promise<void>>();
+export const lettersWritten = async () => {
+  await Promise.all([...letterWork]);
+};
+
+/** One cover letter with one strategy (#738). */
+async function writeLetter(inp: DraftInputs, item: { prompt: string; required: boolean }, strategy: LetterStrategy, company: string, usage: Usage): Promise<LetterDraft> {
+  const one: DraftItem = { index: 0, kind: "cover_letter", prompt: item.prompt, required: item.required, options: null };
+  const r = await completeJSON({ name: "apply-letter", schema: AnswersDraft, system: ANSWERS_SYSTEM, user: answersPrompt({ ...inp, letterStrategy: strategy }, [one]), maxTokens: 4000, usage });
+  const raw = r.items.find((x) => x.index === 0) ?? r.items[0];
+  const d = checkStory(checkAnswer(one, raw), raw, inp.stories ?? [], company);
+  const content = humanize(d.content);
+  const hits = trapWordsIn(content, inp.traps ?? [], `${inp.resume}\n${inp.brief}`);
+  const words = content.split(/\s+/).filter(Boolean).length;
+  return {
+    content,
+    note: [`- Strategy: ${STRATEGY[strategy].label}`, `- ${words} words`, d.note && `- ${d.note}`, hits.length && `- Contains ${hits.map((h) => `"${h}"`).join(", ")} from an instruction planted in the posting`].filter(Boolean).join("\n"),
+    sources: d.sources.length ? d.sources : ["master resume", "posting"],
+    question: hits.length ? "This letter includes a word the posting planted to catch automated applications. Remove it unless you mean to include it." : d.question,
+    author: "ai",
+  };
+}
+
+/**
+ * Write the strategies a letter doesn't have yet, in the background, and store them (#1484). Only for drafts from
+ * before #1484, or a draft where one strategy failed. A newer round (`gen`) wins: this one then only adds its spend.
+ * If any strategy fails, `writing` stays set, so the next try waits WRITING_MS instead of repeating every poll.
+ */
+function writeOtherLetters(appId: string, userId: string, item: { id: string; prompt: string; required: boolean }, gen: string, opp: typeof schema.opportunities.$inferSelect, have: LetterStrategy[]) {
+  const job: Promise<void> = (async () => {
+    const usage = emptyUsage();
+    const todo = LETTER_STRATEGIES.filter((s) => !have.includes(s));
+    let got: PromiseSettledResult<LetterDraft>[] = [];
+    try {
+      await assertBudget(userId);
+      const inp = await loadInputs(userId, opp, usage);
+      got = await Promise.allSettled(todo.map((s) => writeLetter(inp, item, s, opp.company, usage)));
+    } finally {
+      await patchReport(appId, (r) => {
+        const set = r.letters?.[item.id];
+        const paid = addUsd(usage.usd)(r);
+        if (!set || set.gen !== gen) return paid;
+        const drafts = { ...set.drafts };
+        got.forEach((g, i) => {
+          if (g.status === "fulfilled" && !drafts[todo[i]]) drafts[todo[i]] = g.value;
+          else if (g.status === "rejected") console.error("[apply] letter strategy", todo[i], g.reason);
+        });
+        const done = LETTER_STRATEGIES.every((s) => drafts[s]);
+        return { ...paid, letters: { ...r.letters, [item.id]: { ...set, drafts, writing: done ? undefined : set.writing } } };
+      });
+    }
+  })()
+    .catch((e) => console.error("[apply] other letter strategies", e))
+    .finally(() => letterWork.delete(job));
+  letterWork.add(job);
+}
+
+/**
+ * Called when the review page loads (#1484). A cover letter missing any of its three strategies, and not being
+ * written now, gets the missing ones written in the background. The claim is one locked write, so the page that
+ * triggers it already shows those buttons as busy, and polls never start a second job.
+ */
+export async function fillLetters(appId: string) {
+  const [a] = await db.select().from(schema.applications).where(eq(schema.applications.id, appId));
+  if (!a || !REVIEW_FILL.includes(a.status)) return;
+  const items = await db.select().from(schema.applicationItems).where(and(eq(schema.applicationItems.applicationId, appId), eq(schema.applicationItems.kind, "cover_letter")));
+  const need = (r: ApplicationReport, id: string) => {
+    const set = r.letters?.[id];
+    return !isWriting(set) && !LETTER_STRATEGIES.every((s) => set?.drafts[s]);
+  };
+  if (!items.some((it) => need(a.report, it.id))) return;
+  const [opp] = await db.select().from(schema.opportunities).where(eq(schema.opportunities.id, a.opportunityId));
+  if (!opp) return;
+  const fallback = a.report.letterStrategy ?? (await pageSuggestion(a.userId, opp, a.report));
+  const claimed: { item: (typeof items)[number]; gen: string; have: LetterStrategy[] }[] = [];
+  await db.transaction(async (tx) => {
+    const latest = new Map(await Promise.all(items.map(async (it) => [it.id, await latestVersion(tx, it.id)] as const)));
+    await patchReport(
+      appId,
+      (r) => {
+        const letters = { ...r.letters };
+        for (const it of items) {
+          const v = latest.get(it.id);
+          if (!v?.content || !need(r, it.id)) continue;
+          const set = letters[it.id];
+          const current = set?.current ?? fallback;
+          const drafts = set ? keepShown(set, v, it.question) : { [current]: { content: v.content, note: v.note, sources: v.sources, question: it.question, author: v.author } };
+          const gen = randomUUID();
+          letters[it.id] = { current, gen, drafts, writing: new Date().toISOString() };
+          claimed.push({ item: it, gen, have: LETTER_STRATEGIES.filter((s) => drafts[s]) });
+        }
+        return claimed.length ? { ...r, letters } : r;
+      },
+      {},
+      tx,
+    );
+  });
+  for (const c of claimed) writeOtherLetters(appId, a.userId, c.item, c.gen, opp, c.have);
+}
+
+/** Statuses where the review page fills missing letters. Not while drafting, sending or sent. */
+const REVIEW_FILL: ApplicationStatus[] = ["needs_review", "manual", "approved"];
+
+/** Lookout's suggestion for a draft from before #738, which saved no strategy. */
+async function pageSuggestion(userId: string, opp: typeof schema.opportunities.$inferSelect, report: ApplicationReport) {
+  const [p] = await db.select({ stories: schema.profiles.personalStories }).from(schema.profiles).where(eq(schema.profiles.userId, userId));
+  return suggestStrategy({ title: opp.title, text: report.postingText || opp.description || "" }, p?.stories ?? []).strategy;
+}
+
+/** The latest version of an item, inside a transaction. */
+async function latestVersion(tx: Tx, itemId: string) {
+  const [v] = await tx.select().from(schema.itemVersions).where(eq(schema.itemVersions.itemId, itemId)).orderBy(desc(schema.itemVersions.version)).limit(1);
+  return v;
+}
+
+/** The letter on screen, kept under its strategy so the person's edits stay with it (#1484). */
+function keepShown(set: LetterSet, latest: typeof schema.itemVersions.$inferSelect | undefined, question: string | null): LetterSet["drafts"] {
+  if (!latest?.content) return set.drafts;
+  return { ...set.drafts, [set.current]: { content: latest.content, note: latest.note, sources: latest.sources, question, author: latest.author } };
+}
+
+/** Show a stored strategy's letter as a new version, with no model call (#1484). */
+async function switchLetter(appId: string, itemId: string, to: LetterStrategy) {
+  await db.transaction(async (tx) => {
+    const status = await lockEditable(tx, appId);
+    const [it] = await tx.select().from(schema.applicationItems).where(eq(schema.applicationItems.id, itemId));
+    const latest = await latestVersion(tx, itemId);
+    let draft: LetterDraft | undefined;
+    await patchReport(
+      appId,
+      (r) => {
+        const set = r.letters?.[itemId];
+        draft = set && set.current !== to ? set.drafts[to] : undefined;
+        if (!set || !draft) return r;
+        return { ...r, letterStrategy: to, letters: { ...r.letters, [itemId]: { ...set, current: to, drafts: keepShown(set, latest, it.question) } } };
+      },
+      { status: reviewAgain(status), updatedAt: new Date() },
+      tx,
+    );
+    if (!draft) return;
+    await tx.insert(schema.itemVersions).values({ itemId, version: (latest?.version ?? 0) + 1, content: draft.content, note: draft.note, author: draft.author, sources: draft.sources });
+    await tx.update(schema.applicationItems).set({ approvedVersionId: null, question: draft.question }).where(eq(schema.applicationItems.id, itemId));
+  });
+}
+
+/**
+ * A new cover letter version. A pick of a strategy shows its stored letter and never calls the model (#1484). A
+ * strategy that isn't stored yet is refused while the review page writes it. A redraft with no strategy writes all
+ * three again from the posting with the current letter rules (#129), at once, and shows the one in use.
+ */
 export async function redraftLetter(appId: string, strategy?: LetterStrategy, itemId?: string) {
   const [a] = await db.select().from(schema.applications).where(eq(schema.applications.id, appId));
   const item = await itemToRedraft(appId, "cover_letter", itemId);
   if (!a || !item) throw new Error("No cover letter on this application");
+  const set = a.report.letters?.[item.id];
+  if (strategy) {
+    if (set?.current === strategy) return;
+    if (set?.drafts[strategy]) return switchLetter(appId, item.id, strategy);
+    await fillLetters(appId);
+    throw new HttpError(409, "Lookout is still writing that letter. Try again in a moment.");
+  }
   await assertBudget(a.userId);
   const [opp] = await db.select().from(schema.opportunities).where(eq(schema.opportunities.id, a.opportunityId));
   traceAs("redraft", a.userId, a.id);
@@ -329,28 +514,28 @@ export async function redraftLetter(appId: string, strategy?: LetterStrategy, it
     // The posting page still works without the ATS's full description.
   }
   const inp = await loadInputs(a.userId, opp, usage, postingHtml);
-  // The person's pick (#738), else the strategy the letter already uses, else Lookout's suggestion.
-  const using = strategy ?? a.report.letterStrategy ?? suggestStrategy(inp.posting, inp.stories ?? []).strategy;
-  inp.letterStrategy = using;
-  const one: DraftItem = { index: 0, kind: "cover_letter", prompt: item.prompt, required: item.required, options: null };
-  const r = await completeJSON({ name: "apply-letter", schema: AnswersDraft, system: ANSWERS_SYSTEM, user: answersPrompt(inp, [one]), maxTokens: 4000, usage });
-  const raw = r.items.find((x) => x.index === 0) ?? r.items[0];
-  const d = checkStory(checkAnswer(one, raw), raw, inp.stories ?? [], opp.company);
-  const content = humanize(d.content);
-  const hits = trapWordsIn(content, inp.traps ?? [], `${inp.resume}\n${inp.brief}`);
-  const words = content.split(/\s+/).filter(Boolean).length;
+  // The strategy the letter already uses, else Lookout's suggestion.
+  const using = set?.current ?? a.report.letterStrategy ?? suggestStrategy(inp.posting, inp.stories ?? []).strategy;
+  const got = await Promise.allSettled(LETTER_STRATEGIES.map((s) => writeLetter(inp, item, s, opp.company, usage)));
+  const drafts: LetterSet["drafts"] = {};
+  got.forEach((g, i) => {
+    if (g.status === "fulfilled") drafts[LETTER_STRATEGIES[i]] = g.value;
+  });
+  const d = drafts[using];
+  if (!d) {
+    await patchReport(appId, addUsd(usage.usd));
+    throw (got[LETTER_STRATEGIES.indexOf(using)] as PromiseRejectedResult).reason;
+  }
   await writeRedraft(appId, usage.usd, async (tx, now) => {
-    const [{ n }] = await tx.select({ n: max(schema.itemVersions.version) }).from(schema.itemVersions).where(eq(schema.itemVersions.itemId, item.id));
-    await tx.insert(schema.itemVersions).values({
-      itemId: item.id,
-      version: (n ?? 0) + 1,
-      content,
-      note: ["- Redrafted from the posting", `- Strategy: ${STRATEGY[using].label}`, `- ${words} words`, d.note && `- ${d.note}`, hits.length && `- Contains ${hits.map((h) => `"${h}"`).join(", ")} from an instruction planted in the posting`].filter(Boolean).join("\n"),
-      author: "ai",
-      sources: d.sources.length ? d.sources : ["master resume", "posting"],
-    });
-    await tx.update(schema.applicationItems).set({ approvedVersionId: null, question: hits.length ? "This letter includes a word the posting planted to catch automated applications. Remove it unless you mean to include it." : d.question }).where(eq(schema.applicationItems.id, item.id));
-    await patchReport(appId, (r) => ({ ...addUsd(usage.usd)(r), letterStrategy: using }), { status: reviewAgain(now), updatedAt: new Date() }, tx);
+    const latest = await latestVersion(tx, item.id);
+    await tx.insert(schema.itemVersions).values({ itemId: item.id, version: (latest?.version ?? 0) + 1, content: d.content, note: `- Redrafted from the posting\n${d.note}`, author: "ai", sources: d.sources });
+    await tx.update(schema.applicationItems).set({ approvedVersionId: null, question: d.question }).where(eq(schema.applicationItems.id, item.id));
+    await patchReport(
+      appId,
+      (r) => ({ ...addUsd(usage.usd)(r), letterStrategy: using, letters: { ...r.letters, [item.id]: { current: using, gen: randomUUID(), drafts } } }),
+      { status: reviewAgain(now), updatedAt: new Date() },
+      tx,
+    );
   });
 }
 
@@ -411,8 +596,17 @@ async function draftAll(id: string, userId: string, opp: typeof schema.opportuni
     if (fact) out.set(it.id, fact);
     else rest.push({ id: it.id, index, kind: it.kind, prompt: it.prompt, required: it.required, options: it.options, multi: it.fieldType === "multiselect" });
   }
+  // All three letter strategies are written in the draft, so a pick on the review page only swaps stored text (#1484).
+  // The other two run beside the answers call, so the draft takes about as long as before.
+  const strategy = inp.letterStrategy!;
+  const others = LETTER_STRATEGIES.filter((s) => s !== strategy);
+  const extra = new Map(rest.filter((it) => it.kind === "cover_letter").map((it) => [it.id, Promise.allSettled(others.map((s) => writeLetter(inp, it, s, opp.company, usage)))]));
   if (rest.length) {
-    const r = await completeJSON({ name: "apply-answers", schema: AnswersDraft, system: ANSWERS_SYSTEM, user: answersPrompt(inp, rest), maxTokens: 8000, usage });
+    // If the answers fail, the other letters still finish first, so their spend is counted.
+    const r = await completeJSON({ name: "apply-answers", schema: AnswersDraft, system: ANSWERS_SYSTEM, user: answersPrompt(inp, rest), maxTokens: 8000, usage }).catch(async (e) => {
+      await Promise.all(extra.values());
+      throw e;
+    });
     const byIndex = new Map(r.items.map((a) => [a.index, a]));
     for (const it of rest) {
       const raw = byIndex.get(it.index);
@@ -420,7 +614,7 @@ async function draftAll(id: string, userId: string, opp: typeof schema.opportuni
       // The personal line must come from a saved story, or Lookout asks for one (#155).
       const a = it.kind === "cover_letter" ? checkStory(checked, raw, inp.stories ?? [], opp.company) : checked;
       // Salary asks are math, not model judgment: the top quarter of their range, never below the floor (#139).
-      const ask = !it.options?.length && isSalaryQuestion(it.prompt) ? suggestSalary({ ...inp.pay, min: opp.compMin, max: opp.compMax, basis: rangeBasis(inp.posting.text), asksBase: asksBase(it.prompt), asksMinimum: asksMinimum(it.prompt), per: askPer(it.prompt), thousands: asksThousands(it.prompt) }) : null;
+      const ask = !it.options?.length && isSalaryQuestion(it.prompt) ? suggestSalary({ ...inp.pay, min: opp.compMin, max: opp.compMax, currency: opp.currency, basis: rangeBasis(inp.posting.text), asksBase: asksBase(it.prompt), asksMinimum: asksMinimum(it.prompt), per: askPer(it.prompt), thousands: asksThousands(it.prompt) }) : null;
       if (ask) out.set(it.id, { content: ask.amount ?? "", note: ask.note, sources: ["posting range", "your profile: comp floor and target"], question: ask.question ?? null });
       // Choice answers must stay exactly as the form words them.
       else out.set(it.id, it.options?.length ? a : { ...a, content: humanize(a.content) });
@@ -463,7 +657,18 @@ async function draftAll(id: string, userId: string, opp: typeof schema.opportuni
       await tx.insert(schema.itemVersions).values({ itemId: item.id, version: 1, content: person.draft.content, note: person.draft.note, author: "ai", sources: person.draft.sources });
     }
   });
-  return { keywordPlan, keywords: undefined, keywordsApproved: undefined, postingText: inp.posting.text, traps: inp.traps ?? [], letterStrategy: items.some((i) => i.kind === "cover_letter") ? inp.letterStrategy : undefined };
+  const letters: Record<string, LetterSet> = {};
+  for (const [itemId, job] of extra) {
+    const main = out.get(itemId);
+    if (!main?.content) continue;
+    const drafts: LetterSet["drafts"] = { [strategy]: { ...main, author: "ai" } };
+    (await job).forEach((g, i) => {
+      if (g.status === "fulfilled") drafts[others[i]] = g.value;
+      else console.error("[apply] letter strategy", others[i], g.reason);
+    });
+    letters[itemId] = { current: strategy, gen: randomUUID(), drafts };
+  }
+  return { keywordPlan, keywords: undefined, keywordsApproved: undefined, postingText: inp.posting.text, traps: inp.traps ?? [], letterStrategy: items.some((i) => i.kind === "cover_letter") ? inp.letterStrategy : undefined, letters: Object.keys(letters).length ? letters : undefined };
 }
 
 /** What a submit the server lost track of records (#864). It may have gone through, so it counts as clicked (#865). */

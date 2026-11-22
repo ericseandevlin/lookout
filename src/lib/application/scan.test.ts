@@ -83,6 +83,9 @@ describe("kindFor", () => {
     expect(kindFor("Attach an updated CV *", "file")).toBe("resume");
     expect(kindFor("Please upload your resume", "text")).toBe("answer");
     expect(kindFor("Please attach your cover letter, not your resume", "file")).toBe("cover_letter");
+    // One upload for both is the resume's slot, so the resume goes in it, not the letter (#1633).
+    for (const l of ["Resume/Cover Letter", "Resume and Cover Letter", "Resume & Cover Letter *", "CV / Cover Letter", "Upload your resume and cover letter", "Cover letter and résumé"]) expect(kindFor(l, "file")).toBe("resume");
+    expect(kindFor("Resume/Cover Letter", "text")).toBe("cover_letter");
     expect(kindFor("Anything in your resume to explain?", "file")).toBe("answer");
     expect(kindFor("Cover Letter", "file")).toBe("cover_letter");
     expect(kindFor("LinkedIn Profile", "text")).toBe("field");
@@ -238,6 +241,11 @@ describe("fromPage and withBasics", () => {
     expect(items[1].required).toBe(false);
   });
 
+  it("adds the letter right after a resume asked for late in the form (#1633)", () => {
+    const items = withBasics(fromPage({ hasForm: true, hasEeo: false, howToApply: "", items: [{ prompt: "Email", required: true, fieldType: "text", options: [] }, { prompt: "Resume/Cover Letter", required: true, fieldType: "file", options: [] }] }).items);
+    expect(items.map((i) => `${i.kind}:${i.prompt}`)).toEqual(["field:Email", "resume:Resume/Cover Letter", "cover_letter:Cover letter"]);
+  });
+
   it("routes the big three to the browser worker and the rest to a checklist", () => {
     expect(routeFor("greenhouse")).toBe("browser");
     expect(routeFor("workday")).toBe("manual");
@@ -256,5 +264,30 @@ describe("greenhouseEeo", () => {
       ["eeo", "Gender", false, 3],
       ["eeo", "Veteran Status", false, 2],
     ]);
+  });
+});
+
+describe("kindFor: phone labels (#1412)", () => {
+  it("reads mobile, cell and home phone as the basic phone field", () => {
+    for (const l of ["Mobile Phone", "Mobile Phone *", "Cell Phone", "Cellular Phone Number", "Home Phone", "Primary Phone Number", "Phone Number", "Mobile Number"])
+      expect(kindFor(l, "text"), l).toBe("field");
+  });
+
+  it("keeps a question that starts with a phone word an answer", () => {
+    expect(kindFor("Mobile phone of your reference", "text")).toBe("answer");
+    expect(kindFor("Home phone: may we call you there?", "text")).toBe("answer");
+  });
+});
+
+describe("kindFor: legal name, surname and postal code labels (#1489)", () => {
+  it("reads them as basic fields", () => {
+    for (const l of ["Legal First Name", "Legal Last Name *", "Legal Name", "Legal Full Name", "Given Name", "Family Name", "Surname", "Middle Name", "Zip Code", "Zip", "Postal Code", "Post Code"])
+      expect(kindFor(l, "text"), l).toBe("field");
+  });
+
+  it("keeps a question that starts with one of those words an answer", () => {
+    expect(kindFor("Legal name of your current employer", "text")).toBe("answer");
+    expect(kindFor("Surname: have you worked here under another name?", "text")).toBe("answer");
+    expect(kindFor("Legal first name", "textarea")).toBe("answer");
   });
 });

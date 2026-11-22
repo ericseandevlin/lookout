@@ -24,17 +24,19 @@ export function planFill(items: ItemRow[], versions: { id: string; content: stri
 /**
  * A file label for each upload step, unique per form (#918). Resume and cover letter keep their names; any other upload
  * ("Portfolio", "Writing sample") is named from its prompt, and a repeat gets " 2", " 3", so no upload writes over another.
- * Non-file steps get null.
+ * The number rises past any label already handed out, so "Attachment", "Attachment", "Attachment 2" gives
+ * "Attachment", "Attachment 2", "Attachment 2 2" rather than two "Attachment 2" (#1378). Non-file steps get null.
  */
 export function uploadLabels(steps: Pick<FillStep, "kind" | "itemKind" | "prompt">[]): (string | null)[] {
-  const seen = new Map<string, number>();
+  const used = new Set<string>();
   return steps.map((s) => {
     if (s.kind !== "file") return null;
     const base =
       s.itemKind === "cover_letter" ? "Cover Letter" : s.itemKind === "resume" ? "Resume" : s.prompt.replace(/[^\p{L}\p{N}\p{M}_ .-]/gu, " ").replace(/\s+/g, " ").trim().slice(0, 40).trim() || "Document";
-    const n = (seen.get(base.toLowerCase()) ?? 0) + 1;
-    seen.set(base.toLowerCase(), n);
-    return n > 1 ? `${base} ${n}` : base;
+    let label = base;
+    for (let n = 2; used.has(label.toLowerCase()); n++) label = `${base} ${n}`;
+    used.add(label.toLowerCase());
+    return label;
   });
 }
 
@@ -47,11 +49,29 @@ const startsWord = (a: string, b: string) => !!a && b.startsWith(a) && (b.length
  * hyphen: "Yes - I am authorized" lands on "Yes – I am authorized" or "Yes—I am authorized" (#1277). fill.js carries the same rule.
  */
 const normChoice = (t: string) =>
-  t.replace(/\*/g, "").replace(/[‘’]/g, "'").replace(/[“”]/g, '"').replace(/\s*[‐‑‒–—―-]\s*/g, " - ").replace(/\s+/g, " ").trim().toLowerCase();
+  t.replace(/[*✱]/g, "").replace(/[‘’]/g, "'").replace(/[“”]/g, '"').replace(/\s*[‐‑‒–—―-]\s*/g, " - ").replace(/\s+/g, " ").trim().toLowerCase();
+
+/**
+ * The whole text with spaces, hyphens, dashes, apostrophes and dots gone, so "Full time" is "Full-time", "Onsite" is
+ * "On-site" and "Bachelors" is "Bachelor's" (#1518). Only ever compared whole, so "No" still never matches "None".
+ */
+// A separator between two digits stays as a mark: "1-2" is a range, never "12", and "1.5" is never "15" (#1549).
+const compactChoice = (t: string) => normChoice(t).replace(/(\d)[\s'".-]+(?=\d)/g, "$1~").replace(/[\s'".-]+/g, "");
+
+/**
+ * The form option an answer names, compared whole the way the filler does: case, a required mark, curly quotes, dashes
+ * and "Full time" vs "Full-time" aside. No prefix match, so "No" is never "None". The drafter and saved answers use it,
+ * so an answer the filler would land isn't thrown away first (#1524).
+ */
+export const sameOption = (answer: string, options: string[]): string | undefined => {
+  const a = normChoice(answer);
+  if (!a) return undefined;
+  return options.find((o) => normChoice(o) === a) ?? options.find((o) => !!compactChoice(o) && compactChoice(o) === compactChoice(answer));
+};
 
 /**
  * Which option labels to tick on a "select any that apply" question (#165). One answer per line.
- * Exact text first, then a prefix match either way, so a long label cut short in the answer still lands.
+ * Exact text first, then the same text spelled with or without hyphens and spaces (#1518), then a prefix match either way, so a long label cut short in the answer still lands.
  * Prefixes stop at a word boundary and the closest length wins, so "None" is "None of the above", not "No" (#632).
  */
 export function pickOptions(content: string, options: string[] = []): string[] {
@@ -60,7 +80,7 @@ export function pickOptions(content: string, options: string[] = []): string[] {
   for (const part of content.split(/\n+/).map((t) => t.trim()).filter(Boolean)) {
     const p = norm(part);
     const near = options.filter((o) => startsWord(norm(o), p) || startsWord(p, norm(o))).sort((a, b) => Math.abs(norm(a).length - p.length) - Math.abs(norm(b).length - p.length));
-    const hit = options.find((o) => norm(o) === p) ?? near[0];
+    const hit = options.find((o) => norm(o) === p) ?? options.find((o) => !!compactChoice(o) && compactChoice(o) === compactChoice(part)) ?? near[0];
     const label = hit ?? (options.length ? null : part);
     if (label && !out.includes(label)) out.push(label);
   }
@@ -89,9 +109,13 @@ export function pickOne(answer: string, labels: string[]): number {
  * after, when, if, before, until or upon only says what happens later ("Once your application has been received, we will
  * review it"), so it never counts (#844). Nor does "not successfully submitted" or "couldn't be successfully submitted",
  * a failed submit (#886), even with "not yet been" between (#1154). Nor "unsuccessfully submitted" (#1115), nor "no application
- * has been submitted" (#1154). extension/firefox/fill.js and background.js carry the same pattern.
+ * has been submitted" (#1154). "You have submitted your application" and "You've submitted your application" count (#1452).
+ * "Your application is complete" and a bare "Application complete" count, but not "make sure your application is
+ * complete" or a progress label like "Application complete: 80%" (#1621). "Submission complete" and "Applied successfully!"
+ * count too (#1647).
+ * extension/firefox/fill.js and background.js carry the same pattern.
  */
-export const CONFIRMATION = /(?<!\b(?:once|after|when|if|before|until|upon)\b[^.!?\n]{0,40})(?:thank(?:s| you) for (?:applying|your application|submitting|your submission)|(?<!\bno\s+)(?:application|submission|candidacy) (?:has been |was )?(?:successfully )?(?:received|submitted|sent)\b|application (?:for|to|with) [^.!?\n]{1,80}? (?:has been|was) (?:successfully )?(?:received|submitted|sent)\b|we(?:'ve|’ve| have)? (?:successfully )?(?:received|got) your (?:application|submission)|(?<!(?:\bnot|\bnever|n't|n’t)\s+(?:(?:be|been|yet)\s+){0,2})\bsuccessfully (?:applied|submitted)\b)/i;
+export const CONFIRMATION = /(?<!\b(?:once|after|when|if|before|until|upon)\b[^.!?\n]{0,40})(?:thank(?:s| you) for (?:applying|your application|submitting|your submission)|(?<!\bno\s+)(?:application|submission|candidacy) (?:has been |was )?(?:successfully )?(?:received|submitted|sent)\b|application (?:for|to|with) [^.!?\n]{1,80}? (?:has been|was) (?:successfully )?(?:received|submitted|sent)\b|we(?:'ve|’ve| have)? (?:successfully )?(?:received|got) your (?:application|submission)|you(?:'ve|’ve| have) (?:successfully )?submitted your (?:application|submission)\b|(?<!(?:\bnot|\bnever|n't|n’t)\s+(?:(?:be|been|yet)\s+){0,2})\bsuccessfully (?:applied|submitted)\b|(?<!\b(?:sure|ensure|check|confirm|verify)\s+(?:that\s+)?(?:your\s+|the\s+)?)\b(?:application|submission) (?:is |has been |was )?(?:now |successfully )?completed?(?=\s*(?:[.!\n]|$))|(?<!(?:\bnot|\bnever|n't|n’t)\s+(?:(?:be|been|yet)\s+){0,2})\bapplied successfully\b)/i;
 
 /**
  * Whether an answer reads as one for a checkbox at all: a yes, a no or nothing. A text answer ("https://linkedin.com/in/...")

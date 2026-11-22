@@ -9,14 +9,15 @@ import { InfoTip } from "./InfoTip";
 import { RecruiterPanel } from "./RecruiterPanel";
 import { TemplatePicker } from "./TemplatePicker";
 import { VersionNotes } from "./VersionNotes";
-import { card, muted, OptionChecks, type Act, type Detail, type Item } from "./shared";
+import { card, muted, OptionChecks, type Act, type Item, type LetterInfo } from "./shared";
+import type { LetterStrategy } from "@/lib/application/letterStrategy";
 import { color, font } from "@/lib/tokens";
 import { LETTER_STRATEGIES, STRATEGY } from "@/lib/application/letterStrategy";
 import { DownloadIcon, EyeIcon, PencilIcon, RedoIcon } from "../icons";
 
 const iconBtn: React.CSSProperties = { ...btn("outline"), width: 38, padding: 0, display: "inline-flex", alignItems: "center", justifyContent: "center" };
 
-export function ItemCard({ appId, item, locked, act, analysis, template, accent, header, letter, onTemplate, onAccent }: { appId: string; item: Item; locked: boolean; act: Act; analysis?: RecruiterAnalysis; template: Template; accent: string | null; header: { name: string; contact: string; headline?: string } | null; letter?: Detail["letter"]; onTemplate: (t: Template) => void; onAccent: (hex: string) => void }) {
+export function ItemCard({ appId, item, locked, act, analysis, template, accent, header, letter, onTemplate, onAccent, needsKeywords = false }: { appId: string; item: Item; locked: boolean; act: Act; needsKeywords?: boolean; analysis?: RecruiterAnalysis; template: Template; accent: string | null; header: { name: string; contact: string; headline?: string } | null; letter?: LetterPick | null; onTemplate: (t: Template) => void; onAccent: (hex: string) => void }) {
   const latest = item.versions[0];
   const [pick, setPick] = useState<string | null>(null);
   const shown = item.versions.find((v) => v.id === pick) ?? item.versions.find((v) => v.id === item.approvedVersionId) ?? latest;
@@ -32,6 +33,8 @@ export function ItemCard({ appId, item, locked, act, analysis, template, accent,
   }
 
   const outreach = item.kind === "outreach";
+  // The resume is written from approved keywords; until then the server refuses a redraft (#1334).
+  const blocked = item.kind === "resume" && needsKeywords;
   const isApproved = !outreach && !!shown && shown.id === item.approvedVersionId;
   const dirty = text !== (shown?.content ?? "");
   const doc = item.kind === "resume" || item.kind === "cover_letter";
@@ -60,6 +63,15 @@ export function ItemCard({ appId, item, locked, act, analysis, template, accent,
         </label>
         {isApproved && <span style={{ fontSize: font.base, fontWeight: 600, color: color.greenText }}>{item.kind === "field" ? "✓ Will be filled" : `✓ Approved v${shown.version}`}</span>}
       </div>
+      {blocked && !locked && (
+        <div style={{ ...muted, fontSize: font.sm }}>
+          This resume is written from the keywords you approve.{" "}
+          <a href="#keywords" onClick={(e) => { e.preventDefault(); document.getElementById("keywords")?.scrollIntoView({ behavior: "smooth", block: "start" }); }}>
+            Check the keywords above
+          </a>{" "}
+          and press &ldquo;Use these keywords&rdquo; to write it.
+        </div>
+      )}
 
       {item.salary && item.salary.amount === null && !locked && (
         <div style={{ padding: "8px 12px", borderRadius: 10, background: "#FBF4E6", border: "1px solid #E8D3A6", fontSize: font.base, color: "#5C4613" }}>
@@ -78,7 +90,7 @@ export function ItemCard({ appId, item, locked, act, analysis, template, accent,
           )}
         </div>
       )}
-      {letter && !locked && !editing && <StrategyPicker letter={letter} busy={!!busy || dirty} onPick={(s) => run("revise", { action: "redraft", strategy: s }, `Lookout rewrote the letter: ${STRATEGY[s].label.toLowerCase()}.`)} />}
+      {letter && !locked && !editing && <StrategyPicker letter={letter} busy={!!busy || dirty} onPick={(s) => run("revise", { action: "redraft", strategy: s }, `Showing the letter: ${STRATEGY[s].label.toLowerCase()}.`)} />}
 
       {doc && !editing ? (
         <>
@@ -139,11 +151,11 @@ export function ItemCard({ appId, item, locked, act, analysis, template, accent,
             {doc && !dirty && (
               <button
                 onClick={() => run("revise", { action: "redraft" }, item.kind === "resume" ? "Lookout wrote a fresh resume from the posting." : "Lookout wrote a fresh cover letter from the posting.")}
-                disabled={!!busy}
-                aria-label="Redraft from the posting"
-                data-tip={busy === "revise" ? "Working…" : "Redraft from the posting"}
+                disabled={!!busy || blocked}
+                aria-label={blocked ? "Redraft from the posting (approve the keywords first)" : "Redraft from the posting"}
+                data-tip={blocked ? "Approve the keywords above first" : busy === "revise" ? "Working…" : "Redraft from the posting"}
                 aria-busy={busy === "revise"}
-                style={{ ...iconBtn, opacity: busy ? 0.6 : 1 }}
+                style={{ ...iconBtn, opacity: busy || blocked ? 0.45 : 1 }}
               >
                 <RedoIcon />
               </button>
@@ -208,36 +220,35 @@ export function ItemCard({ appId, item, locked, act, analysis, template, accent,
   );
 }
 
-/** Three ways to write the letter (#738). Lookout marks its pick for the role; a different pick redrafts the letter. */
-function StrategyPicker({ letter, busy, onPick }: { letter: NonNullable<Detail["letter"]>; busy: boolean; onPick: (s: (typeof LETTER_STRATEGIES)[number]) => void }) {
+type LetterPick = LetterInfo["items"][string] & { suggested: LetterStrategy; why: string };
+
+/**
+ * Three ways to write the letter (#738). All three are written once (#1484), so a pick shows the stored letter.
+ * A strategy not stored yet pulses and waits; a click never calls the model. The description and the reason for the pick live in the tooltips.
+ */
+function StrategyPicker({ letter, busy, onPick }: { letter: LetterPick; busy: boolean; onPick: (s: LetterStrategy) => void }) {
   const current = letter.strategy;
-  const shown = current ?? letter.suggested;
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-      <div role="group" aria-label="Cover letter strategy" style={{ display: "flex", gap: 6, flexWrap: "wrap", alignItems: "center" }}>
-        <span style={{ fontSize: font.base, fontWeight: 600, marginRight: 4 }}>Strategy</span>
-        {LETTER_STRATEGIES.map((s) => {
-          const on = s === current;
-          return (
-            <button
-              key={s}
-              onClick={() => !on && onPick(s)}
-              disabled={busy}
-              aria-pressed={on}
-              data-tip={STRATEGY[s].blurb}
-              style={{ height: 32, padding: "0 12px", borderRadius: 999, fontSize: font.base, fontWeight: 600, cursor: on ? "default" : "pointer", border: `1.5px solid ${on ? color.ink : color.border}`, background: on ? color.ink : "#fff", color: on ? "#fff" : color.ink }}
-            >
-              {STRATEGY[s].label}
-              {s === letter.suggested && <span style={{ fontWeight: 400, opacity: 0.8 }}> · suggested</span>}
-            </button>
-          );
-        })}
-      </div>
-      <div style={muted}>
-        {STRATEGY[shown].blurb}
-        {current !== letter.suggested && ` Lookout suggests ${STRATEGY[letter.suggested].label.toLowerCase()} here: ${letter.why.charAt(0).toLowerCase()}${letter.why.slice(1)}`}
-        {current === letter.suggested && ` ${letter.why}`}
-      </div>
+    <div role="group" aria-label="Cover letter strategy" style={{ display: "flex", gap: 6, flexWrap: "wrap", alignItems: "center" }}>
+      <span style={{ fontSize: font.base, fontWeight: 600, marginRight: 4 }}>Strategy</span>
+      {LETTER_STRATEGIES.map((s) => {
+        const on = s === current;
+        const waiting = !on && !letter.ready.includes(s);
+        return (
+          <button
+            key={s}
+            onClick={() => !on && onPick(s)}
+            disabled={busy || waiting}
+            aria-pressed={on}
+            aria-busy={waiting || undefined}
+            data-tip={s === letter.suggested ? `${STRATEGY[s].blurb} Suggested: ${letter.why}` : STRATEGY[s].blurb}
+            style={{ height: 32, padding: "0 12px", borderRadius: 999, fontSize: font.base, fontWeight: 600, cursor: on ? "default" : waiting ? "progress" : "pointer", border: `1.5px solid ${on ? color.ink : color.border}`, background: on ? color.ink : "#fff", color: on ? "#fff" : color.ink, animation: waiting ? "lookout-pulse 1.4s ease-in-out infinite" : undefined }}
+          >
+            {STRATEGY[s].label}
+            {s === letter.suggested && <span style={{ fontWeight: 400, opacity: 0.8 }}> · suggested</span>}
+          </button>
+        );
+      })}
     </div>
   );
 }
