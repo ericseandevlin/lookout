@@ -15,7 +15,7 @@ import { traceAs } from "@/lib/ai/trace";
 import { startBudgetedRun, finishRun, progress, startRun } from "@/lib/ai/runs";
 import { webSearch, type SearchHit } from "@/lib/ai/search";
 import { getAiConfig } from "@/lib/config";
-import { applyRules, fingerprint, fullTitle, legacyFingerprint, listPage, normUrl, placeId, placesDiffer } from "./rules";
+import { applyRules, fingerprint, fullTitle, legacyFingerprint, listPage, normUrl, placeId, placesDiffer, suffixedFingerprint } from "./rules";
 import { closeGonePostings } from "./linkCheck";
 import { findEventsIfDue } from "./networking";
 import { featureOn } from "@/lib/features";
@@ -368,18 +368,19 @@ const reposted = sql`(${schema.opportunities.attributes} -> 'linkCheck' ->> 'sta
 const noPay = sql`(${schema.opportunities.compMin} is null and ${schema.opportunities.compMax} is null)`;
 
 /**
- * The fingerprint, or the key from before #1269 when a posting with an accented name is stored under that one and none is
- * under the new key, so "Montréal" saved last week is matched, not saved again.
+ * The fingerprint, or an older key a posting is stored under when none is under the new one: the key from before #1645
+ * ("Acme, Inc." keyed with its legal form), then the one from before #1269 ("Montréal" saved with the é as a space). So a
+ * posting saved last week is matched, not saved again.
  */
 async function baseKey(f: { company: string; title: string; location: string }) {
   const fp = fingerprint(f.company, f.title, f.location);
-  const old = legacyFingerprint(f.company, f.title, f.location);
-  if (old === fp) return fp;
+  const keys = [...new Set([fp, suffixedFingerprint(f.company, f.title, f.location), legacyFingerprint(f.company, f.title, f.location)])];
+  if (keys.length === 1) return fp;
   const rows = await db
     .select({ fp: schema.opportunities.fingerprint })
     .from(schema.opportunities)
-    .where(inArray(schema.opportunities.fingerprint, [fp, old]));
-  return rows.some((r) => r.fp === fp) || !rows.length ? fp : old;
+    .where(inArray(schema.opportunities.fingerprint, keys));
+  return keys.find((k) => rows.some((r) => r.fp === k)) ?? fp;
 }
 
 /**

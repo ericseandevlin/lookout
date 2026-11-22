@@ -12,7 +12,7 @@ const db = drizzle(pg, { schema });
 vi.mock("@/lib/db", () => ({ db, schema }));
 
 const { loadContext, save, realDate } = await import("./discover");
-const { fingerprint, legacyFingerprint } = await import("./rules");
+const { fingerprint, legacyFingerprint, suffixedFingerprint } = await import("./rules");
 type Ctx = Awaited<ReturnType<typeof loadContext>>;
 type Find = Parameters<typeof save>[1][number];
 
@@ -429,6 +429,21 @@ describe("save", () => {
     const old = legacyFingerprint("L'Oréal", "Director of Design", "Montréal, QC");
     await db.insert(schema.opportunities).values({ company: "L'Oréal", title: "Director of Design", sourceUrl: "https://jobs.example.com/a", fingerprint: old });
     await save(ctx(), [find({ url: "https://jobs.example.com/b", company: "L'Oréal", location: "Montréal, QC" })], "agent");
+    const opps = await db.select().from(schema.opportunities);
+    expect(opps.map((o) => [o.fingerprint, o.sourceUrl])).toEqual([[old, "https://jobs.example.com/a"]]);
+  });
+
+  it("merges 'Acme, Inc.' and 'Acme' as one job (#1645)", async () => {
+    await save(ctx(), [find({ url: "https://jobs.example.com/a", company: "Acme, Inc." })], "agent");
+    const t = await save(ctx(), [find({ url: "https://jobs.example.com/b", company: "Acme" })], "agent");
+    expect(t.added).toBe(0);
+    expect(await db.select().from(schema.opportunities)).toHaveLength(1);
+  });
+
+  it("matches a posting stored under the key from before #1645, not a second row", async () => {
+    const old = suffixedFingerprint("Acme, Inc.", "Director of Design", "New York, NY");
+    await db.insert(schema.opportunities).values({ company: "Acme, Inc.", title: "Director of Design", sourceUrl: "https://jobs.example.com/a", fingerprint: old });
+    await save(ctx(), [find({ url: "https://jobs.example.com/b", company: "Acme, Inc.", location: "New York, NY" })], "agent");
     const opps = await db.select().from(schema.opportunities);
     expect(opps.map((o) => [o.fingerprint, o.sourceUrl])).toEqual([[old, "https://jobs.example.com/a"]]);
   });

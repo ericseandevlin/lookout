@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { applyRules, fingerprint, legacyFingerprint, listPage, normUrl, placeId, placesDiffer, remoteFirst } from "./rules";
+import { applyRules, bareCompany, fingerprint, legacyFingerprint, listPage, normUrl, placeId, placesDiffer, remoteFirst, suffixedFingerprint } from "./rules";
 
 const base = { score: 5, reasonsMatch: ["Director title"], reasonsGap: [], locationFit: true, dealbreaker: false, compMin: 140000, compMax: 160000 };
 
@@ -66,6 +66,21 @@ describe("dedupe keys", () => {
     expect(fingerprint("Acme", "Designer", "Straße")).toBe(fingerprint("Acme", "Designer", "Strasse"));
     expect(fingerprint("Acme", "Designer", "Montréal")).not.toBe(legacyFingerprint("Acme", "Designer", "Montréal"));
     expect(fingerprint("Acme", "Designer", "Montreal")).toBe(legacyFingerprint("Acme", "Designer", "Montreal"));
+  });
+  it("keys a company without its legal form, so 'Acme, Inc.' and 'Acme' are one job (#1645)", () => {
+    const k = (c: string) => fingerprint(c, "Senior Product Designer", "New York, NY");
+    for (const c of ["Acme Inc.", "Acme, Inc.", "ACME INC", "Acme LLC", "Acme, L.L.C.", "Acme Ltd", "Acme Limited", "Acme Corp.", "Acme Corporation", "Acme Co.", "Acme GmbH", "Acme PLC", "Acme AG", "Acme S.A.", "Acme B.V.", "Acme Pty Ltd"]) expect(k(c)).toBe(k("Acme"));
+    expect(bareCompany("Procter & Gamble Co.")).toBe("Procter & Gamble");
+    // Not a legal form at the end, or nothing left without it.
+    expect(bareCompany("Acme Co-op")).toBe("Acme Co-op");
+    expect(bareCompany("Limited Brands")).toBe("Limited Brands");
+    expect(bareCompany("Incorporated")).toBe("Incorporated");
+    expect(bareCompany("Agco")).toBe("Agco");
+    expect(k("Acme Labs")).not.toBe(k("Acme"));
+    // The key from before #1645 keeps the legal form, and is the same as the new one for a bare name.
+    expect(suffixedFingerprint("Acme, Inc.", "Designer", "Paris")).not.toBe(fingerprint("Acme, Inc.", "Designer", "Paris"));
+    expect(suffixedFingerprint("Acme", "Designer", "Paris")).toBe(fingerprint("Acme", "Designer", "Paris"));
+    expect(legacyFingerprint("Acme, Inc.", "Designer", "Paris")).toBe(suffixedFingerprint("Acme, Inc.", "Designer", "Paris"));
   });
   it("keeps marks in non-Latin text, so डिज़ाइनर and डिजाइन stay apart (#1269)", () => {
     expect(fingerprint("मेरा", "डिज़ाइनर", "दिल्ली")).toBe(legacyFingerprint("मेरा", "डिज़ाइनर", "दिल्ली"));
