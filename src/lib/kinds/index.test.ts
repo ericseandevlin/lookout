@@ -172,6 +172,13 @@ describe("parseMoney", () => {
     ["$4,000 semimonthly", 96000],
     ["$150,000 per year", 150000],
     ["150k/yr", 150000],
+    // A number inside a label is not the floor (#1562).
+    ["W2 $90/hr", 187200],
+    ["W-2 only, $90/hr", 187200],
+    ["Level 5, $180k", 180000],
+    ["L6 $200k", 200000],
+    ["Senior (IC4) 180k", 180000],
+    ["usd150k", 150000],
   ])("reads %s as %d", (v, n) => {
     expect(parseMoney(v)).toBe(n);
   });
