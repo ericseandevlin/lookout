@@ -1,6 +1,7 @@
 "use client";
 
 import { useRef } from "react";
+import { createPortal } from "react-dom";
 import { useFocusTrap } from "../useFocusTrap";
 import { color, font } from "@/lib/tokens";
 
@@ -11,7 +12,8 @@ import { color, font } from "@/lib/tokens";
 export function Modal({ title, kicker, close, children, chat }: { title: string; kicker?: string; close: () => void; children: React.ReactNode; chat?: boolean }) {
   const box = useRef<HTMLDivElement>(null);
   useFocusTrap(box);
-  return (
+  // On document.body: a page with a CSS transform (the fade-in) would otherwise move a fixed dialog off screen.
+  return createPortal(
     <>
       <div onClick={close} style={{ position: "fixed", inset: 0, background: "rgba(29,26,15,.45)", zIndex: 30 }} />
       <div
@@ -31,6 +33,7 @@ export function Modal({ title, kicker, close, children, chat }: { title: string;
         </div>
         {chat ? <div style={{ flex: 1, minHeight: 0, display: "flex", flexDirection: "column", background: "#fff" }}>{children}</div> : <div style={{ padding: "18px 22px", overflowY: "auto", fontSize: font.base, lineHeight: 1.5 }}>{children}</div>}
       </div>
-    </>
+    </>,
+    document.body,
   );
 }

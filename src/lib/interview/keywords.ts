@@ -12,7 +12,7 @@ import { keywordPicks, type KeywordRow } from "@/lib/application/evidence";
 import { patchReport } from "@/lib/application/reportStore";
 import { assertEditable, keywordState, ownApplication } from "@/lib/application/review";
 import { upsertNote } from "@/lib/application/skills";
-import { FACT_RULES, FactOut, shortWhy } from "./interviewer";
+import { FACT_RULES, FactOut, plainQuestion, shortWhy } from "./interviewer";
 import { factKey } from "./rules";
 import { addFact } from "./session";
 
@@ -40,7 +40,9 @@ export const KEYWORD_GROUP_SYSTEM = `You help one job seeker back the keywords a
 Group related keywords into as few interview questions as make sense. One question can cover several keywords when one story would show them all, for example "managing managers" and "global design team". Unrelated keywords get their own question. Every keyword goes in exactly one question. Starred keywords come first.
 
 Each question:
-- One short question, the way a good recruiter asks it: whether they've done it, their part, the scope and a number if they have one. Name the keywords plainly.
+- question: one short, plain question, the way a friend would ask it in a chat. Name the keywords plainly. No evidence and no preamble; the evidence goes in why.
+  Bad: "The posting names production twice. Have you led production for large events, from run of show through load-out? What was your part?"
+  Good: "Have you led production for large events?"
 - Never assume they have done it. Never ask about pay, health, family, age or other protected traits.
 - why: the evidence only, one short clause, for example "The posting asks for this twice, once as a must-have." Never say what the resume lacks.
 - Short sentences, plain words, warm and direct. No em dashes.
@@ -80,7 +82,7 @@ export function groupsFrom(out: z.infer<typeof KeywordGroupsOut>, terms: string[
       own.forEach((t) => used.delete(lower(t)));
       continue;
     }
-    qs.push({ id: `q${firstId + qs.length}`, terms: own, question: g.question.trim().slice(0, 600), why: shortWhy(g.why).slice(0, 300) });
+    qs.push({ id: `q${firstId + qs.length}`, terms: own, question: plainQuestion(g.question).slice(0, 600), why: shortWhy(g.why).slice(0, 300) });
   }
   for (const t of terms) if (!used.has(lower(t))) qs.push(fallback(t, firstId + qs.length));
   return qs;
