@@ -98,9 +98,15 @@ describe("save", () => {
     expect(await board()).toHaveLength(0);
   });
 
-  it("counts the same URL twice in one search once", async () => {
+  it("counts the same URL twice in one search once, and not as already on the board (#1531)", async () => {
     const r = await save(ctx(), [find(), find({ title: "Director, Design" })], "agent");
-    expect(r).toMatchObject({ added: 1, known: 1 });
+    expect(r).toMatchObject({ added: 1, known: 0, postings: 1 });
+  });
+
+  it("counts one posting at two links in one search once, and not as already on the board (#1531)", async () => {
+    const r = await save(ctx(), [find(), find({ url: "https://boards.example.org/acme-director" })], "agent");
+    expect(r).toMatchObject({ added: 1, known: 0, postings: 1 });
+    expect(await board()).toHaveLength(1);
   });
 
   it("counts the same posting at a different URL as known when it is already on the board", async () => {
@@ -125,6 +131,13 @@ describe("save", () => {
     const manual = await save(ctx({ knownUrls: ["https://jobs.example.com/acme/123"] }), [find({ dealbreaker: true })], "manual");
     expect(manual).toMatchObject({ dealbreaker: 0, added: 1, known: 0 });
     expect((await board())[0].via).toBe("manual");
+  });
+
+  it("reads a range given high to low as low to high, so its top judges the floor (#1526)", async () => {
+    const r = await save(ctx({ floor: 180000 }), [find({ comp_min: 200000, comp_max: 150000 })], "agent");
+    expect(r).toMatchObject({ added: 1, belowFloor: 0 });
+    const [o] = await db.select({ min: schema.opportunities.compMin, max: schema.opportunities.compMax }).from(schema.opportunities);
+    expect(o).toEqual({ min: 150000, max: 200000 });
   });
 
   it("leaves off pay that tops out under the floor; marks down off-location roles (#740)", async () => {
@@ -481,9 +494,9 @@ describe("save: a board job at another link for the same ATS job (#1146)", () =>
     expect(r).toMatchObject({ known: 1, added: 0 });
     expect(await board()).toHaveLength(1);
   });
-  it("agent: the same ATS job twice in one run is added once", async () => {
+  it("agent: the same ATS job twice in one run is added once, and not as already on the board (#1531)", async () => {
     const r = await save(ctx(), [find({ url: saved }), find({ url: "https://boards.greenhouse.io/acme/jobs/4012345", title: "Design Director" })], "agent");
-    expect(r).toMatchObject({ added: 1, known: 1 });
+    expect(r).toMatchObject({ added: 1, known: 0 });
     expect(await board()).toHaveLength(1);
   });
 });

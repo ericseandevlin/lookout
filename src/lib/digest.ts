@@ -5,7 +5,7 @@ import { emailShell, escapeHtml, sendMail } from "@/lib/email";
 import { unsubscribeParts } from "@/lib/bulkMail";
 import { env } from "@/lib/env";
 import { goLink } from "./digestLinks";
-import { dueLabel, pickDueSoon } from "./digestDue";
+import { dueLabel, pickDueSoon, stillDue } from "./digestDue";
 import { compLabel } from "./digestComp";
 import { color } from "@/lib/tokens";
 import { scheduleLabel } from "./firstWeek";
@@ -44,8 +44,8 @@ export async function sendDigest(userId: string, runId?: string) {
     .innerJoin(schema.opportunities, eq(schema.opportunities.id, schema.userOpportunities.opportunityId))
     .where(and(eq(schema.userOpportunities.userId, userId), eq(schema.userOpportunities.pinned, true), eq(schema.userOpportunities.archived, false)));
   const newIds = new Set(rows.map((r) => r.opportunities.id));
-  // A find pinned on two searches is one deadline.
-  const pinnedFinds = [...new Map(pinned.map((r) => [r.opportunities.id, r.opportunities])).values()];
+  // A find pinned on two searches is one deadline. One already applied to or submitted has nothing left due (#1539).
+  const pinnedFinds = [...new Map(pinned.filter((r) => stillDue(r.user_opportunities.stage)).map((r) => [r.opportunities.id, r.opportunities])).values()];
   const due = pickDueSoon(pinnedFinds.filter((o) => !newIds.has(o.id)), Date.now(), env.timezone);
   if (!rows.length && !due.length) return;
   if (!rows.length) {

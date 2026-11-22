@@ -10,6 +10,8 @@ import { getActiveSearch } from "@/lib/searches";
 const Input = z.object({
   name: z.string().trim().min(1).max(120),
   salary: z.enum([...SALARY_RANGES.map((r) => r.key), ...Object.keys(OLD_SALARY_KEYS)] as [string, ...string[]]).optional(),
+  /** Several, like the profile (#1531). `mode` is the single pick an older page sends. */
+  modes: z.array(z.enum(WORK_MODES)).max(WORK_MODES.length).optional(),
   mode: z.enum(WORK_MODES).optional(),
   /** The clickwrap box (#21): the step can't finish without it. */
   agree: z.literal(true),
@@ -24,7 +26,8 @@ export const POST = authed(async (req, { user }) => {
   if (search.kind === "job") {
     const range = salaryRange(p.salary);
     if (range) Object.assign(answers, { floor: range.floor, target: range.target });
-    if (p.mode) answers.modes = [p.mode];
+    const modes = [...new Set(p.modes ?? (p.mode ? [p.mode] : []))];
+    if (modes.length) answers.modes = modes;
   }
   await db.update(schema.searches).set({ answers, updatedAt: new Date() }).where(eq(schema.searches.id, search.id));
   await db.update(schema.users).set({ name: p.name, onboardedAt: new Date(), ...acceptedNow() }).where(eq(schema.users.id, user.id));

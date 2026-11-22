@@ -15,7 +15,7 @@ import { traceAs } from "@/lib/ai/trace";
 import { startBudgetedRun, finishRun, progress, startRun } from "@/lib/ai/runs";
 import { webSearch, type SearchHit } from "@/lib/ai/search";
 import { getAiConfig } from "@/lib/config";
-import { applyRules, fingerprint, fullTitle, legacyFingerprint, normUrl, placeId, placesDiffer } from "./rules";
+import { applyRules, fingerprint, fullTitle, legacyFingerprint, listPage, normUrl, placeId, placesDiffer } from "./rules";
 import { closeGonePostings } from "./linkCheck";
 import { findEventsIfDue } from "./networking";
 import { featureOn } from "@/lib/features";
@@ -93,7 +93,9 @@ export async function loadContext(searchId: string): Promise<Context> {
 export const profileBlock = (c: Context) =>
   `<profile>\n${c.brief}\n</profile>\n` +
   (c.searchProfile
-    ? `<search_profile>\n${renderSearchProfile(c.searchProfile)}\n</search_profile>`
+    ? `<search_profile>\n${renderSearchProfile(c.searchProfile)}\n</search_profile>` +
+      // The summary drops details, and a gap must not contradict the resume, so its text goes along too (#1531).
+      (c.resume ? `\n<resume>\n${c.resume.slice(0, 6000)}\n</resume>` : "")
     : `<resume>\n${c.resume || "(no resume uploaded)"}\n</resume>` +
       (c.linkedin ? `\n<linkedin_profile>\n${c.linkedin}\n</linkedin_profile>` : "") +
       (c.links.length ? `\n<their_links>\n${c.links.map((l) => `${l.url}\n${l.text}`).join("\n---\n")}\n</their_links>` : "")) +
@@ -144,12 +146,10 @@ Use the candidate's target titles, close variants, and their city. Keep each und
 
 // --- 2+3. search and pick ----------------------------------------------------
 
-const AGGREGATOR = /(indeed|linkedin|glassdoor|ziprecruiter|simplyhired|monster|careerbuilder)\.com\/(jobs|q-|m\/jobs)|\/search\?|\/jobs\/?$/i;
-
 type Report = (pct: number, step: string) => Promise<void>;
 
 /**
- * One key per job on Greenhouse, Lever, Ashby, Workday, iCIMS and Paylocity (#1435), whatever host or path the link uses. A posting is saved
+ * One key per job on Greenhouse, Lever, Ashby, Workday, iCIMS, Paylocity (#1435), SmartRecruiters (#1520), Workable and Teamtailor (#1522), whatever host or path the link uses. A posting is saved
  * under the URL it redirected to, and search often returns the old one (boards.greenhouse.io for job-boards.greenhouse.io),
  * so text alone missed it and the run read and scored it again (#670). Other sites keep the exact URL match.
  */
@@ -173,7 +173,7 @@ async function gatherHits(ctx: Context, queries: string[], usage: Usage, report:
     if (r.status !== "fulfilled") continue;
     for (const h of r.value) {
       const keys = [normUrl(h.url), atsKey(h.url)].filter((k): k is string => !!k);
-      if (AGGREGATOR.test(h.url) || keys.some((k) => seen.has(k))) continue;
+      if (listPage(h.url) || keys.some((k) => seen.has(k))) continue;
       if (keys.some((k) => known.has(k))) {
         for (const k of keys) seen.add(k);
         onBoard.add(keys[0]);
@@ -272,7 +272,8 @@ export type ScoredT = z.infer<typeof Scored> & { url: string; currency?: string 
 // Built per call: the server runs for days between deploys, and the date decides what still looks open (#608).
 const scorerSystem = () => `You score job postings for one candidate. Today is ${today()}.
 Only use facts on the page. Never invent pay or dates; use null when the page doesn't state them. Annualize hourly pay only if it is clearly full time.
-Reasons are read on a phone: short, concrete, no filler.`;
+Reasons are read on a phone: short, concrete, no filler. No em dashes.
+Read the resume before you write a reason it may not fit. Never claim a gap the resume contradicts: if it lists an iOS app, the person is not "web only".`;
 
 /**
  * strict: a failed scoring call throws instead of skipping the batch, for a single page someone added (#628).
@@ -458,14 +459,20 @@ export async function save(ctx: Context, finds: ScoredT[], via: "agent" | "manua
   // Same check as gatherHits: in agent mode this is the only one, so a board job sent back at another link for the same
   // ATS job (boards.greenhouse.io for job-boards, a company ?gh_jid= page) is known, not a second find (#1146).
   const known = new Set(ctx.knownUrls.flatMap(keysOf));
+  // Added in this run: a second copy of one of these is a repeat, not something already on the board (#1531).
+  const fresh = new Set<string>();
+  const freshIds = new Set<string>();
   const t = emptyTally();
   const newFinds: { id: string; score: number }[] = [];
   for (const raw of finds) {
-    const f = { ...raw, comp_min: annualPay(raw.comp_min), comp_max: annualPay(raw.comp_max) };
+    // A reply with the ends the wrong way round ($200,000 low, $150,000 high) is one range: the top judges the floor (#1526).
+    const [lo, hi] = [annualPay(raw.comp_min), annualPay(raw.comp_max)];
+    const f = { ...raw, ...(lo != null && hi != null && lo > hi ? { comp_min: hi, comp_max: lo } : { comp_min: lo, comp_max: hi }) };
     if (!f.is_open_job_posting || !f.company || !f.title) {
       t.notPostings++;
       continue;
     }
+    if (keysOf(f.url).some((k) => fresh.has(k))) continue;
     t.postings++;
     if (via === "agent" && keysOf(f.url).some((k) => known.has(k))) {
       t.known++;
@@ -525,6 +532,10 @@ export async function save(ctx: Context, finds: ScoredT[], via: "agent" | "manua
       )[0];
     // Already on this board at another link: it is known, not a dealbreaker, under the floor or off location (#1109).
     // The shared row still takes this read, so a repost's new link reaches the board (#830).
+    if (stored && freshIds.has(stored.id)) {
+      t.postings--;
+      continue;
+    }
     if (stored) {
       const [mine] = await db
         .select({ id: schema.userOpportunities.opportunityId })
@@ -588,7 +599,9 @@ export async function save(ctx: Context, finds: ScoredT[], via: "agent" | "manua
     if (inserted.length) {
       t.added++;
       newFinds.push({ id: opp.id, score: ruled.score });
-    }
+      freshIds.add(opp.id);
+      for (const k of keysOf(f.url)) fresh.add(k);
+    } else if (freshIds.has(opp.id)) t.postings--;
     else t.known++;
     for (const k of keysOf(f.url)) known.add(k);
   }

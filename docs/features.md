@@ -12,7 +12,7 @@ Checked against the code on 2026-11-16. Numbers like (#527) are GitHub issues.
 - **Built but unused.** The code exists, but nothing calls it or no screen shows it.
 - **Planned.** An open issue. Nothing built yet, or only a small part.
 
-Production switches today: `FEATURE_PREVIEW` on, `FEATURE_AUTO_APPLY` on (admins only), `FEATURE_AUTO_SUBMIT` off, `FEATURE_EVENTS` off, `FEATURE_SEARCHES` off, `FEATURE_WAITLIST` off, `FEATURE_DEMO` off.
+Production switches today: `FEATURE_PREVIEW` on, `FEATURE_AUTO_APPLY` on (admins only), `FEATURE_AUTO_SUBMIT` off, `FEATURE_EVENTS` off, `FEATURE_SEARCHES` off, `FEATURE_WAITLIST` off, `FEATURE_DEMO` off, `FEATURE_INTERVIEW` off.
 
 ## At a glance
 
@@ -113,6 +113,7 @@ The public demo (`/demo`, #1317) also merged after v0.6.2; it is listed under sw
 | RFP searches | `FEATURE_SEARCHES` (it is a kind you pick) | Government contract opportunities from SAM.gov for freelancers and small firms, with agency, due date, value and set-aside columns. Also needs a SAM.gov key on the server. | `src/lib/agent/rfp.ts`, `src/lib/samGov.ts`, `src/lib/kinds/index.ts` | #8, #272, #300 |
 | Submit for me | `FEATURE_AUTO_SUBMIT` | Lets auto-apply press Submit itself. Off, so every application ends with the person pressing Submit. | `src/lib/application/submitMode.ts`, `src/lib/application/submit.ts`, `src/components/review/SendForMe.tsx` | #42, #187 |
 | Public demo board | `FEATURE_DEMO` | `/demo`: the made-up Maya Ortiz board, read only, no sign-in. Rebuilt at startup. Meant for staging. Also merged after v0.6.2. | `src/app/demo/page.tsx`, `src/lib/demo.ts` | #1317 |
+| Interview and What Lookout knows | `FEATURE_INTERVIEW` | `/interview` asks one question at a time from gaps in the top 5 finds, after the setup questions still unanswered. `/profile/knows` lists every fact with its source, a Shareable or Private switch, Edit and Delete. Shareable facts count in drafts; private ones and pay never reach a drafting step. On its own branch until Eric approves. | `src/lib/interview/`, `src/components/Interview.tsx`, `src/components/Knows.tsx` | #1449 |
 
 ## Built but unused
 

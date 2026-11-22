@@ -42,7 +42,8 @@ const findOutreach = vi.fn(async () => [] as unknown[]);
 vi.mock("./outreach", () => ({ findOutreach }));
 
 const { scanPosting, processApplication, sweepApplications, resumeFor, redraftLetter, redraftResume, LOST_SUBMIT } = await import("./run");
-const { keywordState } = await import("./review");
+const { keywordState, draftFacts } = await import("./review");
+const { deleteFact, updateFact } = await import("@/lib/interview/facts");
 const { finalTerms } = await import("./evidence");
 const { answerKey } = await import("./saved");
 const { emptyUsage } = await import("@/lib/ai/llm");
@@ -676,5 +677,77 @@ describe("planted words, salary asks and saved answers in drafts (#569)", () => 
     expect(why.versions[0].sources).toEqual(["saved answer"]);
     const answers = completeJSON.mock.calls.find((c) => c[0].name === "apply-answers")![0];
     expect(answers.user).not.toMatch(/^\d+\. \[.*Why do you want to work here\?/m);
+  });
+});
+
+describe("interview facts in drafts (#1449)", () => {
+  const SHARED = "Ran a 12-dinner touring supper series, about 1,400 covers";
+  const PRIVATE = "My manager was skeptical of the series at first";
+  const PAY = "Pay floor $140,000; would move for $180,000.";
+  async function seedFacts(userId: string) {
+    return db
+      .insert(schema.profileFacts)
+      .values([
+        { userId, text: SHARED, kind: "project", source: "interview", quote: "I ran our touring supper series.", shareable: true },
+        { userId, text: PRIVATE, kind: "background", source: "interview", quote: "Dana, my boss, hated the idea.", shareable: false, lockReason: "a complaint" },
+        { userId, text: PAY, kind: "pay", source: "setup", shareable: false },
+      ])
+      .returning();
+  }
+  const draftPrompts = () => completeJSON.mock.calls.map((c) => c[0]).filter((c) => /^apply-/.test(c.name));
+
+  beforeEach(() => {
+    process.env.FEATURE_INTERVIEW = "on";
+  });
+  afterAll(() => {
+    delete process.env.FEATURE_INTERVIEW;
+  });
+
+  it("never sends a private fact or pay to a drafting step; shareable facts go in", async () => {
+    const { user, app } = await seedApp();
+    await seedFacts(user.id);
+    await processApplication(app.id);
+    replies["apply-letter"] = () => ({ items: [{ index: 0, content: "Dear team.", sources: ["resume"], question: "", note: "" }] });
+    await redraftLetter(app.id);
+    const prompts = draftPrompts();
+    expect(prompts.map((p) => p.name)).toEqual(expect.arrayContaining(["apply-keywords", "apply-answers", "apply-letter"]));
+    for (const p of prompts) {
+      expect(p.user).not.toContain(PRIVATE);
+      expect(p.user).not.toContain("Dana");
+      expect(p.user).not.toContain(PAY);
+    }
+    expect(prompts.find((p) => p.name === "apply-answers")!.user).toContain(SHARED);
+    // Revise and Recruiter Analysis read facts from draftFacts.
+    const { facts } = await draftFacts(user.id);
+    expect(facts).toContain(SHARED);
+    expect(facts).not.toContain(PRIVATE);
+    expect(facts).not.toContain(PAY);
+  });
+
+  it("drops a fact from every later draft once it is deleted, and once it is switched to private", async () => {
+    const { user, app } = await seedApp();
+    const [shared] = await seedFacts(user.id);
+    await processApplication(app.id);
+    expect(completeJSON.mock.calls.find((c) => c[0].name === "apply-answers")![0].user).toContain(SHARED);
+
+    const [other] = await db.insert(schema.profileFacts).values({ userId: user.id, text: "Built and led a team of 9", kind: "result", source: "resume", shareable: true }).returning();
+    await updateFact(user.id, other.id, { shareable: false });
+    await deleteFact(user.id, shared.id);
+    completeJSON.mockClear();
+    replies["apply-letter"] = () => ({ items: [{ index: 0, content: "Dear team.", sources: ["resume"], question: "", note: "" }] });
+    await redraftLetter(app.id);
+    for (const p of draftPrompts()) {
+      expect(p.user).not.toContain(SHARED);
+      expect(p.user).not.toContain("team of 9");
+    }
+    expect((await draftFacts(user.id)).facts).not.toContain(SHARED);
+  });
+
+  it("leaves drafts as they were with the feature off", async () => {
+    delete process.env.FEATURE_INTERVIEW;
+    const { user, app } = await seedApp();
+    await seedFacts(user.id);
+    await processApplication(app.id);
+    expect(completeJSON.mock.calls.find((c) => c[0].name === "apply-answers")![0].user).not.toContain(SHARED);
   });
 });

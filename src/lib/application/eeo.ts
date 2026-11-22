@@ -49,6 +49,12 @@ export function classify(prompt: string): EeoCategory | null {
   // "Do you have a disability? Veterans with service-connected disabilities should also answer here." asks about
   // disability; the question is the first sentence, the rest is guidance (#973).
   const first = p.split(/(?<=[.?!])\s+/)[0];
+  // "Do you need a reasonable accommodation for a disability?" asks for help, not for disability status; "discharged
+  // under other than honorable conditions" and "currently serving on active duty" are not veteran status. The EEO
+  // answer must never fill them: ask the person (#1512).
+  if (/accommodat/.test(first)) return null;
+  if (/discharg|honorabl|court.?martial/.test(p)) return null;
+  if (!/veteran/.test(p) && /\b(currently|active duty|now serving|reservists?|national guard)\b/.test(p)) return null;
   if (/disabilit/.test(first) && !/veteran|armed forces|military/.test(first)) return "disability";
   // "Are you a military spouse?" is about family, not the person's own service (#909).
   if (/veteran|armed forces|military/.test(p)) return /spouse|dependent|family member/.test(p) ? null : "veteran";
@@ -56,8 +62,8 @@ export function classify(prompt: string): EeoCategory | null {
   if (/\brace\b|racial|ethnic/.test(p)) return "race";
   if (/hispanic|latin[oax]/.test(p)) return "hispanic";
   // "Sex" alone asks gender; "sexual orientation" was caught above (#816). So do "What is your sex?" and "Please select
-  // your legal sex", but not "convicted of a sex offense" (#1275).
-  if (/gender|^\W*sex\b|\byour (\w+ )?sex\b(?! offen)/.test(p)) return "gender";
+  // your legal sex", but not "convicted of a sex offense" (#1275) or "Sex offender registry" (#1512).
+  if (/gender|^\W*sex\b(?! offen)|\byour (\w+ )?sex\b(?! offen)/.test(p)) return "gender";
   return null;
 }
 

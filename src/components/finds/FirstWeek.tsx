@@ -25,6 +25,8 @@ export function FirstWeek({ ready }: { ready: boolean }) {
   // Hidden on the server render; the browser reads the dismissal from this device.
   const stored = useSyncExternalStore(() => () => {}, readHidden, () => true);
   const [hidden, setHidden] = useState(false);
+  // Folded to one row, so after a first search the finds show without scrolling, also on a phone (#1531).
+  const [open, setOpen] = useState(false);
   if (stored || hidden || !ready || readOnly || !inFirstWeek(state.user.joinedAt)) return null;
   const st = state.settings;
   const hide = () => {
@@ -60,17 +62,24 @@ export function FirstWeek({ ready }: { ready: boolean }) {
     },
   ];
   return (
-    <section aria-labelledby="fw-title" className="board-sec lk-in" style={{ background: "#fff", padding: "18px 22px 20px", display: "flex", flexDirection: "column", gap: 14 }}>
-      <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 12 }}>
-        <div>
-          <div style={{ fontSize: font.base, fontWeight: 700, letterSpacing: ".14em", textTransform: "uppercase", color: color.brick }}>Your first week</div>
-          <div id="fw-title" style={{ fontSize: font.xl, fontWeight: 700, marginTop: 4 }}>Things you can change</div>
-        </div>
+    <section aria-labelledby="fw-title" className="board-sec lk-in" style={{ background: "#fff", padding: "10px 14px 10px 22px", display: "flex", flexDirection: "column", gap: 14 }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+        <button
+          onClick={() => setOpen(!open)}
+          aria-expanded={open}
+          aria-controls="fw-tips"
+          style={{ flex: 1, minWidth: 0, display: "flex", alignItems: "center", gap: 8, minHeight: 40, border: 0, background: "transparent", padding: 0, cursor: "pointer", textAlign: "left", color: color.ink }}
+        >
+          <span id="fw-title" style={{ fontSize: font.md, fontWeight: 700 }}>Your first week: {tips.length} things you can change</span>
+          <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" style={{ flex: "none", transform: open ? "rotate(180deg)" : "none", transition: "transform .15s" }}>
+            <path d="M6 9l6 6 6-6" />
+          </svg>
+        </button>
         <button onClick={hide} style={{ height: 34, padding: "0 14px", borderRadius: 999, border: `1.5px solid ${color.border}`, background: "#fff", color: color.ink, fontSize: font.base, fontWeight: 600, cursor: "pointer", flex: "none" }}>
           Got it
         </button>
       </div>
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(200px,1fr))", gap: 16 }}>
+      <div id="fw-tips" hidden={!open} style={{ display: open ? "grid" : "none", gridTemplateColumns: "repeat(auto-fit,minmax(200px,1fr))", gap: 16, paddingBottom: 10 }}>
         {tips.map((t) => (
           <div key={t.id} style={{ display: "flex", flexDirection: "column", gap: 6 }}>
             <div style={{ fontSize: font.base, fontWeight: 600 }}>{t.title}</div>

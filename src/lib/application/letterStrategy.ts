@@ -33,10 +33,10 @@ const SENIOR = /\b(senior|sr\.?|staff|principal|lead|head|director|vp|vice presi
 const THEME_WORDS: Partial<Record<StoryTheme, RegExp>> = {
   health: /\b(health|healthcare|patients?|care|clinical|medical|wellness|hospitals?)\b/gi,
   education: /\b(education|students?|learners?|learning|teachers?|schools?)\b/gi,
-  finance: /\b(financ\w*|banking|payments?|money|savings|invest\w*)\b/gi,
+  finance: /\b(financ\w*|banking|payments?|money|savings|invest(?:ing|ments?|ors?)?)\b/gi,
   accessibility: /\b(accessib\w*|disabilit\w*|assistive|inclusive)\b/gi,
   entertainment: /\b(entertainment|games?|gaming|music|film|streaming|media)\b/gi,
-  family: /\b(famil\w*|parents?|children|kids|caregiv\w*)\b/gi,
+  family: /\b(famil(?:y|ies)|parents?|children|kids|caregiv\w*)\b/gi,
   community: /\b(communit\w*|nonprofit|civic|neighbou?rhoods?|volunteer\w*)\b/gi,
 };
 
@@ -51,6 +51,10 @@ const NOT_THEME = [
   /\blearning\s+(?:budgets?|stipends?|allowances?)\b/gi,
   /\bcontinuous learning\b/gi,
   /\bsocial media\b/gi,
+  // "Familiarity with", "investigate", "streaming APIs" and "media queries" are tech words (#1496).
+  /\bmedia\s+quer(?:y|ies)\b/gi,
+  /\bstreaming\s+(?:data|pipelines?|apis?|analytics|systems?|jobs?|ingestion)\b/gi,
+  /\b(?:kafka|event|data|log|real-?time)\s+streaming\b/gi,
   /\b(?:paid\s+)?(?:family|parental)\s+(?:leave|planning|medical leave)\b/gi,
   /\bfamily[- ]friendly\b/gi,
   /\binvest(?:s|ing|ed)?\s+in\s+(?:our|its|your|you|their|the growth)\b/gi,

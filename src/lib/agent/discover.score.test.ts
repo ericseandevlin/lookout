@@ -71,3 +71,18 @@ describe("unscoredCount (#1456)", () => {
     expect(unscoredCount([page(1)], [{ url: page(1).url }])).toBe(0);
   });
 });
+
+describe("scoring reads the resume (#1531)", () => {
+  beforeEach(() => completeJSON.mockReset());
+  it("sends the resume along with the search profile, and asks not to contradict it", async () => {
+    completeJSON.mockResolvedValue({ finds: [] });
+    const sp = { summary: "You design web products.", targetTitles: ["Product Designer"], seniority: "Senior", industries: [], strengths: ["web"], proof: [], where: "Remote", pay: "", avoid: [], searchTerms: [] };
+    const withProfile = { ...ctx, searchProfile: sp, resume: "Shipped an iOS and Android app with 1.2 million users" } as unknown as Ctx;
+    await scorePages(withProfile, [page(1)], {} as never);
+    const call = completeJSON.mock.calls[0][0];
+    expect(call.user).toContain("<search_profile>");
+    expect(call.user).toContain("<resume>\nShipped an iOS and Android app with 1.2 million users\n</resume>");
+    expect(call.system).toContain("Never claim a gap the resume contradicts");
+    expect(call.system).toContain("No em dashes");
+  });
+});

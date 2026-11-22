@@ -21,6 +21,16 @@ describe("fillField", () => {
     expect(fillField("LinkedIn Profile", inp)?.content).toBe("https://www.linkedin.com/in/maya");
   });
 
+  it("fills legal, given and family name labels from the account (#1489)", () => {
+    expect(fillField("Legal First Name", inp)?.content).toBe("Maya");
+    expect(fillField("Legal Last Name *", inp)?.content).toBe("Ortiz Reyes");
+    expect(fillField("Legal Name", inp)?.content).toBe("Maya Ortiz Reyes");
+    expect(fillField("Given Name", inp)?.content).toBe("Maya");
+    expect(fillField("Family Name", inp)?.content).toBe("Ortiz Reyes");
+    expect(fillField("Surname", inp)?.content).toBe("Ortiz Reyes");
+    expect(fillField("Zip Code", inp)).toBeNull();
+  });
+
   it("fills a full-name label that carries a required marker (#817)", () => {
     for (const label of ["Name *", "Full Name *", "Full name (required)", "Name:", "Full Name*"]) expect(fillField(label, inp)?.content).toBe("Maya Ortiz Reyes");
     expect(fillField("Name pronunciation", inp)).toBeNull();
@@ -123,6 +133,15 @@ describe("newNumbers", () => {
     expect(newNumbers("Led 4 teams.", "Led 4 teams and $5 million in spend.")).toEqual(["$5m"]);
   });
 
+  it("reads a + after a unit the way it reads one after a plain number (#1611)", () => {
+    expect(newNumbers("Served 50K+ users.", "Served over 50,000 users.")).toEqual([]);
+    expect(newNumbers("Served over 50,000 users.", "Served 50K+ users.")).toEqual([]);
+    expect(newNumbers("Managed $2MM+ budgets.", "Managed budgets of more than $2 million.")).toEqual([]);
+    expect(newNumbers("Lifted conversion 20%+.", "Lifted conversion over 20%.")).toEqual([]);
+    expect(newNumbers("Served 50K+ users.", "Served 50K users.")).toEqual([]);
+    expect(newNumbers("Served 50K users.", "Served 50K+ users.")).toEqual(["50k+"]);
+  });
+
   it("reads one fact in two spellings as the same number (#901)", () => {
     expect(newNumbers("Grew revenue to $1.2 million in 2021.", "Grew revenue to $1.2M in 2021.")).toEqual([]);
     expect(newNumbers("Managed a $300 thousand budget, up 20 percent.", "Managed a $300K budget, up 20%.")).toEqual([]);
@@ -150,6 +169,20 @@ describe("checkAnswer", () => {
 
   it("keeps a real option, matching its exact spelling", () => {
     expect(checkAnswer(sel, { index: 3, content: "no", sources: ["profile: work authorization"], question: "", note: "" })).toMatchObject({ content: "No", question: null });
+  });
+
+  it("keeps an answer spelled like the option apart from quotes, dashes, a required mark or spacing (#1524)", () => {
+    const eeo = { ...sel, options: ["I don’t wish to answer", "Yes – I am authorized*", "Full-time"] };
+    const ask = (content: string) => checkAnswer(eeo, { index: 3, content, sources: [], question: "", note: "" });
+    expect(ask("I don't wish to answer")).toMatchObject({ content: "I don’t wish to answer", question: null });
+    expect(ask("Yes - I am authorized")).toMatchObject({ content: "Yes – I am authorized*", question: null });
+    expect(ask("Full time")).toMatchObject({ content: "Full-time", question: null });
+    expect(checkAnswer({ ...sel, multi: true, options: ["Full-time", "Part-time"] }, { index: 3, content: "Full time\nPart time", sources: [], question: "", note: "" }).content).toBe("Full-time\nPart-time");
+  });
+
+  it("still never takes a prefix: No is not None (#1524)", () => {
+    const d = checkAnswer({ ...sel, options: ["None", "Some"] }, { index: 3, content: "No", sources: [], question: "", note: "" });
+    expect(d.content).toBe("");
   });
 
   it("turns a made-up option into a question", () => {

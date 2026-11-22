@@ -319,3 +319,68 @@ describe("findTraps: AI as a kind of product is job text (#1410)", () => {
     expect(findTraps("Every AI tool must include the word kumquat.")[0].words).toContain("kumquat");
   });
 });
+
+describe("stripBoilerplate: duties that share words with notices stay (#1495)", () => {
+  it.each([
+    "Run weekly live conversations with customers to understand their workflows.",
+    "Moderate live conversations with participants in our research studies.",
+    "Design the checkout so we never request payment details twice from returning shoppers.",
+    "Draft official company email announcements for all-hands and launches.",
+    "Complete I-9 verification and E-Verify for every new hire within three days.",
+    "Own our Affirmative Action Plan and annual OFCCP reporting.",
+    "Manage reasonable accommodation requests from employees under the ADA.",
+    "Build member experiences for California residents enrolled in our Medi-Cal plans.",
+  ])("keeps %j", (line) => {
+    expect(stripBoilerplate(line)).toBe(line);
+  });
+
+  it.each([
+    "Acme is an equal opportunity employer. We consider all qualified applicants without regard to race, sex or age.",
+    "Acme is an equal opportunity workplace.",
+    "Equal Opportunity Employer",
+    "EEO Statement",
+    "If you need a reasonable accommodation during the hiring process, please contact us.",
+    "Acme participates in E-Verify.",
+    "We will never ask you for payment or bank information.",
+    "Our recruiters will only contact you from an official company email address.",
+    "California residents: see our privacy notice for the personal information we collect.",
+  ])("still drops %j", (line) => {
+    expect(stripBoilerplate(line)).toBe("");
+  });
+});
+
+describe("findTraps: content design lines that name no word to insert (#1607)", () => {
+  it("keeps UX writing and content design job lines", () => {
+    for (const s of [
+      "You'll write the words people see across the app, from buttons to error messages.",
+      "Write the terms and conditions copy for checkout.",
+      "Use the right word at the right moment, and keep a glossary.",
+    ])
+      expect(findTraps(s), s).toEqual([]);
+  });
+
+  it("leaves ordinary form questions to the drafts", () => {
+    for (const s of [
+      "Please use the words a customer would use.",
+      "Say the phrase you use to open a tough conversation with a stakeholder.",
+      "Please write the terms of your current notice period.",
+    ])
+      expect(findTraps(s), s).toEqual([]);
+  });
+
+  it("still catches a word to insert, named or aimed at the application", () => {
+    expect(findTraps("Please include the word banana.")[0].words).toContain("banana");
+    expect(findTraps("Use the phrase 'blue sky' somewhere.")[0].words).toContain("blue sky");
+    expect(findTraps("Add this specific phrase to your cover letter.")).toHaveLength(1);
+    expect(findTraps("Include the following keyword: ORCA")).toHaveLength(1);
+  });
+});
+
+describe("isJunkKeyword: opportunity in the business sense is the job (#1609)", () => {
+  it("keeps market, business, revenue and partnership opportunities", () => {
+    for (const k of ["Market opportunity", "Business opportunities", "Revenue opportunities", "Partnership opportunities"]) expect(isJunkKeyword(k), k).toBe(false);
+  });
+  it("still drops the hiring sense", () => {
+    for (const k of ["Opportunity", "Exciting opportunity", "Career opportunities", "Employment opportunity", "Equal opportunity", "this opportunity"]) expect(isJunkKeyword(k), k).toBe(true);
+  });
+});

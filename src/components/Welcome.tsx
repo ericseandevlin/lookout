@@ -16,10 +16,12 @@ const chip = (on: boolean): React.CSSProperties => ({
 export function Welcome({ initialName, kind = "job" }: { initialName: string; kind?: string }) {
   const [name, setName] = useState(initialName);
   const [salary, setSalary] = useState<string | null>(null);
-  const [mode, setMode] = useState<string | null>(null);
+  const [modes, setModes] = useState<string[]>([]);
   const [agree, setAgree] = useState(false);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
+
+  const missing = !name.trim() ? "Add your name to continue." : !agree ? "Tick the box above to continue." : null;
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -28,7 +30,7 @@ export function Welcome({ initialName, kind = "job" }: { initialName: string; ki
     const res = await fetch("/api/welcome", {
       method: "POST",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify({ name, salary: salary ?? undefined, mode: mode ?? undefined, agree }),
+      body: JSON.stringify({ name, salary: salary ?? undefined, modes, agree }),
     }).catch(() => null);
     if (res?.ok) return window.location.replace(new URL("/profile", window.location.origin));
     setErr("Couldn't save that. Try again.");
@@ -39,7 +41,7 @@ export function Welcome({ initialName, kind = "job" }: { initialName: string; ki
     <AuthCard>
       <Eyebrow>Welcome</Eyebrow>
       <h1 style={h1}>Let&apos;s set up your search</h1>
-      <p style={p}>{kind === "rfp" ? "A name to start. You can change anything later on your profile." : "Three quick answers to start. You can change any of them later on your profile."}</p>
+      <p style={p}>{kind === "rfp" ? "A name to start. You can change anything later on your profile." : "Your name and two of the five questions. Change them anytime."}</p>
       <form onSubmit={submit} style={{ display: "flex", flexDirection: "column", gap: 22, marginTop: 24 }}>
         <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
           <label htmlFor="name" style={label}>Your name</label>
@@ -47,27 +49,30 @@ export function Welcome({ initialName, kind = "job" }: { initialName: string; ki
         </div>
         {kind !== "rfp" && (
         <fieldset style={{ border: 0, padding: 0, margin: 0, display: "flex", flexDirection: "column", gap: 8 }}>
-          <legend style={{ ...label, marginBottom: 8 }}>Base salary you&apos;re aiming for</legend>
+          <legend style={{ ...label, marginBottom: 8 }}>
+            <span data-tip="Roles that top out below the low end are left off.">Base salary you&apos;re aiming for</span>
+          </legend>
           <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
             {SALARY_RANGES.map((r) => (
               <button type="button" key={r.key} aria-pressed={salary === r.key} onClick={() => setSalary(salary === r.key ? null : r.key)} style={chip(salary === r.key)}>{r.label}</button>
             ))}
           </div>
-          <div style={{ fontSize: font.base, color: color.t2 }}>Roles that top out below the low end are left off.</div>
         </fieldset>
         )}
         {kind !== "rfp" && (
         <fieldset style={{ border: 0, padding: 0, margin: 0, display: "flex", flexDirection: "column", gap: 8 }}>
-          <legend style={{ ...label, marginBottom: 8 }}>{WORK_MODE_LABEL}</legend>
+          <legend style={{ ...label, marginBottom: 8 }}>{WORK_MODE_LABEL} <span style={{ textTransform: "none", letterSpacing: 0, fontWeight: 500 }}>(pick any)</span></legend>
           <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
             {WORK_MODES.map((m) => (
-              <button type="button" key={m} aria-pressed={mode === m} onClick={() => setMode(mode === m ? null : m)} style={chip(mode === m)}>{m}</button>
+              <button type="button" key={m} aria-pressed={modes.includes(m)} onClick={() => setModes(modes.includes(m) ? modes.filter((x) => x !== m) : [...modes, m])} style={chip(modes.includes(m))}>{m}</button>
             ))}
           </div>
         </fieldset>
         )}
         <ConsentCheck checked={agree} onChange={setAgree} />
-        <button type="submit" disabled={busy || !name.trim() || !agree} style={{ ...primary, opacity: name.trim() && agree ? 1 : 0.6 }}>{busy ? "Saving…" : "Continue to your profile"}</button>
+        <button type="submit" disabled={busy || !!missing} aria-describedby={missing ? "welcome-missing" : undefined} style={{ ...primary, opacity: missing ? 0.6 : 1 }}>{busy ? "Saving…" : "Continue to your profile"}</button>
+        {/* What's still missing, so a disabled button says why, to everyone and to screen readers (#1531). */}
+        {missing && <div id="welcome-missing" role="status" style={{ fontSize: font.base, color: color.t2, marginTop: -12 }}>{missing}</div>}
         {err && <div role="alert" style={{ fontSize: font.base, color: color.brick }}>{err}</div>}
       </form>
     </AuthCard>

@@ -66,8 +66,8 @@ export const job: KindConfig = {
       key: "q1",
       kind: "text",
       prompt: "What's the next role, and what would make it a real step up?",
-      helper: "Title, scope, team size, the kind of venue or company.",
-      placeholder: "e.g. Director of Events at a flagship venue, owning sales and production",
+      helper: "Title, scope, team size, the kind of company.",
+      placeholder: "e.g. A senior title at a bigger company, leading a team of 10",
       starters: {
         mode: "append",
         options: [
@@ -103,7 +103,7 @@ export const job: KindConfig = {
       kind: "text",
       prompt: "What's the win you'd lead with in an interview?",
       helper: "One result from the last few years, with a number if you have one.",
-      placeholder: "e.g. Rebuilt the banquet sales team and grew private-event revenue 40% in two years",
+      placeholder: "e.g. Led a project that grew revenue 40% in two years",
       starters: {
         mode: "insert",
         options: [
@@ -111,8 +111,8 @@ export const job: KindConfig = {
           { label: "Cut costs", text: "Cut costs by ${s:200k} a year[ by {t:renegotiating vendor contracts}]" },
           { label: "Launched something", text: "Launched {s:a new booking app}[, which reached {s:10,000 users}]" },
           { label: "Built a team", text: "Built and led a team of {n:8}[ that {t:shipped the new design system}]" },
-          { label: "Turned it around", text: "Took {s:the venue} from {s:a loss} to {s:a profit}[ by {t:cutting slow menus}]" },
-          { label: "Landed a big client", text: "Won {s:a national hotel group}[, a ${s:2M} account,][ by {t:pitching a custom package}]" },
+          { label: "Turned it around", text: "Took {s:the business} from {s:a loss} to {s:a profit}[ by {t:cutting what didn't sell}]" },
+          { label: "Landed a big client", text: "Won {s:a national client}[, a ${s:2M} account,][ by {t:pitching a custom package}]" },
         ],
       },
     },
@@ -287,10 +287,21 @@ const periods = (unit: string) => (/^(bi|every)/.test(unit) ? 26 : /^(semi|twice
  * rate is turned into a year ("$85/hr" is $176,800), and "6 figures" is not a number to filter on (#941). So is a day
  * rate, biweekly or semimonthly pay; a rate per anything else ("per project") is unread (#982).
  */
+// A number that is part of a label isn't pay: "W2 $90/hr", "W-2 only", "L6 $200k", "Senior (IC4) 180k", "Level 5, $180k"
+// (#1562). "USD 150,000" and "US$150k" are still amounts.
+const NOT_PAY = /(?:\b(?!usd?\b)[a-z]{1,3}-?|\b(?:level|lvl|grade|band|tier|step)\s*)$/;
+const labelNumber = (a: RegExpMatchArray, rest: string) =>
+  a[1] === "1099" ||
+  (/^(401|403|457)$/.test(a[1]) && (/^[kb]$/.test(a[2] ?? "") || /^\s*\(\s*[kb]\s*\)/.test(rest))) ||
+  (/^(19|20)\d{2}$/.test(a[1]) && !a[2] && !PER_UNIT.test(rest));
 export function parseMoney(v: unknown): number | null {
   const s = str(v).toLowerCase().replace(/[,$]/g, "").replace(/(\d)\s+(?=\d{3}\b)/g, "$1");
   if (!s || /[€£¥₹]|\b(eur|euros?|gbp|pounds?|inr|jpy)\b/.test(s) || /\bfigures?\b/.test(s)) return null;
-  const m = /(\d+(?:\.\d+)?)(?![\d.])\s*(k|mm|mil|million|m|bn|billion|b)?s?(?![a-z])/.exec(s);
+  const AMOUNT = /(\d+(?:\.\d+)?)(?![\d.])\s*(k|mm|mil|million|m|bn|billion|b)?s?(?![a-z])/g;
+  const found = [...s.matchAll(AMOUNT)].filter((a) => !NOT_PAY.test(s.slice(0, a.index)));
+  // A tax form, a retirement plan or a year before the pay is not the pay: "1099 $90/hr", "401k + 150k", "2026 target:
+  // 150k" (#1567). Only when another number follows, so "2000/month" alone is still read.
+  const m = found.find((a) => !labelNumber(a, s.slice(a.index + a[0].length))) ?? found[0];
   if (!m) return null;
   const bare = parseFloat(m[1]);
   const rest = s.slice(m.index + m[0].length);

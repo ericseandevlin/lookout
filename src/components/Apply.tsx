@@ -1,5 +1,6 @@
 "use client";
 
+import { InterviewBanner } from "./InterviewBanner";
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import type { ApplicationStatus, AutoApplySettings } from "@/lib/db/schema";
@@ -120,6 +121,7 @@ export function ApplyPage() {
   return (
     <div className="page-pad lk-page w-page" style={{ display: "flex", flexDirection: "column", gap: 16 }}>
       <PageHead eyebrow="Beta" title="Auto-apply" intro="Lookout drafts each application for your review and only sends what you approve." />
+      <InterviewBanner />
 
       {settings && (
         <div style={{ display: "flex", alignItems: "center", gap: 14, minHeight: 64, padding: "10px 12px 10px 18px", borderRadius: 14, background: "#fff", border: `1.5px solid ${color.border}` }}>
@@ -128,6 +130,8 @@ export function ApplyPage() {
             <span style={{ fontSize: font.md, fontWeight: 700 }}>Auto-apply {on ? "on" : "off"}</span>
             {summary && <span style={{ fontSize: font.base, color: color.t2, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{summary}</span>}
           </div>
+          {/* On desktop the profile has no tab row, so the answers auto-apply reuses are linked here (#1531). */}
+          <Link href="/profile/application" className="desk-only" style={{ ...btn("text"), height: 38, display: "flex", alignItems: "center", flex: "none" }}>Application answers</Link>
           <button onClick={() => setPanel(true)} style={{ ...btn("outline"), height: 38, flex: "none" }}>Settings</button>
           <Switch on={on} onToggle={() => save({ enabled: !on })} />
         </div>
