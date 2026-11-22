@@ -66,8 +66,8 @@ export const job: KindConfig = {
       key: "q1",
       kind: "text",
       prompt: "What's the next role, and what would make it a real step up?",
-      helper: "Title, scope, team size, the kind of venue or company.",
-      placeholder: "e.g. Director of Events at a flagship venue, owning sales and production",
+      helper: "Title, scope, team size, the kind of company.",
+      placeholder: "e.g. A senior title at a bigger company, leading a team of 10",
       starters: {
         mode: "append",
         options: [
@@ -103,7 +103,7 @@ export const job: KindConfig = {
       kind: "text",
       prompt: "What's the win you'd lead with in an interview?",
       helper: "One result from the last few years, with a number if you have one.",
-      placeholder: "e.g. Rebuilt the banquet sales team and grew private-event revenue 40% in two years",
+      placeholder: "e.g. Led a project that grew revenue 40% in two years",
       starters: {
         mode: "insert",
         options: [
@@ -111,8 +111,8 @@ export const job: KindConfig = {
           { label: "Cut costs", text: "Cut costs by ${s:200k} a year[ by {t:renegotiating vendor contracts}]" },
           { label: "Launched something", text: "Launched {s:a new booking app}[, which reached {s:10,000 users}]" },
           { label: "Built a team", text: "Built and led a team of {n:8}[ that {t:shipped the new design system}]" },
-          { label: "Turned it around", text: "Took {s:the venue} from {s:a loss} to {s:a profit}[ by {t:cutting slow menus}]" },
-          { label: "Landed a big client", text: "Won {s:a national hotel group}[, a ${s:2M} account,][ by {t:pitching a custom package}]" },
+          { label: "Turned it around", text: "Took {s:the business} from {s:a loss} to {s:a profit}[ by {t:cutting what didn't sell}]" },
+          { label: "Landed a big client", text: "Won {s:a national client}[, a ${s:2M} account,][ by {t:pitching a custom package}]" },
         ],
       },
     },
