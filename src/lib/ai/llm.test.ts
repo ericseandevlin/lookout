@@ -140,7 +140,7 @@ describe("the writing model (#1532)", () => {
   };
 
   it("writes what people read: resumes, letters, answers, outreach and the interview", async () => {
-    for (const name of ["apply-resume", "master-resume", "apply-letter", "apply-answers", "apply-outreach", "apply-revise", "apply-recruiter", "interview-turn", "interview-keyword-groups", "interview-keyword-answer"]) {
+    for (const name of ["apply-resume", "master-resume", "apply-letter", "apply-answers", "apply-outreach", "apply-revise", "apply-recruiter", "interview-turn"]) {
       const { body, usd } = await call(name, writing);
       expect(body.model).toBe("w");
       // Charged at the writing model's own prices, with its own output format.

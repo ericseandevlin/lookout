@@ -51,8 +51,6 @@ export const WRITING_CALLS = new Set([
   "apply-revise",
   "apply-recruiter",
   "interview-turn",
-  "interview-keyword-groups",
-  "interview-keyword-answer",
 ]);
 
 /** The config one call runs on: the writing model for a writing call, when one is set, priced at its own rates. */
