@@ -534,3 +534,26 @@ describe("duties about a 404 screen or an expired posting (#1516)", () => {
     expect(classifyPage(200, text).state).toBe("gone");
   });
 });
+
+describe("classifyPage: 'for this job posting' and 'every job posting' are not the posting closing (#1569)", () => {
+  const page = (line: string) => `TITLE: Designer - Acme\n\nTEXT:\nAcme builds tools for teams.\n${line}\nWhat you'll do\nDesign things.`;
+  it.each([
+    "Visa sponsorship for this job posting is no longer available.",
+    "Relocation support for this job opening is no longer available.",
+    "Visa sponsorship for the role posting is no longer available.",
+    "Make sure every job posting is closed in Greenhouse and the hiring team is told.",
+    "Confirm each job opening has been filled before the quarter ends.",
+  ])("keeps %j open", (line) => {
+    expect(classifyPage(200, page(line)).state).toBe("open");
+  });
+
+  it("still reads the posting's own two-noun closed line as gone", () => {
+    for (const line of [
+      "This job posting is no longer available.",
+      "This job opening is closed.",
+      "This job posting has been filled.",
+      "Sorry, this job posting is no longer active.",
+    ])
+      expect(classifyPage(200, `TITLE: Acme\n\nTEXT:\n${line}`).state, line).toBe("gone");
+  });
+});
