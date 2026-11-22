@@ -24,6 +24,12 @@ describe("shortWhy (#1449)", () => {
     expect(shortWhy(input)).toBe(input);
   });
 
+  it("cuts prompt text a model ran on into", () => {
+    const leaked = 'Head of Private Events at The Linden Museum asks for galas and member events at a cultural venue. Bad: "4 of your top 5 finds ask for B2B SaaS or enterprise product experience. " Good: "4 of your top 5 finds ask for B2B SaaS. " - topic: two to five plain words naming';
+    expect(shortWhy(leaked)).toBe("Head of Private Events at The Linden Museum asks for galas and member events at a cultural venue.");
+    expect(shortWhy("2 of your top 5 finds ask for it - topic: event sales")).toBe("2 of your top 5 finds ask for it");
+  });
+
   it("never returns an empty reason", () => {
     expect(shortWhy("Nothing in your resume shows it.")).toBe("Nothing in your resume shows it.");
     expect(shortWhy("")).toBe("");

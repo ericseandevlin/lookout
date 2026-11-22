@@ -79,7 +79,12 @@ const LACKS = /\b(?:nothing|no|not|never|lacks?|lacking|missing|without|thin|sil
  * resume clearly shows it", "but your resume doesn't show it", "Nothing in your resume backs it."). Run when a reason
  * is saved and when it is shown, so reasons written before the prompt changed read short too.
  */
+// The prompt's own examples and field names, when a model runs on past the reason into them.
+const LEAK = /\s*(?:\b(?:Bad|Good):\s*["\u201c]|\s-\s(?:topic|question|why|facts|backs):)/;
+
 export function shortWhy(why: string): string {
+  const leak = why.search(LEAK);
+  if (leak > 0) why = why.slice(0, leak);
   const sentences = why.trim().match(/[^.!?]+[.!?]*/g) ?? [];
   const kept: string[] = [];
   for (const raw of sentences) {
