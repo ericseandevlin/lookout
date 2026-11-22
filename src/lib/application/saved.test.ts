@@ -81,6 +81,12 @@ describe("saved answers", () => {
     for (const a of ["12/1", "12-1", "1/15/2027", "12/1, then 2 weeks of onboarding"]) expect(isCommon("Earliest start date", a), a).toBe(false);
   });
 
+  it("keeps the age check however it is worded (#1576)", () => {
+    for (const q of ["Are you 18 or older?", "Are you over 18?", "Are you at least 18?", "Are you 18+?", "Are you 18 years of age or older?", "Are you 18 and over?"])
+      expect(isCommon(q, "Yes"), q).toBe(true);
+    expect(isCommon("Do you have 18 or more years of experience?", "Yes")).toBe(false);
+  });
+
   it("never reuses an older saved Yes about one employer (#1032)", () => {
     const old = [{ key: answerKey("Have you previously worked for this company?"), question: "Have you previously worked for this company?", answer: "Yes", updatedAt: "2026-11-01T00:00:00Z" }];
     expect(match(old, "Have you previously worked for this company?")).toBeNull();
