@@ -12,6 +12,27 @@ import { STORY_PROMPTS, STORY_THEMES, type StoryTheme } from "@/lib/application/
 
 /** /profile/application: the answers auto-apply reuses on every form (#108). */
 export function SavedAnswers() {
+  return (
+    <div className="page-pad lk-page w-page" style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+      <ProfileTabs />
+      <PageHead
+        eyebrow="Search profile"
+        title="Application answers"
+        intro="What Lookout reuses on every application: answers to questions most forms ask, experience notes behind your skills, and personal stories for cover letters. Change one here when it's no longer true, like a move or a new name."
+      />
+      <FormAnswers />
+      <ExperienceNotes />
+      <PersonalStories />
+      <EeoAnswers />
+    </div>
+  );
+}
+
+/**
+ * Answers to questions most forms ask (work authorization, ZIP code). Shown on its own page and inside What Lookout
+ * knows, so everything Lookout collected is in one place (#1531). heading: show a section title.
+ */
+export function FormAnswers({ heading }: { heading?: boolean }) {
   const [list, setList] = useState<SavedAnswer[] | null>(null);
   const [err, setErr] = useState<string | null>(null);
   const [said, setSaid] = useState("");
@@ -31,13 +52,8 @@ export function SavedAnswers() {
     }
   };
   return (
-    <div className="page-pad lk-page w-page" style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-      <ProfileTabs />
-      <PageHead
-        eyebrow="Search profile"
-        title="Application answers"
-        intro="What Lookout reuses on every application: answers to questions most forms ask, experience notes behind your skills, and personal stories for cover letters. Change one here when it's no longer true, like a move or a new name."
-      />
+    <section aria-labelledby={heading ? "form-answers" : undefined} aria-label={heading ? undefined : "Application answers"} style={{ display: "flex", flexDirection: "column", gap: 10, marginTop: heading ? 18 : 0 }}>
+      {heading && <h2 id="form-answers" style={{ margin: 0, fontSize: font["2xl"], fontWeight: 700 }}>Application answers</h2>}
       <div aria-live="polite" style={{ fontSize: font.base, color: color.t2, minHeight: 20 }}>{said}</div>
       {err && <div role="alert" style={{ fontSize: font.base, color: color.brick }}>{err}</div>}
       {list && list.length === 0 && (
@@ -52,10 +68,7 @@ export function SavedAnswers() {
           ))}
         </ul>
       )}
-      <ExperienceNotes />
-      <PersonalStories />
-      <EeoAnswers />
-    </div>
+    </section>
   );
 }
 

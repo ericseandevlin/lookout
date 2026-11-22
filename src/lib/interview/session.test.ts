@@ -21,6 +21,10 @@ const completeJSON = vi.fn(async (c: Call) => {
   return r;
 });
 vi.mock("@/lib/ai/llm", async (orig) => ({ ...(await orig<typeof import("@/lib/ai/llm")>()), completeJSON }));
+// The application's missing keywords, without seeding an application; the rest of the module is real.
+let focus: string[] = [];
+const declineKeywords = vi.fn(async (_app: string, _terms: string[]) => {});
+vi.mock("./keywords", async (orig) => ({ ...(await orig<typeof import("./keywords")>()), missingKeywords: async () => focus, declineKeywords }));
 vi.mock("@/lib/ai/runs", async (orig) => ({ ...(await orig<typeof import("@/lib/ai/runs")>()), assertBudget: async () => {} }));
 
 const { act, earlierTurns, interviewView, openInterview, EARLIER_PAGE, SITTING_GAP_MS } = await import("./session");
@@ -28,7 +32,7 @@ const { FACTS_IN_PROMPT, TOPICS_IN_PROMPT } = await import("./interviewer");
 const { LOCK } = await import("./rules");
 
 const ALL_ANSWERS: schema.ProfileAnswers = { q1: "Director of Events", floor: "140000", target: "180000", modes: ["Hybrid"], area: "New York", q4: "Grew revenue 38%", q5: "No relocation" };
-const ask = (topic: string, question = `Tell me about ${topic}.`, type: InterviewTurnOut["next"]["type"] = "new_topic"): InterviewTurnOut => ({ facts: [], next: { type, topic, question, why: "Asked by 3 of your top 5 finds.", closest: "" } });
+const ask = (topic: string, question = `Tell me about ${topic}.`, type: InterviewTurnOut["next"]["type"] = "new_topic"): InterviewTurnOut => ({ backs: [], facts: [], next: { type, topic, question, why: "Asked by 3 of your top 5 finds.", closest: "" } });
 
 let seq = 0;
 async function seedUser(answers: schema.ProfileAnswers) {
@@ -53,6 +57,8 @@ beforeEach(async () => {
   await db.delete(schema.users);
   await db.delete(schema.opportunities);
   replies = [];
+  focus = [];
+  declineKeywords.mockClear();
   completeJSON.mockClear();
   vi.spyOn(console, "error").mockImplementation(() => {});
 });
@@ -140,6 +146,7 @@ describe("gap questions (#1449)", () => {
     const v = await openInterview(user.id);
     replies = [
       {
+        backs: [],
         facts: [
           { text: "Ran a 12-dinner touring supper series", kind: "project", namesPerson: false, complaint: false, confidential: false, personal: false },
           { text: "My manager was skeptical of the series at first", kind: "background", namesPerson: true, complaint: true, confidential: false, personal: false },
@@ -161,6 +168,7 @@ describe("gap questions (#1449)", () => {
     // The follow-up's answer: the model repeats an earlier fact (differently cased); only the new one is saved.
     replies = [
       {
+        backs: [],
         facts: [
           { text: "ran a 12-dinner touring supper series.", kind: "project", namesPerson: false, complaint: false, confidential: false, personal: false },
           { text: "Owned a budget of about $240k", kind: "skill", namesPerson: false, complaint: false, confidential: false, personal: false },
@@ -224,7 +232,7 @@ describe("a long interview (#1449)", () => {
       // The newest topic, open now, with one follow-up answered.
       replies = [ask("event CRM")];
       let v = await openInterview(user.id);
-      replies = [{ facts: [], next: { type: "follow_up", topic: "event CRM", question: "Which tool?", why: "A name helps.", closest: "" } }];
+      replies = [{ backs: [], facts: [], next: { type: "follow_up", topic: "event CRM", question: "Which tool?", why: "A name helps.", closest: "" } }];
       await act(user.id, v.current!.id, "answer", "I ran the CRM for 3 venues.");
       v = await interviewView(user.id);
       replies = [ask("topic 0000")];
@@ -284,7 +292,7 @@ describe("a long interview (#1449)", () => {
     let v = await openInterview(user.id);
     expect(v.sitting.topics).toBe(4);
     expect(v.softStop).toBe(false);
-    replies = [{ facts: [], next: { type: "follow_up", topic: "event CRM", question: "Which tool?", why: "A name helps.", closest: "" } }];
+    replies = [{ backs: [], facts: [], next: { type: "follow_up", topic: "event CRM", question: "Which tool?", why: "A name helps.", closest: "" } }];
     await act(user.id, v.current!.id, "answer", "Yes.");
     v = await interviewView(user.id);
     // Five topics, but the waiting question is a follow-up: no stop in the middle of a topic.
@@ -322,7 +330,7 @@ describe("the walkthrough faults (#1531)", () => {
     const { user } = await seedUser(ALL_ANSWERS);
     await db.insert(schema.materials).values({ userId: user.id, kind: "resume", extracted: { text: "Senior Product Designer\nLed a team of 3 designers on the booking product" } });
     replies = [
-      { facts: [], next: { type: "new_topic", topic: "team size", question: "How many designers were on that booking product team?", why: "It shows scope.", closest: "Led a team of 3 designers on the booking product" } },
+      { backs: [], facts: [], next: { type: "new_topic", topic: "team size", question: "How many designers were on that booking product team?", why: "It shows scope.", closest: "Led a team of 3 designers on the booking product" } },
       ask("design systems"),
     ];
     const v = await openInterview(user.id);
@@ -333,7 +341,7 @@ describe("the walkthrough faults (#1531)", () => {
 
   it("keeps a question whose closest line is not really in the resume", async () => {
     const { user } = await seedUser(ALL_ANSWERS);
-    replies = [{ facts: [], next: { type: "new_topic", topic: "team size", question: "How many people did you manage?", why: "It shows scope.", closest: "Led a team of 3 designers" } }];
+    replies = [{ backs: [], facts: [], next: { type: "new_topic", topic: "team size", question: "How many people did you manage?", why: "It shows scope.", closest: "Led a team of 3 designers" } }];
     const v = await openInterview(user.id);
     expect(v.current?.question).toBe("How many people did you manage?");
   });
@@ -341,9 +349,9 @@ describe("the walkthrough faults (#1531)", () => {
   it("drops a reason that cites finds when there are none yet", async () => {
     const { user } = await seedUser(ALL_ANSWERS);
     await db.delete(schema.userOpportunities).where(eq(schema.userOpportunities.userId, user.id));
-    replies = [{ facts: [], next: { type: "new_topic", topic: "staff scope", question: "Have you led work across teams?", why: "Top finds ask for staff-level scope.", closest: "" } }];
+    replies = [{ backs: [], facts: [], next: { type: "new_topic", topic: "staff scope", question: "Tell me about work you led across teams.", why: "Top finds ask for staff-level scope.", closest: "" } }];
     const v = await openInterview(user.id);
-    expect(v.current?.question).toBe("Have you led work across teams?");
+    expect(v.current?.question).toBe("Tell me about work you led across teams.");
     expect(v.current?.why).toBe("");
   });
 
@@ -355,5 +363,67 @@ describe("the walkthrough faults (#1531)", () => {
     process.env.FEATURE_INTERVIEW = "on";
     const { draftableFacts } = await import("./facts");
     expect((await draftableFacts(user.id)).map((f) => f.text)).not.toContain("No relocation");
+  });
+});
+
+describe("one interview, opened from an application's keywords (#1485)", () => {
+  const APP = "00000000-0000-4000-8000-000000000001";
+
+  it("asks the missing keywords first: a waiting question on another topic gives way, and setup waits", async () => {
+    const { user } = await seedUser({ q1: "Director of Events" });
+    replies = [ask("food and beverage programs")];
+    await openInterview(user.id);
+    focus = ["run of show", "event sales"];
+    replies = [ask("run of show", "Tell me about a show you ran at Copper & Pine: how many guests, and what was your part?")];
+    const v = await openInterview(user.id, APP);
+    expect(v.current?.question).toContain("a show you ran");
+    expect((await turns(user.id)).map((t) => t.topic)).toEqual(["run of show"]);
+    expect(completeJSON.mock.calls.at(-1)![0].user).toContain("<priority_keywords from a job they are applying to; ask about these first>\n- run of show\n- event sales");
+  });
+
+  it("refuses a bare yes or no question and asks again for the story", async () => {
+    const { user } = await seedUser(ALL_ANSWERS);
+    focus = ["run of show"];
+    replies = [ask("run of show", "Have you run a show?"), ask("run of show", "Tell me about a show you ran: where, and your part.")];
+    const v = await openInterview(user.id, APP);
+    expect(v.current?.question).toBe("Tell me about a show you ran: where, and your part.");
+    expect(completeJSON.mock.calls.at(-1)![0].user).toContain('"Have you run a show?" is a yes or no question');
+  });
+
+  it("follows a bare yes with a request for the story, even when the model moves on", async () => {
+    const { user } = await seedUser(ALL_ANSWERS);
+    focus = ["run of show"];
+    replies = [ask("run of show", "Tell me about a show you ran.")];
+    let v = await openInterview(user.id, APP);
+    replies = [ask("event sales")];
+    v = await interviewView(user.id, (await act(user.id, v.current!.id, "answer", "yes", APP)).note);
+    expect(v.current).toMatchObject({ question: "Where was that, what was your part, and how big was it?", followUp: true });
+  });
+
+  it("saves the story as detailed facts, and a fact that backs a keyword becomes its experience note", async () => {
+    const { user } = await seedUser(ALL_ANSWERS);
+    focus = ["run of show", "event sales"];
+    replies = [ask("run of show", "Tell me about a show you ran.")];
+    const v = await openInterview(user.id, APP);
+    const story = "At Copper & Pine I wrote the run of show for 40 weddings a year, up to 250 guests, and ran the crew of 6.";
+    replies = [{ facts: [{ text: "Wrote the run of show for 40 weddings a year at Copper & Pine, up to 250 guests", kind: "project", namesPerson: false, complaint: false, confidential: false, personal: false }], backs: ["Run of show"], next: { type: "new_topic", topic: "event sales", question: "Tell me about events you sold.", why: "", closest: "" } }];
+    await act(user.id, v.current!.id, "answer", story, APP);
+    expect((await facts(user.id)).map((f) => f.text)).toContain("Wrote the run of show for 40 weddings a year at Copper & Pine, up to 250 guests");
+    const [p] = await db.select({ notes: schema.profiles.skillNotes }).from(schema.profiles).where(eq(schema.profiles.userId, user.id));
+    expect(p.notes).toEqual([expect.objectContaining({ skill: "run of show", story: "Wrote the run of show for 40 weddings a year at Copper & Pine, up to 250 guests" })]);
+  });
+
+  it("takes a bare no as not done: the topic closes, its keywords leave Missing, and there is no model read", async () => {
+    const { user } = await seedUser(ALL_ANSWERS);
+    focus = ["event sales"];
+    replies = [ask("event sales", "Tell me about events you sold.")];
+    const v = await openInterview(user.id, APP);
+    focus = ["event sales", "run of show"];
+    replies = [ask("run of show", "Tell me about a show you ran.")];
+    await act(user.id, v.current!.id, "answer", "No.", APP);
+    expect(declineKeywords).toHaveBeenCalledWith(APP, ["event sales"]);
+    const t = await turns(user.id);
+    expect(t.map((x) => [x.topic, x.outcome])).toEqual([["event sales", "skipped"], ["run of show", "pending"]]);
+    expect(completeJSON.mock.calls.at(-1)![0].user).not.toContain("- event sales");
   });
 });

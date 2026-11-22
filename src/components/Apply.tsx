@@ -116,26 +116,24 @@ export function ApplyPage() {
   };
 
   const on = !!settings?.enabled;
-  const summary = settings && on ? `Queues ${settings.threshold === 5 ? "level 5 matches" : "level 4 and 5 matches"} automatically, up to ${settings.dailyCap} a day` : "";
+  // The title row holds only the state, the switch and a gear (#1531). The limits live in Settings.
+  const control = settings && (
+    <div data-auto-apply style={{ display: "flex", alignItems: "center", gap: 10 }}>
+      <span style={{ fontSize: font.md, fontWeight: 700 }}>Auto-apply {on ? "on" : "off"}</span>
+      <Switch on={on} onToggle={() => save({ enabled: !on })} />
+      <button onClick={() => setPanel(true)} aria-label="Settings" title="Settings" style={{ ...btn("text"), width: 40, height: 40, padding: 0, display: "inline-flex", alignItems: "center", justifyContent: "center", flex: "none" }}>
+        <svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <circle cx="12" cy="12" r="3" />
+          <path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z" />
+        </svg>
+      </button>
+    </div>
+  );
 
   return (
     <div className="page-pad lk-page w-page" style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-      <PageHead eyebrow="Beta" title="Auto-apply" intro="Lookout drafts each application for your review and only sends what you approve." />
+      <PageHead eyebrow="Beta" title="Auto-apply" intro="Lookout drafts each application for your review and only sends what you approve." action={control} />
       <InterviewBanner />
-
-      {settings && (
-        <div style={{ display: "flex", alignItems: "center", gap: 14, minHeight: 64, padding: "10px 12px 10px 18px", borderRadius: 14, background: "#fff", border: `1.5px solid ${color.border}` }}>
-          <span aria-hidden style={{ width: 10, height: 10, borderRadius: "50%", flex: "none", background: on ? "#427D33" : "#CFC6B9" }} />
-          <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column" }}>
-            <span style={{ fontSize: font.md, fontWeight: 700 }}>Auto-apply {on ? "on" : "off"}</span>
-            {summary && <span style={{ fontSize: font.base, color: color.t2, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{summary}</span>}
-          </div>
-          {/* On desktop the profile has no tab row, so the answers auto-apply reuses are linked here (#1531). */}
-          <Link href="/profile/application" className="desk-only" style={{ ...btn("text"), height: 38, display: "flex", alignItems: "center", flex: "none" }}>Application answers</Link>
-          <button onClick={() => setPanel(true)} style={{ ...btn("outline"), height: 38, flex: "none" }}>Settings</button>
-          <Switch on={on} onToggle={() => save({ enabled: !on })} />
-        </div>
-      )}
 
       {err && <div role="alert" style={{ fontSize: font.base, color: color.brick }}>{err}</div>}
       {!apps && !err && <div role="status" style={{ fontSize: font.base, color: color.t2 }}>Loading…</div>}

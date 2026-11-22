@@ -8,10 +8,7 @@ import { topicKey } from "./rules";
  * held in code by the caller.
  */
 
-/**
- * How Lookout asks, shared by the main interview and the keyword questions on the review page (#1449, #1485): a
- * question that draws out a story with the detail drafts need later, not a yes or no.
- */
+/** How Lookout asks (#1449, #1485): a question that draws out a story with the detail drafts need later, not a yes or no. */
 export const STORY_RULES = `- Ask for a story, not a yes or no: where they did it (which role or company), what they did themselves, how big it was (people, budget, how many) and what came of it, with a number if they have one.
 - Ground it in their resume when you can: name the role, company or project where it most likely happened, inside the question itself. Never assume they did it; let them say where, or that they haven't.
 - One question, warm and easy to answer, in plain words. Two short parts are fine; never a list of five things.
@@ -27,7 +24,7 @@ export const FACT_RULES = `- Write each fact the way the person would put it on 
 - Set personal true for health, family, past pay, or political or religious beliefs.
 - If the answer has no fact (for example "not sure"), return no facts.`;
 
-export const INTERVIEW_SYSTEM = `You interview one job seeker for Lookout, an AI job search tool, the way a good recruiter would. You ask one short question at a time.
+export const INTERVIEW_SYSTEM = `You are a seasoned executive recruiter interviewing one job seeker for Lookout, an AI job search tool. You coach them to tell the stories that win interviews, and you draw out the detail they would leave out on their own. You start from something concrete in their resume: a named role, company or project. You ask one open question at a time, and you never settle for a bare "yes".
 
 Your job each turn:
 1. If the person just answered, pull out the facts in their answer.
@@ -38,6 +35,7 @@ Facts:
 ${FACT_RULES}
 
 The next question:
+- If there are priority keywords, ask about them first, in their order, before any gap from the finds. One story can cover several related keywords. For a priority question, topic is the keyword or keywords it covers, copied exactly and joined with ", ".
 - Questions come from gaps: things the person's top finds ask for that their resume and known facts don't show yet. Read the resume and the known facts first. Never ask for something they already state: if the resume says "Led a team of 3 designers", don't ask how big the team was.
 - closest: the resume line or known fact closest to your question, copied exactly. Empty if none. If it already answers your question, pick another question.
 - If there are no finds yet, gaps come from the next role they want and their resume. Then why cites that, and never mentions finds.
@@ -46,6 +44,8 @@ The next question:
   Good: "Tell me about B2B or enterprise software you've worked on: the product, your part, and how many customers used it."
 ${STORY_RULES}
 - If the newest answer is a question back to you ("why do you ask?", "what do you mean?"), it is not an answer: return no facts, and use "follow_up" on the same topic with a question that answers theirs in one short sentence, then asks the same question again. For example "Most of your top finds sell software to businesses. Have you worked on B2B or enterprise SaaS products?" This does not use up a follow-up.
+- A bare "yes" or a thin answer is not a story. Follow up and ask for it: where, their part, how big, and what came of it.
+- Never make the whole question "Have you done X?" or another yes or no question.
 - After an answer that claims something, follow up to get what a recruiter needs: their exact part (led it or was on the team), the scope (budget, team size, how many), and a number for the result. Ask only for what is still missing. Use "follow_up" and keep the same topic.
 - When the topic has their part, the scope and a number, or follow-ups left is 0, move to a new topic with "new_topic".
 - Never ask about a topic in the "never ask again" list or one already covered. Never ask about pay, health, family, age or other protected traits.
@@ -67,6 +67,7 @@ export const FactOut = z.object({
 
 export const InterviewTurnOut = z.object({
   facts: z.array(FactOut),
+  backs: z.array(z.string()).describe("Priority keywords the newest answer shows the person did themselves, copied exactly. Empty if none, or if there are no priority keywords"),
   next: z.object({
     type: z.enum(["follow_up", "new_topic", "done"]),
     topic: z.string(),
@@ -76,6 +77,18 @@ export const InterviewTurnOut = z.object({
   }),
 });
 export type InterviewTurnOut = z.infer<typeof InterviewTurnOut>;
+
+/** The follow-up after a bare yes, when the model asks none: where, what and how big (#1485). */
+export const STORY_FOLLOW_UP = "Where was that, what was your part, and how big was it?";
+
+/**
+ * A yes or no question with nothing else to it (#1485): "Have you led production for large events?". A question that
+ * goes on to ask for the story ("Have you led X? Tell me where.") is fine.
+ */
+export function isYesNoQuestion(q: string) {
+  const parts = q.trim().match(/[^.!?]+[.!?]*/g) ?? [];
+  return parts.length === 1 && /^(have|has|did|do|does|are|were|was|is|can|could|would) you\b/i.test(parts[0].trim());
+}
 
 /**
  * What one turn sends stays the same size however long the interview runs: the topic being dug into (at most
@@ -166,6 +179,8 @@ export type InterviewInput = {
   /** Set on a retry: the topic the model picked that it may not ask, and why when it is not just the topic. */
   refused?: string;
   refusedWhy?: string;
+  /** Keywords a job they are applying to asks for that their resume doesn't show yet: asked about first (#1485). */
+  priority?: string[];
 };
 
 /** Topics never to ask again: skipped or doesn't apply. */
@@ -187,5 +202,5 @@ export function interviewPrompt(inp: InterviewInput) {
         .map((t, i, all) => `Q: ${t.question}\nA${i === all.length - 1 ? " (newest: read this one)" : " (facts already saved)"}: ${t.answer ?? "(no answer)"}`)
         .join("\n")}\n</this_topic>\nFollow-ups left on this topic: ${inp.followUpsLeft}`
     : "\n\nNo answer to read this turn. Return no facts and pick the next question.";
-  return `<profile from the setup questions>\n${inp.profile || "(not given)"}\n</profile>\n\n<resume>\n${inp.resume.slice(0, 12000) || "(no resume yet)"}\n</resume>\n\n<known_facts>\n${facts.map((f) => `- ${f.text.slice(0, FACT_CHARS)}${f.shareable ? "" : " (private: understand it, never quote it)"}`).join("\n") || "(none yet)"}\n</known_facts>\n\n<top_finds the ${inp.finds.length} highest-match finds the person hasn't ruled out>\n${finds}\n</top_finds>\n\nTopics already covered: ${covered.join("; ") || "(none)"}\nNever ask again: ${closed.join("; ") || "(none)"}${inp.refused ? `\nYou picked "${inp.refused}", which is not allowed${inp.refusedWhy ? `: ${inp.refusedWhy}` : ""}. Pick another question or return "done".` : ""}${thread}`;
+  return `<profile from the setup questions>\n${inp.profile || "(not given)"}\n</profile>\n\n<resume>\n${inp.resume.slice(0, 12000) || "(no resume yet)"}\n</resume>\n\n<known_facts>\n${facts.map((f) => `- ${f.text.slice(0, FACT_CHARS)}${f.shareable ? "" : " (private: understand it, never quote it)"}`).join("\n") || "(none yet)"}\n</known_facts>\n\n<top_finds the ${inp.finds.length} highest-match finds the person hasn't ruled out>\n${finds}\n</top_finds>\n\nTopics already covered: ${covered.join("; ") || "(none)"}\nNever ask again: ${closed.join("; ") || "(none)"}${inp.priority?.length ? `\n\n<priority_keywords from a job they are applying to; ask about these first>\n${inp.priority.map((t) => `- ${t}`).join("\n")}\n</priority_keywords>` : ""}${inp.refused ? `\nYou picked "${inp.refused}", which is not allowed${inp.refusedWhy ? `: ${inp.refusedWhy}` : ""}. Pick another question or return "done".` : ""}${thread}`;
 }

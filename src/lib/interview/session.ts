@@ -9,13 +9,15 @@ import { masterForDrafts } from "@/lib/application/masterCheck";
 import { kindOf } from "@/lib/kinds";
 import { getActiveSearch } from "@/lib/searches";
 import type { FactKind, TurnOutcome } from "@/lib/db/schema";
-import { closedTopics, FACTS_IN_PROMPT, INTERVIEW_SYSTEM, interviewPrompt, asksWhatIsKnown, InterviewTurnOut, plainQuestion, shortWhy, type InterviewInput } from "./interviewer";
-import { factKey, isQuestionBack, lockReason, topicKey } from "./rules";
+import { closedTopics, FACTS_IN_PROMPT, INTERVIEW_SYSTEM, interviewPrompt, asksWhatIsKnown, InterviewTurnOut, isYesNoQuestion, plainQuestion, shortWhy, STORY_FOLLOW_UP, type InterviewInput } from "./interviewer";
+import { backKeywords, declineKeywords, missingKeywords, termsOf } from "./keywords";
+import { factKey, isBareNo, isBareYes, isQuestionBack, lockReason, topicKey } from "./rules";
 import { isAnswered, readSetupAnswer, setupFact, setupQuestionText, SETUP_WHY } from "./setup";
 
 /**
  * The interview's flow (#1449): one pending question at a time. The first turns are the setup questions the search
  * still lacks; after that, each question comes from a gap in the person's top finds. Skip closes a topic for good.
+ * Opened from an application ("Interview me", #1485), its missing keywords come first, before setup and finds.
  * Rows from before #1449's single Skip may say not_applicable; they read and close topics the same way.
  */
 
@@ -137,7 +139,7 @@ const addUsd = (u: Usage) => (u.usd ? u.usd.toFixed(4) : undefined);
  * One interviewer step: read the last answer (if any) for facts, then pick the next question. A topic that was
  * skipped, that doesn't apply, or (for a new topic) that was already covered is refused in code and asked for once more.
  */
-async function interviewStep(userId: string, answered: { turn: Turn; root: Turn; thread: { question: string; answer: string | null }[] } | null) {
+async function interviewStep(userId: string, answered: { turn: Turn; root: Turn; thread: { question: string; answer: string | null }[] } | null, focus: string[] = []) {
   await assertBudget(userId);
   traceAs("interview", userId, answered?.root.id ?? userId);
   const ctx = await context(userId);
@@ -147,8 +149,10 @@ async function interviewStep(userId: string, answered: { turn: Turn; root: Turn;
   const followUpsLeft = answered ? Math.max(askedBack ? 1 : 0, MAX_FOLLOW_UPS - (answered.thread.length - 1)) : 0;
   const closed = closedTopics(ctx.past);
   const covered = new Set(ctx.past.filter((p) => p.outcome === "answered").map((p) => topicKey(p.topic)));
+  // Keywords already asked about, skipped or answered, aren't asked first again.
+  const priority = focus.filter((t) => ![...closed, ...covered].some((k) => k.includes(topicKey(t))));
   const ask = (refused?: string, refusedWhy?: string) =>
-    completeJSON({ name: "interview-turn", schema: InterviewTurnOut, system: INTERVIEW_SYSTEM, user: interviewPrompt({ ...ctx, thread: answered?.thread, followUpsLeft, refused, refusedWhy }), maxTokens: 2000, usage });
+    completeJSON({ name: "interview-turn", schema: InterviewTurnOut, system: INTERVIEW_SYSTEM, user: interviewPrompt({ ...ctx, thread: answered?.thread, followUpsLeft, refused, refusedWhy, priority }), maxTokens: 2000, usage });
   // What the person already told Lookout: a question must not ask for it again (#1531).
   const known = [ctx.resume, ...ctx.facts.map((f) => f.text)].join("\n");
   let out = await ask();
@@ -156,12 +160,16 @@ async function interviewStep(userId: string, answered: { turn: Turn; root: Turn;
   if (answered) {
     // A follow-up shows the model the earlier answers too; a fact it says again is not saved twice.
     const seen = new Set((await db.select({ text: schema.profileFacts.text }).from(schema.profileFacts).where(eq(schema.profileFacts.userId, userId))).map((f) => factKey(f.text)));
+    const shareable: string[] = [];
     for (const f of out.facts) {
       const key = factKey(f.text);
       if (!key || seen.has(key)) continue;
       seen.add(key);
-      await addFact(userId, { text: f.text.trim(), kind: f.kind, source: "interview", quote: answered.turn.answer ?? "", turnId: answered.turn.id, flags: f });
+      if (await addFact(userId, { text: f.text.trim(), kind: f.kind, source: "interview", quote: answered.turn.answer ?? "", turnId: answered.turn.id, flags: f })) shareable.push(f.text.trim());
     }
+    // A keyword is backed when a fact the person may use in writing shows they did it; a private one stays background.
+    const backed = focus.filter((t) => (out.backs ?? []).some((b) => topicKey(b) === topicKey(t)));
+    await backKeywords(userId, backed, shareable);
   }
   const rootKey = answered ? topicKey(answered.root.topic) : "";
   const allowed = (n: InterviewTurnOut["next"]) => {
@@ -169,16 +177,25 @@ async function interviewStep(userId: string, answered: { turn: Turn; root: Turn;
     const k = topicKey(n.topic);
     if (closed.has(k)) return false;
     if (asksWhatIsKnown(n.question, n.closest ?? "", known)) return false;
+    // "Have you done X?" alone gets a yes, not a story.
+    if (isYesNoQuestion(n.question)) return false;
     // A follow-up stays on its topic; a new topic must be new.
     if (n.type === "follow_up") return followUpsLeft > 0 && !!answered;
     return k !== rootKey && !covered.has(k);
   };
   if (!allowed(out.next)) {
     const n0 = out.next;
-    const retry = await ask(n0.topic, asksWhatIsKnown(n0.question, n0.closest ?? "", known) ? `they already told you: "${n0.closest.trim()}"` : undefined);
-    out = { facts: out.facts, next: allowed(retry.next) ? retry.next : { type: "done", topic: "", question: "", why: "", closest: "" } };
+    const why = asksWhatIsKnown(n0.question, n0.closest ?? "", known)
+      ? `they already told you: "${n0.closest.trim()}"`
+      : isYesNoQuestion(n0.question)
+        ? `"${n0.question.trim()}" is a yes or no question. The topic is fine: ask it again as an open question for the story`
+        : undefined;
+    const retry = await ask(n0.topic, why);
+    out = { facts: out.facts, backs: out.backs, next: allowed(retry.next) ? retry.next : { type: "done", topic: "", question: "", why: "", closest: "" } };
   }
   if (answered) await db.update(schema.interviewTurns).set({ costUsd: addUsd(usage) ?? answered.turn.costUsd }).where(eq(schema.interviewTurns.id, answered.turn.id));
+  // A bare yes backs nothing: Lookout always asks for the story, even when the model moved on (#1485).
+  if (answered && isBareYes(answered.turn.answer ?? "") && followUpsLeft > 0 && out.next.type !== "follow_up") out.next = { type: "follow_up", topic: answered.root.topic, question: STORY_FOLLOW_UP, why: "", closest: "" };
   const n = out.next;
   if (n.type === "done" || !n.question.trim()) return { note: DONE_NOTE };
   const follow = n.type === "follow_up" && answered;
@@ -196,9 +213,9 @@ async function interviewStep(userId: string, answered: { turn: Turn; root: Turn;
 }
 
 /** Model trouble never loses the answer: it's saved first, and the person sees what went wrong. */
-async function safeStep(userId: string, answered: Parameters<typeof interviewStep>[1]) {
+async function safeStep(userId: string, answered: Parameters<typeof interviewStep>[1], focus: string[] = []) {
   try {
-    return await interviewStep(userId, answered);
+    return await interviewStep(userId, answered, focus);
   } catch (e) {
     if (e instanceof BudgetError) return { note: e.message };
     if (e instanceof AiConfigError) return { note: "Lookout's AI isn't set up yet, so it can't pick the next question. An admin can set it up under Admin > AI settings." };
@@ -207,16 +224,24 @@ async function safeStep(userId: string, answered: Parameters<typeof interviewSte
   }
 }
 
-/** Make sure there is a question waiting, unless there is nothing left to ask. */
-async function ensureNext(userId: string): Promise<{ note: string | null }> {
-  const [waiting] = await db.select({ id: T.id }).from(T).where(and(eq(T.userId, userId), eq(T.outcome, "pending"))).limit(1);
-  if (waiting) return { note: null };
-  const q = await nextSetup(userId);
+/**
+ * Make sure there is a question waiting, unless there is nothing left to ask. With focus keywords, a waiting question
+ * on another topic gives way, so a keyword is the first thing asked; setup questions wait until after.
+ */
+async function ensureNext(userId: string, focus: string[] = []): Promise<{ note: string | null }> {
+  const [waiting] = await db.select({ id: T.id, topic: T.topic }).from(T).where(and(eq(T.userId, userId), eq(T.outcome, "pending"))).limit(1);
+  if (waiting && (!focus.length || termsOf(waiting.topic, focus).length)) return { note: null };
+  if (waiting) {
+    // Never answered, so nothing hangs off it.
+    await db.delete(T).where(eq(T.id, waiting.id));
+    return safeStep(userId, null, focus);
+  }
+  const q = !focus.length && (await nextSetup(userId));
   if (q) {
     await db.insert(schema.interviewTurns).values({ userId, topic: `setup: ${q.key}`, question: setupQuestionText(q), why: SETUP_WHY, setupKey: q.key });
     return { note: null };
   }
-  return safeStep(userId, null);
+  return safeStep(userId, null, focus);
 }
 
 /**
@@ -246,7 +271,7 @@ async function saveSetupAnswer(userId: string, turn: Turn, text: string) {
 export type Action = "answer" | "skip";
 
 /** Answer or skip the waiting question, then line up the next one. */
-export async function act(userId: string, turnId: string, action: Action, text = "") {
+export async function act(userId: string, turnId: string, action: Action, text = "", appId?: string) {
   const outcome: TurnOutcome = action === "answer" ? "answered" : "skipped";
   if (action === "answer" && !text.trim()) throw new HttpError(400, "Type an answer first, or press Skip.");
   // Only a waiting question can be answered, so a double press doesn't save twice.
@@ -256,11 +281,19 @@ export async function act(userId: string, turnId: string, action: Action, text =
     .where(and(eq(schema.interviewTurns.id, turnId), eq(schema.interviewTurns.userId, userId), eq(schema.interviewTurns.outcome, "pending")))
     .returning();
   if (!turn) throw new HttpError(409, "That question was already answered. Reload to see the next one.");
+  const focus = appId ? await missingKeywords(userId, appId) : [];
   if (turn.setupKey) {
     if (action === "answer") await saveSetupAnswer(userId, turn, text);
-    return ensureNext(userId);
+    return ensureNext(userId, focus);
   }
-  if (action !== "answer") return ensureNext(userId);
+  if (action === "answer" && isBareNo(text)) {
+    // They haven't done it: the topic closes like a skip, and its keywords leave Missing on the application (#1485).
+    await db.update(T).set({ outcome: "skipped" }).where(eq(T.id, turn.id));
+    const root = turn.parentId ? ((await db.select({ topic: T.topic }).from(T).where(eq(T.id, turn.parentId)))[0] ?? turn) : turn;
+    if (appId) await declineKeywords(appId, termsOf(root.topic, focus));
+    return ensureNext(userId, focus.filter((t) => !termsOf(root.topic, [t]).length));
+  }
+  if (action !== "answer") return ensureNext(userId, focus);
   const root = turn.parentId ? ((await db.select().from(schema.interviewTurns).where(eq(schema.interviewTurns.id, turn.parentId)))[0] ?? turn) : turn;
   const thread = (
     await db
@@ -269,7 +302,7 @@ export async function act(userId: string, turnId: string, action: Action, text =
       .where(and(eq(T.userId, userId), or(eq(T.id, root.id), eq(T.parentId, root.id))))
       .orderBy(asc(T.createdAt))
   ).map((t) => ({ question: t.question, answer: t.answer }));
-  return safeStep(userId, { turn, root, thread });
+  return safeStep(userId, { turn, root, thread }, focus);
 }
 
 export type ViewFact = { id: string; text: string; shareable: boolean; lockReason: string | null; createdAt: string };
@@ -376,9 +409,9 @@ export async function earlierTurns(userId: string, before: string | null, limit 
 }
 
 /** Opening the interview: copy setup answers in once, and have a question waiting. */
-export async function openInterview(userId: string) {
+export async function openInterview(userId: string, appId?: string) {
   await importSetupFacts(userId);
-  const { note } = await ensureNext(userId);
+  const { note } = await ensureNext(userId, appId ? await missingKeywords(userId, appId) : []);
   return interviewView(userId, note);
 }
 
