@@ -113,7 +113,7 @@ export function KeywordPanel({ d, rows, reload, locked }: Props) {
   );
 
   return (
-    <div id="keywords" style={{ scrollMarginTop: 80, ...card, display: "flex", flexDirection: "column", gap: 16 }}>
+    <div id="keywords" className="kw-panel" style={{ scrollMarginTop: 80, ...card, display: "flex", flexDirection: "column", gap: 16 }}>
       <div style={{ fontSize: font.xl, fontWeight: 700 }}>Keywords</div>
       {d.keywordsApproved && <div style={muted}>Approved. The resume below uses them.</div>}
       <div className="kw-cols">
@@ -124,7 +124,7 @@ export function KeywordPanel({ d, rows, reload, locked }: Props) {
           "Nothing missing.",
           !locked && missing.length > 0 && questions?.length !== 0 && (
             <button onClick={() => setAsking(true)} disabled={questions === null} style={{ ...btn("solid"), height: 44, fontSize: font.lg, alignSelf: "flex-start", opacity: questions === null ? 0.6 : 1 }}>
-              {questions === null ? "Getting your questions ready…" : `Answer ${plural(open, "question")} to back these`}
+              {questions === null ? "Getting questions ready…" : `Answer ${plural(open, "question")}`}
             </button>
           ),
         )}

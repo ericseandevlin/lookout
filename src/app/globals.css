@@ -185,9 +185,10 @@ a[style*="border-radius"]:active { box-shadow: inset 0 0 0 999px rgb(128 120 108
   .drawer-nav-count { color: var(--ink); text-shadow: none; }
 }
 
-/* The keyword panel (#1485): two columns, stacked on a phone with Missing first. */
+/* The keyword panel (#1485): two columns, stacked with Missing first when the panel itself is narrow. */
+.kw-panel { container-type: inline-size; }
 .kw-cols { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; align-items: start; }
-@media (max-width: 759.98px) {
+@container (max-width: 559.98px) {
   .kw-cols { grid-template-columns: 1fr; }
   .kw-cols .kw-missing { order: -1; }
 }
