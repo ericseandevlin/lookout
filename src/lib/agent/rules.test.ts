@@ -320,6 +320,13 @@ describe("no em dashes in match reasons (#1531)", () => {
 });
 
 describe("listPage: search and board pages are not jobs (#1537)", () => {
+  it("drops Wellfound role and location list pages, not its postings (#1577)", () => {
+    for (const u of ["https://wellfound.com/role/l/product-designer/new-york", "https://wellfound.com/role/r/product-designer", "https://wellfound.com/location/new-york"])
+      expect(listPage(u), u).toBe(true);
+    for (const u of ["https://wellfound.com/jobs/3123456-senior-product-designer", "https://wellfound.com/company/acme/jobs/3123456-senior-product-designer"])
+      expect(listPage(u), u).toBe(false);
+  });
+
   it("drops job board search pages, on any country site", () => {
     for (const u of [
       "https://www.glassdoor.com/Job/new-york-ny-ux-director-jobs-SRCH_IL.0,11_IC1132348_KO12,23.htm",
