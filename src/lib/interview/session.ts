@@ -40,7 +40,7 @@ export const SOFT_STOP_TOPICS = 5;
 const str = (v: unknown) => (typeof v === "string" ? v.trim() : "");
 const T = schema.interviewTurns;
 
-async function addFact(userId: string, f: { text: string; kind: FactKind; source: "interview" | "setup"; quote: string; turnId: string; setupKey?: string; flags?: Parameters<typeof lockReason>[2] }) {
+export async function addFact(userId: string, f: { text: string; kind: FactKind; source: "interview" | "setup"; quote: string; turnId: string; setupKey?: string; flags?: Parameters<typeof lockReason>[2] }) {
   const reason = lockReason(f.text, f.kind, f.flags);
   await db.insert(schema.profileFacts).values({
     userId,
@@ -53,6 +53,7 @@ async function addFact(userId: string, f: { text: string; kind: FactKind; source
     shareable: !reason,
     lockReason: reason,
   });
+  return !reason;
 }
 
 /**

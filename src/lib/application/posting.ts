@@ -65,9 +65,14 @@ const TOPIC = /scam|fraud|benefit|insurance|401\s?\(?k|\bpto\b|parental|privacy|
  * Keywords that describe the hiring process or the posting itself, not the job. With the posting, a topic word
  * still counts when the job text (boilerplate stripped) uses it.
  */
+// One generic word on its own says nothing an applicant tracking system screens for (#1485). Two words can: "design
+// tools", "craft beverages", "portfolio management" stay.
+const GENERIC =
+  /^(tools?|capabilit(y|ies)|craft|portfolio|skills?|experience|expertise|knowledge|abilit(y|ies)|work|teams?|quality|impact|excellence|passion|vision|results?|growth|success|solutions?|products?|initiatives?|process(es)?|projects?|business|environment|role|responsibilit(y|ies)|culture|values|mission|innovation|ownership|collaboration|detail|details|creativity|curiosity|drive|judgment|judgement|problems?|outcomes?|stakeholders?|customers?|users?|partners?)$/i;
+
 export const isJunkKeyword = (term: string, posting?: string) => {
   const t = term.trim();
-  if (JUNK.test(t)) return true;
+  if (JUNK.test(t) || GENERIC.test(t)) return true;
   if (!TOPIC.test(t)) return false;
   return !posting || !new RegExp(`(?<!\\w)${t.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}(?!\\w)`, "i").test(stripBoilerplate(posting));
 };
@@ -234,6 +239,28 @@ export type PostingBlock = { t: "facts"; rows: [string, string][] } | { t: "head
 
 const FACT = /^(Role|Company|Location|Work mode|Pay range on file|Title|Job Title|Reports to|Exemption Status|Employment type|Department|[A-Za-z ]*Compensation Range|PAY ON PAGE \(text\)|Pay)\s*:\s*(.+)$/i;
 const NOISE = /^(apply|back to jobs|apply now|share|save|job application for .+)$/i;
+
+/**
+ * The posting's own text (#1531): without the fact lines Lookout puts on top (Role, Company, Location, Work mode,
+ * Pay) and without the title line. Keywords come from here, so "Remote" from "Work mode: Remote" or the job title
+ * itself never count as something the posting asks for.
+ */
+export function postingBody(text: string): string {
+  let role = "";
+  const lines = text
+    .replace(/^STRUCTURED DATA:[\s\S]*?(?=^TEXT:)/m, "")
+    .split("\n")
+    .map((l) => l.trim())
+    .filter((l) => {
+      const m = l.match(FACT);
+      if (m && /^(role|title|job title)$/i.test(m[1])) role = m[2].trim().toLowerCase();
+      return l && !(m && m[2].length < 120) && !/^(TITLE:|TEXT:)/.test(l) && !NOISE.test(l);
+    });
+  return lines.filter((l) => !role || l.toLowerCase().replace(/[^a-z0-9 ]+/g, "").trim() !== role.replace(/[^a-z0-9 ]+/g, "").trim()).join("\n");
+}
+
+/** The job title from the fact lines on top, for context. */
+export const postingTitle = (text: string) => text.match(/^(?:Role|Title|Job Title)\s*:\s*(.+)$/im)?.[1].trim() ?? "";
 
 export function postingBlocks(text: string): PostingBlock[] {
   const lines = text

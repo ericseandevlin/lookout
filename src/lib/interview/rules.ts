@@ -66,3 +66,9 @@ export const isQuestionBack = (answer: string | null | undefined) => {
   const a = (answer ?? "").trim();
   return a.length > 0 && a.length <= 160 && /\?$/.test(a) && /^(why|what|how|who|which|where|when|do you|does|is|are|can|could|sorry|huh|meaning)\b/i.test(a);
 };
+
+/** "Yes" with no story: it backs nothing, so Lookout asks where and how (#1485). */
+export const isBareYes = (answer: string) => /^(yes|yeah|yep|yup|sure|definitely|absolutely|of course|correct|i have|i did|i do)\b[\s.!,]*(i have|i did)?[\s.!]*$/i.test(answer.trim());
+
+/** "No": they haven't done it, so the keyword is not relevant to them (#1485). */
+export const isBareNo = (answer: string) => /^(no|nope|nah|not really|never|i haven'?t|i have not|i didn'?t|not yet)\b[\s.!,]*$/i.test(answer.trim());

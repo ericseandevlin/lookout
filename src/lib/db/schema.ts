@@ -421,6 +421,11 @@ export type ApplicationReport = {
   keywordChoices?: { include: string[]; exclude: string[] };
   /** Keywords proposed from the posting, with the experience line the model cited (checked in code before use) (#121). */
   keywordPlan?: { term: string; cite?: string }[];
+  /**
+   * Interview questions that back the missing keywords (#1485): related keywords share one question. Done once
+   * answered or skipped; a skip means the person hasn't done it, and nothing is added.
+   */
+  keywordQuestions?: { id: string; terms: string[]; question: string; why: string; done?: "answered" | "skipped"; followUp?: string; firstTurn?: string }[];
   /** The person's one go for the final keyword list; any change to the list clears it (#121). */
   keywordsApproved?: { terms: string[]; at: string };
   /** Posting keywords and whether the master resume (before) and the ATS draft (after) carry them. */

@@ -12,7 +12,7 @@ import { card, muted, resumeText, type Detail } from "./review/shared";
 import { Checklist } from "./review/Checklist";
 import { EeoSection } from "./review/EeoSection";
 import { ItemCard } from "./review/ItemCard";
-import { KeywordReport } from "./review/KeywordReport";
+import { KeywordSection } from "./review/KeywordPanel";
 import { PostingText } from "./review/PostingText";
 import { QuestionRow } from "./review/QuestionRow";
 import { SendForMe } from "./review/SendForMe";
@@ -200,7 +200,7 @@ export function ApplicationReview({ id }: { id: string }) {
                 <section key={s.title} aria-labelledby={`sec-${s.title}`} style={{ display: "flex", flexDirection: "column", gap: 10 }}>
                   <h2 id={`sec-${s.title}`} style={{ margin: "6px 0 0", fontSize: font.xl, fontWeight: 700 }}>{s.title}</h2>
                   {s.help && !locked && <div style={{ ...muted, marginTop: -4 }}>{s.help}</div>}
-                  {s.title === "Resume" && d.keywordRows && <KeywordReport d={d} rows={d.keywordRows} reload={load} locked={locked} />}
+                  {s.title === "Resume" && d.keywordRows && <KeywordSection d={d} rows={d.keywordRows} reload={load} locked={locked} />}
                   {list.map((i) => (
                     <ItemCard key={i.id} appId={d.id} item={i} locked={locked} act={act} analysis={d.report.recruiter?.[i.id]} template={d.template} accent={d.accent} header={i.kind === "cover_letter" ? letterHeaderFrom(resumeText(d), "") : null} letter={i.kind === "cover_letter" ? d.letter : null} onTemplate={pickTemplate} onAccent={pickAccent} needsKeywords={!!d.keywordRows && !d.keywordsApproved} />
                   ))}

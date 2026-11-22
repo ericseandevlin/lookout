@@ -32,6 +32,11 @@ describe("isJunkKeyword", () => {
     for (const k of ["agentic workflows", "P&L ownership", "SQL", "AI/ML products", "product strategy", "market opportunity sizing"]) expect(isJunkKeyword(k)).toBe(false);
   });
 
+  it("drops a generic single word, keeps it inside a real skill (#1485)", () => {
+    for (const k of ["tools", "Capabilities", "craft", "portfolio", "skills", "experience", "impact", "collaboration", "stakeholders"]) expect(isJunkKeyword(k)).toBe(true);
+    for (const k of ["design tools", "craft beverages", "portfolio management", "leadership", "strategy", "Figma", "SQL", "people management"]) expect(isJunkKeyword(k)).toBe(false);
+  });
+
   it("keeps a topic word when the job itself is about it, not when only a notice says it (#509)", () => {
     expect(isJunkKeyword("fraud detection", [...fraudRole, ...boilerplate].join("\n"))).toBe(false);
     expect(isJunkKeyword("social media", "Own our social media calendar across Instagram and TikTok.")).toBe(false);
