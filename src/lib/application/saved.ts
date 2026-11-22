@@ -23,7 +23,8 @@ const START = /start date|earliest.*start|when can you start/i;
 // "2 weeks after an offer" stays true (#1079).
 // Whole month names only: "dec" must not match "decision". "May" alone is a verb too, so it needs a day or year beside it.
 const MONTH = /\b(jan(uary)?|feb(ruary)?|mar(ch)?|apr(il)?|june?|july?|aug(ust)?|sept?(ember)?|oct(ober)?|nov(ember)?|dec(ember)?)\b\.?/i;
-const DATE_FORMS = /\b\d{1,2}[/.-]\d{1,2}([/.-]\d{2,4})?\b|\b\d{4}-\d{2}-\d{2}\b|\bmay,?\s+(\d{1,2}|(19|20)\d{2})\b|\b\d{1,2}(st|nd|rd|th)?\s+(of\s+)?may\b|\b\d{1,2}(st|nd|rd|th)\b|\b(19|20)\d{2}\b/i;
+// "2-3 weeks" and "4-6 weeks after an offer" are a span, not a day and month (#1575).
+const DATE_FORMS = /\b\d{1,2}[/.-]\d{1,2}([/.-]\d{2,4})?\b(?!\s*(?:business\s+|working\s+)?(?:days?|weeks?|wks?|months?|mos?)\b)|\b\d{4}-\d{2}-\d{2}\b|\bmay,?\s+(\d{1,2}|(19|20)\d{2})\b|\b\d{1,2}(st|nd|rd|th)?\s+(of\s+)?may\b|\b\d{1,2}(st|nd|rd|th)\b|\b(19|20)\d{2}\b/i;
 const DATE = { test: (a: string) => MONTH.test(a) || DATE_FORMS.test(a) };
 
 // "How did you hear about us?" answered with a referral, a friend or a recruiter is about that company; "LinkedIn" travels (#1097).
