@@ -100,8 +100,9 @@ const SYNONYMS: Record<string, RegExp> = {
 // Options worded as a sentence, "I identify as a woman" or "I am Asian": the answer is what follows (#1432).
 const bare = (o: string) => o.replace(/^\s*i (?:(?:self-)?identify as|am)\s+(?:an?\s+)?/i, "");
 
-// "I am a veteran, but not a protected veteran", "I identify as a veteran, just not a protected veteran".
-const VETERAN_NOT_PROTECTED = /\b(am|identify as) a veteran\b.*\bnot\b.*\bprotected\b/i;
+// "I am a veteran, but not a protected veteran", "I identify as a veteran, just not a protected veteran", and the short
+// labels "Veteran, not protected" and "Non-Protected Veteran" (#1639).
+const VETERAN_NOT_PROTECTED = /\b(am|identify as) a veteran\b.*\bnot\b.*\bprotected\b|^\s*veteran\b.*\bnot\b.*\bprotected\b|\bnon-?\s*protected\s+veteran\b/i;
 
 /** The form option for the person's answer, if one clearly matches. */
 export function matchOption(choice: string, options: string[]): string | null {
