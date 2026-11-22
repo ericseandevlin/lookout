@@ -133,6 +133,15 @@ describe("newNumbers", () => {
     expect(newNumbers("Led 4 teams.", "Led 4 teams and $5 million in spend.")).toEqual(["$5m"]);
   });
 
+  it("reads a + after a unit the way it reads one after a plain number (#1611)", () => {
+    expect(newNumbers("Served 50K+ users.", "Served over 50,000 users.")).toEqual([]);
+    expect(newNumbers("Served over 50,000 users.", "Served 50K+ users.")).toEqual([]);
+    expect(newNumbers("Managed $2MM+ budgets.", "Managed budgets of more than $2 million.")).toEqual([]);
+    expect(newNumbers("Lifted conversion 20%+.", "Lifted conversion over 20%.")).toEqual([]);
+    expect(newNumbers("Served 50K+ users.", "Served 50K users.")).toEqual([]);
+    expect(newNumbers("Served 50K users.", "Served 50K+ users.")).toEqual(["50k+"]);
+  });
+
   it("reads one fact in two spellings as the same number (#901)", () => {
     expect(newNumbers("Grew revenue to $1.2 million in 2021.", "Grew revenue to $1.2M in 2021.")).toEqual([]);
     expect(newNumbers("Managed a $300 thousand budget, up 20 percent.", "Managed a $300K budget, up 20%.")).toEqual([]);

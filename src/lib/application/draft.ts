@@ -200,7 +200,12 @@ export function newNumbers(master: string, draft: string): string[] {
   const nums = (raw: string) => {
     const s = norm(raw);
     // A digit inside a word is part of a name, not a number: B2B, HTML5, CSS3, S3 (#1393, as #1265).
-    return new Set((s.match(/(?<![a-z\d])\$?\d[\d,.]*(?:\s?(?:%|mm|k|m|b|x|\+)(?![a-z]))?/gi) ?? []).map((n) => n.toLowerCase().replace(/[,\s]/g, "").replace(/\.$/, "").replace(/mm$/, "m")));
+    // A "+" may follow a unit too: "50K+" is "50k+", the way "over 50,000" is "50,000+", so the two meet (#1611).
+    return new Set(
+      (s.match(/(?<![a-z\d])\$?\d[\d,.]*(?:\s?(?:%|mm|k|m|b|x)(?![a-z]))?(?:\s?\+)?/gi) ?? []).map((n) =>
+        n.toLowerCase().replace(/[,\s]/g, "").replace(/\.$/, "").replace(/mm(\+?)$/, "m$1"),
+      ),
+    );
   };
   // Round numbers in one spelling: "1,000,000" is "1m" and "250,000" is "250k", like "1M" and "250K" (#1148).
   const short = (n: string) => {
