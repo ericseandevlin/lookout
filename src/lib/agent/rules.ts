@@ -287,6 +287,12 @@ export function normUrl(u: string) {
 const AGGREGATOR =
   /(indeed|linkedin|glassdoor|ziprecruiter|simplyhired|monster|careerbuilder)\.[a-z]{2,3}(\.[a-z]{2})?\/(jobs(?!\/view\/)|q-|l-|m\/jobs)|glassdoor\.[a-z]{2,3}(\.[a-z]{2})?\/(job\/|.*SRCH_)|wellfound\.com\/(role|location)s?\/|\/search\?|\/jobs\/?$/i;
 
+// Other boards' list pages (#1614): Built In's /jobs/<category> on any city site, Dice's /jobs search, YC's /jobs and
+// /jobs/role/<role>, RemoteOK's /remote-<tag>-jobs and We Work Remotely's /categories/. Their postings are /job/<slug>/<id>,
+// /job-detail/<id>, /companies/<co>/jobs/<id>, /remote-jobs/<id> and /remote-jobs/<slug>.
+const BOARD_LIST =
+  /^(?:[a-z]+\.)?builtin[a-z]*\.com\/jobs(?:[/?]|$)|^dice\.com\/jobs(?:[/?]|$)|^ycombinator\.com\/jobs(?:[/?]|$)|^remoteok\.(?:com|io)\/remote-[^/?]+-jobs(?:[/?]|$)|^weworkremotely\.com\/categories\//i;
+
 // ATS hosts where every posting has an ID jobKey reads, so an address there without one is the board, not a job.
 const ATS_HOST = /(^|\.)(greenhouse\.io|lever\.co|ashbyhq\.com|myworkdayjobs\.com|myworkdaysite\.com)$/i;
 
@@ -306,7 +312,9 @@ export function listPage(u: string): boolean {
   if (AGGREGATOR.test(u)) return true;
   let host: string;
   try {
-    host = new URL(u).hostname;
+    const url = new URL(u);
+    host = url.hostname;
+    if (BOARD_LIST.test(host.replace(/^www\./i, "") + url.pathname + url.search)) return true;
   } catch {
     return false;
   }
