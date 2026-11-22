@@ -36,6 +36,7 @@ describe("the keyword panel (#1485)", () => {
     expect(html).toContain('aria-label="Not relevant: Kubernetes"');
     expect(html).not.toContain("kw-story");
     expect(html).not.toContain("Green keywords are backed");
+    expect(t).not.toContain("Nothing is added for a skip");
     // The questions load after the page does.
     expect(t).toContain("Getting your questions ready");
     expect(t).toContain("Use these keywords");

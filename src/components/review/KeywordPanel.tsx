@@ -114,35 +114,18 @@ export function KeywordPanel({ d, rows, reload, locked }: Props) {
 
   return (
     <div id="keywords" style={{ scrollMarginTop: 80, ...card, display: "flex", flexDirection: "column", gap: 16 }}>
-      <div style={{ fontSize: font.xl, fontWeight: 700 }}>Keywords for this resume</div>
-      <div style={muted}>
-        {d.keywordsApproved
-          ? `You approved these ${used.length} keywords and the resume below uses them. Change the list and you'll be asked again.`
-          : "Keywords in your resume go in. Missing ones stay out until your experience backs them. Tap a keyword to see where the posting asks for it."}
-      </div>
+      <div style={{ fontSize: font.xl, fontWeight: 700 }}>Keywords</div>
+      {d.keywordsApproved && <div style={muted}>Approved. The resume below uses them.</div>}
       <div className="kw-cols">
         {column("In your resume", backed, "None yet.")}
         {column(
           "Missing",
           missing,
           "Nothing missing.",
-          !locked && missing.length > 0 && (
-            <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-              {questions === null ? (
-                <button disabled style={{ ...btn("solid"), height: 44, fontSize: font.lg, alignSelf: "flex-start", opacity: 0.6 }}>
-                  Getting your questions ready…
-                </button>
-              ) : open > 0 ? (
-                <>
-                  <button onClick={() => setAsking(true)} style={{ ...btn("solid"), height: 44, fontSize: font.lg, alignSelf: "flex-start" }}>
-                    Answer {plural(open, "question")} to back these
-                  </button>
-                  <div style={muted}>Skip any you haven&apos;t done. Nothing is added for a skip.</div>
-                </>
-              ) : (
-                <div style={muted}>These stay out of your resume. Add the experience only if you&apos;ve done the work.</div>
-              )}
-            </div>
+          !locked && missing.length > 0 && questions?.length !== 0 && (
+            <button onClick={() => setAsking(true)} disabled={questions === null} style={{ ...btn("solid"), height: 44, fontSize: font.lg, alignSelf: "flex-start", opacity: questions === null ? 0.6 : 1 }}>
+              {questions === null ? "Getting your questions ready…" : `Answer ${plural(open, "question")} to back these`}
+            </button>
           ),
         )}
       </div>

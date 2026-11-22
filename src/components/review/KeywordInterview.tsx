@@ -67,7 +67,7 @@ export function KeywordInterview({ appId, questions, close, onChange }: { appId:
     <Modal title="Back these keywords" kicker="Interview" close={close} chat>
       <div ref={scroller} data-chat-scroll="" style={{ flex: 1, minHeight: 0, overflowY: "auto", padding: 20, display: "flex", flexDirection: "column", gap: 16 }}>
         <Said who="Lookout">
-          {plural(total, "question")} about what this role asks for. Skip any you haven&apos;t done. Nothing is added for a skip.
+          {plural(total, "quick question")}. Skip any you haven&apos;t done.
         </Said>
         {done.map((d) => (
           <div key={d.q.id} style={{ display: "flex", flexDirection: "column", gap: 10 }}>
