@@ -333,6 +333,12 @@ describe("runFill (#385)", () => {
     expect(["$120-150k", "120 to 150K", "$120 – $150k", "$1-1.5M", "$120,000 - 150k", "5 - 10 years"].map(numberAnswer)).toEqual(["120000", "120000", "120000", "1000000", "120000", "5"]);
   });
 
+  it("a k or M after a space, or spelled out, still counts (#1585)", () => {
+    expect(["$120 K", "$120 K - $150 K", "120 - 150 k", "165 thousand", "1.2 million", "$2 M"].map(numberAnswer)).toEqual(["120000", "120000", "120000", "165000", "1200000", "2000000"]);
+    // A lone lowercase m after a space reads as months or minutes, not millions.
+    expect(["5 m", "5 months", "2 Months", "3 mo"].map(numberAnswer)).toEqual(["5", "5", "2", "3"]);
+  });
+
   it("a date field gets the answer as yyyy-mm-dd, not \"12/01/2026\" (#1242)", async () => {
     const id = await seed("approved", [{ kind: "answer", prompt: "Earliest start date", content: "12/01/2026" }]);
     page = fakePage([{ kind: "control", label: "Earliest start date", type: "date" }]);
