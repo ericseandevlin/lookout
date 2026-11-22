@@ -9,7 +9,7 @@ import { sameOption } from "./fillPlan";
 // "Are you 18 or older?" and "over 18" too (#1576).
 // Short words need \b: "city" sits inside "ethnicity", which saved an ethnicity answer for the drafting model (#1059).
 const COMMON =
-  /authori[sz]ed to work|work authori[sz]ation|legally (authorized|eligible)|sponsor|\bvisa\b|\bzip\b|postal|state of residence|^state$|\bcity\b|address|phone|mobile|country|relocat|notice period|start date|earliest.*start|when can you start|previously (worked|employed)|ever (been )?employed by|criminal|background check|\bdrug|18 years|\bage of\b|\b(over|at least) 18\b|\b18 (or|and) (older|over|above)\b|\b18\+|security clearance|how did you hear|referr|pronoun|preferred (first )?name/i;
+  /authori[sz]ed to work|work authori[sz]ation|legally (authorized|eligible)|sponsor|\bvisa\b|\bzip\b|postal|state of residence|^state$|\bcity\b|address|phone|mobile|country|relocat|notice period|start date|earliest.*start|when can you start|availab(le|ility) to start|previously (worked|employed)|ever (been )?employed by|criminal|background check|\bdrug|18 years|\bage of\b|\b(over|at least) 18\b|\b18 (or|and) (older|over|above)\b|\b18\+|security clearance|how did you hear|referr|pronoun|preferred (first )?name/i;
 // Never kept: salary and essays change per role; commute and office questions depend on where each job is.
 // "years of" is experience, not "18 years of age" (#1059). "Expected" is the pay ask, not an expected start or notice period (#1595).
 const NEVER = /salary|compensation|pay|expected(?!\s+(start|notice|availability))|why|describe|tell us|cover letter|portfolio|years of(?! age)|commut|in.?office|hybrid|remote|location (listed|of the)|this (role|position|location)/i;
@@ -19,7 +19,8 @@ const EEO = /ethnic|\brace\b|racial|hispanic|latin[oax]|gender|\bsex\b|sexual or
 // Questions about one employer: a No is true almost everywhere, but a Yes or a referrer's name is about that company only.
 // \b: "referr" sits inside "preferred", which made every preferred name a referrer's (#1048).
 const ONE_EMPLOYER = /previously (worked|employed)|ever (been )?employed by|worked (here|for us)|\breferr/i;
-const START = /start date|earliest.*start|when can you start/i;
+// "When would you be available to start?" and "availability to start" too (#1596).
+const START = /start date|earliest.*start|when can you start|availab(le|ility) to start/i;
 // A calendar date ("12/1", "2026-12-01", "Dec 1", "June 1st", "1st December", "January 2027") passes;
 // "2 weeks after an offer" stays true (#1079).
 // Whole month names only: "dec" must not match "decision". "May" alone is a verb too, so it needs a day or year beside it.
