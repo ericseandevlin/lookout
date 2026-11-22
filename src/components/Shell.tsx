@@ -56,9 +56,6 @@ export function Shell({ children }: { children: React.ReactNode }) {
     { href: "/profile/materials", label: "Resume and materials", done: state.materials.resume?.status === "done", on: path.startsWith("/profile/materials") },
     { href: "/profile/sees", label: "What Lookout sees", on: path.startsWith("/profile/sees") },
   ];
-  // Auto-apply beta: its answers page, here too now that the profile's tab row is phone only (#1531).
-  if (state.user.autoApply) subpages.push({ href: "/profile/application", label: "Application answers", on: path.startsWith("/profile/application") });
-
   const profileTodo = subpages.some((p) => p.done === false);
 
   return (
