@@ -574,3 +574,19 @@ describe("classifyPage: a job no longer available to some people is still open (
       expect(classifyPage(200, `Senior Designer\n${t}`).state, t).toBe("gone");
   });
 });
+
+describe("classifyPage: a duty about a closed-job screen is not the posting closing (#1591)", () => {
+  it("keeps a job-board posting that describes such screens", () => {
+    for (const t of [
+      "Redesign the page that tells seekers this job has expired.",
+      "Make sure a listing is no longer live once the role is filled, and tell candidates.",
+      "You'll own the page where a job posting has expired and help users renew it.",
+      "Build the banner that shows this position is no longer available, with similar roles below.",
+    ])
+      expect(classifyPage(200, `Product Designer, Jobs\n${t}`).state, t).toBe("open");
+  });
+  it("still closes the page's own message", () => {
+    for (const t of ["This job has expired.", "This position is no longer available.", "Sorry, this job is closed.", "We're sorry, this listing is no longer active."])
+      expect(classifyPage(200, `Product Designer\n${t}`).state, t).toBe("gone");
+  });
+});

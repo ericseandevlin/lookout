@@ -107,9 +107,16 @@ const CONDITION = /\b(until|till|til|as soon as|once(?! again\b)|when|whenever|i
 // count only in the clause right before the phrase (#1006).
 const NEAR_CONDITION = /\b(after|before)\b/i;
 
+// A closed phrase someone reports is a duty about such a screen: "the page that tells seekers this job has expired", "the
+// page where a job posting has expired" (#1591). Checked in the clause right before the phrase.
+const REPORTED = /\b(tells?|telling|told|says|saying|shows|showing|displays|displaying|warns?|warning|notif(?:y|ies|ying)|explains?|lets? (?:\w+ ){1,2}know|where)\b/i;
+// A condition right after the phrase makes it a rule about other postings: "a listing is no longer live once the role is
+// filled" (#1591).
+const THEN_CONDITION = /^\s*(?:once|when|whenever|after|until|till|if|as soon as)\b/i;
+
 const lastOf = (s: string, marks: string[]) => Math.max(...marks.map((c) => s.lastIndexOf(c)));
 
-/** A closed phrase counts unless it is led into with a condition (#980). */
+/** A closed phrase counts unless it is led into with a condition (#980), reported, or followed by a condition (#1591). */
 function saysClosed(r: RegExp, text: string) {
   for (const m of text.matchAll(new RegExp(r.source, r.flags.includes("g") ? r.flags : `${r.flags}g`))) {
     // A match can start on the separator before the phrase ("\nNo longer available"): look back from the phrase itself,
@@ -117,6 +124,7 @@ function saysClosed(r: RegExp, text: string) {
     const before = text.slice(0, m.index + (/^[.!?:;\n\s]*/.exec(m[0])?.[0].length ?? 0));
     const sentence = before.slice(lastOf(before, [".", "!", "?", "\n", ";"]) + 1);
     const clause = sentence.slice(lastOf(sentence, [",", ":"]) + 1);
+    if (REPORTED.test(clause) || THEN_CONDITION.test(text.slice(m.index + m[0].length))) continue;
     if (!CONDITION.test(sentence) && !NEAR_CONDITION.test(clause)) return true;
   }
   return false;
