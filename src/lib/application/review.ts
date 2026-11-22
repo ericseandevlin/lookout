@@ -23,7 +23,7 @@ import { answerKey } from "./saved";
 import { canAutoSubmit } from "./submit";
 import { submitMode } from "./submitMode";
 import { approvedFor, keywordPicks, keywordRows } from "./evidence";
-import { suggestStrategy } from "./letterStrategy";
+import { letterButtons, suggestStrategy } from "./letterStrategy";
 import { finishAnalysis, honestyFindings, RECRUITER_SYSTEM, RecruiterDraft, recruiterChecks, recruiterPrompt } from "./recruiter";
 import { addUsd, patchReport } from "./reportStore";
 import { autoApproveField, optionAnswerAllowed, settledStatus, submitClicked } from "./flowRules";
@@ -78,11 +78,11 @@ async function keywordDetail(userId: string, report: ApplicationReport, posting:
   return { keywordRows: rows, keywordsApproved: approvedFor(report, rows), keywordPicks: keywordPicks(rows, posting, title) };
 }
 
-/** The cover letter's strategy and Lookout's pick for this role (#738). */
-async function letterDetail(userId: string, report: ApplicationReport, posting: { title: string; text: string }) {
+/** Lookout's pick for this role (#738), and each cover letter's strategy and stored letters (#1484). */
+async function letterDetail(userId: string, report: ApplicationReport, posting: { title: string; text: string }, itemIds: string[]) {
   const [p] = await db.select({ stories: schema.profiles.personalStories }).from(schema.profiles).where(eq(schema.profiles.userId, userId));
   const s = suggestStrategy(posting, p?.stories ?? []);
-  return { strategy: report.letterStrategy ?? null, suggested: s.strategy, why: s.why };
+  return { suggested: s.strategy, why: s.why, items: Object.fromEntries(itemIds.map((id) => [id, letterButtons(report.letters?.[id], report.letterStrategy ?? null)])) };
 }
 
 export async function getApplicationDetail(userId: string, id: string) {
@@ -118,9 +118,9 @@ export async function getApplicationDetail(userId: string, id: string) {
     status: a.status,
     ats: a.ats,
     route: a.route,
-    report: { ...a.report, postingText: undefined },
+    report: { ...a.report, postingText: undefined, letters: undefined },
     ...(await keywordDetail(userId, a.report, postingText, o?.title ?? "")),
-    letter: items.some((i) => i.kind === "cover_letter") ? await letterDetail(userId, a.report, { title: o?.title ?? "", text: postingText }) : null,
+    letter: items.some((i) => i.kind === "cover_letter") ? await letterDetail(userId, a.report, { title: o?.title ?? "", text: postingText }, items.filter((i) => i.kind === "cover_letter").map((i) => i.id)) : null,
     autoSubmit: a.route === "browser" && canAutoSubmit(),
     submit: submitMode({ ats: a.ats, url: o?.sourceUrl, autoSubmit: canAutoSubmit(), captcha: a.report.fill?.captcha }),
     submittedAt: a.submittedAt?.toISOString() ?? null,

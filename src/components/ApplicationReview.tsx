@@ -43,7 +43,9 @@ export function ApplicationReview({ id }: { id: string }) {
   }, [load]);
   const working = !!d && WORKING.includes(d.status);
   const [testing, setTesting] = useState<string | null>(null);
-  const polling = (!!d && POLL.includes(d.status)) || (!!testing && (d?.report.fill?.at ?? "none") === testing);
+  // Also while the other cover letter strategies are being written, so their buttons turn on (#1484).
+  const writingLetters = !!d?.letter && Object.values(d.letter.items).some((l) => l.writing);
+  const polling = (!!d && POLL.includes(d.status)) || (!!testing && (d?.report.fill?.at ?? "none") === testing) || writingLetters;
   useEffect(() => {
     if (!polling) return;
     const t = setInterval(load, 4000);
@@ -202,7 +204,7 @@ export function ApplicationReview({ id }: { id: string }) {
                   {s.help && !locked && <div style={{ ...muted, marginTop: -4 }}>{s.help}</div>}
                   {s.title === "Resume" && d.keywordRows && <KeywordReport d={d} rows={d.keywordRows} reload={load} locked={locked} />}
                   {list.map((i) => (
-                    <ItemCard key={i.id} appId={d.id} item={i} locked={locked} act={act} analysis={d.report.recruiter?.[i.id]} template={d.template} accent={d.accent} header={i.kind === "cover_letter" ? letterHeaderFrom(resumeText(d), "") : null} letter={i.kind === "cover_letter" ? d.letter : null} onTemplate={pickTemplate} onAccent={pickAccent} needsKeywords={!!d.keywordRows && !d.keywordsApproved} />
+                    <ItemCard key={i.id} appId={d.id} item={i} locked={locked} act={act} analysis={d.report.recruiter?.[i.id]} template={d.template} accent={d.accent} header={i.kind === "cover_letter" ? letterHeaderFrom(resumeText(d), "") : null} letter={i.kind === "cover_letter" && d.letter?.items[i.id] ? { ...d.letter.items[i.id], suggested: d.letter.suggested, why: d.letter.why } : null} onTemplate={pickTemplate} onAccent={pickAccent} needsKeywords={!!d.keywordRows && !d.keywordsApproved} />
                   ))}
                 </section>
               );

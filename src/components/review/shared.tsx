@@ -51,8 +51,8 @@ export type Detail = {
   keywordsApproved: boolean;
   /** Up to three unbacked keywords worth adding experience for (#738). */
   keywordPicks: string[];
-  /** The cover letter's strategy (null on older letters) and Lookout's pick for this role (#738). */
-  letter: { strategy: LetterStrategy | null; suggested: LetterStrategy; why: string } | null;
+  /** Lookout's pick for this role (#738), and by cover letter item: its strategy (null on older letters), the stored ones, and whether more are being written (#1484). */
+  letter: { suggested: LetterStrategy; why: string; items: Record<string, { strategy: LetterStrategy | null; ready: LetterStrategy[]; writing: boolean }> } | null;
 };
 
 export const card: React.CSSProperties = { padding: 18, borderRadius: 14, background: "#fff", border: `1.5px solid ${color.border}` };

@@ -425,6 +425,8 @@ export type ApplicationReport = {
   recruiter?: Record<string, import("@/lib/application/recruiter").RecruiterAnalysis>;
   /** The strategy the current cover letter was written with (#738). Older letters have none. */
   letterStrategy?: import("@/lib/application/letterStrategy").LetterStrategy;
+  /** Each cover letter's letters by strategy, by item id (#1484). Server only; never sent to the page. */
+  letters?: Record<string, import("@/lib/application/letterStrategy").LetterSet>;
 };
 
 export const APPLICATION_ITEM_KINDS = ["resume", "cover_letter", "answer", "portfolio", "outreach", "field", "eeo"] as const;

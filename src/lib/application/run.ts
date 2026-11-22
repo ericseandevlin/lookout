@@ -1,5 +1,6 @@
 import "server-only";
-import { and, eq, inArray, lt, max, sql } from "drizzle-orm";
+import { and, desc, eq, inArray, lt, max, sql } from "drizzle-orm";
+import { randomUUID } from "node:crypto";
 import { fetch } from "undici";
 import { db, schema } from "@/lib/db";
 import type { ApplicationReport, ApplicationStatus } from "@/lib/db/schema";
@@ -12,7 +13,7 @@ import { humanize, shapeResume } from "./resumeLayout";
 import { match, savedBlock } from "./saved";
 import { notesBlock } from "./skills";
 import { checkStory } from "./stories";
-import { STRATEGY, suggestStrategy, type LetterStrategy } from "./letterStrategy";
+import { LETTER_STRATEGIES, STRATEGY, isWriting, suggestStrategy, type LetterDraft, type LetterSet, type LetterStrategy } from "./letterStrategy";
 import { HttpError } from "@/lib/api";
 import { KEYWORD_PLAN_SYSTEM, KeywordPlanDraft, approvedBlock, approvedFor, finalTerms, keywordPlanPrompt, planFrom, unapprovedIn, type KeywordRow } from "./evidence";
 import { keywordState, lockEditable } from "./review";
@@ -199,10 +200,13 @@ export async function processApplication(id: string) {
     await setStatus(id, "drafting", report);
 
     await assertBudget(app.userId);
-    Object.assign(report, await draftAll(id, app.userId, opp, usage, scan.postingHtml));
+    const { later, ...drafted } = await draftAll(id, app.userId, opp, usage, scan.postingHtml);
+    Object.assign(report, drafted);
     report.draftedAt = new Date().toISOString();
     report.usd = (report.usd ?? 0) + usage.usd;
     await setStatus(id, "needs_review", report);
+    // The other two letter strategies, after the draft is on screen so it is no slower (#1484).
+    later();
   } catch (e) {
     report.error = e instanceof Error ? e.message : String(e);
     report.usd = (report.usd ?? 0) + usage.usd;
@@ -336,11 +340,109 @@ async function writeRedraft(appId: string, usd: number, write: (tx: Tx, status: 
   }
 }
 
-/** Write a fresh cover letter from the posting as a new version, with the current letter rules (#129). */
+/** Background letter work still running. Tests wait on it. */
+const letterWork = new Set<Promise<void>>();
+export const lettersWritten = async () => {
+  await Promise.all([...letterWork]);
+};
+
+/** One cover letter with one strategy (#738). */
+async function writeLetter(inp: DraftInputs, item: { prompt: string; required: boolean }, strategy: LetterStrategy, company: string, usage: Usage): Promise<LetterDraft> {
+  const one: DraftItem = { index: 0, kind: "cover_letter", prompt: item.prompt, required: item.required, options: null };
+  const r = await completeJSON({ name: "apply-letter", schema: AnswersDraft, system: ANSWERS_SYSTEM, user: answersPrompt({ ...inp, letterStrategy: strategy }, [one]), maxTokens: 4000, usage });
+  const raw = r.items.find((x) => x.index === 0) ?? r.items[0];
+  const d = checkStory(checkAnswer(one, raw), raw, inp.stories ?? [], company);
+  const content = humanize(d.content);
+  const hits = trapWordsIn(content, inp.traps ?? [], `${inp.resume}\n${inp.brief}`);
+  const words = content.split(/\s+/).filter(Boolean).length;
+  return {
+    content,
+    note: [`- Strategy: ${STRATEGY[strategy].label}`, `- ${words} words`, d.note && `- ${d.note}`, hits.length && `- Contains ${hits.map((h) => `"${h}"`).join(", ")} from an instruction planted in the posting`].filter(Boolean).join("\n"),
+    sources: d.sources.length ? d.sources : ["master resume", "posting"],
+    question: hits.length ? "This letter includes a word the posting planted to catch automated applications. Remove it unless you mean to include it." : d.question,
+    author: "ai",
+  };
+}
+
+/**
+ * Write the strategies a letter doesn't have yet, in the background, and store them (#1484). About two more letter
+ * calls per letter. A newer round of drafting (`gen`) wins: this one then only adds its spend.
+ */
+function writeOtherLetters(appId: string, userId: string, item: { id: string; prompt: string; required: boolean }, gen: string, inp: DraftInputs, company: string, have: LetterStrategy[]) {
+  const job: Promise<void> = (async () => {
+    const usage = emptyUsage();
+    const todo = LETTER_STRATEGIES.filter((s) => !have.includes(s));
+    let got: PromiseSettledResult<LetterDraft>[] = [];
+    try {
+      await assertBudget(userId);
+      got = await Promise.allSettled(todo.map((s) => writeLetter(inp, item, s, company, usage)));
+    } finally {
+      await patchReport(appId, (r) => {
+        const set = r.letters?.[item.id];
+        const paid = addUsd(usage.usd)(r);
+        if (!set || set.gen !== gen) return paid;
+        const drafts = { ...set.drafts };
+        got.forEach((g, i) => {
+          if (g.status === "fulfilled" && !drafts[todo[i]]) drafts[todo[i]] = g.value;
+        });
+        return { ...paid, letters: { ...r.letters, [item.id]: { ...set, drafts, writing: undefined } } };
+      });
+    }
+  })()
+    .catch((e) => console.error("[apply] other letter strategies", e))
+    .finally(() => letterWork.delete(job));
+  letterWork.add(job);
+}
+
+/** The latest version of an item, inside a transaction. */
+async function latestVersion(tx: Tx, itemId: string) {
+  const [v] = await tx.select().from(schema.itemVersions).where(eq(schema.itemVersions.itemId, itemId)).orderBy(desc(schema.itemVersions.version)).limit(1);
+  return v;
+}
+
+/** The letter on screen, kept under its strategy so the person's edits stay with it (#1484). */
+function keepShown(set: LetterSet, latest: typeof schema.itemVersions.$inferSelect | undefined, question: string | null): LetterSet["drafts"] {
+  if (!latest?.content) return set.drafts;
+  return { ...set.drafts, [set.current]: { content: latest.content, note: latest.note, sources: latest.sources, question, author: latest.author } };
+}
+
+/** Show a stored strategy's letter as a new version, with no model call (#1484). */
+async function switchLetter(appId: string, itemId: string, to: LetterStrategy) {
+  await db.transaction(async (tx) => {
+    const status = await lockEditable(tx, appId);
+    const [it] = await tx.select().from(schema.applicationItems).where(eq(schema.applicationItems.id, itemId));
+    const latest = await latestVersion(tx, itemId);
+    let draft: LetterDraft | undefined;
+    await patchReport(
+      appId,
+      (r) => {
+        const set = r.letters?.[itemId];
+        draft = set && set.current !== to ? set.drafts[to] : undefined;
+        if (!set || !draft) return r;
+        return { ...r, letterStrategy: to, letters: { ...r.letters, [itemId]: { ...set, current: to, drafts: keepShown(set, latest, it.question) } } };
+      },
+      { status: reviewAgain(status), updatedAt: new Date() },
+      tx,
+    );
+    if (!draft) return;
+    await tx.insert(schema.itemVersions).values({ itemId, version: (latest?.version ?? 0) + 1, content: draft.content, note: draft.note, author: draft.author, sources: draft.sources });
+    await tx.update(schema.applicationItems).set({ approvedVersionId: null, question: draft.question }).where(eq(schema.applicationItems.id, itemId));
+  });
+}
+
+/**
+ * A new cover letter version. With a strategy that's stored, it shows that letter at once (#1484). Otherwise it writes
+ * one from the posting with the current letter rules (#129). A redraft with no strategy, or of a letter from before
+ * #1484, starts a new round: this strategy now, the other two in the background.
+ */
 export async function redraftLetter(appId: string, strategy?: LetterStrategy, itemId?: string) {
   const [a] = await db.select().from(schema.applications).where(eq(schema.applications.id, appId));
   const item = await itemToRedraft(appId, "cover_letter", itemId);
   if (!a || !item) throw new Error("No cover letter on this application");
+  const set = a.report.letters?.[item.id];
+  if (strategy && set?.current === strategy) return;
+  if (strategy && set?.drafts[strategy]) return switchLetter(appId, item.id, strategy);
+  if (strategy && isWriting(set)) throw new HttpError(409, "Lookout is still writing that letter. Try again in a moment.");
   await assertBudget(a.userId);
   const [opp] = await db.select().from(schema.opportunities).where(eq(schema.opportunities.id, a.opportunityId));
   traceAs("redraft", a.userId, a.id);
@@ -353,28 +455,26 @@ export async function redraftLetter(appId: string, strategy?: LetterStrategy, it
   }
   const inp = await loadInputs(a.userId, opp, usage, postingHtml);
   // The person's pick (#738), else the strategy the letter already uses, else Lookout's suggestion.
-  const using = strategy ?? a.report.letterStrategy ?? suggestStrategy(inp.posting, inp.stories ?? []).strategy;
-  inp.letterStrategy = using;
-  const one: DraftItem = { index: 0, kind: "cover_letter", prompt: item.prompt, required: item.required, options: null };
-  const r = await completeJSON({ name: "apply-letter", schema: AnswersDraft, system: ANSWERS_SYSTEM, user: answersPrompt(inp, [one]), maxTokens: 4000, usage });
-  const raw = r.items.find((x) => x.index === 0) ?? r.items[0];
-  const d = checkStory(checkAnswer(one, raw), raw, inp.stories ?? [], opp.company);
-  const content = humanize(d.content);
-  const hits = trapWordsIn(content, inp.traps ?? [], `${inp.resume}\n${inp.brief}`);
-  const words = content.split(/\s+/).filter(Boolean).length;
+  const using = strategy ?? set?.current ?? a.report.letterStrategy ?? suggestStrategy(inp.posting, inp.stories ?? []).strategy;
+  const d = await writeLetter(inp, item, using, opp.company, usage);
+  const fresh = !strategy || !set;
+  const gen = fresh ? randomUUID() : set.gen;
   await writeRedraft(appId, usage.usd, async (tx, now) => {
-    const [{ n }] = await tx.select({ n: max(schema.itemVersions.version) }).from(schema.itemVersions).where(eq(schema.itemVersions.itemId, item.id));
-    await tx.insert(schema.itemVersions).values({
-      itemId: item.id,
-      version: (n ?? 0) + 1,
-      content,
-      note: ["- Redrafted from the posting", `- Strategy: ${STRATEGY[using].label}`, `- ${words} words`, d.note && `- ${d.note}`, hits.length && `- Contains ${hits.map((h) => `"${h}"`).join(", ")} from an instruction planted in the posting`].filter(Boolean).join("\n"),
-      author: "ai",
-      sources: d.sources.length ? d.sources : ["master resume", "posting"],
-    });
-    await tx.update(schema.applicationItems).set({ approvedVersionId: null, question: hits.length ? "This letter includes a word the posting planted to catch automated applications. Remove it unless you mean to include it." : d.question }).where(eq(schema.applicationItems.id, item.id));
-    await patchReport(appId, (r) => ({ ...addUsd(usage.usd)(r), letterStrategy: using }), { status: reviewAgain(now), updatedAt: new Date() }, tx);
+    const latest = await latestVersion(tx, item.id);
+    await tx.insert(schema.itemVersions).values({ itemId: item.id, version: (latest?.version ?? 0) + 1, content: d.content, note: `- Redrafted from the posting\n${d.note}`, author: "ai", sources: d.sources });
+    await tx.update(schema.applicationItems).set({ approvedVersionId: null, question: d.question }).where(eq(schema.applicationItems.id, item.id));
+    await patchReport(
+      appId,
+      (r) => {
+        const cur = r.letters?.[item.id];
+        const next: LetterSet = fresh || !cur ? { current: using, gen, drafts: { [using]: d }, writing: new Date().toISOString() } : { ...cur, current: using, drafts: { ...keepShown(cur, latest, item.question), [using]: d } };
+        return { ...addUsd(usage.usd)(r), letterStrategy: using, letters: { ...r.letters, [item.id]: next } };
+      },
+      { status: reviewAgain(now), updatedAt: new Date() },
+      tx,
+    );
   });
+  if (fresh) writeOtherLetters(appId, a.userId, item, gen, inp, opp.company, [using]);
 }
 
 export async function redraftResume(appId: string, itemId?: string) {
@@ -486,7 +586,12 @@ async function draftAll(id: string, userId: string, opp: typeof schema.opportuni
       await tx.insert(schema.itemVersions).values({ itemId: item.id, version: 1, content: person.draft.content, note: person.draft.note, author: "ai", sources: person.draft.sources });
     }
   });
-  return { keywordPlan, keywords: undefined, keywordsApproved: undefined, postingText: inp.posting.text, traps: inp.traps ?? [], letterStrategy: items.some((i) => i.kind === "cover_letter") ? inp.letterStrategy : undefined };
+  // Each drafted letter starts a round: the suggested strategy is on screen, the other two follow (#1484).
+  const strategy = inp.letterStrategy!;
+  const rounds = rest.filter((it) => it.kind === "cover_letter" && out.get(it.id)?.content).map((it) => ({ item: items.find((i) => i.id === it.id)!, gen: randomUUID() }));
+  const letters = rounds.length ? Object.fromEntries(rounds.map(({ item, gen }) => [item.id, { current: strategy, gen, drafts: { [strategy]: { ...out.get(item.id)!, author: "ai" as const } }, writing: new Date().toISOString() } satisfies LetterSet])) : undefined;
+  const later = () => rounds.forEach(({ item, gen }) => writeOtherLetters(id, userId, item, gen, inp, opp.company, [strategy]));
+  return { keywordPlan, keywords: undefined, keywordsApproved: undefined, postingText: inp.posting.text, traps: inp.traps ?? [], letterStrategy: items.some((i) => i.kind === "cover_letter") ? inp.letterStrategy : undefined, letters, later };
 }
 
 /** What a submit the server lost track of records (#864). It may have gone through, so it counts as clicked (#865). */
