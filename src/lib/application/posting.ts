@@ -14,30 +14,21 @@ const BOILERPLATE = [
 // customers"), payments ("never request payment details twice"), HR ops (E-Verify, accommodation requests, affirmative
 // action plans) and health plans ("California residents"). A line is the notice only with words that speak to applicants
 // (#1495), the same way fraud needs hiring words (#509) and privacy law needs a notice (#651).
-const FRAUD_NOTICE =
-  /never (ask|request).*(payment|money|bank|fee)|official (company )?email|do not hire (someone )?through|verify (the|that the) (opportunity|recruiter)|real human connection|live conversations? with/i;
-const EEO =
-  /equal (employment )?opportunity|\beeo\b|reasonable accommodation|affirmative action|e-verify|protected (veteran|class)|without regard to (race|sex|age)|fair chance|arrest (and|or) conviction|background check (is|will be)|pay transparency (act|law)/i;
-const EEO_NOTICE =
-  /\b(is|are) (an?|proud)\b|applicant|candidate|\bapplying\b|\bapply\b|qualified|employer\b|employment|on the basis of|because of|regardless of|without regard|committed to|participat|https?:\/\/|\bcontact\b|please|if you (need|require)|(request|need)(s|ing)? (an?|for|for an?) (reasonable )?accommodation|hiring process|offer of employment|we (are|will|do)\b/i;
-const FRAUD_AUDIENCE =
-  /\byou(r)?\b|communicat|contact|legitimate|personal (information|details)|sensitive|beware|caution/i;
-const PRIVACY =
-  /california residents|personal (information|data) (we|that we) collect/i;
-const PRIVACY_NOTICE =
-  /privacy|personal (information|data)|\bnotice\b|\bccpa\b|\bcpra\b|collect|https?:\/\//i;
+const FRAUD_NOTICE = /never (ask|request).*(payment|money|bank|fee)|official (company )?email|do not hire (someone )?through|verify (the|that the) (opportunity|recruiter)|real human connection|live conversations? with/i;
+const EEO = /equal (employment )?opportunity|\beeo\b|reasonable accommodation|affirmative action|e-verify|protected (veteran|class)|without regard to (race|sex|age)|fair chance|arrest (and|or) conviction|background check (is|will be)|pay transparency (act|law)/i;
+const EEO_NOTICE = /\b(is|are) (an?|proud)\b|applicant|candidate|\bapplying\b|\bapply\b|qualified|employer\b|employment|on the basis of|because of|regardless of|without regard|committed to|participat|https?:\/\/|\bcontact\b|please|if you (need|require)|(request|need)(s|ing)? (an?|for|for an?) (reasonable )?accommodation|hiring process|offer of employment|we (are|will|do)\b/i;
+const FRAUD_AUDIENCE = /\byou(r)?\b|communicat|contact|legitimate|personal (information|details)|sensitive|beware|caution/i;
+const PRIVACY = /california residents|personal (information|data) (we|that we) collect/i;
+const PRIVACY_NOTICE = /privacy|personal (information|data)|\bnotice\b|\bccpa\b|\bcpra\b|collect|https?:\/\//i;
 
 // Privacy law and discrimination are the job for privacy, compliance and ML fairness roles; they're a notice only
 // when the line speaks to applicants or links out (#651), the same way fraud needs hiring words (#509).
-const LEGAL =
-  /discriminat|privacy (notice|policy|statement)|\bccpa\b|\bgdpr\b|data protection (laws?|regulations?|officer|notice|act|rights)/i;
-const NOTICE =
-  /applicant|candidate|employee|employer|\bapplying\b|we collect|your (personal|data|information)|click here|learn more|https?:\/\/|residents|on the basis of|because of|regardless of/i;
+const LEGAL = /discriminat|privacy (notice|policy|statement)|\bccpa\b|\bgdpr\b|data protection (laws?|regulations?|officer|notice|act|rights)/i;
+const NOTICE = /applicant|candidate|employee|employer|\bapplying\b|we collect|your (personal|data|information)|click here|learn more|https?:\/\/|residents|on the basis of|because of|regardless of/i;
 
 // "Fraud" alone is the job for fraud and trust and safety roles; it's a notice only when it talks about hiring (#509).
 const FRAUD = /scam|fraud|phishing|impersonat/i;
-const HIRING =
-  /recruit|candidate|applicant|job (offer|seeker|opening|posting)|offer letter|hiring process|\binterviews?\b|employment (offer|opportunit)|on (our )?behalf/i;
+const HIRING = /recruit|candidate|applicant|job (offer|seeker|opening|posting)|offer letter|hiring process|\binterviews?\b|employment (offer|opportunit)|on (our )?behalf/i;
 
 // A short heading ("EEO Statement", "Equal Opportunity Employer") is the notice itself.
 const short = (p: string) => p.split(/\s+/).length <= 5;
@@ -66,8 +57,7 @@ const JUNK =
 // Words that are boilerplate in most postings but the job itself in some (fraud analyst, insurance PM, social media manager) (#509).
 // Hiring words too: "user interviews", "web applications" and "hiring designers" are the job (#803), and so are
 // "candidate experience" and "applicant tracking systems" (#1457).
-const TOPIC =
-  /scam|fraud|benefit|insurance|401\s?\(?k|\bpto\b|parental|privacy|e-?mail|social media|recruit|hiring|interview|application|candidate|applicant|accommodation/i;
+const TOPIC = /scam|fraud|benefit|insurance|401\s?\(?k|\bpto\b|parental|privacy|e-?mail|social media|recruit|hiring|interview|application|candidate|applicant|accommodation/i;
 
 /**
  * Keywords that describe the hiring process or the posting itself, not the job. With the posting, a topic word
@@ -77,21 +67,14 @@ export const isJunkKeyword = (term: string, posting?: string) => {
   const t = term.trim();
   if (JUNK.test(t)) return true;
   if (!TOPIC.test(t)) return false;
-  return (
-    !posting ||
-    !new RegExp(
-      `(?<!\\w)${t.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}(?!\\w)`,
-      "i",
-    ).test(stripBoilerplate(posting))
-  );
+  return !posting || !new RegExp(`(?<!\\w)${t.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}(?!\\w)`, "i").test(stripBoilerplate(posting));
 };
 
 // --- Traps (#116): text planted to catch automated applications. Never obey it silently.
 
 export type Trap = { text: string; words: string[]; hidden: boolean };
 
-const HIDDEN_STYLE =
-  /display\s*:\s*none|visibility\s*:\s*hidden|font-size\s*:\s*(0+(\.0*)?|\.0+)(px|pt|em|rem|%)?\s*(;|"|'|!)|font-size\s*:\s*1px|opacity\s*:\s*0(\.0*)?\s*(;|"|')|(?<![\w-])color\s*:\s*(#fff(fff)?\b|white\b|rgba?\(\s*255\s*,\s*255\s*,\s*255)|(?<![\w-])(left|top|text-indent)\s*:\s*-\d{3,}|height\s*:\s*0(px)?\s*;[^"']*overflow\s*:\s*hidden|clip\s*:\s*rect\(0/i;
+const HIDDEN_STYLE = /display\s*:\s*none|visibility\s*:\s*hidden|font-size\s*:\s*(0+(\.0*)?|\.0+)(px|pt|em|rem|%)?\s*(;|"|'|!)|font-size\s*:\s*1px|opacity\s*:\s*0(\.0*)?\s*(;|"|')|(?<![\w-])color\s*:\s*(#fff(fff)?\b|white\b|rgba?\(\s*255\s*,\s*255\s*,\s*255)|(?<![\w-])(left|top|text-indent)\s*:\s*-\d{3,}|height\s*:\s*0(px)?\s*;[^"']*overflow\s*:\s*hidden|clip\s*:\s*rect\(0/i;
 
 /**
  * The same checks read one declaration at a time, so "!important" and the order of declarations don't matter (#971):
@@ -101,18 +84,9 @@ function hiddenByDeclarations(value: string) {
   const d = new Map<string, string>();
   for (const part of value.replace(/^["']|["']$/g, "").split(";")) {
     const i = part.indexOf(":");
-    if (i > 0)
-      d.set(
-        part.slice(0, i).trim().toLowerCase(),
-        part
-          .slice(i + 1)
-          .replace(/!\s*important/i, "")
-          .trim()
-          .toLowerCase(),
-      );
+    if (i > 0) d.set(part.slice(0, i).trim().toLowerCase(), part.slice(i + 1).replace(/!\s*important/i, "").trim().toLowerCase());
   }
-  const zero = (v?: string) =>
-    !!v && /^(0+(\.0*)?|\.0+)(px|pt|em|rem|%)?$/.test(v);
+  const zero = (v?: string) => !!v && /^(0+(\.0*)?|\.0+)(px|pt|em|rem|%)?$/.test(v);
   const color = d.get("color");
   const font = d.get("font-size")?.match(/^(\d*\.?\d+)(px|pt)$/);
   return (
@@ -123,8 +97,7 @@ function hiddenByDeclarations(value: string) {
     (!!font && Number(font[1]) < 2) ||
     color === "transparent" ||
     (!!color && /^rgba\((.*,){3}\s*0(\.0*)?\s*\)$/.test(color)) ||
-    ((zero(d.get("height")) || zero(d.get("max-height"))) &&
-      d.get("overflow") === "hidden")
+    ((zero(d.get("height")) || zero(d.get("max-height"))) && d.get("overflow") === "hidden")
   );
 }
 
@@ -133,10 +106,7 @@ const isHiddenTag = (attrs: string) => {
   const style = attrs.match(/\bstyle\s*=\s*("[^"]*"|'[^']*'|[^\s"'=<>`]+)/i);
   const value = style && (/^["']/.test(style[1]) ? style[1] : `"${style[1]}"`);
   // The bare attribute only: "hidden" inside a quoted value is a class name, e.g. Tailwind's "hidden md:block" (#786).
-  return (
-    (!!value && (HIDDEN_STYLE.test(value) || hiddenByDeclarations(value))) ||
-    /\shidden(?=[\s>=/]|$)/i.test(attrs.replace(/"[^"]*"|'[^']*'/g, '""'))
-  );
+  return (!!value && (HIDDEN_STYLE.test(value) || hiddenByDeclarations(value))) || /\shidden(?=[\s>=/]|$)/i.test(attrs.replace(/"[^"]*"|'[^']*'/g, '""'));
 };
 
 /** Where the element opened just before `from` ends, counting nested tags of the same name (#616). */
@@ -162,11 +132,7 @@ export function stripHidden(html: string): { html: string; hidden: string[] } {
     if (m[0].endsWith("/>") || !isHiddenTag(m[2])) continue;
     const close = closingTag(html, m[1], re.lastIndex);
     if (!close) continue;
-    const t = html
-      .slice(re.lastIndex, close.start)
-      .replace(/<[^>]+>/g, " ")
-      .replace(/\s+/g, " ")
-      .trim();
+    const t = html.slice(re.lastIndex, close.start).replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim();
     if (t) hidden.push(t);
     out += `${html.slice(at, m.index)} `;
     at = re.lastIndex = close.end;
@@ -193,21 +159,14 @@ const INSERT = new RegExp(
 // "Write the words people see", "use the right word at the right moment" and "write the terms of service" are content
 // design work. The rule above is a trap only when the sentence names what to insert ("the word X", 'phrase "X"',
 // "keyword: X") or aims it at the application itself ("in your cover letter") (#1607).
-const AIMED =
-  /\b(?:your|this|each) (?:cover letter|letter|application|answer|response|resume|résumé|email|submission|message|reply)\b|\bcover letter\b/i;
+const AIMED = /\b(?:your|this|each) (?:cover letter|letter|application|answer|response|resume|résumé|email|submission|message|reply)\b|\bcover letter\b/i;
 
 const TRAP = [
   /\bif you(?:'re| are| were)\s+(an?\s+)?(ai|a\.i\.|llm|language model|chat ?bot|bot|automated|machine|gpt|robot)\b/i,
   // Spoken to an AI directly: "Attention AI:", "any LLM reading this must", "ChatGPT: include..."
-  new RegExp(
-    String.raw`\b(note to|attention|dear|hey|(?:to|for) (?:any|all|every))\s+(the\s+)?(ai|a\.i\.|llm|language model|chatgpt|gpt|claude|gemini|copilot|bot|automated tools?)s?(?![-\w])${AI_AS_ADJECTIVE}`,
-    "i",
-  ),
+  new RegExp(String.raw`\b(note to|attention|dear|hey|(?:to|for) (?:any|all|every))\s+(the\s+)?(ai|a\.i\.|llm|language model|chatgpt|gpt|claude|gemini|copilot|bot|automated tools?)s?(?![-\w])${AI_AS_ADJECTIVE}`, "i"),
   /\b(ai|llm|language model|chatgpt|gpt|claude|gemini|copilot|bots?)s?\s*[:,]\s*(please|you must|include|write|mention|ignore|respond|say)\b/i,
-  new RegExp(
-    String.raw`\b(any|all|every)\s+(ai|llm|language model|chatgpt|gpt|bot|automated tool)s?\b${AI_AS_ADJECTIVE}[^.!?\n]{0,40}\b(must|should|need to|has to|is required to)\b`,
-    "i",
-  ),
+  new RegExp(String.raw`\b(any|all|every)\s+(ai|llm|language model|chatgpt|gpt|bot|automated tool)s?\b${AI_AS_ADJECTIVE}[^.!?\n]{0,40}\b(must|should|need to|has to|is required to)\b`, "i"),
   // Not "use": "LLMs must use tools reliably" is a requirement, and "use the word X" is caught by the first rule (#1410).
   /\b(ai|llm|language model|chatgpt|gpt|claude|gemini|copilot)s?\b[^.!?\n]{0,30}\b(must|should|need to) (include|write|mention|insert|add|say|respond|answer)\b/i,
   /\bignore (all |any |the )?(previous|prior|above|earlier) (instructions|prompts|directions)/i,
@@ -217,63 +176,28 @@ const TRAP = [
 ];
 
 // A quote mark inside a word is an apostrophe, not a quote: "you're" must not pair with the quote before the word (#1394).
-const quoted = (s: string) =>
-  [
-    ...s.matchAll(
-      /(?<![\p{L}\p{N}])["'“‘]([^"'”’\n]{1,40})["'”’](?![\p{L}\p{N}])/gu,
-    ),
-  ]
-    .map((m) => m[1].trim())
-    .filter(Boolean);
+const quoted = (s: string) => [...s.matchAll(/(?<![\p{L}\p{N}])["'“‘]([^"'”’\n]{1,40})["'”’](?![\p{L}\p{N}])/gu)].map((m) => m[1].trim()).filter(Boolean);
 // The words that follow are the sentence going on, not a planted word: "the phrase you use", "the word for it" (#1607).
 const afterWord = (s: string) =>
-  [
-    ...s.matchAll(
-      new RegExp(
-        String.raw`${NOT_TRAP_NOUN}(?:word|phrase|term)\s+([A-Za-z][\w-]{2,30})`,
-        "gi",
-      ),
-    ),
-  ]
+  [...s.matchAll(new RegExp(String.raw`${NOT_TRAP_NOUN}(?:word|phrase|term)\s+([A-Za-z][\w-]{2,30})`, "gi"))]
     .map((m) => m[1])
-    .filter(
-      (w) =>
-        !/^(in|on|at|to|that|somewhere|anywhere|into|within|the|your|you|we|they|people|users|customers|our|their|of|for|with|and|or|from|is|are|was|an|it|this|these|those|when|which|who)$/i.test(
-          w,
-        ),
-    );
+    .filter((w) => !/^(in|on|at|to|that|somewhere|anywhere|into|within|the|your|you|we|they|people|users|customers|our|their|of|for|with|and|or|from|is|are|was|an|it|this|these|those|when|which|who)$/i.test(w));
 const NAMED = new RegExp(String.raw`${TRAP_NOUN}\s*:`, "i");
-const insertTrap = (s: string) =>
-  INSERT.test(s) &&
-  (AIMED.test(s) ||
-    NAMED.test(s) ||
-    quoted(s).length > 0 ||
-    afterWord(s).length > 0);
+const insertTrap = (s: string) => INSERT.test(s) && (AIMED.test(s) || NAMED.test(s) || quoted(s).length > 0 || afterWord(s).length > 0);
 
 /** Each trap with its whole sentence. Trap.text is cut to 300 characters for the review page; removal needs all of it (#965). */
-function trapSentences(
-  text: string,
-  hidden: boolean,
-): { sentence: string; trap: Trap }[] {
+function trapSentences(text: string, hidden: boolean): { sentence: string; trap: Trap }[] {
   const out: { sentence: string; trap: Trap }[] = [];
   for (const sentence of text.split(/(?<=[.!?])\s+|\n+/)) {
     const s = sentence.trim();
     if (!s || !(insertTrap(s) || TRAP.some((re) => re.test(s)))) continue;
-    out.push({
-      sentence: s,
-      trap: {
-        text: s.slice(0, 300),
-        words: [...new Set([...quoted(s), ...afterWord(s)])],
-        hidden,
-      },
-    });
+    out.push({ sentence: s, trap: { text: s.slice(0, 300), words: [...new Set([...quoted(s), ...afterWord(s)])], hidden } });
   }
   return out;
 }
 
 /** Sentences that instruct the applicant or an AI rather than describe the job, with the words they want inserted. */
-export const findTraps = (text: string, hidden = false): Trap[] =>
-  trapSentences(text, hidden).map((x) => x.trap);
+export const findTraps = (text: string, hidden = false): Trap[] => trapSentences(text, hidden).map((x) => x.trap);
 
 /** Hidden text is always a trap candidate; visible text only where it instructs. Returns the cleaned text too. */
 export function removeTraps(visibleText: string, hiddenTexts: string[]) {
@@ -294,33 +218,20 @@ export function removeTraps(visibleText: string, hiddenTexts: string[]) {
 
 // The word on its own, not inside a longer one. Lookarounds, not \b: \b needs a letter or digit at each edge, so a planted
 // emoji, "C++" or "#orca" never matched (#848).
-const wordIn = (w: string, text: string) =>
-  new RegExp(
-    `(?<!\\w)${w.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}(?!\\w)`,
-    "i",
-  ).test(text);
+const wordIn = (w: string, text: string) => new RegExp(`(?<!\\w)${w.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}(?!\\w)`, "i").test(text);
 // One character is too little to count, unless it is an emoji ("Include the emoji '⭐'").
-const longEnough = (w: string) =>
-  [...w].length > 1 || /\p{Extended_Pictographic}/u.test(w);
+const longEnough = (w: string) => [...w].length > 1 || /\p{Extended_Pictographic}/u.test(w);
 
 /** Trap words that slipped into a draft and aren't in the person's own materials. */
 export const trapWordsIn = (draft: string, traps: Trap[], own: string) =>
-  [...new Set(traps.flatMap((t) => t.words))].filter(
-    (w) => longEnough(w) && wordIn(w, draft) && !wordIn(w, own),
-  );
+  [...new Set(traps.flatMap((t) => t.words))].filter((w) => longEnough(w) && wordIn(w, draft) && !wordIn(w, own));
 
 // --- Display (#41): the stored posting text as readable blocks for the review screen.
 
-export type PostingBlock =
-  | { t: "facts"; rows: [string, string][] }
-  | { t: "heading"; text: string }
-  | { t: "bullets"; items: string[] }
-  | { t: "para"; text: string };
+export type PostingBlock = { t: "facts"; rows: [string, string][] } | { t: "heading"; text: string } | { t: "bullets"; items: string[] } | { t: "para"; text: string };
 
-const FACT =
-  /^(Role|Company|Location|Work mode|Pay range on file|Title|Job Title|Reports to|Exemption Status|Employment type|Department|[A-Za-z ]*Compensation Range|PAY ON PAGE \(text\)|Pay)\s*:\s*(.+)$/i;
-const NOISE =
-  /^(apply|back to jobs|apply now|share|save|job application for .+)$/i;
+const FACT = /^(Role|Company|Location|Work mode|Pay range on file|Title|Job Title|Reports to|Exemption Status|Employment type|Department|[A-Za-z ]*Compensation Range|PAY ON PAGE \(text\)|Pay)\s*:\s*(.+)$/i;
+const NOISE = /^(apply|back to jobs|apply now|share|save|job application for .+)$/i;
 
 export function postingBlocks(text: string): PostingBlock[] {
   const lines = text
@@ -333,35 +244,17 @@ export function postingBlocks(text: string): PostingBlock[] {
   for (const l of lines) {
     const m = l.match(FACT);
     if (m && m[2].length < 120) {
-      const k = m[1]
-        .replace(/^PAY ON PAGE \(text\)$/i, "Pay")
-        .replace(/^Pay range on file$/i, "Pay");
-      if (
-        !facts.some(
-          ([fk, fv]) => fk.toLowerCase() === k.toLowerCase() || fv === m[2],
-        )
-      )
-        facts.push([k, m[2]]);
+      const k = m[1].replace(/^PAY ON PAGE \(text\)$/i, "Pay").replace(/^Pay range on file$/i, "Pay");
+      if (!facts.some(([fk, fv]) => fk.toLowerCase() === k.toLowerCase() || fv === m[2])) facts.push([k, m[2]]);
     } else body.push(l);
   }
-  const isHeading = (l: string, next?: string) =>
-    !!next &&
-    l.length <= 60 &&
-    !/[.,;!?]$/.test(l) &&
-    l.split(/\s+/).length <= 8 &&
-    (/:$/.test(l) || next.length > l.length);
+  const isHeading = (l: string, next?: string) => !!next && l.length <= 60 && !/[.,;!?]$/.test(l) && l.split(/\s+/).length <= 8 && (/:$/.test(l) || next.length > l.length);
   const out: PostingBlock[] = facts.length ? [{ t: "facts", rows: facts }] : [];
   let run: string[] = [];
   const flush = () => {
     // Three or more short lines in a row read as a list on the original page.
-    if (run.length >= 3 && run.every((r) => r.length <= 260))
-      out.push({
-        t: "bullets",
-        items: run.map((r) => r.replace(/^[•·*-]\s*/, "")),
-      });
-    else
-      for (const r of run)
-        out.push({ t: "para", text: r.replace(/^[•·*-]\s*/, "") });
+    if (run.length >= 3 && run.every((r) => r.length <= 260)) out.push({ t: "bullets", items: run.map((r) => r.replace(/^[•·*-]\s*/, "")) });
+    else for (const r of run) out.push({ t: "para", text: r.replace(/^[•·*-]\s*/, "") });
     run = [];
   };
   body.forEach((l, i) => {
