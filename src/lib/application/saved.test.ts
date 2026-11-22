@@ -176,6 +176,8 @@ describe("expected start and notice questions (#1595)", () => {
   it("still never keeps the expected pay", () => {
     expect(isCommon("Expected salary?", "$150k")).toBe(false);
     expect(isCommon("Expected start salary in your country?", "$150k")).toBe(false);
+  });
+});
 
 describe("available to start (#1596)", () => {
   it("keeps a start span asked as availability", () => {
