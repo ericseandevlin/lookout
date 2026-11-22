@@ -461,7 +461,9 @@ export async function save(ctx: Context, finds: ScoredT[], via: "agent" | "manua
   const t = emptyTally();
   const newFinds: { id: string; score: number }[] = [];
   for (const raw of finds) {
-    const f = { ...raw, comp_min: annualPay(raw.comp_min), comp_max: annualPay(raw.comp_max) };
+    // A reply with the ends the wrong way round ($200,000 low, $150,000 high) is one range: the top judges the floor (#1526).
+    const [lo, hi] = [annualPay(raw.comp_min), annualPay(raw.comp_max)];
+    const f = { ...raw, ...(lo != null && hi != null && lo > hi ? { comp_min: hi, comp_max: lo } : { comp_min: lo, comp_max: hi }) };
     if (!f.is_open_job_posting || !f.company || !f.title) {
       t.notPostings++;
       continue;
