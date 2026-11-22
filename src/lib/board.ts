@@ -107,10 +107,11 @@ export const cellQuiet = (f: Find, key: string): boolean =>
   || (key === "location" && !f.location);
 
 /** Days since posted, or null when the posting has no date. */
+// Calendar days from today, like a due date: yesterday's posting is 1d ago at 8am too, not "today" until noon (#1551).
 export function postedDays(f: Find) {
   if (!f.postedAt) return null;
-  const d = Math.floor((Date.now() - new Date(f.postedAt + "T12:00:00").getTime()) / 864e5);
-  return Math.max(0, d);
+  const d = daysUntil(f.postedAt);
+  return d == null ? null : Math.max(0, -d);
 }
 
 export function postedText(f: Find) {
