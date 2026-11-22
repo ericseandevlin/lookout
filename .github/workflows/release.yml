@@ -43,6 +43,11 @@ jobs:
     needs: plan
     if: needs.plan.outputs.build == 'true' && startsWith(github.ref, 'refs/heads/release/')
     uses: ./.github/workflows/ci.yml
+    # ci.yml asks for pull-requests: read (#1468). A called workflow gets no more than this job grants, so without it
+    # GitHub never starts the run (#1543).
+    permissions:
+      contents: read
+      pull-requests: read
 
   # Merging to main deploys staging: move release/stage up to main. Fast-forward only, so a commit that is on
   # release/stage and not on main is never thrown away; staging then builds from release/stage as it is.
