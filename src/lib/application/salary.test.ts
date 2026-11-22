@@ -106,6 +106,14 @@ describe("rangeBasis", () => {
     expect(rangeBasis("Salary: $100,000 - $140,000")).toBeNull();
   });
 
+  it("reads 'Bonus is included in this range' as total cash (#1566)", () => {
+    expect(rangeBasis("Salary range: $150,000 - $180,000. Bonus is included in this range.")).toBe("total");
+    expect(rangeBasis("The pay range is $150,000 - $180,000. Commission is included in the range.")).toBe("total");
+    expect(rangeBasis("$150k-$180k. Incentive pay is also reflected in the posted pay range.")).toBe("total");
+    expect(rangeBasis("Base salary range: $150,000 - $180,000. Bonus is not included in this range.")).toBe("base");
+    expect(rangeBasis("Base salary range: $150,000 - $180,000. Bonus is included in our total rewards package.")).toBe("base");
+  });
+
   it("reads a range that doesn't include bonus as base, not total cash (#650)", () => {
     expect(rangeBasis("The base salary range is $150,000-$180,000. This range does not include bonus or equity.")).toBe("base");
     expect(rangeBasis("Base pay: $150k-$180k. The pay range doesn't include a bonus.")).toBe("base");
