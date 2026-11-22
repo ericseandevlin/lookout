@@ -352,6 +352,29 @@ describe("listPage: search and board pages are not jobs (#1537)", () => {
       expect(listPage(u), u).toBe(true);
   });
 
+  it("drops Built In, Dice, YC, RemoteOK and We Work Remotely list pages, not their postings (#1614)", () => {
+    for (const u of [
+      "https://www.builtinnyc.com/jobs/design-ux",
+      "https://builtin.com/jobs/remote/design-ux",
+      "https://builtin.com/jobs?search=product+designer",
+      "https://www.dice.com/jobs?q=designer",
+      "https://www.ycombinator.com/jobs/role/design",
+      "https://www.ycombinator.com/jobs",
+      "https://remoteok.com/remote-design-jobs",
+      "https://weworkremotely.com/categories/remote-design-jobs",
+    ])
+      expect(listPage(u), u).toBe(true);
+    for (const u of [
+      "https://builtin.com/job/product-designer/123456",
+      "https://www.builtinnyc.com/job/senior-product-designer/987654",
+      "https://www.dice.com/job-detail/0c3f1a2b-4d5e-6f70-8a9b-0c1d2e3f4a5b",
+      "https://www.ycombinator.com/companies/acme/jobs/AbC123-product-designer",
+      "https://remoteok.com/remote-jobs/123456-remote-product-designer-acme",
+      "https://weworkremotely.com/remote-jobs/acme-product-designer",
+    ])
+      expect(listPage(u), u).toBe(false);
+  });
+
   it("drops an ATS board home that names no job", () => {
     for (const u of [
       "https://jobs.lever.co/acme",
