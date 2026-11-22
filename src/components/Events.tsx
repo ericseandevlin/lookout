@@ -96,7 +96,7 @@ export function Events() {
 
   return (
     <div className="page-pad settings lk-page w-page" style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-      <PageHead eyebrow="Networking" title="Events" intro="Meetups, panels, industry nights, conferences and talks that fit your field, found with each search. Kept apart from your job finds. Past events drop off on their own." />
+      <PageHead eyebrow="Networking" title="Events" intro="Meetups, talks and conferences in your field, found with each search." />
       {msg && (
         <div role={msg.ok ? "status" : "alert"} style={{ fontSize: font.base, color: msg.ok ? color.greenText : color.brick }}>
           {msg.text}
@@ -105,10 +105,10 @@ export function Events() {
       {prefs && (
         <>
           <Section>What to look for</Section>
-          <Row title="Interests" help="The topics you want events for. Suggestions come from what Lookout sees in your profile. Your first three go into each search.">
+          <Row title="Interests" help="Your first three go into each search.">
             <InterestPicker chosen={chosen} suggestions={suggestions} onToggle={toggle} onAdd={(add) => setInterests([...chosen, ...add])} />
           </Row>
-          <Row title="Where" help="In person near where you live (from your profile), online, or both.">
+          <Row title="Where" help="Nearby means near where you live, from your profile.">
             <Seg opts={[["Nearby", "nearby"], ["Online", "online"], ["Both", "both"]]} cur={prefs.reach} pick={(v) => save({ ...prefs, reach: v as EventReach }, "Saved.")} />
           </Row>
           <Row title="How often" help="Event searches run with your job search, at most this often.">
@@ -181,7 +181,7 @@ function InterestPicker({ chosen, suggestions, onToggle, onAdd }: { chosen: stri
       <button type="button" aria-expanded={open} aria-haspopup="true" onClick={() => setOpen((o) => !o)} style={{ height: 32, padding: "0 12px", borderRadius: 999, border: "1.5px dashed #B9AE9F", background: "transparent", color: color.ink, fontSize: font.base, fontWeight: 600, cursor: "pointer" }}>
         + Add interest
       </button>
-      {!chosen.length && <span style={muted}>Event search is off until you pick one.</span>}
+      {!chosen.length && <span style={muted}>Off until you pick one.</span>}
       {open && at && createPortal(
         <div ref={menu} role="dialog" aria-label="Add interests" onKeyDown={(e) => e.key === "Escape" && setOpen(false)} style={{ position: "fixed", top: at.top, left: at.left, zIndex: 1000, width: at.width, background: "#fff", border: `1px solid ${color.border}`, borderRadius: 12, boxShadow: "0 16px 40px rgba(29,26,15,.14)", padding: 10, display: "flex", flexDirection: "column", gap: 8 }}>
           <input
@@ -207,6 +207,7 @@ function InterestPicker({ chosen, suggestions, onToggle, onAdd }: { chosen: stri
                 + Add &ldquo;{q.trim()}&rdquo;
               </button>
             )}
+            {!suggestions.length && !needle && <div style={{ ...muted, padding: "6px" }}>Type a topic, like product design.</div>}
             {list.map((t) => (
               <label key={t} style={{ display: "flex", alignItems: "center", gap: 10, padding: "7px 6px", borderRadius: 8, fontSize: font.base, color: color.ink, cursor: "pointer" }}>
                 <input type="checkbox" checked={has(t)} onChange={() => onToggle(t)} />
