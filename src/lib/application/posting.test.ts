@@ -348,3 +348,12 @@ describe("stripBoilerplate: duties that share words with notices stay (#1495)", 
     expect(stripBoilerplate(line)).toBe("");
   });
 });
+
+describe("isJunkKeyword: opportunity in the business sense is the job (#1609)", () => {
+  it("keeps market, business, revenue and partnership opportunities", () => {
+    for (const k of ["Market opportunity", "Business opportunities", "Revenue opportunities", "Partnership opportunities"]) expect(isJunkKeyword(k), k).toBe(false);
+  });
+  it("still drops the hiring sense", () => {
+    for (const k of ["Opportunity", "Exciting opportunity", "Career opportunities", "Employment opportunity", "Equal opportunity", "this opportunity"]) expect(isJunkKeyword(k), k).toBe(true);
+  });
+});

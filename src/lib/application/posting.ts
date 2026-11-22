@@ -52,8 +52,10 @@ export function stripBoilerplate(text: string) {
 // The hiring process itself, and a hiring word on its own ("Interviews", "Applications"). Candidate, applicant and
 // accommodation only on their own or as the hiring process ("ideal candidate", "qualified applicants", "reasonable
 // accommodation"): "candidate experience", "applicant tracking systems" and "accommodation booking" are the job (#1457).
+// Opportunity only alone or in the hiring sense ("exciting opportunity", "career opportunities"): "market opportunity" and
+// "business opportunities" are the job for product and strategy roles (#1609).
 const JUNK =
-  /^(candidates?|applicants?|accommodations?)$|\b(ideal|successful|qualified|strong|right|selected|prospective|potential|eligible|interested|great) (candidates?|applicants?)\b|\b(candidates?|applicants?) (must|should|will|who|with)\b|reasonable accommodation|verify|equal opportunit|\beeo\b|open (roles|positions)|\bapply\b|\b(hiring|interview|application|recruiting) process|job (posting|description)|opportunit(y|ies)$|^(the )?(recruit\w*|hiring|interviews?|applications?)$/i;
+  /^(candidates?|applicants?|accommodations?)$|\b(ideal|successful|qualified|strong|right|selected|prospective|potential|eligible|interested|great) (candidates?|applicants?)\b|\b(candidates?|applicants?) (must|should|will|who|with)\b|reasonable accommodation|verify|equal opportunit|\beeo\b|open (roles|positions)|\bapply\b|\b(hiring|interview|application|recruiting) process|job (posting|description)|^((career|job|employment|exciting|great|unique|amazing|rare|this|an?) )?opportunit(y|ies)$|^(the )?(recruit\w*|hiring|interviews?|applications?)$/i;
 // Words that are boilerplate in most postings but the job itself in some (fraud analyst, insurance PM, social media manager) (#509).
 // Hiring words too: "user interviews", "web applications" and "hiring designers" are the job (#803), and so are
 // "candidate experience" and "applicant tracking systems" (#1457).
