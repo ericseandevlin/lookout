@@ -287,10 +287,15 @@ const periods = (unit: string) => (/^(bi|every)/.test(unit) ? 26 : /^(semi|twice
  * rate is turned into a year ("$85/hr" is $176,800), and "6 figures" is not a number to filter on (#941). So is a day
  * rate, biweekly or semimonthly pay; a rate per anything else ("per project") is unread (#982).
  */
+// A number that is part of a label isn't pay: "W2 $90/hr", "W-2 only", "L6 $200k", "Senior (IC4) 180k", "Level 5, $180k"
+// (#1562). "USD 150,000" and "US$150k" are still amounts.
+const NOT_PAY = /(?:\b(?!usd?\b)[a-z]{1,3}-?|\b(?:level|lvl|grade|band|tier|step)\s*)$/;
 export function parseMoney(v: unknown): number | null {
   const s = str(v).toLowerCase().replace(/[,$]/g, "").replace(/(\d)\s+(?=\d{3}\b)/g, "$1");
   if (!s || /[€£¥₹]|\b(eur|euros?|gbp|pounds?|inr|jpy)\b/.test(s) || /\bfigures?\b/.test(s)) return null;
-  const m = /(\d+(?:\.\d+)?)(?![\d.])\s*(k|mm|mil|million|m|bn|billion|b)?s?(?![a-z])/.exec(s);
+  let m: RegExpExecArray | null;
+  const AMOUNT = /(\d+(?:\.\d+)?)(?![\d.])\s*(k|mm|mil|million|m|bn|billion|b)?s?(?![a-z])/g;
+  while ((m = AMOUNT.exec(s)) && NOT_PAY.test(s.slice(0, m.index)));
   if (!m) return null;
   const bare = parseFloat(m[1]);
   const rest = s.slice(m.index + m[0].length);
