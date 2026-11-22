@@ -59,8 +59,10 @@ export function jobKey(raw: string | null | undefined): string | null {
   // Indeed (#1578): one job is viewjob?jk=<id> with any mix of from=, vjs=, tk= after it, or ?vjk=<id> on a search page.
   const indeed = /(^|\.)indeed\.[a-z]{2,3}(\.[a-z]{2})?$/.test(host) && (u.searchParams.get("jk") ?? u.searchParams.get("vjk"))?.match(/^[0-9a-f]{16}$/i)?.[0];
   if (indeed) return `indeed:${indeed.toLowerCase()}`;
-  // LinkedIn (#1578): /jobs/view/<id> and /jobs/view/<title>-at-<company>-<id> are the same posting.
-  const linkedin = /(^|\.)linkedin\.com$/.test(host) && u.pathname.match(/^\/jobs\/view\/(?:[^/]*-)?(\d{6,})\/?$/i)?.[1];
+  // LinkedIn (#1578): /jobs/view/<id> and /jobs/view/<title>-at-<company>-<id> are the same posting. So is the job open
+  // beside a search or a collection, /jobs/search/?currentJobId=<id> (#1583).
+  const linkedin =
+    /(^|\.)linkedin\.com$/.test(host) && (u.pathname.match(/^\/jobs\/view\/(?:[^/]*-)?(\d{6,})\/?$/i)?.[1] ?? u.searchParams.get("currentJobId")?.match(/^\d{6,}$/)?.[0]);
   if (linkedin) return `linkedin:${linkedin}`;
   // Recruitee's form is at /o/<job>/c/new and Teamtailor's at /jobs/<id>-<title>/applications/new: apply steps too (#1200).
   // Teamtailor on its own host is keyed by ID above; a company's own domain still comes here.
