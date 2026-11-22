@@ -108,6 +108,8 @@ describe("the recruiter's stance (#1485)", () => {
   it("coaches from the resume, one open question at a time, never a bare yes or no", async () => {
     const { INTERVIEW_SYSTEM, isYesNoQuestion } = await import("./interviewer");
     expect(INTERVIEW_SYSTEM).toContain("seasoned executive recruiter");
+    // A result with numbers and no names is shareable: too careful a lock keeps it out of drafts (#1531).
+    expect(INTERVIEW_SYSTEM).toContain("A result with numbers and no names is not confidential");
     expect(INTERVIEW_SYSTEM).toContain('Never make the whole question "Have you done X?"');
     expect(isYesNoQuestion("Have you led production for large events?")).toBe(true);
     expect(isYesNoQuestion("Did you manage the budget?")).toBe(true);

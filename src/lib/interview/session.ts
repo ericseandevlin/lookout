@@ -9,8 +9,8 @@ import { masterForDrafts } from "@/lib/application/masterCheck";
 import { kindOf } from "@/lib/kinds";
 import { getActiveSearch } from "@/lib/searches";
 import type { FactKind, TurnOutcome } from "@/lib/db/schema";
-import { closedTopics, FACTS_IN_PROMPT, INTERVIEW_SYSTEM, interviewPrompt, asksWhatIsKnown, InterviewTurnOut, isYesNoQuestion, plainQuestion, shortWhy, STORY_FOLLOW_UP, type InterviewInput } from "./interviewer";
-import { backKeywords, declineKeywords, missingKeywords, termsOf } from "./keywords";
+import { closedTopics, FACTS_IN_PROMPT, INTERVIEW_SYSTEM, interviewPrompt, asksWhatIsKnown, InterviewTurnOut, isYesNoQuestion, plainQuestion, shortWhy, STORY_ASK, STORY_FOLLOW_UP, type InterviewInput } from "./interviewer";
+import { backKeywords, declineKeywords, keywordQuestion, missingKeywords, termsOf } from "./keywords";
 import { factKey, isBareNo, isBareYes, isQuestionBack, lockReason, topicKey } from "./rules";
 import { isAnswered, readSetupAnswer, setupFact, setupQuestionText, SETUP_WHY } from "./setup";
 
@@ -155,7 +155,9 @@ async function interviewStep(userId: string, answered: { turn: Turn; root: Turn;
     completeJSON({ name: "interview-turn", schema: InterviewTurnOut, system: INTERVIEW_SYSTEM, user: interviewPrompt({ ...ctx, thread: answered?.thread, followUpsLeft, refused, refusedWhy, priority }), maxTokens: 2000, usage });
   // What the person already told Lookout: a question must not ask for it again (#1531).
   const known = [ctx.resume, ...ctx.facts.map((f) => f.text)].join("\n");
-  let out = await ask();
+  // With no answer to follow, a "follow_up" is a first question: read it as a new topic.
+  const firstAsk = (o: InterviewTurnOut): InterviewTurnOut => (!answered && o.next.type === "follow_up" ? { ...o, next: { ...o.next, type: "new_topic" } } : o);
+  let out = firstAsk(await ask());
   console.info("[interview] step", { input: usage.input, output: usage.output, usd: Number(usage.usd.toFixed(4)) });
   if (answered) {
     // A follow-up shows the model the earlier answers too; a fact it says again is not saved twice.
@@ -177,25 +179,28 @@ async function interviewStep(userId: string, answered: { turn: Turn; root: Turn;
     const k = topicKey(n.topic);
     if (closed.has(k)) return false;
     if (asksWhatIsKnown(n.question, n.closest ?? "", known)) return false;
-    // "Have you done X?" alone gets a yes, not a story.
-    if (isYesNoQuestion(n.question)) return false;
     // A follow-up stays on its topic; a new topic must be new.
     if (n.type === "follow_up") return followUpsLeft > 0 && !!answered;
     return k !== rootKey && !covered.has(k);
   };
   if (!allowed(out.next)) {
     const n0 = out.next;
-    const why = asksWhatIsKnown(n0.question, n0.closest ?? "", known)
-      ? `they already told you: "${n0.closest.trim()}"`
-      : isYesNoQuestion(n0.question)
-        ? `"${n0.question.trim()}" is a yes or no question. The topic is fine: ask it again as an open question for the story`
-        : undefined;
-    const retry = await ask(n0.topic, why);
+    console.info("[interview] refused", { type: n0.type, topic: n0.topic });
+    const retry = firstAsk(await ask(n0.topic, asksWhatIsKnown(n0.question, n0.closest ?? "", known) ? `they already told you: "${n0.closest.trim()}"` : undefined));
     out = { facts: out.facts, backs: out.backs, next: allowed(retry.next) ? retry.next : { type: "done", topic: "", question: "", why: "", closest: "" } };
   }
+  // A missing keyword the model didn't ask about still gets asked, as a plain story question (#1485).
+  const left = priority.filter((t) => !answered || !termsOf(answered.root.topic, [t]).length);
+  if ((out.next.type === "done" || !out.next.question.trim()) && left.length && !(answered && out.next.type === "follow_up")) {
+    console.info("[interview] model asked nothing; asking a keyword", { left: left.length });
+    out.next = { type: "new_topic", topic: left[0], question: keywordQuestion(left[0]), why: "", closest: "" };
+  }
+  // "Have you done X?" alone gets a yes, not a story: the story request goes on the end (#1485).
+  if (isYesNoQuestion(out.next.question)) out.next = { ...out.next, question: `${out.next.question.trim()} ${STORY_ASK}` };
   if (answered) await db.update(schema.interviewTurns).set({ costUsd: addUsd(usage) ?? answered.turn.costUsd }).where(eq(schema.interviewTurns.id, answered.turn.id));
   // A bare yes backs nothing: Lookout always asks for the story, even when the model moved on (#1485).
-  if (answered && isBareYes(answered.turn.answer ?? "") && followUpsLeft > 0 && out.next.type !== "follow_up") out.next = { type: "follow_up", topic: answered.root.topic, question: STORY_FOLLOW_UP, why: "", closest: "" };
+  // Only once per topic, so the same line never comes twice in a row.
+  if (answered && !answered.turn.parentId && isBareYes(answered.turn.answer ?? "") && followUpsLeft > 0 && out.next.type !== "follow_up") out.next = { type: "follow_up", topic: answered.root.topic, question: STORY_FOLLOW_UP, why: "", closest: "" };
   const n = out.next;
   if (n.type === "done" || !n.question.trim()) return { note: DONE_NOTE };
   const follow = n.type === "follow_up" && answered;
