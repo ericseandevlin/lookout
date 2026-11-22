@@ -104,12 +104,15 @@ export function KeywordPanel({ d, rows, reload, locked }: Props) {
         ))}
     </li>
   );
-  const column = (title: string, list: KeywordRow[], empty: string, top?: React.ReactNode) => (
+  const column = (title: string, list: KeywordRow[], empty: string, action?: React.ReactNode) => (
     <section aria-label={title} className={title === "Missing" ? "kw-missing" : undefined} style={{ display: "flex", flexDirection: "column", gap: 10, minWidth: 0 }}>
-      <h3 style={{ margin: 0, fontSize: font.lg, fontWeight: 700 }}>
-        {title} <span style={{ color: color.t2, fontWeight: 600 }}>({list.length})</span>
-      </h3>
-      {top}
+      {/* The column's one action sits on its title row, right-aligned (#1485). */}
+      <div style={{ display: "flex", alignItems: "center", gap: 8, minHeight: 32 }}>
+        <h3 style={{ margin: 0, flex: 1, minWidth: 0, fontSize: font.lg, fontWeight: 700 }}>
+          {title} <span style={{ color: color.t2, fontWeight: 600 }}>({list.length})</span>
+        </h3>
+        {action}
+      </div>
       {list.length ? <ul style={{ listStyle: "none", margin: 0, padding: 0 }}>{list.map(item)}</ul> : <div style={muted}>{empty}</div>}
     </section>
   );
@@ -125,13 +128,10 @@ export function KeywordPanel({ d, rows, reload, locked }: Props) {
           missing,
           "Nothing missing.",
           !locked && missing.length > 0 && questions?.length !== 0 && (
-            // Says what the questions are for: Lookout adds a keyword only when your experience backs it (#1485).
-            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-              <div style={muted}>Lookout adds these once it knows your experience.</div>
-              <button onClick={() => setAsking(true)} disabled={questions === null} style={{ ...btn("solid"), height: "auto", minHeight: 44, padding: "8px 16px", fontSize: font.lg, alignSelf: "flex-start", opacity: questions === null ? 0.6 : 1 }}>
-                {questions === null ? "Getting questions ready…" : `Answer ${plural(open, "question")} to add them`}
-              </button>
-            </div>
+            // Answering is how a missing keyword gets added: Lookout adds one only when your experience backs it (#1485).
+            <button onClick={() => setAsking(true)} disabled={questions === null} aria-label={questions ? `Answer ${plural(open, "question")} to add these keywords` : "Answer questions to add these keywords"} style={{ ...btn("solid"), height: 32, padding: "0 12px", fontSize: font.base, flex: "none", opacity: questions === null ? 0.6 : 1 }}>
+              Answer to add
+            </button>
           ),
         )}
       </div>

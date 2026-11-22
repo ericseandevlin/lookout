@@ -33,7 +33,7 @@ const { POST } = await import("./route");
 type User = typeof schema.users.$inferSelect;
 type Row = { term: string; support: { line: string; from: string } | null; removed: boolean; mine: boolean };
 type Q = { id: string; terms: string[]; question: string; why: string };
-type Out = { questions: Q[]; rows: Row[]; result?: { saved: number; private: number; backed: string[]; note: string | null } };
+type Out = { questions: (Q & { followUp?: string })[]; rows: Row[]; result?: { saved: number; private: number; backed: string[]; note: string | null; followUp?: string; declined?: boolean } };
 let alice: User;
 let appId: string;
 
@@ -95,7 +95,7 @@ describe("POST /api/apply/[id]/interview (#1485)", () => {
     expect(body.questions).toEqual([
       { id: "q1", terms: ["managing managers", "global design team"], question: "Have you managed managers on a global design team? How many people?", why: "The posting asks for both." },
       // Left out by the model, so it gets a question of its own.
-      { id: "q2", terms: ["Kubernetes"], question: "Have you done Kubernetes? Tell me where, your part, and a number if you have one.", why: "The posting asks for Kubernetes." },
+      { id: "q2", terms: ["Kubernetes"], question: "Tell me about a time you worked on Kubernetes: where it was, your part, and how big it was.", why: "The posting asks for Kubernetes." },
     ]);
     // Stored on the application: the next open costs no model call.
     expect((await send({ action: "questions" })).body.questions.map((q) => q.id)).toEqual(["q1", "q2"]);
@@ -177,5 +177,44 @@ describe("POST /api/apply/[id]/interview (#1485)", () => {
     const after = (await send({ action: "answer", question: "q1", text: "I owned event sales." })).body;
     expect(backed(after)).toContain("event sales");
     expect(after.rows.map((r) => r.term)).toEqual(before.rows.map((r) => r.term));
+  });
+
+  it("a bare yes gets one follow-up for the story, and the story is saved as detailed facts", async () => {
+    replies = [groups];
+    await send({ action: "questions" });
+    replies = [{ facts: [], backs: [], followUp: "", declined: false }];
+    const first = (await send({ action: "answer", question: "q1", text: "yes" })).body;
+    // Even when the model asks nothing, a yes backs nothing, so Lookout asks where and how.
+    expect(first.result).toMatchObject({ saved: 0, backed: [], followUp: "Where was that, what was your part, and how big was it?" });
+    expect(first.questions[0]).toMatchObject({ id: "q1", followUp: "Where was that, what was your part, and how big was it?" });
+    expect(missing(first)).toContain("managing managers");
+
+    replies = [{ facts: [fact("Led 3 design managers and a 40-person design team at Acme across 3 regions"), fact("Cut design review time 30% at Acme")], backs: ["managing managers", "global design team"], followUp: "Ask more?", declined: false }];
+    const second = (await send({ action: "answer", question: "q1", text: "At Acme I led 3 managers, 40 designers in 3 regions, and cut review time 30%." })).body;
+    expect(second.result).toMatchObject({ saved: 2, backed: ["managing managers", "global design team"] });
+    // One follow-up per question: the model's second one is not asked.
+    expect(second.result?.followUp).toBeUndefined();
+    expect(second.questions.map((q) => q.id)).toEqual(["q2"]);
+    // The model read the whole thread, the newest answer marked.
+    expect(completeJSON.mock.calls.at(-1)![0].user).toContain("A (facts already saved): yes");
+    expect(completeJSON.mock.calls.at(-1)![0].user).toContain("A follow-up was already asked");
+
+    const facts = await db.select().from(schema.profileFacts).where(eq(schema.profileFacts.userId, alice.id));
+    expect(facts.map((f) => f.text)).toEqual(["Led 3 design managers and a 40-person design team at Acme across 3 regions", "Cut design review time 30% at Acme"]);
+    const turns = await db.select().from(schema.interviewTurns).where(eq(schema.interviewTurns.userId, alice.id)).orderBy(schema.interviewTurns.createdAt);
+    expect(turns.map((t) => [t.question, t.answer, !!t.parentId])).toEqual([
+      ["Have you managed managers on a global design team? How many people?", "yes", false],
+      ["Where was that, what was your part, and how big was it?", "At Acme I led 3 managers, 40 designers in 3 regions, and cut review time 30%.", true],
+    ]);
+  });
+
+  it("a bare no marks the keywords not relevant and moves on, with no model call", async () => {
+    replies = [groups];
+    await send({ action: "questions" });
+    const { body } = await send({ action: "answer", question: "q2", text: "No." });
+    expect(completeJSON).toHaveBeenCalledTimes(1);
+    expect(body.result).toMatchObject({ declined: true, saved: 0 });
+    expect(body.rows.find((r) => r.term === "Kubernetes")?.removed).toBe(true);
+    expect(body.questions.map((q) => q.id)).toEqual(["q1"]);
   });
 });

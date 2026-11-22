@@ -9,34 +9,43 @@ import { Modal } from "./Modal";
 import { color, font } from "@/lib/tokens";
 
 const plural = (n: number, one: string) => `${n} ${one}${n === 1 ? "" : "s"}`;
-type Done = { q: KeywordQuestion; answer: string | null; result: KeywordResult };
 
-/** What Lookout says after an answer or a skip. */
-export function resultLine(d: Done) {
-  const r = d.result;
-  if (d.answer === null) return "Skipped. Nothing added.";
-  if (r.note) return r.note;
-  if (!r.saved) return "Nothing to save from that one. These keywords stay missing.";
-  const moved = r.backed.length ? ` ${r.backed.join(", ")} ${r.backed.length === 1 ? "moves" : "move"} to In your resume.` : " None of these keywords are backed by it yet.";
-  return `Saved ${plural(r.saved, "fact")}.${moved}${r.private ? ` ${r.private} kept private.` : ""}`;
-}
+/** One line of the dialog's chat. */
+type Line = { k: "q"; text: string; why: string } | { k: "you"; text: string | null } | { k: "lookout"; text: string };
 
 /**
- * The interview as a dialog on the review page (#1485): one question per group of missing keywords. Each answer goes
- * through the server, which saves facts and backs keywords; the page behind updates as soon as it comes back.
+ * What Lookout says after an answer, in as few words as work (#1485). Null when the next thing said is a follow-up
+ * question, which speaks for itself. `last` is the line said before, so the same words never come twice in a row.
+ */
+export function resultLine(answer: string | null, r: KeywordResult, last?: string): string | null {
+  if (answer === null) return pick(["Skipped.", "Skipped. Next one."], last);
+  if (r.note) return r.note;
+  if (r.declined) return pick(["Got it. Marked not relevant.", "Noted. Not relevant."], last);
+  const saved = r.saved ? `Saved ${plural(r.saved, "fact")}.` : "";
+  const moved = r.backed.length ? ` ${r.backed.join(", ")} ${r.backed.length === 1 ? "moves" : "move"} to In your resume.` : "";
+  if (r.followUp) return saved || null;
+  if (!saved) return pick(["Thanks.", "Got it, thanks."], last);
+  return `${saved}${moved}${r.private ? ` ${r.private} kept private.` : ""}`;
+}
+const pick = (options: string[], last?: string) => options.find((o) => o !== last) ?? options[0];
+
+/**
+ * The interview as a dialog on the review page (#1485): a story question per group of missing keywords, and one
+ * follow-up when an answer is thin. Each answer goes through the server, which saves facts and backs keywords; the
+ * page behind updates as soon as it comes back.
  */
 export function KeywordInterview({ appId, questions, close, onChange }: { appId: string; questions: KeywordQuestion[]; close: () => void; onChange: (o: Out) => void }) {
   const [queue, setQueue] = useState(questions);
-  const [done, setDone] = useState<Done[]>([]);
+  const ask = (q: KeywordQuestion): Line => ({ k: "q", text: q.followUp ?? q.question, why: q.followUp ? "" : q.why });
+  const [log, setLog] = useState<Line[]>(() => (questions[0] ? [ask(questions[0])] : []));
   const [text, setText] = useState("");
   const [busy, setBusy] = useState<null | "answer" | "skip">(null);
   const [pending, setPending] = useState<{ text: string | null } | null>(null);
   const [err, setErr] = useState<string | null>(null);
-  const [total] = useState(questions.length);
+  const [moved, setMoved] = useState(0);
   const box = useRef<HTMLTextAreaElement>(null);
   const scroller = useRef<HTMLDivElement>(null);
   const cur = queue[0] ?? null;
-  const moved = done.reduce((n, d) => n + d.result.backed.length, 0);
 
   useEffect(() => {
     box.current?.focus();
@@ -44,19 +53,26 @@ export function KeywordInterview({ appId, questions, close, onChange }: { appId:
   useLayoutEffect(() => {
     const el = scroller.current;
     if (el) el.scrollTop = el.scrollHeight;
-  }, [done.length, busy, err, pending]);
+  }, [log.length, busy, err, pending]);
 
   const send = async (action: "answer" | "skip") => {
     if (!cur || busy) return;
     // The answer moves into the chat right away; dots show where Lookout's reply will appear (#1485).
     const said = text;
+    const answer = action === "answer" ? said.trim() : null;
     setBusy(action);
-    setPending({ text: action === "answer" ? said.trim() : null });
+    setPending({ text: answer });
     setText("");
     setErr(null);
     try {
       const o = await api<Out & { result: KeywordResult }>(`/api/apply/${appId}/interview`, { method: "POST", json: { action, question: cur.id, text: said } });
-      setDone((d) => [...d, { q: cur, answer: action === "answer" ? said.trim() : null, result: o.result }]);
+      const next = o.questions[0];
+      setLog((l) => {
+        const lastLookout = [...l].reverse().find((x) => x.k === "lookout")?.text;
+        const line = resultLine(answer, o.result, lastLookout);
+        return [...l, { k: "you", text: answer }, ...(line ? [{ k: "lookout", text: line } as Line] : []), ...(next ? [ask(next)] : [])];
+      });
+      setMoved((m) => m + o.result.backed.length);
       setQueue(o.questions);
       onChange(o);
       requestAnimationFrame(() => box.current?.focus());
@@ -72,17 +88,21 @@ export function KeywordInterview({ appId, questions, close, onChange }: { appId:
   return (
     <Modal title="Back these keywords" kicker="Interview" close={close} chat>
       <div ref={scroller} data-chat-scroll="" style={{ flex: 1, minHeight: 0, overflowY: "auto", padding: 20, display: "flex", flexDirection: "column", gap: 16 }}>
-        <Said who="Lookout">
-          {plural(total, "quick question")}. Skip any you haven&apos;t done.
-        </Said>
-        {done.map((d) => (
-          <div key={d.q.id} style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-            <QuestionBubble question={d.q.question} why={d.q.why} />
-            <Said who="You">{d.answer ?? <em>Skipped</em>}</Said>
-            <Said who="Lookout">{resultLine(d)}</Said>
-          </div>
-        ))}
-        {cur && <QuestionBubble question={cur.question} why={cur.why} />}
+        {/* No count: a follow-up can add a question (#1485). */}
+        <Said who="Lookout">A few quick questions. Skip any you haven&apos;t done.</Said>
+        {log.map((l, i) =>
+          l.k === "q" ? (
+            <QuestionBubble key={i} question={l.text} why={l.why} />
+          ) : l.k === "you" ? (
+            <Said key={i} who="You">
+              {l.text ?? <em>Skipped</em>}
+            </Said>
+          ) : (
+            <Said key={i} who="Lookout">
+              {l.text}
+            </Said>
+          ),
+        )}
         {pending && (
           <>
             <Said who="You" rise>
@@ -91,11 +111,7 @@ export function KeywordInterview({ appId, questions, close, onChange }: { appId:
             <Thinking />
           </>
         )}
-        {!cur && (
-          <Said who="Lookout">
-            That&apos;s all of them. {moved ? `${plural(moved, "keyword")} moved to In your resume.` : "No keyword moved this time."}
-          </Said>
-        )}
+        {!cur && !pending && <Said who="Lookout">That&apos;s all of them. {moved ? `${plural(moved, "keyword")} moved to In your resume.` : "No keyword moved this time."}</Said>}
       </div>
       <div style={{ borderTop: `1.5px solid ${color.border}`, padding: "14px 20px 16px", display: "flex", flexDirection: "column", gap: 10 }}>
         {err && (

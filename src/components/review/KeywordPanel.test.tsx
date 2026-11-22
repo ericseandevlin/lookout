@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { renderToStaticMarkup } from "react-dom/server";
 import type { KeywordRow } from "@/lib/application/evidence";
+import type { KeywordResult } from "@/lib/interview/keywords";
 import { resultLine } from "./KeywordInterview";
 import { KeywordSection, keywordTip } from "./KeywordPanel";
 import type { Detail } from "./shared";
@@ -38,8 +39,8 @@ describe("the keyword panel (#1485)", () => {
     expect(html).not.toContain("Green keywords are backed");
     expect(t).not.toContain("Nothing is added for a skip");
     // The questions load after the page does.
-    expect(t).toContain("Getting questions ready");
-    expect(t).toContain("Lookout adds these once it knows your experience.");
+    expect(t).toContain("Answer to add");
+    expect(t).not.toContain("once it knows your experience");
     expect(t).toContain("Use these keywords");
   });
 
@@ -59,11 +60,20 @@ describe("the keyword panel (#1485)", () => {
 });
 
 describe("what Lookout says after a keyword answer (#1485)", () => {
-  const q = { id: "q1", terms: ["managing managers", "global design team"], question: "Q", why: "W" };
-  it("names the keywords that moved, and says plainly when nothing was added", () => {
-    expect(resultLine({ q, answer: "I did", result: { saved: 2, private: 0, backed: ["managing managers", "global design team"], note: null } })).toBe("Saved 2 facts. managing managers, global design team move to In your resume.");
-    expect(resultLine({ q, answer: "I did", result: { saved: 1, private: 1, backed: [], note: null } })).toBe("Saved 1 fact. None of these keywords are backed by it yet. 1 kept private.");
-    expect(resultLine({ q, answer: "not really", result: { saved: 0, private: 0, backed: [], note: null } })).toBe("Nothing to save from that one. These keywords stay missing.");
-    expect(resultLine({ q, answer: null, result: { saved: 0, private: 0, backed: [], note: null } })).toBe("Skipped. Nothing added.");
+  const r = (over: Partial<KeywordResult> = {}): KeywordResult => ({ saved: 0, private: 0, backed: [], note: null, ...over });
+  it("says what moved, in few words", () => {
+    expect(resultLine("I led 3 managers", r({ saved: 2, backed: ["managing managers", "global design team"] }))).toBe("Saved 2 facts. managing managers, global design team move to In your resume.");
+    expect(resultLine("I did", r({ saved: 1, private: 1 }))).toBe("Saved 1 fact. 1 kept private.");
+  });
+  it("lets a follow-up speak for itself, with no dead end", () => {
+    expect(resultLine("yes", r({ followUp: "Where was that?" }))).toBeNull();
+    expect(resultLine("At Acme, 3 managers", r({ saved: 1, followUp: "How many people in all?" }))).toBe("Saved 1 fact.");
+  });
+  it("keeps a no short, and never says the same line twice in a row", () => {
+    expect(resultLine("no", r({ declined: true }))).toBe("Got it. Marked not relevant.");
+    expect(resultLine("nope", r({ declined: true }), "Got it. Marked not relevant.")).toBe("Noted. Not relevant.");
+    expect(resultLine(null, r())).toBe("Skipped.");
+    expect(resultLine(null, r(), "Skipped.")).toBe("Skipped. Next one.");
+    expect(resultLine("hmm", r())).toBe("Thanks.");
   });
 });

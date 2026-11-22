@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { closedTopics, INTERVIEW_SYSTEM, interviewPrompt, noDashes, plainQuestion, shortWhy } from "./interviewer";
-import { isQuestionBack } from "./rules";
+import { closedTopics, INTERVIEW_SYSTEM, interviewPrompt, noDashes, plainQuestion, shortWhy, STORY_RULES } from "./interviewer";
+import { isBareNo, isBareYes, isQuestionBack } from "./rules";
 
 describe("shortWhy (#1449)", () => {
   it.each([
@@ -69,7 +69,8 @@ describe("the question only (#1449)", () => {
   });
 
   it("the prompt asks for a plain question with a bad and a good example, and answers a question back", () => {
-    expect(INTERVIEW_SYSTEM).toContain('Good: "Have you worked on B2B or enterprise SaaS products?"');
+    expect(INTERVIEW_SYSTEM).toContain('Good: "Tell me about B2B or enterprise software you\'ve worked on');
+    expect(INTERVIEW_SYSTEM).toContain('Bad: "Have you managed managers?"');
     expect(INTERVIEW_SYSTEM).toMatch(/Bad: "4 of your top 5 finds are B2B SaaS companies/);
     expect(INTERVIEW_SYSTEM).toContain("why do you ask?");
   });
@@ -85,5 +86,20 @@ describe("no dashes in what Lookout writes (#1531)", () => {
     expect(noDashes("3 of your top 5 finds ask for it — twice")).toBe("3 of your top 5 finds ask for it, twice");
     expect(shortWhy("Asked by 3 finds – all senior.")).toBe("Asked by 3 finds, all senior.");
     expect(plainQuestion("Quick one—have you led a team?")).toBe("Quick one, have you led a team?");
+  });
+});
+
+describe("a bare yes or no (#1485)", () => {
+  it("knows a yes with no story", () => {
+    for (const a of ["yes", "Yes.", "yeah", "Yep!", "I have", "Yes, I have.", "definitely"]) expect(isBareYes(a)).toBe(true);
+    for (const a of ["Yes, at Acme I led 3 managers.", "yes but only once in 2019", "no"]) expect(isBareYes(a)).toBe(false);
+  });
+  it("knows a no", () => {
+    for (const a of ["no", "No.", "nope", "Not really", "I haven't", "never"]) expect(isBareNo(a)).toBe(true);
+    for (const a of ["No, but I did something close at Acme.", "yes", "not as the lead, I was on the team"]) expect(isBareNo(a)).toBe(false);
+  });
+  it("asks for stories, in both interviews", () => {
+    expect(STORY_RULES).toContain("Ask for a story, not a yes or no");
+    expect(INTERVIEW_SYSTEM).toContain(STORY_RULES);
   });
 });
