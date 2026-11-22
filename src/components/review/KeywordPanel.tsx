@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import type { KeywordRow } from "@/lib/application/evidence";
 import type { KeywordInterview as Out, KeywordQuestion } from "@/lib/interview/keywords";
-import { TapTip } from "../chat";
+import { InfoIcon } from "../chat";
 import { btn } from "../Settings";
 import { api } from "../store";
 import { KeywordInterview } from "./KeywordInterview";
@@ -78,7 +78,8 @@ export function KeywordPanel({ d, rows, reload, locked }: Props) {
 
   const item = (r: KeywordRow) => (
     <li key={r.term} style={{ display: "flex", alignItems: "center", gap: 4, minHeight: 44, borderTop: `1px solid ${color.border}` }}>
-      <TapTip tip={keywordTip(r)} style={{ ...body, flex: 1, minHeight: 44, textAlign: "left", border: 0, background: "transparent", padding: "8px 4px", color: color.ink, cursor: "pointer", textDecoration: r.removed ? "line-through" : "none" }} openStyle={{ textDecoration: "underline", textUnderlineOffset: 3 }}>
+      {/* Plain text: a keyword does nothing when clicked, so it doesn't look clickable. The quiet icon shows the quote (#1485). */}
+      <span style={{ ...body, flex: 1, minWidth: 0, padding: "8px 4px", color: color.ink, textDecoration: r.removed ? "line-through" : "none" }}>
         {starred(r) && !r.support && !r.removed && (
           <span style={{ color: color.brick }}>
             <span aria-hidden>★ </span>
@@ -86,8 +87,9 @@ export function KeywordPanel({ d, rows, reload, locked }: Props) {
           </span>
         )}
         {r.term}
-        {r.mine && <span style={{ color: color.t2 }}> (yours)</span>}
-      </TapTip>
+        {r.mine && <span style={{ color: color.t2 }}> (yours)</span>}{" "}
+        <InfoIcon tip={keywordTip(r)} label={`Where the posting asks for ${r.term}`} />
+      </span>
       {!locked &&
         (r.removed ? (
           <button onClick={() => send(r.term, { action: "restore", term: r.term })} disabled={!!busy} style={{ ...btn("text"), height: 44, fontSize: font.lg }}>
@@ -123,9 +125,13 @@ export function KeywordPanel({ d, rows, reload, locked }: Props) {
           missing,
           "Nothing missing.",
           !locked && missing.length > 0 && questions?.length !== 0 && (
-            <button onClick={() => setAsking(true)} disabled={questions === null} style={{ ...btn("solid"), height: 44, fontSize: font.lg, alignSelf: "flex-start", opacity: questions === null ? 0.6 : 1 }}>
-              {questions === null ? "Getting questions ready…" : `Answer ${plural(open, "question")}`}
-            </button>
+            // Says what the questions are for: Lookout adds a keyword only when your experience backs it (#1485).
+            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+              <div style={muted}>Lookout adds these once it knows your experience.</div>
+              <button onClick={() => setAsking(true)} disabled={questions === null} style={{ ...btn("solid"), height: "auto", minHeight: 44, padding: "8px 16px", fontSize: font.lg, alignSelf: "flex-start", opacity: questions === null ? 0.6 : 1 }}>
+                {questions === null ? "Getting questions ready…" : `Answer ${plural(open, "question")} to add them`}
+              </button>
+            </div>
           ),
         )}
       </div>

@@ -2,7 +2,7 @@
 
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import type { KeywordInterview as Out, KeywordQuestion, KeywordResult } from "@/lib/interview/keywords";
-import { Composer, QuestionBubble, Said } from "../chat";
+import { Composer, QuestionBubble, Said, Thinking } from "../chat";
 import { btn } from "../Settings";
 import { api } from "../store";
 import { Modal } from "./Modal";
@@ -30,6 +30,7 @@ export function KeywordInterview({ appId, questions, close, onChange }: { appId:
   const [done, setDone] = useState<Done[]>([]);
   const [text, setText] = useState("");
   const [busy, setBusy] = useState<null | "answer" | "skip">(null);
+  const [pending, setPending] = useState<{ text: string | null } | null>(null);
   const [err, setErr] = useState<string | null>(null);
   const [total] = useState(questions.length);
   const box = useRef<HTMLTextAreaElement>(null);
@@ -43,22 +44,27 @@ export function KeywordInterview({ appId, questions, close, onChange }: { appId:
   useLayoutEffect(() => {
     const el = scroller.current;
     if (el) el.scrollTop = el.scrollHeight;
-  }, [done.length, busy, err]);
+  }, [done.length, busy, err, pending]);
 
   const send = async (action: "answer" | "skip") => {
     if (!cur || busy) return;
+    // The answer moves into the chat right away; dots show where Lookout's reply will appear (#1485).
+    const said = text;
     setBusy(action);
+    setPending({ text: action === "answer" ? said.trim() : null });
+    setText("");
     setErr(null);
     try {
-      const o = await api<Out & { result: KeywordResult }>(`/api/apply/${appId}/interview`, { method: "POST", json: { action, question: cur.id, text } });
-      setDone((d) => [...d, { q: cur, answer: action === "answer" ? text.trim() : null, result: o.result }]);
+      const o = await api<Out & { result: KeywordResult }>(`/api/apply/${appId}/interview`, { method: "POST", json: { action, question: cur.id, text: said } });
+      setDone((d) => [...d, { q: cur, answer: action === "answer" ? said.trim() : null, result: o.result }]);
       setQueue(o.questions);
-      setText("");
       onChange(o);
       requestAnimationFrame(() => box.current?.focus());
     } catch (e) {
+      setText(said);
       setErr(e instanceof Error ? e.message : "Couldn't save that");
     } finally {
+      setPending(null);
       setBusy(null);
     }
   };
@@ -77,6 +83,14 @@ export function KeywordInterview({ appId, questions, close, onChange }: { appId:
           </div>
         ))}
         {cur && <QuestionBubble question={cur.question} why={cur.why} />}
+        {pending && (
+          <>
+            <Said who="You" rise>
+              {pending.text ?? <em>Skipped</em>}
+            </Said>
+            <Thinking />
+          </>
+        )}
         {!cur && (
           <Said who="Lookout">
             That&apos;s all of them. {moved ? `${plural(moved, "keyword")} moved to In your resume.` : "No keyword moved this time."}

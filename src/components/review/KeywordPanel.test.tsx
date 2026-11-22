@@ -39,6 +39,7 @@ describe("the keyword panel (#1485)", () => {
     expect(t).not.toContain("Nothing is added for a skip");
     // The questions load after the page does.
     expect(t).toContain("Getting questions ready");
+    expect(t).toContain("Lookout adds these once it knows your experience.");
     expect(t).toContain("Use these keywords");
   });
 
