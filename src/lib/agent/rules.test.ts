@@ -284,6 +284,9 @@ describe("no em dashes in match reasons (#1531)", () => {
     const r = applyRules({ score: 4, reasonsMatch: ["Design systems — your core strength"], reasonsGap: ["Heavy mobile focus – check fit"], locationFit: true, dealbreaker: false, compMin: 150000, compMax: 180000 }, null)!;
     expect(r.reasonsMatch).toEqual(["Design systems, your core strength"]);
     expect(r.reasonsGap).toEqual(["Heavy mobile focus, check fit"]);
+  });
+});
+
 describe("listPage: search and board pages are not jobs (#1537)", () => {
   it("drops job board search pages, on any country site", () => {
     for (const u of [
