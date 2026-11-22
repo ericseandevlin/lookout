@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { contactParts, humanize, parseDraft, splitRole, toPlain } from "./resumeLayout";
+import { contactParts, humanize, letterHeaderFrom, parseDraft, splitRole, toPlain } from "./resumeLayout";
 
 const md = `# Maya Ortiz
 New York, NY • maya@example.com • 646.555.0100
@@ -193,5 +193,27 @@ BFA, Parsons`;
     expect(shapeResume(r.md)).toEqual({ md: r.md, fixed: [] });
     const below = shapeResume("# Jo\n## Experience\n### Lead, Acme | 2021 – Present\n- did\n## Skills\n- x\n## Summary\nOne thing.");
     expect(parseDraft(below.md).filter((x) => x.t === "section").map((x) => x.text)).toEqual(["Summary", "Experience", "Skills"]);
+  });
+});
+
+describe("headline or contact line (#1651)", () => {
+  const head = (line: string) => parseDraft(`# Sam Rivera\n${line}\nBrooklyn, NY • sam@example.com • 646.555.0100\n## Summary\nx`).slice(0, 3);
+
+  it("reads a headline with ASP.NET or an @ before the employer as the headline", () => {
+    for (const line of ["Senior ASP.NET Developer", "Product Designer @ Spotify", "VB.NET and C# Engineer"])
+      expect(head(line).map((b) => b.t)).toEqual(["name", "headline", "contact"]);
+  });
+
+  it("puts the real contact line in the cover letter header", () => {
+    expect(letterHeaderFrom("# Sam Rivera\nSenior ASP.NET Developer\nBrooklyn, NY • sam@example.com • 646.555.0100\n## Summary\nx", "Sam")).toEqual({
+      name: "Sam Rivera",
+      contact: "Brooklyn, NY • sam@example.com • 646.555.0100",
+      headline: "Senior ASP.NET Developer",
+    });
+  });
+
+  it("still reads emails, handles, domains, links and phones as contact", () => {
+    for (const line of ["sam@example.com", "Brooklyn • @samdesigns", "samrivera.net", "Portfolio: samrivera.design", "linkedin.com/in/sam", "https://sam.example", "(646) 555-0100", "+44 20 7946 0958"])
+      expect(head(line)[1].t).toBe("contact");
   });
 });

@@ -36,8 +36,14 @@ export function splitRole(line: string): { text: string; right?: string } {
   return { text: line };
 }
 
-/** A header line is contact info when it holds an email, phone, URL or domain. Anything else is the headline. */
-const CONTACTISH = /@|https?:\/\/|www\.|linkedin|github|\b[\w-]+\.(com|co|io|net|org|dev|me|design|studio|ai)\b|\(?\d{3}\)?[.\s-]\d{3}[.\s-]\d{4}|\+\d/i;
+/**
+ * A header line is contact info when it holds an email, handle, phone, URL or domain. Anything else is the headline.
+ * "@" counts only in an email or a handle, and a domain only with a lowercase ending: "Senior ASP.NET Developer" and
+ * "Product Designer @ Spotify" are headlines, and read as contact they put the title in the cover letter's contact line (#1651).
+ */
+const CONTACT_WORDS = /[\w.+-]+@[\w-]+\.[\w.-]+|(?:^|[\s|•·,(])@\w|https?:\/\/|www\.|linkedin|github|\(?\d{3}\)?[.\s-]\d{3}[.\s-]\d{4}|\+\d/i;
+const DOMAIN = /\b[\w-]+\.(com|co|io|net|org|dev|me|design|studio|ai)\b/;
+const contactish = (line: string) => CONTACT_WORDS.test(line) || DOMAIN.test(line);
 
 export function parseDraft(md: string): Block[] {
   const out: Block[] = [];
@@ -52,7 +58,7 @@ export function parseDraft(md: string): Block[] {
       if (!seenSection) out.push(...orderHeader(header));
       seenSection = true;
       out.push({ t: "section", text: strip(h[2]) });
-    } else if (!seenSection && out[0]?.t === "name" && !h && !/^[-*•]\s+/.test(line)) header.push({ t: CONTACTISH.test(line) ? "contact" : "headline", text: strip(line) });
+    } else if (!seenSection && out[0]?.t === "name" && !h && !/^[-*•]\s+/.test(line)) header.push({ t: contactish(line) ? "contact" : "headline", text: strip(line) });
     else if (h && h[1].length === 4) out.push({ t: "subrole", ...splitRole(strip(h[2])) });
     else if (h) out.push({ t: "role", ...splitRole(strip(h[2])) });
     else if (/^[-*•]\s+/.test(line)) out.push({ t: "bullet", text: strip(line.replace(/^[-*•]\s+/, "")) });
@@ -96,7 +102,7 @@ export function liftHeadline(line: string): { headline?: string; rest: string } 
   const parts = line.split(/\s+([•|·])\s+/);
   const pieces = parts.filter((_, i) => i % 2 === 0);
   let k = 0;
-  while (k < pieces.length && !CONTACTISH.test(pieces[k]) && ROLEISH.test(pieces[k])) k++;
+  while (k < pieces.length && !contactish(pieces[k]) && ROLEISH.test(pieces[k])) k++;
   if (!k || k === pieces.length) return { rest: line };
   return { headline: pieces.slice(0, k).join(" | "), rest: pieces.slice(k).join(" • ") };
 }
