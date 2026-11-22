@@ -184,20 +184,51 @@ function bulletsWithRoles(md: string) {
  */
 export function roleSwaps(master: string, draft: string): string[] {
   const mine = bulletsWithRoles(master).map((b) => ({ ...b, w: words(b.text) }));
-  const out: string[] = [];
-  for (const d of bulletsWithRoles(draft)) {
+  const jaccard = (a: Set<string>, b: Set<string>) => {
+    const both = [...a].filter((w) => b.has(w)).length;
+    return both / (a.size + b.size - both || 1);
+  };
+  // Each draft bullet's master bullet: the one it shares most words with (drafts reword bullets).
+  const matched = bulletsWithRoles(draft).map((d) => {
     const dw = words(d.text);
     let best: (typeof mine)[number] | undefined;
     let score = 0;
     for (const m of mine) {
-      const both = [...dw].filter((w) => m.w.has(w)).length;
-      const s = both / (dw.size + m.w.size - both || 1);
+      const s = jaccard(dw, m.w);
       if (s > score) [best, score] = [m, s];
     }
-    if (!best || score < 0.5) continue;
-    const here = [...words(d.role)].filter((w) => !COMMON.has(w));
-    const there = words(best.role);
-    if (here.length && !here.some((w) => there.has(w))) out.push(`"${short(d.text)}" is under ${d.role} here, but under ${best.role} in your master resume. Check it.`);
+    return { ...d, best: best && score >= 0.5 ? best : undefined };
+  });
+  // Each draft heading's master heading (#1638): the same heading, or else, among master headings
+  // that share a distinctive word with it, the one most of its bullets come from. Sharing a word
+  // ("product", the employer) is not the same job, so a bullet is checked against its heading's pair.
+  const roles = [...new Set(mine.map((m) => m.role))];
+  const pairOf = new Map<string, string | null>();
+  const pair = (role: string) => {
+    if (pairOf.has(role)) return pairOf.get(role) ?? null;
+    const same = roles.find((r) => norm(r) === norm(role));
+    let out: string | null = same ?? null;
+    if (!same) {
+      const rw = words(role);
+      const here = [...rw].filter((w) => !COMMON.has(w));
+      const key = here.length ? here : [...rw];
+      const votes = (r: string) => matched.filter((d) => d.role === role && d.best?.role === r).length;
+      const ranked = roles
+        .filter((r) => key.some((w) => words(r).has(w)))
+        .map((r) => ({ r, v: votes(r), j: jaccard(rw, words(r)) }))
+        .sort((a, b) => b.v - a.v || b.j - a.j);
+      out = ranked[0]?.r ?? null;
+      if (!out && !here.length) out = role; // only common words ("Senior Designer"): too vague to judge
+    }
+    pairOf.set(role, out);
+    return out;
+  };
+  const out: string[] = [];
+  for (const d of matched) {
+    if (!d.best) continue;
+    const p = pair(d.role);
+    if (p === d.role && !roles.includes(p)) continue;
+    if (p !== d.best.role) out.push(`"${short(d.text)}" is under ${d.role} here, but under ${d.best.role} in your master resume. Check it.`);
   }
   return out;
 }
