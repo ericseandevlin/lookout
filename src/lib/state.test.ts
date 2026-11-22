@@ -54,7 +54,7 @@ beforeEach(async () => {
 describe("getState", () => {
   it("returns defaults and the first search when nothing is set", async () => {
     const s = await getState(user);
-    expect(s.settings).toEqual({ freq: "Weekly", day: "Mon", days: ["Mon", "Thu"], digest: true, density: "Comfortable", setup: "Until complete", newDays: 7, railClosed: false });
+    expect(s.settings).toEqual({ freq: "Weekly", day: "Mon", days: ["Mon", "Thu"], digest: true, density: "Comfortable", setup: "Until complete", newDays: 7, railClosed: false, interviewBannerClosed: false });
     expect(s.user).toMatchObject({ name: "Ann", email: "a@example.com" });
     expect(s.searches.map((x) => x.name)).toEqual(["Job search", "RFP search"]);
     expect(s.searchId).toBe(jobs);

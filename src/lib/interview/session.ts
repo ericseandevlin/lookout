@@ -9,8 +9,8 @@ import { masterForDrafts } from "@/lib/application/masterCheck";
 import { kindOf } from "@/lib/kinds";
 import { getActiveSearch } from "@/lib/searches";
 import type { FactKind, TurnOutcome } from "@/lib/db/schema";
-import { closedTopics, FACTS_IN_PROMPT, INTERVIEW_SYSTEM, interviewPrompt, InterviewTurnOut, shortWhy, type InterviewInput } from "./interviewer";
-import { factKey, lockReason, topicKey } from "./rules";
+import { closedTopics, FACTS_IN_PROMPT, INTERVIEW_SYSTEM, interviewPrompt, InterviewTurnOut, plainQuestion, shortWhy, type InterviewInput } from "./interviewer";
+import { factKey, isQuestionBack, lockReason, topicKey } from "./rules";
 import { isAnswered, readSetupAnswer, setupFact, setupQuestionText, SETUP_WHY } from "./setup";
 
 /**
@@ -142,7 +142,9 @@ async function interviewStep(userId: string, answered: { turn: Turn; root: Turn;
   traceAs("interview", userId, answered?.root.id ?? userId);
   const ctx = await context(userId);
   const usage = emptyUsage();
-  const followUpsLeft = answered ? Math.max(0, MAX_FOLLOW_UPS - (answered.thread.length - 1)) : 0;
+  // A question back gets its answer and the same question again, whatever follow-ups are left.
+  const askedBack = !!answered && isQuestionBack(answered.turn.answer);
+  const followUpsLeft = answered ? Math.max(askedBack ? 1 : 0, MAX_FOLLOW_UPS - (answered.thread.length - 1)) : 0;
   const closed = closedTopics(ctx.past);
   const covered = new Set(ctx.past.filter((p) => p.outcome === "answered").map((p) => topicKey(p.topic)));
   const ask = (refused?: string) =>
@@ -179,7 +181,8 @@ async function interviewStep(userId: string, answered: { turn: Turn; root: Turn;
   await db.insert(schema.interviewTurns).values({
     userId,
     topic: follow ? answered.root.topic : n.topic.trim().slice(0, 120) || "general",
-    question: n.question.trim().slice(0, 600),
+    // After a question back, the line that answers it stays in front of the question.
+    question: (askedBack ? n.question.trim() : plainQuestion(n.question)).slice(0, 600),
     why: shortWhy(n.why).slice(0, 300),
     parentId: follow ? answered.root.id : null,
     ...(!answered && { costUsd: addUsd(usage) }),
@@ -209,6 +212,17 @@ async function ensureNext(userId: string): Promise<{ note: string | null }> {
     return { note: null };
   }
   return safeStep(userId, null);
+}
+
+/**
+ * Whether the interview has a question for this person, without a model call: one is waiting, a setup question is
+ * left, or they haven't started. After the last gap, the interview waits with no question, so this is false.
+ */
+export async function hasOpenQuestion(userId: string) {
+  const [any] = await db.select({ id: T.id }).from(T).where(eq(T.userId, userId)).limit(1);
+  if (!any) return true;
+  const [waiting] = await db.select({ id: T.id }).from(T).where(and(eq(T.userId, userId), eq(T.outcome, "pending"))).limit(1);
+  return !!waiting || !!(await nextSetup(userId));
 }
 
 /** A setup answer goes onto the search's answers, as if typed on the Questions page, and replaces its fact. */

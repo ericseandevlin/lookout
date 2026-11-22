@@ -28,7 +28,11 @@ Facts:
 ${FACT_RULES}
 
 The next question:
-- Questions come from gaps: things the person's top finds ask for that their resume and known facts don't show yet. Say the gap in the question, plainly ("3 of your top 5 finds ask for food and beverage program experience. Have you run F&B for events?").
+- Questions come from gaps: things the person's top finds ask for that their resume and known facts don't show yet.
+- question: one short, plain question, the way a friend would ask it in a chat. No evidence, no preamble, no "your finds" or "your resume". The evidence goes in why, which the person sees only if they ask.
+  Bad: "4 of your top 5 finds are B2B SaaS companies, and your resume shows fashion, media and agency work. Have you worked on B2B or enterprise SaaS products?"
+  Good: "Have you worked on B2B or enterprise SaaS products?"
+- If the newest answer is a question back to you ("why do you ask?", "what do you mean?"), it is not an answer: return no facts, and use "follow_up" on the same topic with a question that answers theirs in one short sentence, then asks the same question again. For example "Most of your top finds sell software to businesses. Have you worked on B2B or enterprise SaaS products?" This does not use up a follow-up.
 - After an answer that claims something, follow up to get what a recruiter needs: their exact part (led it or was on the team), the scope (budget, team size, how many), and a number for the result. Ask only for what is still missing. Use "follow_up" and keep the same topic.
 - When the topic has their part, the scope and a number, or follow-ups left is 0, move to a new topic with "new_topic".
 - Never ask about a topic in the "never ask again" list or one already covered. Never ask about pay, health, family, age or other protected traits.
@@ -92,6 +96,22 @@ export function shortWhy(why: string): string {
   }
   const out = kept.join(" ").trim();
   return out || why.trim();
+}
+
+/**
+ * The question only (#1449): statements before it are cut, since the evidence lives in the reason tooltip.
+ * "4 of your top 5 finds are B2B SaaS companies. Have you worked on B2B SaaS?" becomes "Have you worked on B2B SaaS?".
+ * With no question mark ("Walk me through..."), only leading sentences that cite the finds, the resume or the posting go.
+ */
+const EVIDENCE = /\b(finds?|resume|profile|postings?)\b/i;
+export function plainQuestion(q: string): string {
+  const parts = q.trim().match(/[^.!?]+[.!?]*/g) ?? [];
+  const first = parts.findIndex((p) => p.trim().endsWith("?"));
+  if (first > 0) return parts.slice(first).join("").trim();
+  if (first === 0) return q.trim();
+  let i = 0;
+  while (i < parts.length - 1 && EVIDENCE.test(parts[i])) i++;
+  return parts.slice(i).join("").trim();
 }
 
 export type TopFind = { company: string; title: string; gaps: string[]; matches: string[]; text: string };

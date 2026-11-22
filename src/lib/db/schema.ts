@@ -118,6 +118,8 @@ export const settings = pgTable("settings", {
   setupMode: text("setup_mode").$type<SetupMode>().notNull().default("Until complete"),
   newDays: integer("new_days").notNull().default(7),
   railClosed: boolean("rail_closed").notNull().default(false),
+  /** The person closed the interview banner on the Auto-apply page (#1449). */
+  interviewBannerClosed: boolean("interview_banner_closed").notNull().default(false),
   /** Auto-apply beta: off by default. Threshold = lowest match score queued automatically; cap = per day. */
   autoApply: jsonb("auto_apply").$type<AutoApplySettings>().notNull().default({ enabled: false, threshold: 5, dailyCap: 3 }),
 });

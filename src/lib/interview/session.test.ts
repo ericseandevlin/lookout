@@ -298,3 +298,21 @@ describe("a long interview (#1449)", () => {
     expect(v.sitting.facts).toBe(4);
   });
 });
+
+describe("a plain question, and a question back (#1449)", () => {
+  it("saves only the question, and answers a question back before asking again", async () => {
+    const { user } = await seedUser(ALL_ANSWERS);
+    replies = [ask("B2B SaaS", "4 of your top 5 finds are B2B SaaS companies. Have you worked on B2B SaaS products?")];
+    let v = await openInterview(user.id);
+    expect(v.current?.question).toBe("Have you worked on B2B SaaS products?");
+    expect(v.current?.why).toBe("Asked by 3 of your top 5 finds.");
+
+    // A question back gets a one-line answer and the same question; that line stays in front of it.
+    replies = [ask("B2B SaaS", "Most of your top finds sell software to businesses. Have you worked on B2B SaaS products?", "follow_up")];
+    await act(user.id, v.current!.id, "answer", "Why do you ask?");
+    v = await openInterview(user.id);
+    expect(v.current?.question).toBe("Most of your top finds sell software to businesses. Have you worked on B2B SaaS products?");
+    expect(v.current?.followUp).toBe(true);
+    expect(completeJSON.mock.calls.at(-1)![0].user).toContain("Follow-ups left on this topic: 2");
+  });
+});

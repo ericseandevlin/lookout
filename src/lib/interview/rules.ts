@@ -57,3 +57,12 @@ export const factsBlock = (list: BlockFact[]) => {
     ? `\n\n<interview_facts from the person, in their words; facts with the same standing as the resume>\n${ok.map((f) => `- ${f.text}`).join("\n")}\n</interview_facts>`
     : "";
 };
+
+/**
+ * An answer that is really a question back ("why do you ask?", "what do you mean?"): Lookout answers it in a line and
+ * asks again, and that doesn't use up a follow-up (#1449).
+ */
+export const isQuestionBack = (answer: string | null | undefined) => {
+  const a = (answer ?? "").trim();
+  return a.length > 0 && a.length <= 160 && /\?$/.test(a) && /^(why|what|how|who|which|where|when|do you|does|is|are|can|could|sorry|huh|meaning)\b/i.test(a);
+};

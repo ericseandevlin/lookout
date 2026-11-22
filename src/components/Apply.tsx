@@ -1,5 +1,6 @@
 "use client";
 
+import { InterviewBanner } from "./InterviewBanner";
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import type { ApplicationStatus, AutoApplySettings } from "@/lib/db/schema";
@@ -121,6 +122,7 @@ export function ApplyPage() {
   return (
     <div className="page-pad lk-page w-page" style={{ display: "flex", flexDirection: "column", gap: 16 }}>
       <PageHead eyebrow="Beta" title="Auto-apply" intro="Lookout drafts each application for your review and only sends what you approve." />
+      <InterviewBanner />
 
       {settings && (
         <div style={{ display: "flex", alignItems: "center", gap: 14, minHeight: 64, padding: "10px 12px 10px 18px", borderRadius: 14, background: "#fff", border: `1.5px solid ${color.border}` }}>
