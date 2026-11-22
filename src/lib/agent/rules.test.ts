@@ -134,6 +134,19 @@ describe("placesDiffer (#1285)", () => {
     expect(placeId("Remote (Canada)")).toBe("ca");
   });
 
+  it("reads an unknown country in parentheses after Remote (#1555)", () => {
+    expect(placesDiffer("Remote (US)", "Remote (Germany)")).toBe(true);
+    expect(placesDiffer("Remote (US)", "Remote (Mexico)")).toBe(true);
+    expect(placesDiffer("Remote (India)", "Remote (Germany)")).toBe(true);
+    expect(placesDiffer("Remote (Germany)", "Remote, Germany")).toBe(false);
+    expect(placesDiffer("Remote (Germany)", "Remote (Germany)")).toBe(false);
+    expect(placesDiffer("Remote (US)", "Remote (hybrid)")).toBe(false);
+    expect(placesDiffer("Remote (US)", "Remote (Full-time)")).toBe(false);
+    expect(placesDiffer("Remote (US)", "Remote (contract)")).toBe(false);
+    expect(placesDiffer("New York (NYC)", "New York, NY")).toBe(false);
+    expect(placesDiffer("New York, NY (Manhattan)", "New York, NY")).toBe(false);
+  });
+
   it("tells apart the same city in another state or country", () => {
     expect(placesDiffer("Remote, US", "Remote, Canada")).toBe(true);
     expect(placesDiffer("Cambridge, MA", "Cambridge, United Kingdom")).toBe(true);
