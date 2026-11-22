@@ -1,4 +1,5 @@
 import type { SavedAnswer } from "@/lib/db/schema";
+import { sameOption } from "./fillPlan";
 
 /**
  * Answers worth keeping across applications (#108): facts about the person that most forms ask in
@@ -76,7 +77,8 @@ export function match(list: SavedAnswer[], question: string, options?: string[] 
   const hit = list.find((s) => s.key === answerKey(question) && qualifier(s.question) === qualifier(question) && !onlyThisOne(s.question, s.answer) && !EEO.test(s.question) && !JOB_PLACE.test(s.question));
   if (!hit) return null;
   if (!options?.length) return hit.answer;
-  return options.find((o) => o.toLowerCase() === hit.answer.toLowerCase()) ?? null;
+  // The form's own spelling of the saved answer: "Full time" lands on "Full-time" (#1524).
+  return sameOption(hit.answer, options) ?? null;
 }
 
 /** For the drafting prompt: the model may reuse these when a question means the same thing. */

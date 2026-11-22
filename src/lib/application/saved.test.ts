@@ -32,6 +32,8 @@ describe("saved answers", () => {
     const list = upsert([], "Are you authorized to work in the US?", "yes");
     expect(match(list, "Are you authorized to work in the US?", ["Yes", "No"])).toBe("Yes");
     expect(match(list, "Are you authorized to work in the US?", ["Authorized", "Not authorized"])).toBeNull();
+    // The form's own spelling of the saved answer (#1524).
+    expect(match([...list, { key: answerKey("Employment type"), question: "Employment type", answer: "Full time", updatedAt: "" }], "Employment type", ["Full-time", "Part-time"])).toBe("Full-time");
   });
 
   it("keeps a No about one employer, never a Yes or a referrer's name (#1032)", () => {

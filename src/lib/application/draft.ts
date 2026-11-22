@@ -2,6 +2,7 @@ import { z } from "zod";
 import type { ApplicationItemKind } from "@/lib/db/schema";
 import { isJunkKeyword } from "./posting";
 import { bullets } from "./notes";
+import { sameOption } from "./fillPlan";
 import { storiesBlock } from "./stories";
 import { STRATEGY, suggestStrategy } from "./letterStrategy";
 
@@ -281,7 +282,8 @@ export function checkAnswer(item: DraftItem, a: z.infer<typeof AnswersDraft>["it
   let content = a.content.trim();
   let question = a.question.trim() || null;
   if (content && item.options?.length) {
-    const exact = (t: string) => item.options!.find((o) => o.toLowerCase() === t.toLowerCase());
+    // Spelled like the filler compares it: "I don't" is the option "I don’t", "Full time" is "Full-time" (#1524).
+    const exact = (t: string) => sameOption(t, item.options!);
     // Select-any answers come one option per line; every line must be a real option (#624).
     const lines = item.multi ? content.split(/\n+/).map((t) => t.replace(/^[•·*-]\s*/, "").trim()).filter(Boolean) : [content];
     const hits = lines.map(exact);
