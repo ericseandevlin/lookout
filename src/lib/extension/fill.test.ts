@@ -229,6 +229,10 @@ describe("extension fill: choices", () => {
       ["No", ["Select", "None of the above", "No, I do not have a disability"]],
       ["None", ["Select", "No", "None of the above"]],
       ["They/them", ["She/her", "He/him"]],
+      ["Full time", ["Select", "Full-time", "Part-time"]],
+      ["Onsite", ["Remote", "Hybrid", "On-site"]],
+      ["Bachelors", ["Associate's", "Bachelor's"]],
+      ["Non", ["Man", "Non-binary"]],
     ];
     for (const [content, options] of cases) {
       const p = page(`<label for="s">Q</label><select id="s">${options.map((o, i) => `<option value="${i}">${o}</option>`).join("")}</select>`);
