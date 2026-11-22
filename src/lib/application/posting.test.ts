@@ -349,6 +349,33 @@ describe("stripBoilerplate: duties that share words with notices stay (#1495)", 
   });
 });
 
+describe("findTraps: content design lines that name no word to insert (#1607)", () => {
+  it("keeps UX writing and content design job lines", () => {
+    for (const s of [
+      "You'll write the words people see across the app, from buttons to error messages.",
+      "Write the terms and conditions copy for checkout.",
+      "Use the right word at the right moment, and keep a glossary.",
+    ])
+      expect(findTraps(s), s).toEqual([]);
+  });
+
+  it("leaves ordinary form questions to the drafts", () => {
+    for (const s of [
+      "Please use the words a customer would use.",
+      "Say the phrase you use to open a tough conversation with a stakeholder.",
+      "Please write the terms of your current notice period.",
+    ])
+      expect(findTraps(s), s).toEqual([]);
+  });
+
+  it("still catches a word to insert, named or aimed at the application", () => {
+    expect(findTraps("Please include the word banana.")[0].words).toContain("banana");
+    expect(findTraps("Use the phrase 'blue sky' somewhere.")[0].words).toContain("blue sky");
+    expect(findTraps("Add this specific phrase to your cover letter.")).toHaveLength(1);
+    expect(findTraps("Include the following keyword: ORCA")).toHaveLength(1);
+  });
+});
+
 describe("isJunkKeyword: opportunity in the business sense is the job (#1609)", () => {
   it("keeps market, business, revenue and partnership opportunities", () => {
     for (const k of ["Market opportunity", "Business opportunities", "Revenue opportunities", "Partnership opportunities"]) expect(isJunkKeyword(k), k).toBe(false);

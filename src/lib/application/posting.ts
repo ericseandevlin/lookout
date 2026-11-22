@@ -151,14 +151,19 @@ const TRAP_NOUN = String.raw`${NOT_TRAP_NOUN}(?:word|phrase|term|code ?word|keyw
 // An AI word that names a kind of thing ("every AI product", "all AI features") is about the job, not spoken to an AI (#1410).
 const AI_AS_ADJECTIVE = String.raw`(?!\s+(?:products?|features?|platforms?|systems?|models?|experiences?|teams?|work|projects?|solutions?|services?|capabilit(?:y|ies)|applications?|apps?|initiatives?|research|engineers?|engineering|agents?|assistants?|workflows?|interfaces?|surfaces?|tooling|strategy|roadmaps?|use cases?|ethics|safety|policy|policies|adoption|literacy|design|data|infrastructure)\b)`;
 
+// The noun must stand alone: "long-term", "short-term" and "Microsoft Word" are job text, not traps (#1042).
+// And it must be named as a thing to insert: "the word X", "a specific phrase", "keyword: X", "term 'X'". "Use Word,
+// Excel", "short term and long term roadmaps", "one term per concept" and "keyword research" are job text (#1105).
+const INSERT = new RegExp(
+  `\\b(include|use|mention|write|add|insert|put|type|say)\\b[^.!?\\n]{0,50}(?:${TRAP_LEAD}\\s+(?:[\\w-]+\\s+)?${TRAP_NOUN}(?![-\\w]|\\s+(?:doc|docs|document|documents|file|files|processing|processor|count|limit)\\b)|${TRAP_NOUN}\\s*[:"'“‘])`,
+  "i",
+);
+// "Write the words people see", "use the right word at the right moment" and "write the terms of service" are content
+// design work. The rule above is a trap only when the sentence names what to insert ("the word X", 'phrase "X"',
+// "keyword: X") or aims it at the application itself ("in your cover letter") (#1607).
+const AIMED = /\b(?:your|this|each) (?:cover letter|letter|application|answer|response|resume|résumé|email|submission|message|reply)\b|\bcover letter\b/i;
+
 const TRAP = [
-  // The noun must stand alone: "long-term", "short-term" and "Microsoft Word" are job text, not traps (#1042).
-  // And it must be named as a thing to insert: "the word X", "a specific phrase", "keyword: X", "term 'X'". "Use Word,
-  // Excel", "short term and long term roadmaps", "one term per concept" and "keyword research" are job text (#1105).
-  new RegExp(
-    `\\b(include|use|mention|write|add|insert|put|type|say)\\b[^.!?\\n]{0,50}(?:${TRAP_LEAD}\\s+(?:[\\w-]+\\s+)?${TRAP_NOUN}(?![-\\w]|\\s+(?:doc|docs|document|documents|file|files|processing|processor|count|limit)\\b)|${TRAP_NOUN}\\s*[:"'“‘])`,
-    "i",
-  ),
   /\bif you(?:'re| are| were)\s+(an?\s+)?(ai|a\.i\.|llm|language model|chat ?bot|bot|automated|machine|gpt|robot)\b/i,
   // Spoken to an AI directly: "Attention AI:", "any LLM reading this must", "ChatGPT: include..."
   new RegExp(String.raw`\b(note to|attention|dear|hey|(?:to|for) (?:any|all|every))\s+(the\s+)?(ai|a\.i\.|llm|language model|chatgpt|gpt|claude|gemini|copilot|bot|automated tools?)s?(?![-\w])${AI_AS_ADJECTIVE}`, "i"),
@@ -174,14 +179,20 @@ const TRAP = [
 
 // A quote mark inside a word is an apostrophe, not a quote: "you're" must not pair with the quote before the word (#1394).
 const quoted = (s: string) => [...s.matchAll(/(?<![\p{L}\p{N}])["'“‘]([^"'”’\n]{1,40})["'”’](?![\p{L}\p{N}])/gu)].map((m) => m[1].trim()).filter(Boolean);
-const afterWord = (s: string) => [...s.matchAll(new RegExp(String.raw`${NOT_TRAP_NOUN}(?:word|phrase|term)\s+([A-Za-z][\w-]{2,30})`, "gi"))].map((m) => m[1]).filter((w) => !/^(in|on|at|to|that|somewhere|anywhere|into|within|the|your)$/i.test(w));
+// The words that follow are the sentence going on, not a planted word: "the phrase you use", "the word for it" (#1607).
+const afterWord = (s: string) =>
+  [...s.matchAll(new RegExp(String.raw`${NOT_TRAP_NOUN}(?:word|phrase|term)\s+([A-Za-z][\w-]{2,30})`, "gi"))]
+    .map((m) => m[1])
+    .filter((w) => !/^(in|on|at|to|that|somewhere|anywhere|into|within|the|your|you|we|they|people|users|customers|our|their|of|for|with|and|or|from|is|are|was|an|it|this|these|those|when|which|who)$/i.test(w));
+const NAMED = new RegExp(String.raw`${TRAP_NOUN}\s*:`, "i");
+const insertTrap = (s: string) => INSERT.test(s) && (AIMED.test(s) || NAMED.test(s) || quoted(s).length > 0 || afterWord(s).length > 0);
 
 /** Each trap with its whole sentence. Trap.text is cut to 300 characters for the review page; removal needs all of it (#965). */
 function trapSentences(text: string, hidden: boolean): { sentence: string; trap: Trap }[] {
   const out: { sentence: string; trap: Trap }[] = [];
   for (const sentence of text.split(/(?<=[.!?])\s+|\n+/)) {
     const s = sentence.trim();
-    if (!s || !TRAP.some((re) => re.test(s))) continue;
+    if (!s || !(insertTrap(s) || TRAP.some((re) => re.test(s)))) continue;
     out.push({ sentence: s, trap: { text: s.slice(0, 300), words: [...new Set([...quoted(s), ...afterWord(s)])], hidden } });
   }
   return out;
