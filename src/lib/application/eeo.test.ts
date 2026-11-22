@@ -69,6 +69,30 @@ describe("classify", () => {
   });
 });
 
+describe("classify: questions that only sound like EEO (#1512)", () => {
+  it("leaves accommodation, discharge and active-duty questions unclassified", () => {
+    expect(classify("Do you require a reasonable accommodation for a disability to complete the application process?")).toBeNull();
+    expect(classify("Will you need any accommodations due to a disability during the interview?")).toBeNull();
+    expect(classify("Have you ever been discharged from the military under other than honorable conditions?")).toBeNull();
+    expect(classify("Are you currently serving on active duty in the U.S. Armed Forces?")).toBeNull();
+    expect(classify("Are you currently a member of the military or a reservist?")).toBeNull();
+    expect(classify("Sex offender registry: have you ever been convicted?")).toBeNull();
+  });
+
+  it("still reads the real questions", () => {
+    expect(classify("Disability status. If you need an accommodation, contact us.")).toBe("disability");
+    expect(classify("Are you a veteran or active member of the United States Armed Forces?")).toBe("veteran");
+    expect(classify("Have you served in the U.S. military?")).toBe("veteran");
+    expect(classify("Sex")).toBe("gender");
+  });
+
+  it("never answers them from the profile", () => {
+    const profile = { answers: { disability: "Yes", veteran: "Veteran" }, exact: {} };
+    expect(resolve(profile, "Do you require a reasonable accommodation for a disability?", ["Yes", "No"])).toBeNull();
+    expect(resolve(profile, "Have you ever been discharged from the military under other than honorable conditions?", ["Yes", "No"])).toBeNull();
+  });
+});
+
 describe("matchOption", () => {
   it("matches the same answer across different wordings", () => {
     expect(matchOption("Man", attentiveGender)).toBe("Male");
