@@ -160,6 +160,11 @@ export function ApplicationReview({ id }: { id: string }) {
                 </div>
                 <div style={{ flexBasis: "100%" }}>
                   <SubmitModeNote submit={d.submit} />
+                  {d.submit.mode === "press" && (
+                    <p style={{ ...muted, margin: "8px 0 0" }}>
+                      To send, open the job in Firefox with the Lookout extension: it fills the form and you press Submit. No extension? Use the two-minute checklist at the bottom.
+                    </p>
+                  )}
                 </div>
               </div>
             )}
