@@ -1,8 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { renderToStaticMarkup } from "react-dom/server";
 import type { KeywordRow } from "@/lib/application/evidence";
-import type { KeywordResult } from "@/lib/interview/keywords";
-import { resultLine } from "./KeywordInterview";
 import { KeywordSection, keywordTip } from "./KeywordPanel";
 import type { Detail } from "./shared";
 
@@ -38,9 +36,10 @@ describe("the keyword panel (#1485)", () => {
     expect(html).not.toContain("kw-story");
     expect(html).not.toContain("Green keywords are backed");
     expect(t).not.toContain("Nothing is added for a skip");
-    // The questions load after the page does.
-    expect(t).toContain("Answer to add");
-    expect(t).not.toContain("once it knows your experience");
+    // One interview: the Missing column links to the interview page for this application.
+    expect(t).toContain("A short interview adds missing keywords.");
+    expect(html).toContain('href="/interview?app=');
+    expect(t).toContain("Interview me");
     expect(t).toContain("Use these keywords");
   });
 
@@ -56,24 +55,5 @@ describe("the keyword panel (#1485)", () => {
     expect(t).not.toContain("Use these keywords");
     expect(t).not.toContain("Add your own keyword");
     expect(render(true, true)).not.toContain("Not relevant: Kubernetes");
-  });
-});
-
-describe("what Lookout says after a keyword answer (#1485)", () => {
-  const r = (over: Partial<KeywordResult> = {}): KeywordResult => ({ saved: 0, private: 0, backed: [], note: null, ...over });
-  it("says what moved, in few words", () => {
-    expect(resultLine("I led 3 managers", r({ saved: 2, backed: ["managing managers", "global design team"] }))).toBe("Saved 2 facts. managing managers, global design team move to In your resume.");
-    expect(resultLine("I did", r({ saved: 1, private: 1 }))).toBe("Saved 1 fact. 1 kept private.");
-  });
-  it("lets a follow-up speak for itself, with no dead end", () => {
-    expect(resultLine("yes", r({ followUp: "Where was that?" }))).toBeNull();
-    expect(resultLine("At Acme, 3 managers", r({ saved: 1, followUp: "How many people in all?" }))).toBe("Saved 1 fact.");
-  });
-  it("keeps a no short, and never says the same line twice in a row", () => {
-    expect(resultLine("no", r({ declined: true }))).toBe("Got it. Marked not relevant.");
-    expect(resultLine("nope", r({ declined: true }), "Got it. Marked not relevant.")).toBe("Noted. Not relevant.");
-    expect(resultLine(null, r())).toBe("Skipped.");
-    expect(resultLine(null, r(), "Skipped.")).toBe("Skipped. Next one.");
-    expect(resultLine("hmm", r())).toBe("Thanks.");
   });
 });

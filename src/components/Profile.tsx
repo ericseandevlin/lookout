@@ -106,11 +106,20 @@ export function NextStep({ here }: { here: "materials" | "finds" }) {
   );
 }
 
-export function PageHead({ eyebrow, title, intro, children }: { eyebrow: string; title: string; intro?: string; children?: React.ReactNode }) {
+/** action: a control on the title row, at the right. It wraps under the title when the row is too narrow. */
+export function PageHead({ eyebrow, title, intro, action, children }: { eyebrow: string; title: string; intro?: string; action?: React.ReactNode; children?: React.ReactNode }) {
+  const h1 = <h1 style={{ margin: "8px 0 0", fontSize: font["4xl"], fontWeight: 700, letterSpacing: "-0.02em" }}>{title}</h1>;
   return (
     <div style={{ padding: "8px 0" }}>
       <div style={{ fontSize: font.base, fontWeight: 700, letterSpacing: ".14em", textTransform: "uppercase", color: color.brick }}>{eyebrow}</div>
-      <h1 style={{ margin: "8px 0 0", fontSize: font["4xl"], fontWeight: 700, letterSpacing: "-0.02em" }}>{title}</h1>
+      {action ? (
+        <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", flexWrap: "wrap", gap: "8px 16px" }}>
+          {h1}
+          {action}
+        </div>
+      ) : (
+        h1
+      )}
       {intro && <p style={{ margin: "8px 0 0", fontSize: font.base, lineHeight: 1.5, color: color.t2, maxWidth: 560, textWrap: "pretty" }}>{intro}</p>}
       {children}
     </div>

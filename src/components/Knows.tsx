@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import type { FactKind, FactSource } from "@/lib/db/schema";
 import { PageHead, ProfileTabs } from "./Profile";
+import { FormAnswers } from "./SavedAnswers";
 import { btn } from "./Settings";
 import { useConfirm } from "./Confirm";
 import { api, useStore } from "./store";
@@ -39,7 +40,8 @@ const RULES: [string, string][] = [
 /** Profile > What Lookout knows (#1449): every fact, its source, and who can see it. */
 export function Knows() {
   const ask = useConfirm();
-  const resume = useStore().state.materials.resume;
+  const { state } = useStore();
+  const resume = state.materials.resume;
   const [facts, setFacts] = useState<Fact[] | null>(null);
   const [err, setErr] = useState<string | null>(null);
   const [q, setQ] = useState("");
@@ -155,6 +157,8 @@ export function Knows() {
           )}
         </>
       )}
+      {/* Saved application answers live here too, so everything Lookout collected is in one place (#1531). */}
+      {state.user.autoApply && <FormAnswers heading />}
       <section aria-labelledby="rules-title" style={{ ...card, display: "flex", flexDirection: "column", gap: 10, marginTop: 8 }}>
         <h2 id="rules-title" style={{ margin: 0, fontSize: font.lg, fontWeight: 700 }}>Rules Lookout applies by itself</h2>
         <ul style={{ margin: 0, paddingLeft: 18, display: "flex", flexDirection: "column", gap: 6, fontSize: font.base, lineHeight: 1.45 }}>

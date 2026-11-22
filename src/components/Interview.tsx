@@ -27,7 +27,8 @@ const readKept = (d: InterviewView) => {
 type Earlier = { open: boolean; turns: ViewTurn[]; more: boolean; loading: boolean };
 
 /** Profile > Interview (#1449): one question at a time, from what the person's top finds ask for. */
-export function Interview() {
+/** app: opened from that application's keywords (#1485). Its missing keywords come first, and a link leads back. */
+export function Interview({ app }: { app?: string }) {
   const { state } = useStore();
   const [data, setData] = useState<InterviewView | null>(null);
   const [err, setErr] = useState<string | null>(null);
@@ -78,7 +79,7 @@ export function Interview() {
   };
 
   useEffect(() => {
-    api<InterviewView>("/api/interview")
+    api<InterviewView>(app ? `/api/interview?app=${app}` : "/api/interview")
       .then(async (d) => {
         setData(d);
         setKeptAt(readKept(d));
@@ -95,7 +96,7 @@ export function Interview() {
         requestAnimationFrame(() => document.getElementById(id)?.scrollIntoView({ block: "center" }));
       })
       .catch((e) => setErr(e instanceof Error ? e.message : "Couldn't load the interview"));
-  }, []);
+  }, [app]);
 
   // Earlier answers open above the reader: keep what they were reading in the same place.
   useLayoutEffect(() => {
@@ -135,7 +136,7 @@ export function Interview() {
     setText("");
     setErr(null);
     try {
-      const d = await api<InterviewView>("/api/interview", { method: "POST", json: { turnId: data.current.id, action, text: said } });
+      const d = await api<InterviewView>("/api/interview", { method: "POST", json: { turnId: data.current.id, action, text: said, app } });
       setData(d);
       requestAnimationFrame(() => box.current?.focus());
     } catch (e) {
@@ -164,6 +165,11 @@ export function Interview() {
   return (
     <div className="page-pad lk-page w-wide" style={{ display: "flex", flexDirection: "column", gap: 16 }}>
       <ProfileTabs />
+      {app && (
+        <Link href={`/apply/${app}#keywords`} style={{ alignSelf: "flex-start", fontSize: font.base, fontWeight: 600, color: color.brick, textDecoration: "none" }}>
+          ← Back to application
+        </Link>
+      )}
       <PageHead
         eyebrow="Search profile"
         title="Interview"

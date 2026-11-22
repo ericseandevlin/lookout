@@ -103,3 +103,16 @@ describe("a bare yes or no (#1485)", () => {
     expect(INTERVIEW_SYSTEM).toContain(STORY_RULES);
   });
 });
+
+describe("the recruiter's stance (#1485)", () => {
+  it("coaches from the resume, one open question at a time, never a bare yes or no", async () => {
+    const { INTERVIEW_SYSTEM, isYesNoQuestion } = await import("./interviewer");
+    expect(INTERVIEW_SYSTEM).toContain("seasoned executive recruiter");
+    expect(INTERVIEW_SYSTEM).toContain('Never make the whole question "Have you done X?"');
+    expect(isYesNoQuestion("Have you led production for large events?")).toBe(true);
+    expect(isYesNoQuestion("Did you manage the budget?")).toBe(true);
+    expect(isYesNoQuestion("Have you led production for large events? Tell me where, and your part.")).toBe(false);
+    expect(isYesNoQuestion("Tell me about a time you led other managers.")).toBe(false);
+  });
+});
+

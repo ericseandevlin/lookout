@@ -1,12 +1,11 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import Link from "next/link";
+import { useState } from "react";
 import type { KeywordRow } from "@/lib/application/evidence";
-import type { KeywordInterview as Out, KeywordQuestion } from "@/lib/interview/keywords";
 import { InfoIcon } from "../chat";
 import { btn } from "../Settings";
 import { api } from "../store";
-import { KeywordInterview } from "./KeywordInterview";
 import { KeywordReport } from "./KeywordReport";
 import { card, type Detail } from "./shared";
 import { color, font } from "@/lib/tokens";
@@ -20,7 +19,6 @@ export function KeywordSection(p: Props) {
 
 const body: React.CSSProperties = { fontSize: font.lg, lineHeight: 1.5 };
 const muted: React.CSSProperties = { ...body, color: color.t2 };
-const plural = (n: number, one: string) => `${n} ${one}${n === 1 ? "" : "s"}`;
 const lower = (s: string) => s.toLowerCase();
 
 /** What the tooltip on a keyword says: where the posting asks for it, and what backs it. */
@@ -31,11 +29,10 @@ export function keywordTip(r: KeywordRow) {
 
 /**
  * Keywords for this resume (#1485): what the resume already backs, what's missing, and one way to back the missing
- * ones, a few interview questions. Each keyword has one control, x for not relevant; its posting quote is a tooltip.
+ * ones, the interview, which asks about them first. Each keyword has one control, x for not relevant; its posting
+ * quote is a tooltip.
  */
 export function KeywordPanel({ d, rows, reload, locked }: Props) {
-  const [questions, setQuestions] = useState<KeywordQuestion[] | null>(null);
-  const [asking, setAsking] = useState(false);
   const [busy, setBusy] = useState<string | null>(null);
   const [err, setErr] = useState<string | null>(null);
   const [term, setTerm] = useState("");
@@ -46,20 +43,6 @@ export function KeywordPanel({ d, rows, reload, locked }: Props) {
   const missing = [...live.filter((r) => !r.support && starred(r)), ...live.filter((r) => !r.support && !starred(r))];
   const removed = rows.filter((r) => r.removed);
   const used = rows.filter((r) => r.used);
-  const missingKey = missing.map((r) => r.term).join("|");
-
-  // The questions for the missing keywords; asked again when the missing list changes (a remove, a restore, an add).
-  useEffect(() => {
-    if (locked || !missingKey) return;
-    let gone = false;
-    api<Out>(`/api/apply/${d.id}/interview`, { method: "POST", json: { action: "questions" } })
-      .then((o) => !gone && setQuestions(o.questions))
-      .catch(() => !gone && setQuestions([]));
-    return () => {
-      gone = true;
-    };
-  }, [d.id, locked, missingKey]);
-
   const send = async (key: string, json: Record<string, unknown>) => {
     setBusy(key);
     setErr(null);
@@ -74,7 +57,6 @@ export function KeywordPanel({ d, rows, reload, locked }: Props) {
       setBusy(null);
     }
   };
-  const open = questions?.length ?? 0;
 
   const item = (r: KeywordRow) => (
     <li key={r.term} style={{ display: "flex", alignItems: "center", gap: 4, minHeight: 44, borderTop: `1px solid ${color.border}` }}>
@@ -106,13 +88,10 @@ export function KeywordPanel({ d, rows, reload, locked }: Props) {
   );
   const column = (title: string, list: KeywordRow[], empty: string, action?: React.ReactNode) => (
     <section aria-label={title} className={title === "Missing" ? "kw-missing" : undefined} style={{ display: "flex", flexDirection: "column", gap: 10, minWidth: 0 }}>
-      {/* The column's one action sits on its title row, right-aligned (#1485). */}
-      <div style={{ display: "flex", alignItems: "center", gap: 8, minHeight: 32 }}>
-        <h3 style={{ margin: 0, flex: 1, minWidth: 0, fontSize: font.lg, fontWeight: 700 }}>
-          {title} <span style={{ color: color.t2, fontWeight: 600 }}>({list.length})</span>
-        </h3>
-        {action}
-      </div>
+      <h3 style={{ margin: 0, minHeight: 32, display: "flex", alignItems: "center", fontSize: font.lg, fontWeight: 700 }}>
+        {title}&nbsp;<span style={{ color: color.t2, fontWeight: 600 }}>({list.length})</span>
+      </h3>
+      {action}
       {list.length ? <ul style={{ listStyle: "none", margin: 0, padding: 0 }}>{list.map(item)}</ul> : <div style={muted}>{empty}</div>}
     </section>
   );
@@ -123,17 +102,15 @@ export function KeywordPanel({ d, rows, reload, locked }: Props) {
       {d.keywordsApproved && <div style={muted}>Approved. The resume below uses them.</div>}
       <div className="kw-cols">
         {column("In your resume", backed, "None yet.")}
-        {column(
-          "Missing",
-          missing,
-          "Nothing missing.",
-          !locked && missing.length > 0 && questions?.length !== 0 && (
-            // Answering is how a missing keyword gets added: Lookout adds one only when your experience backs it (#1485).
-            <button onClick={() => setAsking(true)} disabled={questions === null} aria-label={questions ? `Answer ${plural(open, "question")} to add these keywords` : "Answer questions to add these keywords"} style={{ ...btn("solid"), height: 32, padding: "0 12px", fontSize: font.base, flex: "none", opacity: questions === null ? 0.6 : 1 }}>
-              Answer to add
-            </button>
-          ),
-        )}
+        {column("Missing", missing, "Nothing missing.", !locked && missing.length > 0 && (
+          // One interview, not two: the interview page asks about these first, and a backed one moves over (#1485).
+          <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-start", gap: 8, marginBottom: 4 }}>
+            <div style={muted}>A short interview adds missing keywords.</div>
+            <Link href={`/interview?app=${d.id}`} style={{ ...btn("solid"), height: 36, padding: "0 14px", fontSize: font.base, display: "inline-flex", alignItems: "center", textDecoration: "none" }}>
+              Interview me
+            </Link>
+          </div>
+        ))}
       </div>
       {removed.length > 0 && (
         <details>
@@ -177,17 +154,6 @@ export function KeywordPanel({ d, rows, reload, locked }: Props) {
         <div role="alert" style={{ ...body, color: color.brick }}>
           {err}
         </div>
-      )}
-      {asking && questions && (
-        <KeywordInterview
-          appId={d.id}
-          questions={questions}
-          close={() => setAsking(false)}
-          onChange={(o) => {
-            setQuestions(o.questions);
-            void reload();
-          }}
-        />
       )}
     </div>
   );
