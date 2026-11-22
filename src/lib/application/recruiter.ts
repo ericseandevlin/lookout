@@ -67,7 +67,12 @@ const FRACTION = String.raw`\b(?:in|by)\s+half\b(?!-)|\bby\s+a\s+(?:third|quarte
 const HAS_NUMBER = new RegExp(`(?<![a-z])\\d|\\b(?:one(?!\\s+of\\b)|${COUNT_WORDS})\\b(?!-(?!(?:thirds?|quarters?|halves|fold|one|two|three|four|five|six|seven|eight|nine)\\b))|${FRACTION}`, "i");
 // A meeting, not a scale: "1:1s", "1-on-1s", "one-on-one coaching" say nothing about size or result (#1445).
 const ONE_ON_ONE = /(?<![\w:])(?:1|one)(?:\s*:\s*|-on-|\s+on\s+)(?:1|one)(?:['’]?s)?(?![\w:])/gi;
-const hasNumber = (l: string) => HAS_NUMBER.test(l.replace(ONE_ON_ONE, " "));
+// A date or a version, not a scale either: "the 2023 rebrand", "WCAG 2.1", "React 18", "Section 508", "COVID-19" (#1653).
+// A year-shaped number with a unit or a plural count after it is still scale: "2000 users", "2,000 stores", "2020%".
+const YEAR = /(?<![$£€\d.,])\b(?:19[89]\d|20[0-3]\d)(?:['’]?s)?\b(?![.,]\d|\s*[%+]|\s*[kmb]\b|\s+(?:[a-z]+s|people|staff)\b)/gi;
+const VERSION =
+  /\b(?:wcag|aria|section|react|angular|vue|next(?:\.js)?|node(?:\.js)?|ios|ipados|android|macos|windows|python|java|php|ruby|rails|swift|kotlin|html|css|es|ecmascript|http|oauth|web|industry|covid)[\s-]?v?\d+(?:\.\d+)*\b(?!\s*[%+x×]|\s*[kmb]\b)|\bv\d+(?:\.\d+)*\b/gi;
+const hasNumber = (l: string) => HAS_NUMBER.test(l.replace(ONE_ON_ONE, " ").replace(VERSION, " ").replace(YEAR, " "));
 
 /** Checks on a resume draft's markdown. */
 function resumeChecks(md: string): Finding[] {
