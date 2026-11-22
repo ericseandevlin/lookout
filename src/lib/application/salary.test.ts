@@ -689,3 +689,28 @@ describe("rangeBasis: a range that leaves the bonus out is base (#1411)", () => 
     expect(rangeBasis("Salary: $150,000 - $180,000. Our perks don't include a company car.")).toBe(null);
   });
 });
+
+describe("rangeBasis: a total compensation package heading over benefits is not total cash (#1556)", () => {
+  const base = "The base salary range for this position is $150,000 - $180,000.";
+  it.each([
+    "Our total compensation package: medical, dental, 401(k) match and paid time off.",
+    "Total compensation package: medical, dental, vision.",
+    "Total rewards and benefits: medical, dental.",
+    "Total compensation: our package covers medical and dental.",
+  ])("reads base when a benefits line says %s", (benefits) => {
+    expect(rangeBasis(`${base}\n${benefits}`)).toBe("base");
+    expect(rangeBasis(`${benefits}\n${base}`)).toBe("base");
+  });
+  it("still reads a total heading that gives the amount", () => {
+    expect(rangeBasis("Total compensation package: $200,000 - $250,000")).toBe("total");
+    expect(rangeBasis("Total compensation range: $200,000 - $250,000")).toBe("total");
+    expect(rangeBasis(`Total compensation: $200,000 - $250,000.\n${base}`)).toBe("total");
+    expect(rangeBasis("Total compensation:\n$200,000 - $250,000")).toBe("total");
+  });
+  it("fills a base-salary question from the base range", () => {
+    const posting = `${base}\nOur total compensation package: medical, dental, 401(k).`;
+    const r = suggestSalary({ floor: "140,000", min: 150000, max: 180000, basis: rangeBasis(posting), asksBase: asksBase("Desired base salary") })!;
+    expect(r.amount).not.toBeNull();
+    expect(r.note).not.toMatch(/total cash/);
+  });
+});

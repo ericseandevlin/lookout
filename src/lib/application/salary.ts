@@ -25,7 +25,17 @@ const NEGATED =
 // "Base salary range: $150K - $180K + bonus" or "$150k-$180k base + bonus + equity" (#1425).
 const BASE_PLUS = /(?<!\d[km]?\s{0,2})\bbase\b[^.?!$\d]{0,30}?(\+|\bplus\b|\band\b)[^.?!]{0,20}?\b(bonus|commission|incentive)/i;
 const THE_RANGE = /\b(range|figure|amount)s?\b/i;
-const ON_TARGET = /\bon[- ]target earnings\b|\btotal (target )?(cash|compensation|comp|pay)\b[^.?!]{0,10}(range|:|\$)/i;
+// "Our total compensation package: medical, dental, 401(k)" heads a benefits list, not the range: a benefits word before
+// the colon counts only when an amount follows it ("Total compensation package: $200k-$250k") (#1556).
+const TOTAL_PAY_HEAD = /\btotal (target )?(cash|compensation|comp|pay)\b([^.?!]{0,10}?)(range|:|\$)(\s*\$?\s*\d)?/i;
+const BENEFITS_HEAD = /\b(package|rewards?|benefits?|perks)\b/i;
+const ON_TARGET = {
+  test: (s: string) => {
+    if (/\bon[- ]target earnings\b/i.test(s)) return true;
+    const m = s.match(TOTAL_PAY_HEAD);
+    return !!m && !(m[4] !== "$" && BENEFITS_HEAD.test(m[3]) && !m[5]);
+  },
+};
 // "Total cash" and "OTE" count only where they name the range: in a sentence with the range or an amount, or as a short
 // heading over it. "Beyond base pay, a bonus means total cash compensation may be higher" is about base (#795).
 const TOTAL_CASH = /\btotal cash\b|\bOTE\b/i;
@@ -61,8 +71,20 @@ const SAYS_BASE = (s: string) => NEGATED.test(s) && ABOUT_PAY.test(s) && /\b(bon
 const AMOUNT_PLUS_BONUS = /\d[km]?\s{0,2}(\+|\bplus\b)\s*(an?\s+)?((annual|target|performance|quarterly|sales)\s+)?(bonus|commission|incentive)/i;
 
 /** What the posted range covers: total cash (bonus included), base, or the posting doesn't say. "$150k-$180k base" names it base (#1425). */
+// An explicit "base salary range" beats a total heading with no amount in another sentence: "Total compensation: our
+// package covers..." then "The base salary range for this position is $150,000 - $180,000" is a base range (#1556).
+const BASE_RANGE = /\bbase (salary|pay|compensation) range\b/i;
+const HAS_AMOUNT = /\$\s?\d|\d[km]\b/i;
+const totalWins = (posting: string) => {
+  const all = sentences(posting);
+  const totals = all.filter(SAYS_TOTAL);
+  if (!totals.length) return false;
+  const baseElsewhere = all.some((s) => BASE_RANGE.test(s) && !totals.includes(s));
+  return !baseElsewhere || totals.some((s) => HAS_AMOUNT.test(s) || BASE_RANGE.test(s));
+};
+
 export const rangeBasis = (posting: string): "total" | "base" | null =>
-  sentences(posting).some(SAYS_TOTAL)
+  totalWins(posting)
     ? "total"
     : /\bbase (salary|pay|compensation)\b|\d[km]?\s{0,2}base\b/i.test(posting) || AMOUNT_PLUS_BONUS.test(posting) || sentences(posting).some(SAYS_BASE)
       ? "base"
