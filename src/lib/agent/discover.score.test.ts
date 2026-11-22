@@ -86,3 +86,22 @@ describe("scoring reads the resume (#1531)", () => {
     expect(call.system).toContain("No em dashes");
   });
 });
+
+describe("scorePages: pay the model copied per month (#1636)", () => {
+  beforeEach(() => {
+    completeJSON.mockReset();
+  });
+  const monthly = { url: "https://jobs.example.com/1", text: "Compensation: $12,000 - $15,000 per month", pay: { min: 144000, max: 180000, currency: "USD", source: "text" } };
+
+  it("takes the page's yearly read over the model's monthly numbers", async () => {
+    completeJSON.mockResolvedValueOnce({ finds: [{ ...find(0), comp_min: 12000, comp_max: 15000 }] });
+    const [out] = await scorePages(ctx, [monthly] as never, {} as never);
+    expect([out.comp_min, out.comp_max]).toEqual([144000, 180000]);
+  });
+
+  it("keeps the model's range when it is a different yearly range, not a copy of the page's pay", async () => {
+    completeJSON.mockResolvedValueOnce({ finds: [{ ...find(0), comp_min: 120000, comp_max: 150000 }] });
+    const [out] = await scorePages(ctx, [monthly] as never, {} as never);
+    expect([out.comp_min, out.comp_max]).toEqual([120000, 150000]);
+  });
+});
