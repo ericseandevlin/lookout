@@ -9,6 +9,8 @@ describe("saved answers", () => {
     // #1123: "for this role" doesn't make work authorization role-specific; "this location" still can.
     expect(isCommon("Are you legally authorized to work in the United States for this position?", "Yes")).toBe(true);
     expect(isCommon("Will you now or in the future require visa sponsorship for this role?", "No")).toBe(true);
+    expect(isCommon("Are you legally authorized to work in the United States?", "Yes")).toBe(true);
+    expect(isCommon("What country are you applying from?", "United States")).toBe(true);
     expect(isCommon("Will you require sponsorship to work in this location?", "No")).toBe(false);
     expect(isCommon("Are you willing to relocate for this role?", "Yes")).toBe(false);
     expect(isCommon("What is your desired base salary?", "$220,000")).toBe(false);
@@ -112,6 +114,19 @@ describe("saved answers that depend on where the job is (#1227)", () => {
     expect(isCommon("Will you now or in the future require sponsorship to work in the country where this role is based?", "No")).toBe(false);
     expect(isCommon("Are you legally authorized to work in the country where this job is located?", "Yes")).toBe(false);
     expect(isCommon("Do you have the right to work in the position's country?", "Yes")).toBe(false);
+  });
+  it("never keeps one asked for the country you are applying to (#1572)", () => {
+    for (const q of [
+      "Are you legally authorized to work in the country for which you are applying?",
+      "Are you legally authorized to work in the country in which you are applying?",
+      "Will you now or in the future require sponsorship to work in the country you are applying to?",
+      "Are you authorized to work in the country you're applying for?",
+      "Are you legally authorized to work in the location of this role?",
+      "Do you require visa sponsorship to work in the country of this position?",
+    ]) {
+      expect(isCommon(q, "Yes"), q).toBe(false);
+      expect(match(upsert([], q, "Yes"), q), q).toBeNull();
+    }
   });
   it("never reuses one saved before the fix", () => {
     const q = "Will you require sponsorship to work in the country where this role is based?";
