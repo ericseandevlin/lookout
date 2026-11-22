@@ -258,8 +258,8 @@
    * text with or without hyphens and spaces (#1518), then a prefix
    * either way, at a word boundary, closest length first.
    */
-  /** Same as compactChoice in fillPlan.ts: "Full time" is "Full-time", "Onsite" is "On-site", whole text only (#1518). */
-  const compact = (t) => norm(t).replace(/[\s'".-]+/g, "");
+  /** Same as compactChoice in fillPlan.ts: "Full time" is "Full-time", "Onsite" is "On-site", whole text only (#1518). "1-2" is never "12" (#1549). */
+  const compact = (t) => norm(t).replace(/(\d)[\s'".-]+(?=\d)/g, "$1~").replace(/[\s'".-]+/g, "");
 
   function pickOptions(content, options) {
     const out = [];

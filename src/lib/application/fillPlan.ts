@@ -55,7 +55,8 @@ const normChoice = (t: string) =>
  * The whole text with spaces, hyphens, dashes, apostrophes and dots gone, so "Full time" is "Full-time", "Onsite" is
  * "On-site" and "Bachelors" is "Bachelor's" (#1518). Only ever compared whole, so "No" still never matches "None".
  */
-const compactChoice = (t: string) => normChoice(t).replace(/[\s'".-]+/g, "");
+// A separator between two digits stays as a mark: "1-2" is a range, never "12", and "1.5" is never "15" (#1549).
+const compactChoice = (t: string) => normChoice(t).replace(/(\d)[\s'".-]+(?=\d)/g, "$1~").replace(/[\s'".-]+/g, "");
 
 /**
  * The form option an answer names, compared whole the way the filler does: case, a required mark, curly quotes, dashes
