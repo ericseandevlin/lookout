@@ -378,4 +378,31 @@ describe("listPage: search and board pages are not jobs (#1537)", () => {
     ])
       expect(listPage(u), u).toBe(false);
   });
+
+  it("drops SmartRecruiters, Workable, Teamtailor, iCIMS, Taleo and Paylocity board pages, not their postings (#1613)", () => {
+    for (const u of [
+      "https://careers.smartrecruiters.com/Acme",
+      "https://jobs.smartrecruiters.com/Acme",
+      "https://apply.workable.com/acme/",
+      "https://acme.teamtailor.com/",
+      "https://acme.teamtailor.com/departments/design",
+      "https://careers-acme.icims.com/jobs/intro",
+      "https://acme.taleo.net/careersection/2/jobsearch.ftl",
+      "https://recruiting.paylocity.com/Recruiting/Jobs/All/0c3f1a2b-4d5e-6f70-8a9b-0c1d2e3f4a5b/Acme-Inc",
+    ])
+      expect(listPage(u), u).toBe(true);
+    for (const u of [
+      "https://jobs.smartrecruiters.com/Acme/743999912345678-product-designer",
+      "https://jobs.smartrecruiters.com/oneclick-ui/company/Acme/publication/0c3f1a2b-4d5e-6f70-8a9b-0c1d2e3f4a5b",
+      "https://apply.workable.com/acme/j/ABC123DEF/",
+      "https://acme.workable.com/jobs/123456",
+      "https://jobs.workable.com/view/abc/product-designer-at-acme",
+      "https://acme.teamtailor.com/jobs/12345-designer",
+      "https://careers-acme.icims.com/jobs/1234/designer/job",
+      "https://acme.taleo.net/careersection/2/jobdetail.ftl?job=ABC",
+      "https://chk.tbe.taleo.net/chk01/ats/careers/v2/viewRequisition?org=ACME&cws=39&rid=1234",
+      "https://recruiting.paylocity.com/Recruiting/Jobs/Details/123456",
+    ])
+      expect(listPage(u), u).toBe(false);
+  });
 });
