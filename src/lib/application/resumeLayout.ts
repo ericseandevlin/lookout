@@ -199,11 +199,11 @@ const EXPERIENCE = /^(experience|work experience|professional experience|employm
 
 /**
  * Sentence ends: a period after a lowercase letter, digit, % or ), then a capital. "U.S. Bank" and "Inc." don't count,
- * and neither do "e.g. React" or "i.e. Vue" (#890).
+ * and neither do "e.g. React" or "i.e. Vue" (#890), or "Warner Bros. Discovery" and "Mt. Sinai" (#1656).
  */
 export function sentences(text: string): string[] {
   return text
-    .split(/(?<=[a-z0-9%)][.!?])(?<!\b(?:Inc|Co|Corp|Ltd|Jr|Sr|St|Mr|Ms|Dr|vs|etc|[eE]\.g|[iI]\.e)\.)\s+(?=[A-Z])/)
+    .split(/(?<=[a-z0-9%)][.!?])(?<!\b(?:Inc|Co|Corp|Ltd|Bros|Mfg|Intl|Assn|Dept|Univ|Jr|Sr|St|Mt|Ft|Mr|Mrs|Ms|Dr|Prof|vs|etc|approx|[eE]\.g|[iI]\.e)\.)\s+(?=[A-Z])/)
     .map((x) => x.trim())
     .filter(Boolean);
 }
