@@ -282,9 +282,9 @@ export function normUrl(u: string) {
 // LinkedIn's /jobs/view/<id> is one posting with a public page, not a list (#1547).
 // Job board search and list pages, on any country site (indeed.co.uk, ca.linkedin.com): /jobs, /q-<title>-jobs.html,
 // Indeed's /l-<place>-jobs.html, the mobile /m/jobs; Glassdoor's /Job/...-SRCH_... pages; any /search? page or path
-// that ends in /jobs (#1537).
+// that ends in /jobs (#1537). Wellfound's /role/ and /location/ pages ("Product Designer Jobs in New York") (#1577).
 const AGGREGATOR =
-  /(indeed|linkedin|glassdoor|ziprecruiter|simplyhired|monster|careerbuilder)\.[a-z]{2,3}(\.[a-z]{2})?\/(jobs(?!\/view\/)|q-|l-|m\/jobs)|glassdoor\.[a-z]{2,3}(\.[a-z]{2})?\/(job\/|.*SRCH_)|\/search\?|\/jobs\/?$/i;
+  /(indeed|linkedin|glassdoor|ziprecruiter|simplyhired|monster|careerbuilder)\.[a-z]{2,3}(\.[a-z]{2})?\/(jobs(?!\/view\/)|q-|l-|m\/jobs)|glassdoor\.[a-z]{2,3}(\.[a-z]{2})?\/(job\/|.*SRCH_)|wellfound\.com\/(role|location)s?\/|\/search\?|\/jobs\/?$/i;
 
 // ATS hosts where every posting has an ID jobKey reads, so an address there without one is the board, not a job.
 const ATS_HOST = /(^|\.)(greenhouse\.io|lever\.co|ashbyhq\.com|myworkdayjobs\.com|myworkdaysite\.com)$/i;
