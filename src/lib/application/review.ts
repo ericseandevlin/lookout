@@ -76,7 +76,9 @@ export async function keywordState(userId: string, a: { report: ApplicationRepor
   if (!featureOn("INTERVIEW")) return { resume, rows };
   // The shorter list (#1485). The panel, the go and the resume all read it from here, so they agree.
   const t = title ?? (a.opportunityId ? ((await db.select({ t: schema.opportunities.title }).from(schema.opportunities).where(eq(schema.opportunities.id, a.opportunityId)))[0]?.t ?? "") : "");
-  return { resume, rows: trimRows(rows, keywordPicks(rows, posting, t), posting) };
+  // Ranked from the posting alone, so backing or removing a keyword never lets a different one into the list.
+  const starred = keywordPicks(rows.map((r) => ({ ...r, support: null, removed: false })), posting, t);
+  return { resume, rows: trimRows(rows, starred, posting) };
 }
 
 async function keywordDetail(userId: string, report: ApplicationReport, posting: string, title: string) {

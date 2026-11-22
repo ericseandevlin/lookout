@@ -159,4 +159,23 @@ describe("POST /api/apply/[id]/interview (#1485)", () => {
       ["q3", ["event CRM"]],
     ]);
   });
+
+  it("backing a starred keyword never lets a different keyword into the capped list", async () => {
+    // 14 keywords, more than the cap. Three are asked for three times each, so they are starred. "zoning" is asked for
+    // twice and sits last, so it is the next in line; backing a starred one must not let it in.
+    const terms = ["event sales", "budgets", "catering", ...Array.from({ length: 10 }, (_, i) => `skill${i}`), "zoning"];
+    const thrice = (t: string) => `Own ${t}. Must have ${t}. Grow ${t}.`;
+    const posting = `${thrice("event sales")} ${thrice("budgets")} ${thrice("catering")} ${terms.slice(3, 13).join(". ")}. Know zoning. More zoning.`;
+    const [a] = await db.select().from(schema.applications).where(eq(schema.applications.id, appId));
+    await db.update(schema.applications).set({ report: { ...a.report, postingText: posting, keywordPlan: terms.map((term) => ({ term })) } }).where(eq(schema.applications.id, appId));
+    replies = [{ questions: [{ terms: ["event sales"], question: "Have you owned event sales?", why: "Asked three times." }] }];
+    const before = (await send({ action: "questions" })).body;
+    expect(before.rows).toHaveLength(12);
+    expect(before.rows.map((r) => r.term)).toContain("event sales");
+    expect(before.rows.map((r) => r.term)).not.toContain("zoning");
+    replies = [{ facts: [fact("Owned event sales for a 1,200-person venue")], backs: ["event sales"] }];
+    const after = (await send({ action: "answer", question: "q1", text: "I owned event sales." })).body;
+    expect(backed(after)).toContain("event sales");
+    expect(after.rows.map((r) => r.term)).toEqual(before.rows.map((r) => r.term));
+  });
 });
