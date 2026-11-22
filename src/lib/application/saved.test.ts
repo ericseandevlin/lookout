@@ -176,5 +176,14 @@ describe("expected start and notice questions (#1595)", () => {
   it("still never keeps the expected pay", () => {
     expect(isCommon("Expected salary?", "$150k")).toBe(false);
     expect(isCommon("Expected start salary in your country?", "$150k")).toBe(false);
+
+describe("available to start (#1596)", () => {
+  it("keeps a start span asked as availability", () => {
+    expect(isCommon("When would you be available to start?", "2 weeks after an offer")).toBe(true);
+    expect(isCommon("What is your availability to start?", "Immediately")).toBe(true);
+  });
+  it("keeps a calendar date with one application", () => {
+    expect(onlyThisOne("When would you be available to start?", "12/1")).toBe(true);
+    expect(isCommon("When are you available to start?", "January 2027")).toBe(false);
   });
 });
