@@ -296,13 +296,13 @@
     return labels.findIndex((l) => Math.min(a.length, norm(l).length) >= 80 && sameText(l, answer));
   }
 
-  /** The answer's first number, same as the worker: "$165k" is 165000 (#1168), "$120-150k" is 120000 (#1254). */
+  /** The answer's first number, same as the worker: "$165k" is 165000 (#1168), "$120-150k" is 120000 (#1254), "$120 K" is 120000 (#1585). */
   function numberAnswer(t) {
-    const m = String(t || "").match(/(\d[\d,]*(?:\.\d+)?)([km]\b)?(?:\s*(?:-|–|—|to)\s*\$?\d[\d,]*(?:\.\d+)?([km]\b))?/i);
+    const m = String(t || "").match(/(\d[\d,]*(?:\.\d+)?)((?:\s?(?:[kK]|[tT]housand|[mM]illion)|[mM]|\sM)\b)?(?:\s*(?:-|–|—|to|To|TO)\s*\$?\d[\d,]*(?:\.\d+)?((?:\s?(?:[kK]|[tT]housand|[mM]illion)|[mM]|\sM)\b))?/);
     if (!m) return "";
     const n = m[1].replace(/,/g, "");
     const unit = m[2] || (Number(n) < 1000 ? m[3] : undefined);
-    return unit ? String(Math.round(Number(n) * (unit.toLowerCase() === "k" ? 1e3 : 1e6))) : n;
+    return unit ? String(Math.round(Number(n) * (unit.trim()[0].toLowerCase() === "m" ? 1e6 : 1e3))) : n;
   }
 
   /**
