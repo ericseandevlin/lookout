@@ -386,7 +386,9 @@ async function baseKey(f: { company: string; title: string; location: string }) 
 /**
  * The posting's dedupe key. The fingerprint drops title parentheticals, so "Designer (Payments)" and "Designer (Identity)"
  * at one company and city share it, and the second job was saved onto the first's row and never shown (#838). When the
- * titles differ and both links name a different ATS job, the second gets a key of its own.
+ * titles differ and both links name a different job on the same site, the second gets a key of its own. A key from a job
+ * board next to one from an ATS says nothing about whether they are two jobs: "Designer (Remote)" on Greenhouse and
+ * "Designer" on LinkedIn are one, so the fingerprint stands, or the split row whose full title it shares (#1679).
  */
 async function postingKey(f: { company: string; title: string; location: string; url: string }) {
   const stored = async (k: string) =>
@@ -407,8 +409,16 @@ async function postingKey(f: { company: string; title: string; location: string;
   const hit = fp === base ? first : await stored(fp);
   const theirs = hit?.sourceUrl ? atsKey(hit.sourceUrl) : null;
   if (!hit || !theirs || theirs === mine || fullTitle(hit.title) === fullTitle(f.title)) return fp;
-  return `${fp}:${mine}`;
+  if (site(theirs) === site(mine)) return `${fp}:${mine}`;
+  const split = await db
+    .select({ title: schema.opportunities.title, fingerprint: schema.opportunities.fingerprint })
+    .from(schema.opportunities)
+    .where(sql`starts_with(${schema.opportunities.fingerprint}, ${`${fp}:`})`);
+  return split.find((o) => fullTitle(o.title) === fullTitle(f.title))?.fingerprint ?? fp;
 }
+
+/** The site a job key names: "greenhouse" for "greenhouse:4001234005", "linkedin" for "linkedin:3901234567". */
+const site = (key: string) => key.slice(0, key.indexOf(":"));
 
 /** Finds the link check closed before they applied: a repost brings these back (Eric, #922). */
 const REOPENABLE = ["Not applied", "Auto-applying"];
