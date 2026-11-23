@@ -67,9 +67,9 @@ export function jobKey(raw: string | null | undefined): string | null {
   const indeed = /(^|\.)indeed\.[a-z]{2,3}(\.[a-z]{2})?$/.test(host) && (u.searchParams.get("jk") ?? u.searchParams.get("vjk"))?.match(/^[0-9a-f]{16}$/i)?.[0];
   if (indeed) return `indeed:${indeed.toLowerCase()}`;
   // LinkedIn (#1578): /jobs/view/<id> and /jobs/view/<title>-at-<company>-<id> are the same posting. So is the job open
-  // beside a search or a collection, /jobs/search/?currentJobId=<id> (#1583).
+  // beside a search or a collection, /jobs/search/?currentJobId=<id> (#1583). Job alert emails link /comm/jobs/view/<id> (#1672).
   const linkedin =
-    /(^|\.)linkedin\.com$/.test(host) && (u.pathname.match(/^\/jobs\/view\/(?:[^/]*-)?(\d{6,})\/?$/i)?.[1] ?? u.searchParams.get("currentJobId")?.match(/^\d{6,}$/)?.[0]);
+    /(^|\.)linkedin\.com$/.test(host) && (u.pathname.match(/^(?:\/comm)?\/jobs\/view\/(?:[^/]*-)?(\d{6,})\/?$/i)?.[1] ?? u.searchParams.get("currentJobId")?.match(/^\d{6,}$/)?.[0]);
   if (linkedin) return `linkedin:${linkedin}`;
   // Glassdoor (#1605): partner/jobListing.htm?jobListingId=<id>, and ?jl=<id> on a listing page or beside a search. The
   // path alone is the same for every job, so without the ID all of them would be one job.

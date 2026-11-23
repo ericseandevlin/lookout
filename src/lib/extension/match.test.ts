@@ -40,8 +40,11 @@ describe("jobKey (#169)", () => {
       "https://www.linkedin.com/jobs/view/3812345678/?trk=public_jobs",
       "https://www.linkedin.com/jobs/view/senior-product-designer-at-acme-3812345678",
       "https://uk.linkedin.com/jobs/view/senior-product-designer-at-acme-3812345678/",
+      // A job alert email's link (#1672).
+      "https://www.linkedin.com/comm/jobs/view/3812345678/?trackingId=abc%3D%3D&refId=xyz&lipi=urn%3Ali",
     ])
       expect(jobKey(u), u).toBe(li);
+    expect(jobKey("https://www.linkedin.com/comm/jobs/search?keywords=designer")).toMatch(/^url:/);
     expect(jobKey("https://www.linkedin.com/jobs/search?keywords=designer")).toMatch(/^url:/);
   });
   it("keys a LinkedIn job open beside a search or collection like its own page (#1583)", () => {
