@@ -188,6 +188,25 @@ describe("placesDiffer (#1285)", () => {
     expect(placesDiffer("Bogota, CO", "Bogota, Mexico")).toBe(true);
   });
 
+  it("reads any other country's two-letter code as that country (#1677)", () => {
+    expect(placesDiffer("Paris, FR", "Paris, France")).toBe(false);
+    expect(placesDiffer("Dublin, IE", "Dublin, Ireland")).toBe(false);
+    expect(placesDiffer("Madrid, ES", "Madrid, Spain")).toBe(false);
+    expect(placesDiffer("Sydney, NSW, AU", "Sydney, Australia")).toBe(false);
+    expect(placesDiffer("Remote (FR)", "Remote (France)")).toBe(false);
+    expect(placesDiffer("Remote, MX", "Remote, Mexico")).toBe(false);
+    expect(placesDiffer("Prague, CZ", "Prague, Czechia")).toBe(false);
+    expect(placesDiffer("Istanbul, TR", "Istanbul, Türkiye")).toBe(false);
+    expect(placesDiffer("Abu Dhabi, AE", "Abu Dhabi, UAE")).toBe(false);
+    // Two countries still differ, written either way.
+    expect(placesDiffer("Paris, FR", "Paris, Texas")).toBe(true);
+    expect(placesDiffer("Paris, FR", "Paris, TX")).toBe(true);
+    expect(placesDiffer("London, GB", "London, ON")).toBe(true);
+    expect(placesDiffer("Remote, FR", "Remote, ES")).toBe(true);
+    expect(placeId("Paris, France")).toBe("france");
+    expect(placeId("Paris, FR")).toBe("france");
+  });
+
   it("tells apart the same city in another state or country", () => {
     expect(placesDiffer("Remote, US", "Remote, Canada")).toBe(true);
     expect(placesDiffer("Cambridge, MA", "Cambridge, United Kingdom")).toBe(true);
