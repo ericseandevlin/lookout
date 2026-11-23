@@ -158,6 +158,22 @@ const ISO_CLASH: Record<string, string[]> = {
   pe: ["peru"], sc: ["seychelles"], sd: ["sudan"], sk: ["slovakia"], tn: ["tunisia"], va: ["vatican", "vatican city"],
 };
 
+// Two-letter country codes that are not also a state's or province's, and a few second names, as the name region()
+// reads for that country: ATS feeds write "Paris, FR" and LinkedIn writes "Paris, France" (#1677). Only region() reads
+// these, so the fingerprint and remoteFirst are unchanged.
+const COUNTRY_NAME: Record<string, string> = {
+  ae: "united arab emirates", at: "austria", au: "australia", be: "belgium", bg: "bulgaria", br: "brazil",
+  ch: "switzerland", cl: "chile", cn: "china", cr: "costa rica", cz: "czech republic", dk: "denmark", ee: "estonia",
+  eg: "egypt", es: "spain", fi: "finland", fr: "france", gr: "greece", hk: "hong kong", hr: "croatia", hu: "hungary",
+  ie: "ireland", is: "iceland", it: "italy", jp: "japan", ke: "kenya", kr: "south korea", lt: "lithuania",
+  lu: "luxembourg", lv: "latvia", mx: "mexico", my: "malaysia", ng: "nigeria", no: "norway", nz: "new zealand",
+  ph: "philippines", pk: "pakistan", pl: "poland", pt: "portugal", ro: "romania", rs: "serbia", se: "sweden",
+  sg: "singapore", si: "slovenia", th: "thailand", tr: "turkey", tw: "taiwan", ua: "ukraine", uy: "uruguay",
+  vn: "vietnam", za: "south africa",
+  uae: "united arab emirates", czechia: "czech republic", turkiye: "turkey", korea: "south korea",
+  "republic of korea": "south korea",
+};
+
 /**
  * "Remote - US", "US Remote", "USA (Remote)" and "Remote – United States" as "Remote, US", the way "Remote, US" and
  * "Remote (US)" already key: the fingerprint keeps only the text before the first comma, so one remote job written two
@@ -232,7 +248,7 @@ export function region(raw: string) {
       if (!state && q.length === 2) code = q;
       state ??= s;
     } else if (COUNTRIES.has(q)) country ??= COUNTRIES.get(q)!;
-    else other = q;
+    else other = COUNTRY_NAME[q] ?? q;
   }
   return { state, country: country ?? state?.slice(0, 2) ?? other, code: country ? null : code };
 }
