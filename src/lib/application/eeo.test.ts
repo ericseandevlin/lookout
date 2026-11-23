@@ -77,6 +77,15 @@ describe("classify: questions that only sound like EEO (#1512)", () => {
     expect(classify("Are you currently serving on active duty in the U.S. Armed Forces?")).toBeNull();
     expect(classify("Are you currently a member of the military or a reservist?")).toBeNull();
     expect(classify("Sex offender registry: have you ever been convicted?")).toBeNull();
+    expect(classify("Are you currently enlisted?")).toBeNull();
+    expect(classify("Are you currently in the reserves?")).toBeNull();
+  });
+
+  it("reads 'currently' outside service as the question it is (#1683)", () => {
+    expect(classify("Do you currently have a disability?")).toBe("disability");
+    expect(classify("Do you have a disability (currently or in the past)?")).toBe("disability");
+    expect(classify("How do you currently identify your gender?")).toBe("gender");
+    expect(classify("Are you currently a protected veteran?")).toBe("veteran");
   });
 
   it("still reads the real questions", () => {
