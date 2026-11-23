@@ -46,6 +46,9 @@ export function classify(prompt: string): EeoCategory | null {
   const asked = p.replace(/\([^)]*\)/g, " ").replace(/\b(e\.g\.|such as|for example)[^?]*/g, " ");
   if (/transgender/.test(asked)) return "transgender";
   if (/sexual orientation/.test(p)) return "orientation";
+  // "Sex assigned at birth", "Birth sex" and "Biological sex" are not gender identity, and "Is your gender identity the
+  // same as the sex you were assigned at birth?" is answered Yes or No: the gender answer must never fill them (#1681).
+  if (/\bat birth\b|\bbirth sex\b|\bbiological sex\b|\bsex (?:assigned|recorded)\b/.test(p)) return null;
   // "Do you have a disability? Veterans with service-connected disabilities should also answer here." asks about
   // disability; the question is the first sentence, the rest is guidance (#973).
   const first = p.split(/(?<=[.?!])\s+/)[0];
