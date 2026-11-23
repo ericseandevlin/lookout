@@ -172,6 +172,7 @@ async function runDue(due: { userId: string; searchId: string }[]) {
   let next = 0;
   let stopped = false;
   const runOne = async ({ userId, searchId }: { userId: string; searchId: string }) => {
+    let searched = false;
     try {
       // The due list was built at the start of the pass; a person who pressed Search now while this waited
       // for a slot already has a run going, so don't start a second one (#1020).
@@ -179,12 +180,17 @@ async function runDue(due: { userId: string; searchId: string }[]) {
       const r = await discover(searchId, "scheduled");
       // Only queued for the search agent: its complete route sends the email once it has found something (#1039).
       if ("queued" in r && r.queued) return;
+      searched = true;
       // Even with nothing new: pinned finds due soon still go out, once a day (#304).
       await sendDigest(userId, "runId" in r ? r.runId : undefined);
     } catch (e) {
+      // A search that failed or stopped at the person's cap still sends pinned finds due soon: the next run day may be
+      // past the deadline. The email's own 20-hour rule keeps a retry from sending them twice (#1685).
+      const dueSoon = () => (searched ? Promise.resolve() : sendDigest(userId).catch((err) => fail("finds email", err)));
       // One person's own cap: tell them on their board and go on to the next person (#990).
       if (e instanceof BudgetError && e.scope === "user") {
         await noteUserCap(userId, searchId).catch((err) => fail("user cap note", err));
+        await dueSoon();
         return;
       }
       // The app-wide cap and missing config affect everyone; stop this tick instead of failing search by search.
@@ -193,6 +199,7 @@ async function runDue(due: { userId: string; searchId: string }[]) {
         return;
       }
       fail(`run failed for search ${searchId}`, e);
+      await dueSoon();
     }
   };
   const slot = async () => {
