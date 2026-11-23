@@ -194,7 +194,7 @@ export function ApplicationReview({ id }: { id: string }) {
                   {s.help && !locked && <div style={{ ...muted, marginTop: -4 }}>{s.help}</div>}
                   {s.title === "Resume" && d.keywordRows && <KeywordSection d={d} rows={d.keywordRows} reload={load} locked={locked} />}
                   {list.map((i) => (
-                    <ItemCard key={i.id} appId={d.id} item={i} locked={locked} act={act} analysis={d.report.recruiter?.[i.id]} template={d.template} accent={d.accent} header={i.kind === "cover_letter" ? letterHeaderFrom(resumeText(d), "") : null} letter={i.kind === "cover_letter" && d.letter ? { ...(d.letter.items[i.id] ?? { strategy: d.letter.strategy, ready: [], writing: false }), suggested: d.letter.suggested, why: d.letter.why } : null} onTemplate={pickTemplate} onAccent={pickAccent} needsKeywords={!!d.keywordRows && !d.keywordsApproved} />
+                    <ItemCard key={i.id} appId={d.id} item={i} locked={locked} act={act} interview={!!d.interviewKeywords} template={d.template} accent={d.accent} header={i.kind === "cover_letter" ? letterHeaderFrom(resumeText(d), "") : null} letter={i.kind === "cover_letter" && d.letter ? { ...(d.letter.items[i.id] ?? { strategy: d.letter.strategy, ready: [], writing: false }), suggested: d.letter.suggested, why: d.letter.why } : null} onTemplate={pickTemplate} onAccent={pickAccent} needsKeywords={!!d.keywordRows && !d.keywordsApproved} />
                   ))}
                 </section>
               );
