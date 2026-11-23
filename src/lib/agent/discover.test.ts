@@ -418,6 +418,32 @@ describe("save", () => {
     expect(opps.map((o) => o.sourceUrl)).toEqual(["https://job-boards.greenhouse.io/acme/jobs/111"]);
   });
 
+  it("merges a job board copy of an ATS job whose title has a bracket the other lacks (#1679)", async () => {
+    const gh = "https://job-boards.greenhouse.io/acme/jobs/4001234005";
+    await save(ctx(), [find({ url: gh, title: "Product Designer (Remote)" })], "agent");
+    const t = await save(ctx(), [find({ url: "https://www.linkedin.com/jobs/view/3901234567", title: "Product Designer" })], "agent");
+    expect(t.added).toBe(0);
+    expect((await db.select().from(schema.opportunities)).map((o) => o.sourceUrl)).toEqual([gh]);
+  });
+
+  it("still keeps two LinkedIn jobs apart when only a parenthetical and the job differ (#1679)", async () => {
+    const li = (id: number) => `https://www.linkedin.com/jobs/view/${id}`;
+    await save(ctx(), [find({ url: li(3901234999), title: "Product Designer (Payments)" })], "agent");
+    const t = await save(ctx(), [find({ url: li(3901235000), title: "Product Designer (Identity)" })], "agent");
+    expect(t.added).toBe(1);
+    expect(await db.select().from(schema.opportunities)).toHaveLength(2);
+  });
+
+  it("puts a job board copy of a split ATS job on that job's row, not the first's (#1679)", async () => {
+    const gh = (id: number) => `https://job-boards.greenhouse.io/acme/jobs/${id}`;
+    await save(ctx(), [find({ url: gh(111), title: "Senior Product Designer (Payments)" })], "agent");
+    await save(ctx(), [find({ url: gh(222), title: "Senior Product Designer (Identity)" })], "agent");
+    const t = await save(ctx(), [find({ url: "https://www.linkedin.com/jobs/view/3901234567", title: "Senior Product Designer (Identity)" })], "agent");
+    expect(t.added).toBe(0);
+    const opps = await db.select().from(schema.opportunities);
+    expect(opps.map((o) => o.sourceUrl).sort()).toEqual([gh(111), gh(222)]);
+  });
+
   it("merges an accented name with its plain spelling (#1269)", async () => {
     await save(ctx(), [find({ url: "https://jobs.example.com/a", company: "L'Oréal", location: "Montréal, QC" })], "agent");
     const t = await save(ctx(), [find({ url: "https://jobs.example.com/b", company: "L'Oreal", location: "Montreal, QC" })], "agent");
