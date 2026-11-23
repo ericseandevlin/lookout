@@ -83,6 +83,29 @@ export function OptionChecks({ id, label, options, value, onChange, disabled }: 
 
 export type Act = (itemId: string, payload: Record<string, unknown>, done: string) => Promise<boolean>;
 
+/**
+ * The parts still waiting for approval, in plain words (#1664): what a first-time person has left to do.
+ * Optional items don't count; they never block sending.
+ */
+const PART_NAMES: Record<string, [string, string]> = {
+  resume: ["the resume", "the resume"],
+  cover_letter: ["the cover letter", "the cover letters"],
+  answer: ["one question", "questions"],
+  portfolio: ["one portfolio pick", "portfolio picks"],
+  field: ["one field", "fields"],
+  outreach: ["one message", "messages"],
+};
+export const approvalLeft = (items: Pick<Item, "kind" | "required" | "approvedVersionId">[]): string[] => {
+  const counts = new Map<string, number>();
+  for (const i of items) {
+    if (i.required && !i.approvedVersionId) counts.set(i.kind, (counts.get(i.kind) ?? 0) + 1);
+  }
+  return [...counts.entries()].map(([kind, n]) => {
+    const [one, many] = PART_NAMES[kind] ?? ["one item", "items"];
+    return n === 1 ? one : `${n} ${many}`;
+  });
+};
+
 /** The resume as it will go out: the approved version, else the latest. */
 export const resumeText = (d: Detail) => {
   const r = d.items.find((i) => i.kind === "resume");

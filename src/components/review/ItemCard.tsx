@@ -139,7 +139,7 @@ export function ItemCard({ appId, item, locked, act, analysis, template, accent,
         <>
           <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
             {outreach && (
-              <button onClick={copy} disabled={!text.trim()} style={btn("solid")}>
+              <button onClick={copy} disabled={!text.trim()} style={btn("outline")}>
                 {copied ? "Copied" : "Copy draft"}
               </button>
             )}

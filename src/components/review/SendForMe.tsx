@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { SubmitModeNote } from "../SubmitModeNote";
 import { btn } from "../Settings";
 import { card, muted, type Detail } from "./shared";
 import { color, font } from "@/lib/tokens";
@@ -11,7 +12,9 @@ export function SendForMe({ d, busy, onFill }: { d: Detail; busy: boolean; onFil
   return (
     <section aria-labelledby="sfm" style={{ ...card, borderColor: color.ink, display: "flex", flexDirection: "column", gap: 12 }}>
       <h2 id="sfm" style={{ margin: 0, fontSize: font.xl, fontWeight: 700 }}>Send it for you</h2>
-      <p style={{ ...muted, margin: 0 }}>Lookout fills the real form with the versions you approved. Test fill stops before Submit, so you can check the screenshot first.</p>
+      {/* How it's sent shows only now that everything is approved and the Submit step is ready (#1664). */}
+      <SubmitModeNote submit={d.submit} />
+      <p style={{ ...muted, margin: 0 }}>Test fill stops before Submit, so you can check the screenshot first.</p>
       {d.status === "approved" && (
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
           <button onClick={() => onFill("test")} disabled={busy} style={btn("outline")}>

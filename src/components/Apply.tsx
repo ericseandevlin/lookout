@@ -132,7 +132,7 @@ export function ApplyPage() {
 
   return (
     <div className="page-pad lk-page w-page" style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-      <PageHead eyebrow="Beta" title="Auto-apply" intro="Lookout drafts each application for your review and only sends what you approve." action={control} />
+      <PageHead eyebrow="Beta" title="Auto-apply" intro="Lookout drafts each application for your review and only sends what you approve. Open any row to check it." introStrong action={control} />
       <InterviewBanner />
 
       {err && <div role="alert" style={{ fontSize: font.base, color: color.brick }}>{err}</div>}
