@@ -207,6 +207,22 @@ describe("sameJob", () => {
     // A company's job list isn't one job.
     expect(jobKey("https://jobs.dayforcehcm.com/en-US/acme/CANDIDATEPORTAL")).toMatch(/^url:/);
   });
+
+  it("keys a Wellfound job by its ID under either link, old angel.co links too (#1673)", () => {
+    const job = "https://wellfound.com/jobs/3123456-senior-product-designer";
+    expect(jobKey(job)).toBe("wellfound:3123456");
+    for (const u of [
+      "https://wellfound.com/company/acme/jobs/3123456-senior-product-designer",
+      "https://wellfound.com/jobs/3123456",
+      "https://www.wellfound.com/jobs/3123456-product-designer/?utm_source=x",
+      "https://angel.co/company/acme/jobs/3123456-senior-product-designer",
+    ])
+      expect(sameJob([u], [job]), u).toBe(true);
+    expect(sameJob(["https://wellfound.com/jobs/3123457-senior-product-designer"], [job])).toBe(false);
+    // The company's job list and the role pages aren't one job.
+    expect(jobKey("https://wellfound.com/company/acme/jobs")).toMatch(/^url:/);
+    expect(jobKey("https://wellfound.com/role/r/product-designer")).toMatch(/^url:/);
+  });
 });
 
 describe("Recruitee and Teamtailor apply steps (#1200)", () => {

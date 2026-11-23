@@ -76,6 +76,10 @@ export function jobKey(raw: string | null | undefined): string | null {
   const glassdoor =
     /(^|\.)glassdoor\.[a-z]{2,3}(\.[a-z]{2})?$/.test(host) && (u.searchParams.get("jobListingId") ?? u.searchParams.get("jl"))?.match(/^\d{6,}$/)?.[0];
   if (glassdoor) return `glassdoor:${glassdoor}`;
+  // Wellfound (#1673): one job is /jobs/<id>-<title> and, from the company page, /company/<co>/jobs/<id>-<title>. Old angel.co
+  // links of both forms redirect there.
+  const wellfound = /(^|\.)(wellfound\.com|angel\.co)$/.test(host) && u.pathname.match(/^(?:\/company\/[^/]+)?\/jobs\/(\d+)(?:-[^/]*)?\/?$/i)?.[1];
+  if (wellfound) return `wellfound:${wellfound}`;
   // Recruitee's form is at /o/<job>/c/new and Teamtailor's at /jobs/<id>-<title>/applications/new: apply steps too (#1200).
   // Teamtailor on its own host is keyed by ID above; a company's own domain still comes here.
   // UltiPro's posting is .../JobBoard/<board>/OpportunityDetail?opportunityId=<id> and its form OpportunityApply (#1497).
