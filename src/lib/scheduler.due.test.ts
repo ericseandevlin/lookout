@@ -275,7 +275,34 @@ describe("the rest of a pass (#377)", () => {
     expect(ran().sort()).toEqual([a.searchId, b.searchId].sort());
     expect(recordError).toHaveBeenCalledOnce();
     expect(recordError.mock.calls[0]).toEqual(["scheduler", expect.any(Error), { path: expect.stringContaining("run failed for search") }]);
+    // The failed person still gets pinned finds due soon, with no run behind the email (#1685).
+    expect(sendDigest).toHaveBeenCalledTimes(2);
+    expect(sendDigest.mock.calls.map((c) => (c as unknown[])[0]).sort()).toEqual([a.userId, b.userId].sort());
+    expect(sendDigest.mock.calls.filter((c) => (c as unknown[]).length === 1)).toHaveLength(1);
+  });
+
+  it("sends pinned finds due soon to a person at their own cap (#1685)", async () => {
+    const a = await seed();
+    discover.mockRejectedValue(new BudgetError("cap", "user"));
+    await tick();
     expect(sendDigest).toHaveBeenCalledOnce();
+    expect(sendDigest).toHaveBeenCalledWith(a.userId);
+  });
+
+  it("does not send the email again when the email itself fails after a good run (#1685)", async () => {
+    const a = await seed();
+    sendDigest.mockRejectedValueOnce(new Error("smtp down"));
+    await tick();
+    expect(sendDigest).toHaveBeenCalledOnce();
+    expect(sendDigest).toHaveBeenCalledWith(a.userId, `run-${a.searchId}`);
+    expect(recordError).toHaveBeenCalledOnce();
+  });
+
+  it("sends nothing extra when the app-wide cap stops the pass", async () => {
+    await seed();
+    discover.mockRejectedValue(new BudgetError("Daily cap reached"));
+    await tick();
+    expect(sendDigest).not.toHaveBeenCalled();
   });
 });
 
