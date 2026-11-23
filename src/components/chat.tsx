@@ -167,6 +167,20 @@ export function QuestionBubble({ question, why }: { question: string; why: strin
 /** Skip and Send: 44px tap targets, so they work by touch. */
 const composerBtn: React.CSSProperties = { width: 44, height: 44, flex: "none", padding: 0, border: 0, borderRadius: 999, background: "transparent", color: color.t2, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" };
 
+/** The round send control the interview uses, shared with the review page's chat boxes (#1665). */
+export function SendButton({ ready, onClick, tip = "Send", label = "Send" }: { ready: boolean; onClick: () => void; tip?: string; label?: string }) {
+  return (
+    <button type="button" onClick={onClick} disabled={!ready} aria-label={label} data-tip={tip} style={{ ...composerBtn, cursor: ready ? "pointer" : "default" }}>
+      <span style={{ width: 34, height: 34, borderRadius: 999, display: "flex", alignItems: "center", justifyContent: "center", background: ready ? color.brick : color.border, color: "#fff", transition: "background .15s" }}>
+        <svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M12 19V5" />
+          <path d="M6 11l6-6 6 6" />
+        </svg>
+      </span>
+    </button>
+  );
+}
+
 /**
  * One bordered box: the answer, then a row with Skip and Send, the way a chat composer looks. Enter sends and
  * Shift+Enter makes a new line; on a touch keyboard Return makes a new line, and the Send button sends.
@@ -218,14 +232,7 @@ export function Composer({ id, boxRef, value, onChange, onSend, onSkip, busy, pl
               <path d="M18 5v14" />
             </svg>
           </button>
-          <button type="button" onClick={onSend} disabled={!ready} aria-label="Send" data-tip="Send" style={{ ...composerBtn, cursor: ready ? "pointer" : "default" }}>
-            <span style={{ width: 34, height: 34, borderRadius: 999, display: "flex", alignItems: "center", justifyContent: "center", background: ready ? color.brick : color.border, color: "#fff", transition: "background .15s" }}>
-              <svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M12 19V5" />
-                <path d="M6 11l6-6 6 6" />
-              </svg>
-            </span>
-          </button>
+          <SendButton ready={ready} onClick={onSend} />
         </div>
       </div>
     </>

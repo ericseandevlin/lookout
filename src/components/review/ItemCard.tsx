@@ -1,12 +1,13 @@
 "use client";
 
-import { useState } from "react";
+import Link from "next/link";
+import { useMemo, useState } from "react";
 import type { Template } from "@/lib/application/resumeLayout";
-import type { RecruiterAnalysis } from "@/lib/application/recruiter";
+import { recruiterChecks } from "@/lib/application/recruiter";
 import { btn } from "../Settings";
+import { SendButton } from "../chat";
 import { DocPreview } from "./DocPreview";
 import { InfoTip } from "./InfoTip";
-import { RecruiterPanel } from "./RecruiterPanel";
 import { TemplatePicker } from "./TemplatePicker";
 import { VersionNotes } from "./VersionNotes";
 import { card, muted, OptionChecks, type Act, type Item, type LetterInfo } from "./shared";
@@ -17,19 +18,33 @@ import { DownloadIcon, EyeIcon, PencilIcon, RedoIcon } from "../icons";
 
 const iconBtn: React.CSSProperties = { ...btn("outline"), width: 38, padding: 0, display: "inline-flex", alignItems: "center", justifyContent: "center" };
 
-export function ItemCard({ appId, item, locked, act, analysis, template, accent, header, letter, onTemplate, onAccent, needsKeywords = false }: { appId: string; item: Item; locked: boolean; act: Act; needsKeywords?: boolean; analysis?: RecruiterAnalysis; template: Template; accent: string | null; header: { name: string; contact: string; headline?: string } | null; letter?: LetterPick | null; onTemplate: (t: Template) => void; onAccent: (hex: string) => void }) {
+/** When each letter strategy is the better choice (#1665), in few words; the full blurb stays in the tooltip. */
+const STRATEGY_WHEN: Record<LetterStrategy, string> = {
+  proof: "For senior roles, or a standout result.",
+  match: "When the posting lists hard asks.",
+  why: "When you have a real reason to care.",
+};
+
+export function ItemCard({ appId, item, locked, act, interview = false, template, accent, header, letter, onTemplate, onAccent, needsKeywords = false }: { appId: string; item: Item; locked: boolean; act: Act; needsKeywords?: boolean; /** The /interview page exists only with FEATURE_INTERVIEW on. */ interview?: boolean; template: Template; accent: string | null; header: { name: string; contact: string; headline?: string } | null; letter?: LetterPick | null; onTemplate: (t: Template) => void; onAccent: (hex: string) => void }) {
   const latest = item.versions[0];
   const [pick, setPick] = useState<string | null>(null);
   const shown = item.versions.find((v) => v.id === pick) ?? item.versions.find((v) => v.id === item.approvedVersionId) ?? latest;
+  // The letter's chat box opens with the top fix Lookout can make now, so sending it is one press (#1665).
+  const prefill = useMemo(
+    () => (item.kind === "cover_letter" ? recruiterChecks("cover_letter", shown?.content ?? "").find((f) => !f.needsFact)?.fix ?? "" : ""),
+    [item.kind, shown?.content],
+  );
   const [text, setText] = useState(shown?.content ?? "");
-  const [instr, setInstr] = useState("");
-  const [busy, setBusy] = useState<null | "save" | "revise" | "approve" | "analyze">(null);
+  const [instr, setInstr] = useState(prefill);
+  const [busy, setBusy] = useState<null | "save" | "revise" | "approve">(null);
   // Reset the editor when the shown version changes (a pick, or a new version from the server).
   const key = `${shown?.id}:${shown?.content}`;
   const [seen, setSeen] = useState(key);
   if (seen !== key) {
     setSeen(key);
     setText(shown?.content ?? "");
+    // A new version starts a fresh ask; the letter opens with its next top fix (#1665).
+    setInstr(prefill);
   }
 
   const outreach = item.kind === "outreach";
@@ -39,6 +54,7 @@ export function ItemCard({ appId, item, locked, act, analysis, template, accent,
   const dirty = text !== (shown?.content ?? "");
   const doc = item.kind === "resume" || item.kind === "cover_letter";
   const [editing, setEditing] = useState(false);
+  const [chatFocus, setChatFocus] = useState(false);
   const [copied, setCopied] = useState(false);
   const long = doc || outreach || (item.fieldType === "textarea" && item.kind !== "field");
   const copy = async () => {
@@ -53,6 +69,11 @@ export function ItemCard({ appId, item, locked, act, analysis, template, accent,
     if (ok && kind === "revise") setInstr("");
     setBusy(null);
   };
+  // The chat box sends a revision, like the interview's composer: Enter sends, Shift+Enter makes a new line.
+  const ask = () => {
+    if (instr.trim() && !dirty && !busy) run("revise", { action: "revise", instruction: instr, ...(shown ? { versionId: shown.id } : {}) }, "Lookout made a new version.");
+  };
+  const askPlaceholder = item.kind === "resume" ? "Ask Lookout to update your resume" : item.kind === "cover_letter" ? "Ask Lookout to update your letter" : outreach ? "Ask Lookout to update your message" : "Ask Lookout to update your answer";
 
   return (
     <div style={{ ...card, display: "flex", flexDirection: "column", gap: 10, borderColor: isApproved ? "#9CC68E" : color.border }}>
@@ -123,18 +144,6 @@ export function ItemCard({ appId, item, locked, act, analysis, template, accent,
         </div>
       )}
 
-      {doc && shown && !editing && (
-        <RecruiterPanel
-          kind={item.kind}
-          text={text}
-          analysis={analysis?.versionId === shown.id && !dirty ? analysis : undefined}
-          locked={locked}
-          busy={busy}
-          onAnalyze={() => run("analyze", { action: "analyze", versionId: shown.id }, "Recruiter Analysis is ready.")}
-          onFix={(f) => run("revise", { action: "revise", instruction: f.fix, versionId: shown.id }, "Lookout made a new version with that fix.")}
-        />
-      )}
-
       {!locked && (
         <>
           <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
@@ -176,43 +185,64 @@ export function ItemCard({ appId, item, locked, act, analysis, template, accent,
               </select>
             )}
             {shown && <VersionNotes v={shown} label={item.versions.length <= 1} />}
-            <span style={{ flex: 1 }} />
-            {dirty ? (
-              <button onClick={() => run("save", { action: "edit", content: text, note: "" }, "Saved as a new version.")} disabled={!!busy} style={btn("outline")}>
-                {busy === "save" ? "Saving…" : "Save as new version"}
-              </button>
-            ) : item.kind === "field" || outreach ? null : isApproved ? (
-              <button onClick={() => run("approve", { action: "approve", versionId: null }, "Approval removed.")} disabled={!!busy} style={btn("text")}>
-                Unapprove
-              </button>
-            ) : (
-              <button onClick={() => shown && run("approve", { action: "approve", versionId: shown.id }, `Approved v${shown.version}.`)} disabled={!!busy || !shown?.content.trim()} style={btn("solid")}>
-                {busy === "approve" ? "Approving…" : `Approve v${shown?.version ?? 1}`}
-              </button>
-            )}
           </div>
           {item.kind !== "field" && (
             <form
               onSubmit={(e) => {
                 e.preventDefault();
-                if (instr.trim() && !dirty) run("revise", { action: "revise", instruction: instr, ...(shown ? { versionId: shown.id } : {}) }, "Lookout made a new version.");
+                ask();
               }}
-              style={{ display: "flex", gap: 8, flexWrap: "wrap" }}
             >
-              <label htmlFor={`rv-${item.id}`} className="sr-only" style={{ position: "absolute", width: 1, height: 1, overflow: "hidden", clip: "rect(0 0 0 0)" }}>
-                Ask Lookout to revise {item.prompt}
-              </label>
-              <input
-                id={`rv-${item.id}`}
-                value={instr}
-                onChange={(e) => setInstr(e.target.value)}
-                placeholder={item.kind === "resume" ? "Ask Lookout: lead with the platform work, cut to one page…" : outreach ? "Ask Lookout: shorter, warmer, change the request…" : "Ask Lookout: shorter, more specific, mention…"}
-                style={{ flex: "1 1 260px", height: 38, borderRadius: 10, border: `1.5px solid ${color.border}`, padding: "0 12px", fontSize: font.base }}
-              />
-              <button type="submit" disabled={!instr.trim() || !!busy || dirty} data-tip={dirty ? "Save your edits first" : undefined} style={btn("outline")}>
-                {busy === "revise" ? "Revising…" : "Revise"}
-              </button>
+              <div onFocus={() => setChatFocus(true)} onBlur={() => setChatFocus(false)} style={{ border: `1.5px solid ${chatFocus ? color.ink : color.border}`, borderRadius: 14, background: "#fff", padding: "4px 6px 4px", display: "flex", flexDirection: "column" }}>
+                <label htmlFor={`rv-${item.id}`} className="sr-only" style={{ position: "absolute", width: 1, height: 1, overflow: "hidden", clip: "rect(0 0 0 0)" }}>
+                  Ask Lookout to revise {item.prompt}
+                </label>
+                <textarea
+                  id={`rv-${item.id}`}
+                  value={instr}
+                  onChange={(e) => setInstr(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key !== "Enter" || e.shiftKey || e.nativeEvent.isComposing) return;
+                    if (!(e.metaKey || e.ctrlKey) && window.matchMedia("(pointer: coarse)").matches) return;
+                    e.preventDefault();
+                    ask();
+                  }}
+                  rows={2}
+                  maxLength={2000}
+                  disabled={!!busy}
+                  placeholder={askPlaceholder}
+                  style={{ width: "100%", boxSizing: "border-box", padding: "8px 8px 2px", border: 0, outline: "none", fontSize: font.base, lineHeight: 1.5, resize: "none", color: color.ink, background: "transparent" }}
+                />
+                <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "0 2px" }}>
+                  {/* The more Lookout knows, the better it can tie a story to this company (#1665). */}
+                  {item.kind === "cover_letter" && interview && (
+                    <Link href={`/interview?app=${appId}`} style={{ fontSize: font.sm, color: color.t2, textDecoration: "underline", textUnderlineOffset: 3 }}>
+                      Tell Lookout more for a richer letter
+                    </Link>
+                  )}
+                  <span style={{ flex: 1 }} />
+                  <SendButton ready={!!instr.trim() && !dirty && !busy} onClick={ask} tip={dirty ? "Save your edits first" : busy === "revise" ? "Working…" : "Send"} />
+                </div>
+              </div>
             </form>
+          )}
+          {/* Approve is the last button, right-aligned (#1665); it is the one that moves the application forward. */}
+          {(dirty || (!outreach && item.kind !== "field")) && (
+            <div style={{ display: "flex", gap: 8, alignItems: "center", justifyContent: "flex-end" }}>
+              {dirty ? (
+                <button onClick={() => run("save", { action: "edit", content: text, note: "" }, "Saved as a new version.")} disabled={!!busy} style={btn("outline")}>
+                  {busy === "save" ? "Saving…" : "Save as new version"}
+                </button>
+              ) : isApproved ? (
+                <button onClick={() => run("approve", { action: "approve", versionId: null }, "Approval removed.")} disabled={!!busy} style={btn("text")}>
+                  Unapprove
+                </button>
+              ) : (
+                <button onClick={() => shown && run("approve", { action: "approve", versionId: shown.id }, `Approved v${shown.version}.`)} disabled={!!busy || !shown?.content.trim()} style={btn("solid")}>
+                  {busy === "approve" ? "Approving…" : `Approve v${shown?.version ?? 1}`}
+                </button>
+              )}
+            </div>
           )}
         </>
       )}
@@ -224,29 +254,32 @@ type LetterPick = LetterInfo["items"][string] & { suggested: LetterStrategy; why
 
 /**
  * Three ways to write the letter (#738). All three are written once (#1484), so a pick shows the stored letter.
- * A strategy not stored yet pulses and waits; a click never calls the model. The description and the reason for the pick live in the tooltips.
+ * A strategy not stored yet pulses and waits; a click never calls the model. The caption says when each is the
+ * better choice (#1665); the description and the reason for the pick live in the tooltips.
  */
 function StrategyPicker({ letter, busy, onPick }: { letter: LetterPick; busy: boolean; onPick: (s: LetterStrategy) => void }) {
   const current = letter.strategy;
   return (
-    <div role="group" aria-label="Cover letter strategy" style={{ display: "flex", gap: 6, flexWrap: "wrap", alignItems: "center" }}>
+    <div role="group" aria-label="Cover letter strategy" style={{ display: "flex", gap: 6, flexWrap: "wrap", alignItems: "flex-start" }}>
       <span style={{ fontSize: font.base, fontWeight: 600, marginRight: 4 }}>Strategy</span>
       {LETTER_STRATEGIES.map((s) => {
         const on = s === current;
         const waiting = !on && !letter.ready.includes(s);
         return (
-          <button
-            key={s}
-            onClick={() => !on && onPick(s)}
-            disabled={busy || waiting}
-            aria-pressed={on}
-            aria-busy={waiting || undefined}
-            data-tip={s === letter.suggested ? `${STRATEGY[s].blurb} Suggested: ${letter.why}` : STRATEGY[s].blurb}
-            style={{ height: 32, padding: "0 12px", borderRadius: 999, fontSize: font.base, fontWeight: 600, cursor: on ? "default" : waiting ? "progress" : "pointer", border: `1.5px solid ${on ? color.ink : color.border}`, background: on ? color.ink : "#fff", color: on ? "#fff" : color.ink, animation: waiting ? "lookout-pulse 1.4s ease-in-out infinite" : undefined }}
-          >
-            {STRATEGY[s].label}
-            {s === letter.suggested && <span style={{ fontWeight: 400, opacity: 0.8 }}> · suggested</span>}
-          </button>
+          <div key={s} style={{ display: "flex", flexDirection: "column", gap: 3, alignItems: "flex-start" }}>
+            <button
+              onClick={() => !on && onPick(s)}
+              disabled={busy || waiting}
+              aria-pressed={on}
+              aria-busy={waiting || undefined}
+              data-tip={s === letter.suggested ? `${STRATEGY[s].blurb} Suggested: ${letter.why}` : STRATEGY[s].blurb}
+              style={{ height: 32, padding: "0 12px", borderRadius: 999, fontSize: font.base, fontWeight: 600, cursor: on ? "default" : waiting ? "progress" : "pointer", border: `1.5px solid ${on ? color.ink : color.border}`, background: on ? color.ink : "#fff", color: on ? "#fff" : color.ink, animation: waiting ? "lookout-pulse 1.4s ease-in-out infinite" : undefined }}
+            >
+              {STRATEGY[s].label}
+              {s === letter.suggested && <span style={{ fontWeight: 400, opacity: 0.8 }}> · suggested</span>}
+            </button>
+            <span style={{ fontSize: font.xs, color: color.t2, lineHeight: 1.3 }}>{STRATEGY_WHEN[s]}</span>
+          </div>
         );
       })}
     </div>
