@@ -32,10 +32,13 @@ export function Checklist({ d, onDone }: { d: Detail; onDone: () => void }) {
       <h2 id="send" style={{ margin: 0, fontSize: font.xl, fontWeight: 700 }}>{locked ? "What you sent" : "Send it"}</h2>
       {locked ? (
         <p style={{ ...muted, margin: 0 }}>Applied {d.submittedAt ? new Date(d.submittedAt).toLocaleString() : ""}. This is the exact text you approved.</p>
-      ) : (
+      ) : d.submit.mode === "press" ? (
+        // How it's sent, said only now that everything is approved (#1664): one short line, then the extension.
         <p style={{ ...muted, margin: 0 }}>
-          Open the application, then copy each answer in. Upload the resume and cover letter as Word files where the form asks for them. Takes about two minutes.
+          {d.submit.why} The <a href="/ext/lookout-autofill.xpi" style={{ color: color.ink, fontWeight: 600 }}>Lookout extension</a> fills the form in Firefox and you press Submit. Or copy from the list below.
         </p>
+      ) : (
+        <p style={{ ...muted, margin: 0 }}>Prefer to send it yourself? Open the application, then copy each answer in. Takes about two minutes.</p>
       )}
       {!locked && d.report.applyUrl && (
         <a href={d.report.applyUrl} target="_blank" rel="noreferrer" style={{ ...btn("solid"), display: "inline-flex", alignItems: "center", alignSelf: "flex-start", textDecoration: "none" }}>
@@ -52,7 +55,7 @@ export function Checklist({ d, onDone }: { d: Detail; onDone: () => void }) {
               </button>
               {(r.kind === "resume" || r.kind === "cover_letter") && !locked && (
                 <>
-                  <a href={`/api/apply/${d.id}/items/${r.key}/docx`} title="The file Lookout uploads" download style={{ ...btn("solid"), height: 32, display: "inline-flex", alignItems: "center", textDecoration: "none" }}>
+                  <a href={`/api/apply/${d.id}/items/${r.key}/docx`} title="The file Lookout uploads" download style={{ ...btn("outline"), height: 32, display: "inline-flex", alignItems: "center", textDecoration: "none" }}>
                     Download .docx
                   </a>
                   <button onClick={() => download(r.prompt, r.content)} style={{ ...btn("outline"), height: 32 }}>
@@ -80,7 +83,7 @@ export function Checklist({ d, onDone }: { d: Detail; onDone: () => void }) {
         </div>
       )}
       {!locked && (
-        <button onClick={onDone} style={{ ...btn("outline"), alignSelf: "flex-start" }}>
+        <button onClick={onDone} style={{ ...btn("solid"), alignSelf: "flex-start" }}>
           I submitted it
         </button>
       )}

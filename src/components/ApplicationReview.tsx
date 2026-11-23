@@ -3,12 +3,10 @@
 import Link from "next/link";
 import { useCallback, useEffect, useState, useSyncExternalStore } from "react";
 import type { ApplicationStatus } from "@/lib/db/schema";
-import { applicationLabel } from "@/lib/applyLabels";
 import { useConfirm } from "./Confirm";
 import { api } from "./store";
 import { letterHeaderFrom, readable, TEMPLATE_STYLE, type Template } from "@/lib/application/resumeLayout";
-import { SubmitModeNote } from "./SubmitModeNote";
-import { card, muted, resumeText, type Detail } from "./review/shared";
+import { approvalLeft, card, muted, resumeText, type Detail } from "./review/shared";
 import { Checklist } from "./review/Checklist";
 import { EeoSection } from "./review/EeoSection";
 import { ItemCard } from "./review/ItemCard";
@@ -121,7 +119,6 @@ export function ApplicationReview({ id }: { id: string }) {
 
   if (!d) return <div className="page-pad lk-page" role="status" style={muted}>{err ?? "Loading…"}</div>;
 
-  const st = applicationLabel(d.status, "user");
   const required = d.items.filter((i) => i.required);
   const approved = required.filter((i) => i.approvedVersionId).length;
   const open = d.items.filter((i) => i.question);
@@ -131,16 +128,10 @@ export function ApplicationReview({ id }: { id: string }) {
     <div className="page-pad lk-page" style={{ display: "flex", flexDirection: "column", gap: 16, maxWidth: 1180 }}>
       <style>{`.lk-review{display:grid;grid-template-columns:minmax(0,1fr);gap:18px;align-items:start}@media(min-width:1000px){.lk-review{grid-template-columns:minmax(0,1fr) 360px}.lk-review aside{position:sticky;top:16px;max-height:calc(100vh - 32px);overflow:auto}}`}</style>
       <Link href="/apply" style={{ fontSize: font.base, color: color.ink }}>← All applications</Link>
-      <div style={{ display: "flex", alignItems: "flex-start", gap: 12, flexWrap: "wrap" }}>
-        <div style={{ flex: "1 1 320px", minWidth: 0 }}>
-          <h1 style={{ margin: 0, fontSize: font["4xl"], fontWeight: 700, letterSpacing: "-0.02em" }}>{d.role}</h1>
-          <div style={{ ...muted, marginTop: 4 }}>
-            {d.company}
-            {d.ats ? ` · ${d.ats === "other" ? "company site" : d.ats}` : ""}
-            {d.report.usd ? ` · AI cost $${d.report.usd.toFixed(3)}` : ""}
-          </div>
-        </div>
-        <span style={{ padding: "6px 12px", borderRadius: 999, fontSize: font.base, fontWeight: 600, background: st.bg, color: st.ink }}>{st.label}</span>
+      {/* The company is the biggest word; the role stands out under it, same order as the index rows (#1664). */}
+      <div style={{ minWidth: 0 }}>
+        <h1 style={{ margin: 0, fontSize: font["4xl"], fontWeight: 700, letterSpacing: "-0.02em" }}>{d.company}</h1>
+        <div style={{ fontSize: font["2xl"], fontWeight: 600, marginTop: 2 }}>{d.role}</div>
       </div>
 
       <div aria-live="polite" style={{ ...muted, minHeight: 20 }}>{said}</div>
@@ -153,21 +144,15 @@ export function ApplicationReview({ id }: { id: string }) {
         <div className="lk-review">
           <div style={{ display: "flex", flexDirection: "column", gap: 16, minWidth: 0 }}>
             {!locked && (
-              <div style={{ ...card, display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
-                <div style={{ flex: 1, minWidth: 200 }}>
-                  <div style={{ fontSize: font.md, fontWeight: 700 }}>
-                    {approved} of {required.length} required items approved
-                  </div>
-                  <div style={muted}>{d.status === "manual" ? "Ready. Use the checklist at the bottom to send it." : d.status === "approved" ? "Ready. Lookout can send it for you, or use the checklist." : "Approve each item you want sent."}</div>
+              <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+                <div style={{ fontSize: font.lg, fontWeight: 600 }}>
+                  Lookout filled this application. Check each part, approve what should go out, then send it.
                 </div>
-                <div style={{ flexBasis: "100%" }}>
-                  <SubmitModeNote submit={d.submit} />
-                  {d.submit.mode === "press" && (
-                    <p style={{ ...muted, margin: "8px 0 0" }}>
-                      To send, open the job in Firefox with the Lookout extension: it fills the form and you press Submit. No extension? Use the two-minute checklist at the bottom.
-                    </p>
-                  )}
-                </div>
+                {approved === required.length ? (
+                  <div style={{ ...muted, color: color.greenText }}>Everything is approved. Send it below.</div>
+                ) : (
+                  <div style={muted}>Left to approve: {approvalLeft(required).join(", ")}.</div>
+                )}
               </div>
             )}
 

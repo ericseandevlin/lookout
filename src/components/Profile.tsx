@@ -107,7 +107,7 @@ export function NextStep({ here }: { here: "materials" | "finds" }) {
 }
 
 /** action: a control on the title row, at the right. It wraps under the title when the row is too narrow. */
-export function PageHead({ eyebrow, title, intro, action, children }: { eyebrow: string; title: string; intro?: string; action?: React.ReactNode; children?: React.ReactNode }) {
+export function PageHead({ eyebrow, title, intro, introStrong, action, children }: { eyebrow: string; title: string; intro?: string; introStrong?: boolean; action?: React.ReactNode; children?: React.ReactNode }) {
   const h1 = <h1 style={{ margin: "8px 0 0", fontSize: font["4xl"], fontWeight: 700, letterSpacing: "-0.02em" }}>{title}</h1>;
   return (
     <div style={{ padding: "8px 0" }}>
@@ -120,7 +120,7 @@ export function PageHead({ eyebrow, title, intro, action, children }: { eyebrow:
       ) : (
         h1
       )}
-      {intro && <p style={{ margin: "8px 0 0", fontSize: font.base, lineHeight: 1.5, color: color.t2, maxWidth: 560, textWrap: "pretty" }}>{intro}</p>}
+      {intro && <p style={{ margin: "8px 0 0", fontSize: introStrong ? font.lg : font.base, lineHeight: 1.5, fontWeight: introStrong ? 600 : 400, color: introStrong ? color.ink : color.t2, maxWidth: 560, textWrap: "pretty" }}>{intro}</p>}
       {children}
     </div>
   );
