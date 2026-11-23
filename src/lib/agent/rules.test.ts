@@ -434,6 +434,7 @@ describe("listPage: search and board pages are not jobs (#1537)", () => {
       "https://careers-acme.icims.com/jobs/intro",
       "https://acme.taleo.net/careersection/2/jobsearch.ftl",
       "https://recruiting.paylocity.com/Recruiting/Jobs/All/0c3f1a2b-4d5e-6f70-8a9b-0c1d2e3f4a5b/Acme-Inc",
+      "https://jobs.dayforcehcm.com/en-US/acme/CANDIDATEPORTAL",
     ])
       expect(listPage(u), u).toBe(true);
     for (const u of [
@@ -447,6 +448,7 @@ describe("listPage: search and board pages are not jobs (#1537)", () => {
       "https://acme.taleo.net/careersection/2/jobdetail.ftl?job=ABC",
       "https://chk.tbe.taleo.net/chk01/ats/careers/v2/viewRequisition?org=ACME&cws=39&rid=1234",
       "https://recruiting.paylocity.com/Recruiting/Jobs/Details/123456",
+      "https://jobs.dayforcehcm.com/en-US/acme/CANDIDATEPORTAL/jobs/12345",
     ])
       expect(listPage(u), u).toBe(false);
   });
