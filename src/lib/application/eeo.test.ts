@@ -49,6 +49,21 @@ describe("classify", () => {
     expect(classify("Is your sex offender registration current?")).toBeNull();
   });
 
+  it("asks, never fills from gender, a question about sex at birth (#1681)", () => {
+    expect(classify("Sex assigned at birth")).toBeNull();
+    expect(classify("Sex at birth *")).toBeNull();
+    expect(classify("Birth sex")).toBeNull();
+    expect(classify("Biological sex")).toBeNull();
+    expect(classify("What sex were you assigned at birth?")).toBeNull();
+    expect(classify("Is your gender identity the same as the sex you were assigned at birth?")).toBeNull();
+    const profile = { answers: { gender: "Woman", transgender: "Yes" }, exact: {} };
+    expect(resolve(profile, "Sex assigned at birth", ["Female", "Male", "Intersex", "Prefer not to say"])).toBeNull();
+    expect(resolve(profile, "Gender", ["Female", "Male", "Prefer not to say"])).toBe("Female");
+    // The gender question itself still reads as gender.
+    expect(classify("Gender identity")).toBe("gender");
+    expect(classify("Sex *")).toBe("gender");
+  });
+
   it("leaves a pronouns question unclassified, so it never gets the gender answer (#1450)", () => {
     expect(classify("Gender pronouns")).toBeNull();
     expect(classify("What gender pronouns do you use?")).toBeNull();
