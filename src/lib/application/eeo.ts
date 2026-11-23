@@ -57,7 +57,9 @@ export function classify(prompt: string): EeoCategory | null {
   // answer must never fill them: ask the person (#1512).
   if (/accommodat/.test(first)) return null;
   if (/discharg|honorabl|court.?martial/.test(p)) return null;
-  if (!/veteran/.test(p) && /\b(currently|active duty|now serving|reservists?|national guard)\b/.test(p)) return null;
+  // "currently" only about service: "Do you currently have a disability?" is still the disability question (#1683).
+  const serving = /\bcurrently (?:serving|enlisted|a member of|in the (?:military|armed forces|reserves?|national guard|service))\b/;
+  if (!/veteran/.test(p) && (serving.test(p) || /\b(active duty|now serving|reservists?|national guard)\b/.test(p))) return null;
   if (/disabilit/.test(first) && !/veteran|armed forces|military/.test(first)) return "disability";
   // "Are you a military spouse?" is about family, not the person's own service (#909).
   if (/veteran|armed forces|military/.test(p)) return /spouse|dependent|family member/.test(p) ? null : "veteran";
