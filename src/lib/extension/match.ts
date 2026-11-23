@@ -50,6 +50,13 @@ export function jobKey(raw: string | null | undefined): string | null {
   // site-wide; the URL names no employer.
   const paylocity = /(^|\.)paylocity\.com$/.test(host) && u.pathname.match(/\/jobs\/(?:details|apply)\/(\d+)(?:\/|$)/i)?.[1];
   if (paylocity) return `paylocity:${paylocity}`;
+  // Dayforce (#1671): jobs.dayforcehcm.com/[<locale>/]<tenant>/<portal>/jobs/<id>[/apply], with or without a locale, and
+  // the older <pod>.dayforcehcm.com/CandidatePortal/<locale>/<tenant>/Posting/View/<id>. The tenant joins the key.
+  const dayforce =
+    /(^|\.)dayforcehcm\.com$/.test(host) &&
+    (u.pathname.match(/\/([^/]+)\/[^/]+\/jobs\/(\d+)(?:\/apply)?\/?$/i) ??
+      u.pathname.match(/^\/candidateportal\/(?:[a-z]{2}(?:-[a-z]{2})?\/)?([^/]+)\/(?:[^/]+\/)*posting\/(?:view|apply)\/(\d+)\/?$/i));
+  if (dayforce) return `dayforce:${safeDecode(dayforce[1]).toLowerCase()}:${dayforce[2]}`;
   // SmartRecruiters (#1520): /<company>/<15-digit id>, with or without the title slug after it, on jobs. or careers.
   const sr = /(^|\.)smartrecruiters\.com$/.test(host) && u.pathname.match(/^\/([^/]+)\/(\d{10,})(?:-[^/]*)?\/?$/);
   if (sr) return `smartrecruiters:${safeDecode(sr[1]).toLowerCase()}:${sr[2]}`;

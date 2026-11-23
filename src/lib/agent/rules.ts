@@ -310,7 +310,8 @@ const ATS_HOST = /(^|\.)(greenhouse\.io|lever\.co|ashbyhq\.com|myworkdayjobs\.co
 // More ATS hosts whose postings jobKey keys by ID (#1613). Their other job pages (SmartRecruiters' one-click form,
 // Workable's old /jobs/<id>, Taleo Business Edition's viewRequisition?rid=) still hold a long number or a UUID, so only
 // an address with neither is the board. jobs.workable.com is Workable's own job board: its postings have no /j/ code.
-const ATS_MORE = /(^|\.)(smartrecruiters\.com|workable\.com|teamtailor\.com|icims\.com|taleo\.net)$/i;
+// Dayforce too (#1671).
+const ATS_MORE = /(^|\.)(smartrecruiters\.com|workable\.com|teamtailor\.com|icims\.com|taleo\.net|dayforcehcm\.com)$/i;
 const NAMES_ID = /\d{4,}|[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i;
 // Paylocity's board for one company is /Recruiting/Jobs/All/<company id>.
 const PAYLOCITY_BOARD = /(^|\.)paylocity\.com\/recruiting\/jobs\/all(\/|$)/i;

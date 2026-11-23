@@ -191,6 +191,19 @@ describe("sameJob", () => {
     expect(jobKey("https://careers.smartrecruiters.com/Acme")).toMatch(/^url:/);
     expect(jobKey("https://jobs.smartrecruiters.com/oneclick-ui/company/Acme/publication/1b2c3d4e-1111-2222-3333-444455556666")).toMatch(/^url:/);
   });
+
+  it("keys a Dayforce posting by tenant and ID, with or without a locale (#1671)", () => {
+    const job = "https://jobs.dayforcehcm.com/en-US/acme/CANDIDATEPORTAL/jobs/12345";
+    expect(jobKey(job)).toBe("dayforce:acme:12345");
+    expect(sameJob(["https://jobs.dayforcehcm.com/acme/CANDIDATEPORTAL/jobs/12345"], [job])).toBe(true);
+    expect(sameJob(["https://jobs.dayforcehcm.com/fr-CA/acme/CANDIDATEPORTAL/jobs/12345/apply?src=LinkedIn"], [job])).toBe(true);
+    expect(sameJob(["https://us58.dayforcehcm.com/CandidatePortal/en-US/acme/Posting/View/12345"], [job])).toBe(true);
+    expect(sameJob(["https://us58.dayforcehcm.com/CandidatePortal/en-US/acme/Site/ACMECAREERS/Posting/Apply/12345"], [job])).toBe(true);
+    expect(sameJob(["https://jobs.dayforcehcm.com/en-US/acme/CANDIDATEPORTAL/jobs/54321"], [job])).toBe(false);
+    expect(sameJob(["https://jobs.dayforcehcm.com/en-US/other/CANDIDATEPORTAL/jobs/12345"], [job])).toBe(false);
+    // A company's job list isn't one job.
+    expect(jobKey("https://jobs.dayforcehcm.com/en-US/acme/CANDIDATEPORTAL")).toMatch(/^url:/);
+  });
 });
 
 describe("Recruitee and Teamtailor apply steps (#1200)", () => {
