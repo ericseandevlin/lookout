@@ -2,6 +2,7 @@ import { z } from "zod";
 import type { ApplicationReport, SkillNote } from "@/lib/db/schema";
 import { hasKeyword, shortWordAt } from "./draft";
 import { isJunkKeyword, postingBody, postingTitle } from "./posting";
+import { parseDraft, roleParts } from "./resumeLayout";
 
 /**
  * Keyword evidence (#121, Quill's criteria on Leantime 151). Every keyword shows where the posting
@@ -84,11 +85,15 @@ export function postingSnippet(posting: string, term: string) {
 }
 
 const flat = (s: string) => s.toLowerCase().replace(/[^a-z0-9+#]+/g, " ").trim();
-const resumeLines = (resume: string) =>
-  resume
-    .split("\n")
+// Only what the person did can back a skill. The name, the contact line and a role heading's employer, city and dates
+// can't: "Express" is not backed by "Engineer, American Express", nor "Spring" by "Silver Spring, MD" (#1688).
+const resumeLines = (resume: string) => {
+  const blocks = parseDraft(resume);
+  return blocks
+    .flatMap((b, i) => (b.t === "name" || b.t === "contact" ? [] : b.t === "role" ? [roleParts(blocks, i).title] : [b.text]))
     .map((l) => l.replace(/^[#\s>*-]+/, "").trim())
     .filter((l) => l.length > 3);
+};
 
 export type Support = { line: string; from: "notes" | "resume" };
 
