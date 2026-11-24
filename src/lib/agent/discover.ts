@@ -4,7 +4,7 @@ import { z } from "zod";
 import { db, schema } from "@/lib/db";
 import { parseMoney } from "@/lib/kinds";
 import { fetchPage, FetchError, pageToText } from "@/lib/ai/fetchPage";
-import { findPay, type Pay } from "@/lib/ai/pay";
+import { findPay, foreignPayOnly, type Pay } from "@/lib/ai/pay";
 import type { RunReport, RunTally, SearchProfile } from "@/lib/db/schema";
 import { ensureSearchProfile, loadRawInputs, renderSearchProfile } from "./searchProfile";
 import { buildTips, emptyTally } from "./report";
@@ -315,6 +315,9 @@ export async function scorePages(ctx: Context, pages: Page[], usage: Usage, repo
         // Pay posted in another currency: the model copies the posted numbers as dollars, so the page's read and its
         // currency win, and the USD floor leaves it alone (#1095).
         if (page.pay && page.pay.currency !== "USD") out.push({ ...f, comp_min: page.pay.min, comp_max: page.pay.max, currency: page.pay.currency, url: page.url });
+        // Pay in a currency the page reader can't parse ("70-90k € brutto", "¥8,000,000"): the model's numbers aren't
+        // dollars, so the find keeps no pay rather than be cut by the USD floor or shown as "$" in the email (#1709).
+        else if (!page.pay && foreignPayOnly(page.text)) out.push({ ...f, comp_min: null, comp_max: null, url: page.url });
         else out.push({ ...f, ...comp, url: page.url, ...((comp.comp_min == null || comp.comp_max == null || unconverted(comp, page.pay)) && page.pay && { comp_min: page.pay.min, comp_max: page.pay.max }) });
       }
     } catch (e) {

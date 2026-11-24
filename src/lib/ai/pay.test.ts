@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { findPay, money } from "./pay";
+import { findPay, foreignPayOnly, money } from "./pay";
 
 describe("money", () => {
   it("reads common formats", () => {
@@ -444,5 +444,28 @@ describe("findPay: a unit word after a comma or bracket (#1373)", () => {
 
   it("still reads a monthly range by a unit in brackets", () => {
     expect(findPay("", "$8,000 - $10,000 (monthly)")).toMatchObject({ min: 96000, max: 120000 });
+  });
+});
+
+describe("foreignPayOnly (#1709)", () => {
+  it.each([
+    "Gehalt: 70-90k € brutto pro Jahr",
+    "70k - 90k € per year",
+    "¥8,000,000 - ¥12,000,000 per year",
+    "JPY 8,000,000 - 12,000,000",
+    "₹25,00,000 - ₹40,00,000 per annum",
+    "INR 2,500,000 - 4,000,000",
+    "CHF 120'000 - 140'000",
+    "18 000 - 24 000 PLN gross per month",
+    "SEK 50 000 - 60 000 per month",
+    "R$ 15.000 - R$ 20.000 por mês",
+  ])("is true for pay the reader can't parse: %s", (t) => {
+    expect(foreignPayOnly(t)).toBe(true);
+    expect(findPay(`<p>${t}</p>`)).toBeNull();
+  });
+  it("is false for dollar pay, or a page with no pay", () => {
+    expect(foreignPayOnly("Salary: $120,000 - $150,000 per year")).toBe(false);
+    expect(foreignPayOnly("Salary: 120,000 - 150,000 USD; our Berlin office pays in €")).toBe(false);
+    expect(foreignPayOnly("We have offices in London and Berlin. Founded 2014.")).toBe(false);
   });
 });
