@@ -228,4 +228,15 @@ describe("headline or contact line (#1651)", () => {
     for (const line of ["sam@example.com", "Brooklyn • @samdesigns", "samrivera.net", "Portfolio: samrivera.design", "linkedin.com/in/sam", "https://sam.example", "(646) 555-0100", "+44 20 7946 0958"])
       expect(head(line)[1].t).toBe("contact");
   });
+
+  it("reads a headline naming LinkedIn or GitHub as the headline (#1690)", () => {
+    for (const line of ["Staff Engineer, GitHub Actions and CI/CD", "Senior Software Engineer, LinkedIn Talent Solutions"])
+      expect(head(line).map((b) => b.t)).toEqual(["name", "headline", "contact"]);
+    expect(letterHeaderFrom("# Jane Doe\nStaff Engineer, GitHub Actions\nNew York, NY • jane@example.com • (555) 123-4567\n## Summary\nx", "Jane").contact).toBe(
+      "New York, NY • jane@example.com • (555) 123-4567",
+    );
+    // A link or a label, or a line of link words alone, is still contact.
+    for (const line of ["linkedin.com/in/jane", "github.com/jane", "GitHub: jane", "LinkedIn: /in/jane", "LinkedIn | GitHub | Portfolio", "LinkedIn"])
+      expect(head(line)[1].t).toBe("contact");
+  });
 });
