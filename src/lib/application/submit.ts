@@ -219,6 +219,11 @@ async function phoneCountry(page: Page, country: FillStep[]): Promise<{ ok: bool
  */
 const pattern = (text: string) => text.trim().replace(/[.*+?^${}()|[\]\\]/g, "\\$&").replace(/\s+/g, "\\s+");
 const labelIs = (text: string) => new RegExp(`^\\s*${pattern(text)}\\s*(\\*|✱|\\((required|optional)\\))?\\s*$`, "i");
+/**
+ * The mark a question may carry between itself and an option in one label ("Can you work onsite? (optional) No"): "*",
+ * Lever's "✱", "(required)" (#1160) or "(optional)" (#1769), as labelIs takes.
+ */
+const OPTION_MARK = "(?:\\*|✱|\\((?:required|optional)\\))?";
 /** A label that holds this text as whole words: "City" is in "Current City", not in "Ethnicity" (#1253). */
 const labelHas = (text: string) => new RegExp(`(?:^|[^\\p{L}\\p{N}])${pattern(text)}(?![\\p{L}\\p{N}])`, "iu");
 
@@ -341,10 +346,10 @@ async function fillOne(page: Page, s: FillStep): Promise<{ ok: boolean; how: str
     if (tag.startsWith("input:radio:")) {
       // A radio labeled with the question and its option ("Can you work onsite? No"): check the one the answer means.
       // Clicking the radio the label search landed on put "Yes" on a "No" answer (#720).
-      // A required mark between question and option may be "*", Lever's "✱" or "(required)" (#1160).
+      // A mark between question and option may be "*", Lever's "✱", "(required)" (#1160) or "(optional)" (#1769).
       const i = s.options?.length ? pickOne(s.content, s.options) : -1;
       if (i < 0) return { ok: false, how: "answer matches no option" };
-      const radio = page.getByRole("radio", { name: new RegExp(`^\\s*${pattern(s.prompt)}\\s*(?:\\*|✱|\\(required\\))?\\s+${pattern(s.options![i])}\\s*$`, "i") }).first();
+      const radio = page.getByRole("radio", { name: new RegExp(`^\\s*${pattern(s.prompt)}\\s*${OPTION_MARK}\\s+${pattern(s.options![i])}\\s*$`, "i") }).first();
       if (!(await radio.count())) return { ok: false, how: `option not found: ${s.options![i].slice(0, 60)}` };
       await radio.check();
       return { ok: true, how: "checked 1" };
@@ -377,7 +382,7 @@ async function fillOne(page: Page, s: FillStep): Promise<{ ok: boolean; how: str
       // One box per option, each labeled with the question and its option ("Are you 18 or older? Yes"): check the boxes
       // the answer means. Checking the box the label search landed on put "Yes" on the "No" box (#1209), as #720 did for radios.
       if (!hasExact && s.options?.length) {
-        const optionBox = (o: string) => page.getByRole("checkbox", { name: new RegExp(`^\\s*${pattern(s.prompt)}\\s*(?:\\*|✱|\\(required\\))?\\s+${pattern(o)}\\s*$`, "i") }).first();
+        const optionBox = (o: string) => page.getByRole("checkbox", { name: new RegExp(`^\\s*${pattern(s.prompt)}\\s*${OPTION_MARK}\\s+${pattern(o)}\\s*$`, "i") }).first();
         let own = 0;
         for (const o of s.options) own += await optionBox(o).count();
         if (own) {

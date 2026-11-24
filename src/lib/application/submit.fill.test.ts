@@ -504,8 +504,8 @@ describe("runFill controls (#567)", () => {
     expect(page.did.some((d) => d.includes(`${q} Yes`))).toBe(false);
   });
 
-  for (const mark of ["*", "✱", " (required)"])
-    it(`checks a question-labeled radio marked "${mark.trim()}" (#1160)`, async () => {
+  for (const mark of ["*", "✱", " (required)", " (optional)", " (Optional)"])
+    it(`checks a question-labeled radio marked "${mark.trim()}" (#1160, #1769)`, async () => {
       const q = "Can you work onsite?";
       const id = await seed("approved", [{ kind: "field", prompt: q, content: "No", options: ["Yes", "No"] }]);
       page = fakePage([
@@ -530,6 +530,18 @@ describe("runFill controls (#567)", () => {
       expect(page.did).toContain(`check ${q} ${meant}`);
       expect(page.did.filter((d) => d.startsWith("check") || d.startsWith("uncheck"))).toHaveLength(1);
     });
+
+  it("ticks the meant box when question-labeled checkboxes carry (optional) (#1769)", async () => {
+    const q = "Are you 18 or older?";
+    const id = await seed("approved", [{ kind: "field", prompt: q, content: "Yes", options: ["No", "Yes"], required: false }]);
+    page = fakePage([
+      { kind: "control", type: "checkbox", role: "checkbox", label: `${q} (optional) No` },
+      { kind: "control", type: "checkbox", role: "checkbox", label: `${q} (optional) Yes` },
+    ]);
+    await runFill(id, "test");
+    expect(page.did).toContain(`check ${q} (optional) Yes`);
+    expect(page.did).not.toContain(`check ${q} (optional) No`);
+  });
 
   it("still checks a single consent box whose label holds the question (#1209)", async () => {
     const q = "I agree to the privacy policy";
