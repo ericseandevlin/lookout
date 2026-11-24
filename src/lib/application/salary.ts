@@ -119,16 +119,17 @@ const TO_BE_PAID = /\b(how much|what)\b[^.?!]{0,40}?\b(expect\w*|need|want|like|
 const WHAT_PAY_SOUGHT = /\bwhat (\w+ ){0,2}(pay|rate)\b[^.?!]{0,30}?\b(looking for|seek\w*|expect\w*|want\w*|hop\w*|need|accept)\b/i;
 // Rate wording ("Desired hourly rate", "Expected rate per hour", "Desired day rate") is an ask too (#953, #1194), and so
 // is a period word before "pay" ("Desired hourly pay") (#1376), and so are "pay range", "base pay" and "target pay" (#1437).
+// OTE and on-target earnings are pay words too, and weekly, monthly and annual rates count like hourly ones (#1722).
 const SALARY_ASK = {
   test: (s: string) =>
-    /salary|compensation|wages?\b|pay (expectation|requirement)|expected (base|annual|pay)|desired (base|pay)|\b(desired|expected) (hourly|daily|weekly|monthly|annual|yearly) (base|pay)\b|expect to (earn|make)\b|\b(hourly|pay|bill|day|daily) rate\b|\brate (expectation|requirement)|\b(desired|expected) rate\b|\bpay range\b|\b(base|annual|target|ideal|preferred) pay\b/i.test(s) ||
+    /salary|compensation|wages?\b|pay (expectation|requirement)|expected (base|annual|pay)|desired (base|pay)|\b(desired|expected) (hourly|daily|weekly|monthly|annual|yearly) (base|pay)\b|expect to (earn|make)\b|\b(hourly|pay|bill|day|daily|weekly|monthly|annual|yearly) rate\b|\bote\b|\bon[\s-]?target earnings\b|\brate (expectation|requirement)|\b(desired|expected) rate\b|\bpay range\b|\b(base|annual|target|ideal|preferred) pay\b/i.test(s) ||
     TO_BE_PAID.test(s) ||
     WHAT_PAY_SOUGHT.test(s) ||
     (HOPE_TO_EARN.test(s) && !MAKES_SOMETHING.test(s)),
 };
 // "What are your current salary expectations?" asks what you want, not what you made (#1297).
 const PAST_PAY =
-  /\b(current|previous|prior|last|most recent|present)\b[^.?!]{0,20}\b(salary|compensation|pay|base|wages?)\b(?!(\s+(salary|compensation|pay))?\s+(expectations?|requirements?)\b)|\b(salary|compensation|pay|wage) history\b|\b(salary|compensation|pay|wages?)\b[^.?!]{0,25}\b(current|previous|prior|last) (job|role|position|employer)\b/i;
+  /\b(current|previous|prior|last|most recent|present)\b[^.?!]{0,20}\b(salary|compensation|pay|base|wages?|ote|on[\s-]?target earnings)\b(?!(\s+(salary|compensation|pay))?\s+(expectations?|requirements?)\b)|\b(salary|compensation|pay|wage) history\b|\b(salary|compensation|pay|wages?)\b[^.?!]{0,25}\b(current|previous|prior|last) (job|role|position|employer)\b/i;
 // "Are you comfortable with the posted salary range?" wants yes or no, not a number (#687).
 // "Would you share your salary expectations?" is still an ask.
 const YES_NO = /^\W*(are|is|does|do|would|will|can)\b/i;
