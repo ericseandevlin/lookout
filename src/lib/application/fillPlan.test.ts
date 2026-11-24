@@ -212,6 +212,15 @@ describe("CONFIRMATION (#692, #748, #762)", () => {
       "Your submission has been completed.",
       "Your application has been successfully completed.",
       "Applied successfully!",
+      // #1728
+      "You have successfully completed the application",
+      "You've successfully completed your application.",
+      "Your application is in!",
+      "Your application is in.",
+      "Thank-you for applying",
+      "Thankyou for applying",
+      "Thanks! Your resume has been submitted.",
+      "Your CV was submitted",
     ])
       expect(CONFIRMATION.test(t), t).toBe(true);
   });
@@ -266,6 +275,16 @@ describe("CONFIRMATION (#692, #748, #762)", () => {
       "Make sure your submission is complete.",
       "Submission complete: 2 of 5 steps",
       "You have not applied successfully.",
+      // #1728
+      "Make sure your application is in by Friday.",
+      "Make sure your application is in.",
+      "Your application is in progress.",
+      "Once you have successfully completed the application, we will review it.",
+      "Have you successfully completed your application?",
+      "You have not successfully completed the application.",
+      "Your resume was received",
+      "Resume uploaded",
+      "Your resume has not been submitted",
     ])
       expect(CONFIRMATION.test(t), t).toBe(false);
   });
