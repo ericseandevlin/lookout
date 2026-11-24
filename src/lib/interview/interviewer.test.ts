@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { closedTopics, INTERVIEW_SYSTEM, interviewPrompt, noDashes, plainQuestion, shortWhy, STORY_RULES } from "./interviewer";
-import { isBareNo, isBareYes, isQuestionBack } from "./rules";
+import { asksToStop, isBareNo, isBareYes, isQuestionBack } from "./rules";
 
 describe("shortWhy (#1449)", () => {
   it.each([
@@ -133,3 +133,12 @@ describe("the recruiter's stance (#1485)", () => {
   });
 });
 
+
+describe("asksToStop (#1662)", () => {
+  it("reads a request to end the interview", () => {
+    for (const a of ["ok I think that is enough for today, can we stop here?", "Can we stop?", "let's pause", "That's it for now", "I need to wrap up", "Let's call it a day", "pick this up later"]) expect(asksToStop(a), a).toBe(true);
+  });
+  it("leaves answers about work alone", () => {
+    for (const a of ["I stopped the bleeding on a $2M project.", "We had to end the contract early.", "Done for the quarter: closed the books in 5 days.", "", "x ".repeat(100) + "can we stop?"]) expect(asksToStop(a), a).toBe(false);
+  });
+});

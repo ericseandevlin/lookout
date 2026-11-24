@@ -11,7 +11,7 @@ import { getActiveSearch } from "@/lib/searches";
 import type { FactKind, TurnOutcome } from "@/lib/db/schema";
 import { closedTopics, FACTS_IN_PROMPT, INTERVIEW_SYSTEM, interviewPrompt, asksWhatIsKnown, InterviewTurnOut, isYesNoQuestion, plainQuestion, shortWhy, STORY_ASK, STORY_FOLLOW_UP, type InterviewInput } from "./interviewer";
 import { backKeywords, declineKeywords, keywordQuestion, missingKeywords, termsOf } from "./keywords";
-import { factKey, isBareNo, isBareYes, isQuestionBack, lockReason, topicKey } from "./rules";
+import { asksToStop, factKey, isBareNo, isBareYes, isQuestionBack, lockReason, topicKey } from "./rules";
 import { isAnswered, readSetupAnswer, setupFact, setupQuestionText, SETUP_WHY } from "./setup";
 
 /**
@@ -29,6 +29,7 @@ export const MAX_FOLLOW_UPS = 2;
 export const TOP_FINDS = 5;
 
 export const DONE_NOTE = "That's every gap Lookout sees for now. It asks again when new finds come in.";
+export const STOP_NOTE = "Stopped. Your answers are saved. Come back any time and it picks up here.";
 
 /** A sitting ends after this long with no answer; the next visit starts a new one. */
 export const SITTING_GAP_MS = 2 * 60 * 60_000;
@@ -172,6 +173,11 @@ async function interviewStep(userId: string, answered: { turn: Turn; root: Turn;
     // A keyword is backed when a fact the person may use in writing shows they did it; a private one stays background.
     const backed = focus.filter((t) => (out.backs ?? []).some((b) => topicKey(b) === topicKey(t)));
     await backKeywords(userId, backed, shareable);
+    // They asked to stop: no next question, and no "every gap" note that isn't true (#1662).
+    if (asksToStop(answered.turn.answer)) {
+      await db.update(schema.interviewTurns).set({ costUsd: addUsd(usage) ?? answered.turn.costUsd }).where(eq(schema.interviewTurns.id, answered.turn.id));
+      return { note: STOP_NOTE };
+    }
   }
   const rootKey = answered ? topicKey(answered.root.topic) : "";
   const allowed = (n: InterviewTurnOut["next"]) => {

@@ -67,6 +67,16 @@ export const isQuestionBack = (answer: string | null | undefined) => {
   return a.length > 0 && a.length <= 160 && /\?$/.test(a) && /^(why|what|how|who|which|where|when|do you|does|is|are|can|could|sorry|huh|meaning)\b/i.test(a);
 };
 
+/** "Can we stop for today?": the person wants to end, so Lookout asks nothing more and says so (#1662). Short answers only. */
+export const asksToStop = (answer: string | null | undefined) => {
+  const a = (answer ?? "").trim();
+  return (
+    a.length > 0 &&
+    a.length <= 160 &&
+    /\b(?:(?:can|could) we|let'?s|i'?d like to|i want to|i need to|i have to|i gotta|please)\s+(?:stop|pause|end|finish|wrap(?: it)? up|take a break)\b|\b(?:enough|done|stop|that'?s it|that'?s all)\s+for\s+(?:today|now|tonight)\b|\bcall it a (?:day|night)\b|\bpick (?:this|it) up (?:later|tomorrow)\b/i.test(a)
+  );
+};
+
 /** "Yes" with no story: it backs nothing, so Lookout asks where and how (#1485). */
 export const isBareYes = (answer: string) => /^(yes|yeah|yep|yup|sure|definitely|absolutely|of course|correct|i have|i did|i do)\b[\s.!,]*(i have|i did)?[\s.!]*$/i.test(answer.trim());
 
