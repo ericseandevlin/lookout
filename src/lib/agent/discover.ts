@@ -341,11 +341,15 @@ export const unscoredCount = (pages: Pick<Page, "url">[], scored: Pick<ScoredT, 
 /**
  * A real calendar day, or null: "2026-02-30" passes a pattern check but Postgres rejects it and the run fails (#626).
  * "2026-11-00" or "2026-13-01" make an invalid Date, whose toISOString throws, and year 0 is no date Postgres takes (#1057).
+ * A posting can't go up in the future: a date past tomorrow is the deadline read as the posted day, and it would read
+ * "today" on the board until then and stick there (#1718). A timestamp keeps its day.
  */
-export const realDate = (d: string | null) => {
-  if (!d || !/^\d{4}-\d{2}-\d{2}$/.test(d) || Number(d.slice(0, 4)) < 1900) return null;
+export const realDate = (raw: string | null, now = Date.now()) => {
+  const d = raw?.match(/^(\d{4}-\d{2}-\d{2})(?:[T ][\d:.]+(?:Z|[+-]\d{2}:?\d{2})?)?$/)?.[1];
+  if (!d || Number(d.slice(0, 4)) < 1900) return null;
   const t = new Date(`${d}T00:00:00Z`);
-  return !Number.isNaN(t.getTime()) && t.toISOString().slice(0, 10) === d ? d : null;
+  if (Number.isNaN(t.getTime()) || t.toISOString().slice(0, 10) !== d) return null;
+  return t.getTime() <= now + 864e5 ? d : null;
 };
 
 /**

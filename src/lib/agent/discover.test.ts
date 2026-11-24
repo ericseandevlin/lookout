@@ -550,6 +550,28 @@ describe("realDate (#1057)", () => {
   });
 });
 
+describe("realDate: no posted date in the future (#1718)", () => {
+  const now = Date.parse("2026-11-24T12:00:00Z");
+  it("drops a date past tomorrow, such as a deadline read as the posted day", () => {
+    expect(realDate("2026-12-15", now)).toBeNull();
+    expect(realDate("2099-01-01", now)).toBeNull();
+    expect(realDate("2026-11-26", now)).toBeNull();
+  });
+  it("keeps today and tomorrow, for time zones ahead of the server", () => {
+    expect(realDate("2026-11-24", now)).toBe("2026-11-24");
+    expect(realDate("2026-11-25", now)).toBe("2026-11-25");
+  });
+  it("keeps the day of a timestamp", () => {
+    expect(realDate("2026-11-20T10:00:00Z", now)).toBe("2026-11-20");
+    expect(realDate("2026-11-20T10:00:00.000+05:30", now)).toBe("2026-11-20");
+    expect(realDate("2026-11-20 10:00", now)).toBe("2026-11-20");
+  });
+  it("still drops other text", () => {
+    expect(realDate("2026-11-20 or so", now)).toBeNull();
+    expect(realDate("2026-11-30T10:00:00Z", now)).toBeNull();
+  });
+});
+
 describe("save: a board job at another link for the same ATS job (#1146)", () => {
   const saved = "https://job-boards.greenhouse.io/acme/jobs/4012345";
   it("agent: the old Greenhouse host with a reworded title is known", async () => {
