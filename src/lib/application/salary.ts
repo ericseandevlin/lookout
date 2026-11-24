@@ -97,10 +97,12 @@ export const rangeBasis = (posting: string): "total" | "base" | null =>
 
 /**
  * The question asks for base pay, not base plus bonus or commission (#650), "base salary and bonus" too (#1060), and
- * "(base, bonus)" or "base/bonus" (#1704).
+ * "(base, bonus)" or "base/bonus" (#1704). Incentive and variable pay are the same add-on, and "including" joins them
+ * like "and": "base + variable", "base plus incentive", "base salary including bonus" (#1713). "Before bonus" stays base.
  */
 export const asksBase = (prompt: string) =>
-  /\bbase\b/i.test(prompt) && !/\bbase\s*((salary|pay|compensation)\s*)?(\+|plus|and|&|,|\/)\s*(target )?(bonus|commission)/i.test(prompt);
+  /\bbase\b/i.test(prompt) &&
+  !/\bbase\s*((salary|pay|compensation)\s*)?([,(]\s*)?(\+|\bplus\b|\band\b|&|\bincluding\b|\bincl\b\.?|\binclusive of\b|,|\/)\s*(target |the )?(bonus|commission|incentive|variable)/i.test(prompt);
 
 /** The question asks for the lowest number the person would take. */
 export const asksMinimum = (prompt: string) => /\bminimum\b|\bat least\b|\blowest\b/i.test(prompt);
