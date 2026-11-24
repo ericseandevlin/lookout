@@ -821,3 +821,27 @@ describe("salary asks: OTE, on-target earnings and weekly or monthly rates (#172
     expect(askPer("Expected monthly rate")).toBe("month");
   });
 });
+
+describe("salary asks: remuneration and CTC (#1753)", () => {
+  it.each([
+    "Remuneration expectations",
+    "Expected remuneration",
+    "What remuneration are you seeking?",
+    "Desired remuneration package",
+    "What is your expected CTC?",
+    "Expected CTC (INR)",
+    "Expected CTC in lakhs per annum",
+  ])("reads %s as a salary ask", (q) => {
+    expect(isSalaryQuestion(q)).toBe(true);
+  });
+  it.each([
+    "Current remuneration",
+    "What is your current CTC?",
+    "Current CTC (INR)",
+    "What was your remuneration in your last role?",
+    "Describe your experience building remuneration frameworks.",
+    "Remuneration history",
+  ])("does not read %s as an ask for the person's number", (q) => {
+    expect(isSalaryQuestion(q)).toBe(false);
+  });
+});
