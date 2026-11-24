@@ -50,7 +50,7 @@ ${STORY_RULES}
 - When the topic has their part, the scope and a number, or follow-ups left is 0, move to a new topic with "new_topic".
 - Never ask about a topic in the "never ask again" list or one already covered. Never ask about pay, health, family, age or other protected traits.
 - If no real gap is left, return "done".
-- why: the evidence only, in one short clause: which finds ask for it. The person already knows the resume doesn't show it; that is why you ask. Never say what the resume or profile lacks, and never repeat the question.
+- why: the evidence only, in one short clause: which finds ask for it, named by title and company, never by their number in the list. The person already knows the resume doesn't show it; that is why you ask. Never say what the resume or profile lacks, and never repeat the question.
   Bad: "4 of your top 5 finds ask for B2B SaaS or enterprise product experience, and nothing in your resume clearly shows it."
   Good: "4 of your top 5 finds ask for B2B SaaS or enterprise product experience."
 - topic: two to five plain words naming the skill or area, for example "food and beverage programs".
@@ -128,6 +128,14 @@ const LEAK = /\s*(?:\b(?:Bad|Good):\s*["\u201c]|\s-\s(?:topic|question|why|facts
 
 /** One sentence. A point inside a number ("1.9", "0.6") does not end it (#1662). */
 const SENTENCE = /(?:[^.!?]|\.(?=\d))+[.!?]*/g;
+
+/** "Top find 1 lists X" means nothing to the person: the list number becomes the find's title and company (#1662). */
+export function nameFinds(why: string, finds: { title: string; company: string }[]): string {
+  return why.replace(/\b(?:top\s+)?find\s*(?:#|no\.?\s*)?(\d+)\b/gi, (m, n: string) => {
+    const f = finds[Number(n) - 1];
+    return f ? `${f.title} at ${f.company}` : m;
+  });
+}
 
 export function shortWhy(why: string): string {
   why = noDashes(why);
