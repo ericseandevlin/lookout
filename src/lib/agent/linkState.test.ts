@@ -680,3 +680,16 @@ describe("closed to new applicants, and a requested page that does not exist (#1
     expect(classifyPage(200, `TITLE: Product Designer\nTEXT: ${text}`).state).toBe("open");
   });
 });
+
+describe("classifyPage: a closed line with no full stop, then a new sentence (#1765)", () => {
+  it.each([
+    "This position has been filled\nIf you are interested in other roles, see our careers page.",
+    "Job no longer available\nIf you'd like, browse our other openings.",
+    "This job has expired\nWhen new roles open, we post them here.",
+  ])("closes %j", (text) => {
+    expect(classifyPage(200, `TITLE: Product Designer | Acme\nTEXT: ${text}`).state).toBe("gone");
+  });
+  it("keeps a duty whose condition wraps onto the next line", () => {
+    expect(classifyPage(200, "Product Designer, Jobs\nMake sure a listing is no longer live\nonce the role is filled, and tell candidates.").state).toBe("open");
+  });
+});
