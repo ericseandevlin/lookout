@@ -58,6 +58,13 @@ describe("jobKey (#169)", () => {
     expect(jobKey("https://www.linkedin.com/jobs/search/?currentJobId=abc")).toMatch(/^url:/);
     expect(jobKey("https://example.com/jobs?currentJobId=3812345678")).toMatch(/^url:/);
   });
+
+  it("keys a LinkedIn Easy Apply step like its job page (#1694)", () => {
+    for (const u of ["https://www.linkedin.com/jobs/view/3812345678/apply/?openSDUIApplyFlow=true", "https://www.linkedin.com/jobs/view/3812345678/apply"])
+      expect(jobKey(u), u).toBe("linkedin:3812345678");
+    expect(sameJob(["https://www.linkedin.com/jobs/view/3812345678/apply/"], ["https://www.linkedin.com/jobs/view/3812345678/"])).toBe(true);
+    expect(jobKey("https://www.linkedin.com/jobs/view/3812345678/other")).toMatch(/^url:/);
+  });
   it("keys a Glassdoor job by its listing ID, and keeps ?jobRequisitionId= (#1605)", () => {
     for (const u of [
       "https://www.glassdoor.com/partner/jobListing.htm?pos=101&ao=1136043&guid=abc&jobListingId=1009012345678&jrtk=xyz",
