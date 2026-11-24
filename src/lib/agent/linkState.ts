@@ -59,7 +59,8 @@ const CLOSED = [
   /(?<!\b(?:says|said|saying|reads|shows|showing|tells (?:them|users|people|you)|like|when|if|where|that|which) (?:that )?(?:the |this )?)page you(['’]re| are| were) looking for (doesn['’]t|does not|no longer) exists?|(?<!\bwho )(can(['’]|no)t|couldn['’]t|could not) find (that|this|the) page(?=\s*(?:[.!?\n]|$)|\s+you(?:['’]re| are| were)? (?:looking for|requested|wanted))/i,
   // A soft 404 that answers 200: "The page you requested could not be found", "This page cannot be found." (#1441).
   // "This/the X cannot be found" only as the end of the sentence, so "the job cannot be found on other boards" stays open.
-  /\b(page|job|position|posting) you(['’]ve| have)? requested (could not|cannot|can['’]t) be found|\b(this|the) (page|job|position|posting) (could not|cannot|can['’]t) be found\s*(?:[.!?\n]|$)/i,
+  // "The page you requested does not exist." too, ending the sentence (#1754).
+  /\b(page|job|position|posting) you(['’]ve| have)? requested (does not|doesn['’]t|no longer) exists?\s*(?:[.!?\n]|$)|\b(page|job|position|posting) you(['’]ve| have)? requested (could not|cannot|can['’]t) be found|\b(this|the) (page|job|position|posting) (could not|cannot|can['’]t) be found\s*(?:[.!?\n]|$)/i,
   // Careers sites usually render a curly apostrophe (#734). "The page you were looking for" too (#1692).
   /(the )?(job|position|page) you(['’]re| are| were) looking for (is no longer|could not be|can(['’]|no)t be) (available|found)/i,
   // Not "Applications for this role are closed to agencies" (#1103). Any noun for the job: "this vacancy" too (#1158).
@@ -74,6 +75,9 @@ const CLOSED = [
   // Not a duty about other jobs: "every requisition is closed out", "each role is closed in Greenhouse", "the opportunity is
   // closed won" (#1493).
   /(?<!\b(?:each|every|any|all|no|which|whether) (?:(?:job|role|position) )?)\b(job|posting|position|role|vacancy|opportunity|listing|advert|opening|requisition)( posting| post| ad| advert| opening)? (is |has )?(now )?closed\b(?! to\b|[- ]?date\b|-|\s+(?:out|won|lost)\b)/i,
+  // "This job is closed to new applicants", "This position is now closed to further applications": closed to everyone new,
+  // not to one group as in "closed to contractors" above, and not from agencies or by email (#1754).
+  /\b(job|posting|position|role|vacancy|opportunity|listing|advert|opening|requisition)( posting| post| ad| advert| opening)? (is |has )?(now )?(been )?closed to (all )?(new|further|additional|any more|more) (applicants|applications|candidates|submissions)\b(?!,? (from|via|by|through)\b)/i,
   // Not "not accepting applications at this time from third-party recruiters" (#1083).
   /not accepting applications (for this (job|role|position)|at this time)(?!,? (from|via|by|through)\b)/i,
   // Only as the page's own message, ending the line, sentence or title: "Own our 404 page not found experience" and "Page
