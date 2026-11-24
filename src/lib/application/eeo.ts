@@ -96,9 +96,10 @@ const SYNONYMS: Record<string, RegExp> = {
   "Native Hawaiian or Pacific Islander": /hawaiian|pacific islander/i,
   White: /^white\b|caucasian/i,
   "Two or more races": /two or more|multiracial|multiple races/i,
-  "Not a veteran": /\bnot\b[^.]*veteran|^no\b|i am not/i,
+  // "Non-Veteran" and "Nonveteran" too, but not "Non-Protected Veteran" (#1736).
+  "Not a veteran": /\bnot\b[^.]*veteran|^no\b|i am not|^\s*non[\s-]*veteran\b/i,
   Veteran: /^yes|i am a veteran|identify as one or more|protected veteran/i,
-  No: /^no\b|do not have|don.?t have|^not (hispanic|latin)/i,
+  No: /^no\b|do not have|don.?t have|^not (hispanic|latin)|^non[\s-]*(hispanic|latin)/i,
   Yes: /^yes\b|i have a|^(hispanic|latin)/i,
 };
 
@@ -108,6 +109,9 @@ const bare = (o: string) => o.replace(/^\s*i (?:(?:self-)?identify as|am)\s+(?:a
 // "I am a veteran, but not a protected veteran", "I identify as a veteran, just not a protected veteran", and the short
 // labels "Veteran, not protected" and "Non-Protected Veteran" (#1639).
 const VETERAN_NOT_PROTECTED = /\b(am|identify as) a veteran\b.*\bnot\b.*\bprotected\b|^\s*veteran\b.*\bnot\b.*\bprotected\b|\bnon-?\s*protected\s+veteran\b/i;
+
+// "Not Hispanic or Latino", "(Non-Hispanic)", "Non Hispanic" (#662, #1736).
+const NOT_HISPANIC = /\b(?:not\s+|non[\s-]*)(?:hispanic|latin)/i;
 
 /** The form option for the person's answer, if one clearly matches. */
 export function matchOption(choice: string, options: string[]): string | null {
@@ -125,7 +129,7 @@ export function matchOption(choice: string, options: string[]): string | null {
   }
   // Workday race lists say "White (Not Hispanic or Latino)": a Hispanic person must not get one of those (#662).
   const negated = (o: string) =>
-    (choice === "Hispanic or Latino" && /\bnot\s+(hispanic|latin)/i.test(o)) ||
+    (choice === "Hispanic or Latino" && NOT_HISPANIC.test(o)) ||
     // "I am a veteran, but not a protected veteran" and "I identify as a veteran, just not a protected veteran" hold
     // "not ... veteran" but are a veteran's answer (#961, #1003).
     (choice === "Not a veteran" && /\b(am|identify as) a veteran\b|^yes\b/i.test(o));
@@ -162,5 +166,5 @@ export function resolve(profile: EeoProfile, prompt: string, options: string[] |
   // A combined race list says "White (Not Hispanic or Latino)": someone whose profile says Hispanic must never get one
   // of those. With nothing else that fits, ask them once instead of picking for them (#1024).
   const hispanic = cat === "race" && choice !== DECLINE && profile.answers.hispanic === "Yes";
-  return matchOption(choice, hispanic ? opts.filter((o) => !/\bnot\s+(hispanic|latin)/i.test(o)) : opts);
+  return matchOption(choice, hispanic ? opts.filter((o) => !NOT_HISPANIC.test(o)) : opts);
 }
