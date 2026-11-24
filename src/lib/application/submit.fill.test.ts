@@ -346,6 +346,11 @@ describe("runFill (#385)", () => {
     expect(["5 m", "5 months", "2 Months", "3 mo"].map(numberAnswer)).toEqual(["5", "5", "2", "3"]);
   });
 
+  it("dots grouped in threes are thousands (#1747)", () => {
+    expect(["€90.000", "90.000 EUR", "1.250.000", "90.000,00 €", "€85.000 - €95.000"].map(numberAnswer)).toEqual(["90000", "90000", "1250000", "90000", "85000"]);
+    expect(["3.5", "$95.50", "$2.3K", "7.5 years", "$2.300K", "1.25"].map(numberAnswer)).toEqual(["3.5", "95.50", "2300", "7.5", "2300", "1.25"]);
+  });
+
   it("a date field gets the answer as yyyy-mm-dd, not \"12/01/2026\" (#1242)", async () => {
     const id = await seed("approved", [{ kind: "answer", prompt: "Earliest start date", content: "12/01/2026" }]);
     page = fakePage([{ kind: "control", label: "Earliest start date", type: "date" }]);
