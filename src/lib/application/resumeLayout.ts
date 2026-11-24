@@ -41,9 +41,12 @@ export function splitRole(line: string): { text: string; right?: string } {
  * "@" counts only in an email or a handle, and a domain only with a lowercase ending: "Senior ASP.NET Developer" and
  * "Product Designer @ Spotify" are headlines, and read as contact they put the title in the cover letter's contact line (#1651).
  */
-const CONTACT_WORDS = /[\w.+-]+@[\w-]+\.[\w.-]+|(?:^|[\s|•·,(])@\w|https?:\/\/|www\.|linkedin|github|\(?\d{3}\)?[.\s-]\d{3}[.\s-]\d{4}|\+\d/i;
+// LinkedIn and GitHub count only as a link or a label ("linkedin.com/in/jane", "GitHub: jane"), or in a line of link words
+// alone ("LinkedIn | GitHub | Portfolio"). "Staff Engineer, GitHub Actions" is a headline (#1690).
+const CONTACT_WORDS = /[\w.+-]+@[\w-]+\.[\w.-]+|(?:^|[\s|•·,(])@\w|https?:\/\/|www\.|\b(?:linkedin|github)(?:\.com\b|\s*[:/])|\(?\d{3}\)?[.\s-]\d{3}[.\s-]\d{4}|\+\d/i;
+const LINK_WORDS = /^(?:(?:linkedin|github|portfolio|website|behance|dribbble)\s*(?:[|•·,]\s*|$))+$/i;
 const DOMAIN = /\b[\w-]+\.(com|co|io|net|org|dev|me|design|studio|ai)\b/;
-const contactish = (line: string) => CONTACT_WORDS.test(line) || DOMAIN.test(line);
+const contactish = (line: string) => CONTACT_WORDS.test(line) || DOMAIN.test(line) || LINK_WORDS.test(line);
 
 export function parseDraft(md: string): Block[] {
   const out: Block[] = [];
