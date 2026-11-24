@@ -96,6 +96,21 @@ describe("classify: questions that only sound like EEO (#1512)", () => {
     expect(classify("Are you currently in the reserves?")).toBeNull();
   });
 
+  it("leaves a question about someone else unclassified (#1746)", () => {
+    expect(classify("Is anyone in your family a veteran?")).toBeNull();
+    expect(classify("Is a member of your family a veteran?")).toBeNull();
+    expect(classify("Is your partner a veteran?")).toBeNull();
+    expect(classify("Is your parent or guardian a veteran?")).toBeNull();
+    expect(classify("Are you the parent of a veteran?")).toBeNull();
+    expect(classify("Are you a family member of someone with a disability?")).toBeNull();
+    expect(classify("Are you a caregiver for a person with a disability?")).toBeNull();
+    // The person's own status still reads.
+    expect(classify("Are you a person with a disability?")).toBe("disability");
+    expect(classify("Do you identify as an individual with a disability?")).toBe("disability");
+    expect(classify("Are you a protected veteran?")).toBe("veteran");
+    expect(classify("Do you have a disability? Your answer is not shared with anyone who decides on your application.")).toBe("disability");
+  });
+
   it("reads 'currently' outside service as the question it is (#1683)", () => {
     expect(classify("Do you currently have a disability?")).toBe("disability");
     expect(classify("Do you have a disability (currently or in the past)?")).toBe("disability");
