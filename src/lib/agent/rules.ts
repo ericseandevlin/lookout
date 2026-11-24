@@ -14,8 +14,16 @@ export type Scored = {
 // A gap already about pay. Whole words, so "Company is early stage" or "payments experience" don't count (#658).
 const PAY_GAP = /\b(comp|compensation|pay|salary|salaries|wages?)\b/i;
 
-/** Em and en dashes become a comma: reasons are read as plain copy, and Lookout never writes one (#1531). */
-export const noDashes = (s: string) => s.replace(/\s*[\u2014\u2013]\s*/g, ", ").replace(/,\s*,/g, ",").trim();
+/**
+ * Em and en dashes become a comma: reasons are read as plain copy, and Lookout never writes one (#1531). A dash between
+ * two numbers is a range, so it becomes a hyphen: "$180k–$220k" is "$180k-$220k", not "$180k, $220k" (#1766).
+ */
+export const noDashes = (s: string) =>
+  s
+    .replace(/(\d[\d,.]*[kKmM%]?)\s*[\u2014\u2013]\s*(?=[$€£]?\d)/g, "$1-")
+    .replace(/\s*[\u2014\u2013]\s*/g, ", ")
+    .replace(/,\s*,/g, ",")
+    .trim();
 
 /**
  * Hard rules applied on top of the model's score. The model's score is a
