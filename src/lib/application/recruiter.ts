@@ -179,7 +179,10 @@ function resumeChecks(md: string): Finding[] {
 }
 
 // The greeting stops at "!" or "?" too: "Hello! I am writing to apply..., " keeps its opening line (#1396).
-const GREETING = /^(dear|hi|hello|to whom)\b[^,:!?\n]{0,60}([,:!]\s*|$)/i;
+// "Greetings,", "Hey team," and "To the Hiring Team," are greetings too (#1761). "To the ..." needs a team, manager or
+// the like before its comma, so "To the best of my knowledge, ..." stays the first sentence.
+const GREETING =
+  /^(?:(?:dear|hi|hey|hello|greetings|good (?:morning|afternoon|day)|to whom)\b[^,:!?\n]{0,60}|to the\b[^,:!?\n]{0,40}\b(?:team|manager|committee|recruiter|department|panel)s?)([,:!]\s*|$)/i;
 // A sign-off on its own line ("Best regards,", "Thanks,"), with the name and contact lines under it.
 const SIGN_OFF = /^(sincerely|best|thanks|thank you|regards|kind regards|warm regards|warmly|cheers|all the best)\b[\w ]{0,15},?$/i;
 
