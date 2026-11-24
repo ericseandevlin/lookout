@@ -721,6 +721,33 @@ describe("embedded Greenhouse boards and Ashby outages (#438)", () => {
 });
 
 describe("resume redraft with approved keywords (#438)", () => {
+  it("keeps the go when the job page reads differently on the redraft (#1662)", async () => {
+    process.env.FEATURE_INTERVIEW = "on";
+    try {
+      pages.set(GH_API, JSON.stringify({ ...JSON.parse(ghJob(FORM)), content: "&lt;p&gt;Lead our design system in Figma.&lt;/p&gt;" }));
+      replies["apply-keywords"] = () => ({ keywords: [{ term: "design system", experience: "- Built a design system used by 40 teams" }] });
+      const { user, app } = await seedApp();
+      await db.insert(schema.materials).values({ userId: user.id, kind: "resume", extracted: { text: RESUME } });
+      await processApplication(app.id);
+      const drafted = await getApp(app.id);
+      const { rows } = await keywordState(user.id, drafted, drafted.report.postingText!);
+      expect(finalTerms(rows)).toEqual(["design system"]);
+      await db
+        .update(schema.applications)
+        .set({ report: { ...drafted.report, keywordsApproved: { terms: finalTerms(rows), at: new Date().toISOString() } } })
+        .where(eq(schema.applications.id, app.id));
+
+      // The page now reads without the line the keyword came from.
+      pages.set(GH_API, JSON.stringify({ ...JSON.parse(ghJob(FORM)), content: "&lt;p&gt;Sign in to see this job.&lt;/p&gt;" }));
+      replies["apply-resume"] = () => ({ keywords: ["design system"], resume: RESUME, changes: [], notes: [] });
+      await expect(redraftResume(app.id)).resolves.toBeUndefined();
+      const resume = (await itemsOf(app.id)).find((i) => i.kind === "resume")!;
+      expect(resume.versions.map((v) => v.version)).toEqual([1, 2]);
+    } finally {
+      delete process.env.FEATURE_INTERVIEW;
+    }
+  });
+
   it("writes a new version, clears its approval, sends the application back to review and flags unapproved terms", async () => {
     pages.set(GH_API, JSON.stringify({ ...JSON.parse(ghJob(FORM)), content: "&lt;p&gt;Lead our design system in Figma.&lt;/p&gt;" }));
     replies["apply-keywords"] = () => ({
