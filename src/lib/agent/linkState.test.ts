@@ -384,6 +384,25 @@ describe("stock closed-job pages (#1427)", () => {
   });
 });
 
+describe("a deadline that has passed (#1714)", () => {
+  it.each([
+    "The deadline to apply for this job has passed.",
+    "The deadline for this position has passed.",
+    "The application deadline for this role has now passed.",
+    "Sorry, the deadline for applications has already passed.",
+  ])("reads %s as closed", (text) => {
+    expect(classifyPage(200, `Careers\n${text}`).state).toBe("gone");
+  });
+  it.each([
+    "The deadline to apply for this job is December 15. Apply now.",
+    "If the deadline for this position has passed, we will still review your application.",
+    "Make sure you apply before the deadline for this role. Once the deadline to apply has passed, we review every submission.",
+    "You will manage projects and track when the deadline for each deliverable has passed.",
+  ])("keeps %s open", (text) => {
+    expect(classifyPage(200, `TITLE: Product Designer\nTEXT: ${text}`).state).toBe("open");
+  });
+});
+
 describe("apply-to and soft 404 wordings (#1441)", () => {
   it.each([
     "The job you're trying to apply to has been closed.",
