@@ -247,6 +247,21 @@ describe("asksBase", () => {
     "a word between base and the bonus still means total pay: %s (#1060)",
     (q) => expect(asksBase(q)).toBe(false),
   );
+  it.each([
+    "What are your total compensation expectations (base, bonus)?",
+    "Expected base salary, bonus and equity",
+    "What are your salary expectations (base/bonus)?",
+    "Base salary / bonus expectations",
+  ])("a comma or slash between base and the bonus means total pay too: %s (#1704)", (q) => expect(asksBase(q)).toBe(false));
+  it("still reads base when the comma leads somewhere else (#1704)", () => {
+    expect(asksBase("Expected base salary, in USD")).toBe(true);
+    expect(asksBase("Desired base salary (annual, before bonus)")).toBe(true);
+  });
+  it("leaves the field filled for a base, bonus question against a total-cash range (#1704)", () => {
+    const q = "What are your total compensation expectations (base, bonus)?";
+    const r = suggestSalary({ floor: "180,000", target: "230,000", min: 200000, max: 250000, basis: "total", asksBase: asksBase(q) })!;
+    expect(r.amount).not.toBeNull();
+  });
 });
 
 describe("isSalaryQuestion", () => {
