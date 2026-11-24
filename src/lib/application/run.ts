@@ -1,3 +1,4 @@
+import { stripHtml } from "@/lib/ai/entities";
 import "server-only";
 import { and, desc, eq, inArray, lt, max, sql } from "drizzle-orm";
 import { randomUUID } from "node:crypto";
@@ -582,7 +583,9 @@ export async function redraftResume(appId: string, itemId?: string) {
   }
   const inp = await loadInputs(a.userId, opp, usage, postingHtml);
   // Only the list the person said go to, worked out again from today's resume and notes (#121).
-  const { rows } = await keywordState(a.userId, a, inp.posting.text);
+  // From the posting text they approved it against, not a fresh read of the page: a job page that
+  // changes between reads (LinkedIn does) would change the list and refuse their own go (#1662).
+  const { rows } = await keywordState(a.userId, a, stripHtml(a.report.postingText ?? "") || inp.posting.text);
   if (!approvedFor(a.report, rows)) throw new HttpError(409, "Check the keywords first, then press \"Use these keywords\".");
   const { draft, keywords } = await draftResume(inp, usage, rows);
   await writeRedraft(appId, usage.usd, async (tx, now) => {
