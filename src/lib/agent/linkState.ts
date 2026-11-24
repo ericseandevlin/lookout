@@ -127,6 +127,13 @@ const THEN_CONDITION = /^\s*(?:once|when|whenever|after|until|till|if|as soon as
 // "like" or "such as" right before it, but not "looks like this job is no longer available". A closing quote ("Senior Designer" is ...) follows a word, so it doesn't count.
 const QUOTED = /(?:^|[\s(\[:])["“‘'][^"“”‘’'\n]{0,40}$|(?<!\b(?:looks?|looked|seems?|seemed|sounds?) )\b(?:like|such as)\s+(?:(?:the|this|a|your|our)\s+)?$/i;
 
+/**
+ * The text after a closed phrase leads with a condition on it. Across a line break only a lowercase word carries the
+ * sentence on: a banner with no full stop ("This position has been filled") above "If you are interested in other
+ * roles, ..." is a new sentence, not a condition (#1765).
+ */
+const thenCondition = (after: string) => THEN_CONDITION.test(after) && !/^[ \t]*\n\s*[A-Z]/.test(after);
+
 const lastOf = (s: string, marks: string[]) => Math.max(...marks.map((c) => s.lastIndexOf(c)));
 
 /**
@@ -140,7 +147,7 @@ function saysClosed(r: RegExp, text: string) {
     const before = text.slice(0, m.index + (/^[.!?:;\n\s]*/.exec(m[0])?.[0].length ?? 0));
     const sentence = before.slice(lastOf(before, [".", "!", "?", "\n", ";"]) + 1);
     const clause = sentence.slice(lastOf(sentence, [",", ":"]) + 1);
-    if (REPORTED.test(clause) || QUOTED.test(before) || THEN_CONDITION.test(text.slice(m.index + m[0].length))) continue;
+    if (REPORTED.test(clause) || QUOTED.test(before) || thenCondition(text.slice(m.index + m[0].length))) continue;
     if (!CONDITION.test(sentence) && !NEAR_CONDITION.test(clause)) return true;
   }
   return false;
