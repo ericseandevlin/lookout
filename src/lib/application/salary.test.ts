@@ -257,6 +257,24 @@ describe("asksBase", () => {
     expect(asksBase("Expected base salary, in USD")).toBe(true);
     expect(asksBase("Desired base salary (annual, before bonus)")).toBe(true);
   });
+  it.each([
+    "What are your OTE expectations (base + variable)?",
+    "Expected base plus incentive",
+    "Desired base salary including bonus",
+    "Expected base salary, including bonus",
+    "Base pay (incl. bonus) expectations",
+    "Base and variable compensation expectations",
+  ])("incentive, variable pay and 'including' mean total pay too: %s (#1713)", (q) => expect(asksBase(q)).toBe(false));
+  it("still reads base when bonus is left out (#1713)", () => {
+    expect(asksBase("Desired base salary, excluding bonus")).toBe(true);
+    expect(asksBase("Expected base salary before incentive")).toBe(true);
+    expect(asksBase("Expected base salary (variable pay is separate)")).toBe(true);
+  });
+  it("leaves the field filled for a base + variable question against a total-cash range (#1713)", () => {
+    const q = "What are your OTE expectations (base + variable)?";
+    const r = suggestSalary({ min: 200000, max: 250000, basis: "total", asksBase: asksBase(q) })!;
+    expect(r.amount).toBe("$240,000");
+  });
   it("leaves the field filled for a base, bonus question against a total-cash range (#1704)", () => {
     const q = "What are your total compensation expectations (base, bonus)?";
     const r = suggestSalary({ floor: "180,000", target: "230,000", min: 200000, max: 250000, basis: "total", asksBase: asksBase(q) })!;
