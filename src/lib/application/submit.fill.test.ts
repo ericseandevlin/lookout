@@ -338,6 +338,8 @@ describe("runFill (#385)", () => {
 
   it("a range's k covers its bare first end (#1254)", () => {
     expect(["$120-150k", "120 to 150K", "$120 – $150k", "$1-1.5M", "$120,000 - 150k", "5 - 10 years"].map(numberAnswer)).toEqual(["120000", "120000", "120000", "1000000", "120000", "5"]);
+    // Any currency on the second end, not only "$" (#1771).
+    expect(["£60 - £70k", "€60-€70k", "£60k - £70k", "$60 - $70k", "CHF 120 - CHF 150k", "¥8-¥10M"].map(numberAnswer)).toEqual(["60000", "60000", "60000", "60000", "120000", "8000000"]);
   });
 
   it("a k or M after a space, or spelled out, still counts (#1585)", () => {
