@@ -64,7 +64,9 @@ export const factsBlock = (list: BlockFact[]) => {
  */
 export const isQuestionBack = (answer: string | null | undefined) => {
   const a = (answer ?? "").trim();
-  return a.length > 0 && a.length <= 160 && /\?$/.test(a) && /^(why|what|how|who|which|where|when|do you|does|is|are|can|could|sorry|huh|meaning)\b/i.test(a);
+  // The last sentence asks it, so a lead-in counts: "Quick question first: does CFS say if it's hybrid?" (#1662).
+  const last = a.split(/[.:;!]\s+/).pop() ?? "";
+  return a.length > 0 && a.length <= 160 && /\?$/.test(a) && /^(why|what|how|who|which|where|when|do you|does|do they|did|is|are|can|could|sorry|huh|meaning)\b/i.test(last);
 };
 
 /** "Can we stop for today?": the person wants to end, so Lookout asks nothing more and says so (#1662). Short answers only. */

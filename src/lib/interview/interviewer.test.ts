@@ -77,6 +77,9 @@ describe("the question only (#1449)", () => {
 
   it("knows a question back from an answer", () => {
     for (const a of ["Why do you ask?", "what do you mean?", "How is that relevant?", "Sorry, which part?"]) expect(isQuestionBack(a)).toBe(true);
+    // A lead-in before the question (#1662).
+    for (const a of ["Quick question first: does CFS say if the role is hybrid?", "Hang on. Is this for the CFS role?"]) expect(isQuestionBack(a), a).toBe(true);
+    expect(isQuestionBack("ok I think that is enough for today, can we stop here?")).toBe(false);
     for (const a of ["Yes, I ran F&B for 3 venues.", "I led it. Why? Because nobody else would.", "", "No"]) expect(isQuestionBack(a)).toBe(false);
   });
 });
