@@ -174,6 +174,29 @@ const COUNTRY_NAME: Record<string, string> = {
   "republic of korea": "south korea",
 };
 
+// States and regions outside the US and Canada, as the country region() reads for them: ATS feeds write "Munich,
+// Bavaria" and LinkedIn writes "Munich, Germany" (#1702). Names as normPart folds them; no code that is also a US
+// state's or a Canadian province's.
+const SUBDIVISION: Record<string, string> = Object.fromEntries(
+  (
+    [
+      ["australia", ["new south wales", "nsw", "victoria", "vic", "queensland", "qld", "western australia", "south australia", "tasmania", "australian capital territory", "northern territory"]],
+      ["germany", ["bavaria", "bayern", "berlin", "hamburg", "hesse", "hessen", "baden wurttemberg", "baden wuerttemberg", "north rhine westphalia", "nordrhein westfalen", "lower saxony", "niedersachsen", "saxony", "sachsen", "brandenburg", "schleswig holstein", "rhineland palatinate", "rheinland pfalz", "thuringia", "thuringen", "bremen"]],
+      ["india", ["karnataka", "maharashtra", "tamil nadu", "telangana", "delhi", "nct of delhi", "haryana", "uttar pradesh", "west bengal", "gujarat", "kerala", "andhra pradesh", "rajasthan"]],
+      ["spain", ["catalonia", "catalunya", "cataluna", "community of madrid", "comunidad de madrid", "andalusia", "andalucia", "valencian community", "comunidad valenciana", "basque country", "pais vasco"]],
+      ["netherlands", ["north holland", "noord holland", "south holland", "zuid holland", "north brabant", "noord brabant"]],
+      ["france", ["ile de france", "auvergne rhone alpes", "provence alpes cote d azur", "occitanie", "nouvelle aquitaine", "hauts de france"]],
+      ["italy", ["lombardy", "lombardia", "lazio", "piedmont", "piemonte", "emilia romagna", "tuscany", "toscana", "veneto"]],
+      ["ireland", ["county dublin", "co dublin", "leinster", "county cork", "co cork"]],
+      ["brazil", ["sao paulo", "rio de janeiro", "minas gerais"]],
+      ["mexico", ["jalisco", "nuevo leon", "cdmx", "ciudad de mexico"]],
+      ["poland", ["masovia", "masovian", "mazowieckie", "lesser poland", "malopolskie"]],
+      ["japan", ["tokyo", "osaka", "kanagawa"]],
+      ["china", ["guangdong", "zhejiang", "jiangsu"]],
+    ] as const
+  ).flatMap(([country, names]) => names.map((n) => [n, country])),
+);
+
 /**
  * "Remote - US", "US Remote", "USA (Remote)" and "Remote – United States" as "Remote, US", the way "Remote, US" and
  * "Remote (US)" already key: the fingerprint keeps only the text before the first comma, so one remote job written two
@@ -251,7 +274,7 @@ export function region(raw: string) {
       if (!state && q.length === 2) code = q;
       state ??= s;
     } else if (COUNTRIES.has(q)) country ??= COUNTRIES.get(q)!;
-    else other = COUNTRY_NAME[q] ?? q;
+    else other = SUBDIVISION[q] ?? COUNTRY_NAME[q] ?? q;
   }
   return { state, country: country ?? state?.slice(0, 2) ?? other, code: country ? null : code };
 }

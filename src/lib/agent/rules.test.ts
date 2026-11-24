@@ -156,6 +156,26 @@ describe("placesDiffer (#1285)", () => {
     expect(placesDiffer("Portland, OR", "Portland, ME")).toBe(true);
   });
 
+  it("reads a state or region outside the US and Canada as its country (#1702)", () => {
+    for (const [a, b] of [
+      ["Munich, Bavaria", "Munich, Germany"],
+      ["Munich, Bavaria", "Munich, DE"],
+      ["Stuttgart, Baden-Württemberg", "Stuttgart, Germany"],
+      ["Sydney, NSW", "Sydney, Australia"],
+      ["Sydney, New South Wales", "Sydney, NSW, Australia"],
+      ["Bengaluru, Karnataka", "Bengaluru, India"],
+      ["Barcelona, Catalonia", "Barcelona, Spain"],
+      ["Amsterdam, North Holland", "Amsterdam, Netherlands"],
+      ["Paris, Île-de-France", "Paris, FR"],
+      ["São Paulo, São Paulo", "São Paulo, Brazil"],
+    ]) expect(placesDiffer(a, b), `${a} | ${b}`).toBe(false);
+    // Places in two countries still differ.
+    expect(placesDiffer("Munich, Bavaria", "Munich, Austria")).toBe(true);
+    expect(placesDiffer("Melbourne, Victoria", "Melbourne, FL")).toBe(true);
+    expect(placesDiffer("Remote (Bavaria)", "Remote (US)")).toBe(true);
+    expect(placeId("Sydney, NSW")).toBe("australia");
+  });
+
   it("reads a state or country in parentheses (#1426)", () => {
     expect(placesDiffer("Remote (US)", "Remote (Canada)")).toBe(true);
     expect(placesDiffer("Remote (United States)", "Remote (Canada)")).toBe(true);
