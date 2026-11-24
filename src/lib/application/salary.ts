@@ -241,9 +241,10 @@ function periodIn(prompt: string): "year" | Per | null {
  */
 export const asksThousands = (prompt: string) => THOUSANDS.test(prompt);
 
-// "(in 1000s)", "(thousands USD)", "(USD, thousands)", "(£'000)" and "in thousand USD" too (#1488).
+// "(in 1000s)", "(thousands USD)", "(USD, thousands)", "(£'000)" and "in thousand USD" too (#1488). A bare "000" in
+// brackets, "($000)", "(£000)", "(USD 000)" or "(000)", too (#1712).
 const CUR = String.raw`(?:usd|us\$|\$|£|€|eur|gbp|cad)`;
-const UNIT = String.raw`(?:000s|000's|'000s?|1,?000s|k|thousands?)`;
+const UNIT = String.raw`(?:000s|000's|'000s?|1,?000s|000|k|thousands?)`;
 const THOUSANDS = new RegExp(
   String.raw`\bin (?:\$\s?|usd\s)?(?:thousands?|k(?![-–]?\d)|1,?000s)\b|(?<![\d\w])\(\s*(?:in\s+)?(?:${CUR}\s*,?\s*)?${UNIT}(?:\s*,?\s*${CUR})?\s*\)|\bin 000s\b`,
   "i",
