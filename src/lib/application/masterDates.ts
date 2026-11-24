@@ -4,9 +4,15 @@ const MONTHS = ["jan", "feb", "mar", "apr", "may", "jun", "jul", "aug", "sep", "
 type When = { y: number; m: number | null } | "now";
 // "March 2019", "Mar. 2019", "03/2019", "3/2019", "2019" or "Present", in the order they appear.
 // Only real month spellings: "Marketing 2019" or "Marriott 2019" is a year, not March (#1177).
-const WHEN = /\b(?:(jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|june?|july?|aug(?:ust)?|sept?(?:ember)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)\b\.?,?\s+|(0?[1-9]|1[0-2])\/)?((?:19|20)\d{2})\b|\b(present|current|now|today)\b/gi;
+// A short year needs its apostrophe ("Jan '19", "Mar’21", "'19"); a bare "19" is no year (#1730).
+const WHEN =
+  /(?:\b(jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|june?|july?|aug(?:ust)?|sept?(?:ember)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)\b\.?,?(?:\s+|(?=['’‘]))|\b(0?[1-9]|1[0-2])\/)?(?:\b((?:19|20)\d{2})\b|['’‘](\d{2})\b)|\b(present|current|now|today)\b/gi;
+// '19 is 2019 and '98 is 1998.
+const shortYear = (yy: string) => (+yy < 50 ? 2000 : 1900) + +yy;
 const whens = (s: string): When[] =>
-  [...s.matchAll(WHEN)].map((x) => (x[4] ? "now" : { y: +x[3], m: x[1] ? MONTHS.indexOf(x[1].slice(0, 3).toLowerCase()) + 1 : x[2] ? +x[2] : null }));
+  [...s.matchAll(WHEN)].map((x) =>
+    x[5] ? "now" : { y: x[3] ? +x[3] : shortYear(x[4]), m: x[1] ? MONTHS.indexOf(x[1].slice(0, 3).toLowerCase()) + 1 : x[2] ? +x[2] : null },
+  );
 // A year-only side matches any month in that year.
 const same = (a: When, b: When) => (a === "now" || b === "now" ? a === b : a.y === b.y && (a.m === null || b.m === null || a.m === b.m));
 /** The line holds the same start and end, in order, however each side is written (#907). */

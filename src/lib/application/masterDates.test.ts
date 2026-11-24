@@ -27,6 +27,21 @@ describe("looseDates", () => {
     expect(looseDates("### Staff Engineer | Acme Corp | 03/2019 – 06/2021", `Jane Doe\n${line}\n- Built billing.`)).toEqual([]);
   });
 
+  it.each([
+    "Staff Engineer, Acme Corp  Mar '19 - Jun '21",
+    "Staff Engineer, Acme Corp  Mar’19 – Jun’21",
+    "Staff Engineer, Acme Corp  March ’19 to June ’21",
+    "Staff Engineer, Acme Corp  3/2019 - Jun '21",
+  ])("reads a year written with an apostrophe as the full year: %s (#1730)", (line) => {
+    expect(looseDates("### Staff Engineer | Acme Corp | 03/2019 – 06/2021", `Jane Doe\n${line}\n- Built billing.`)).toEqual([]);
+  });
+
+  it("reads '98 as 1998, and a bare two-digit number or the wrong short year as no match (#1730)", () => {
+    expect(looseDates("### Analyst | Initech | 1998 – 2001", "Analyst, Initech  '98 - '01")).toEqual([]);
+    expect(looseDates("### Staff Engineer | Acme Corp | 03/2019 – 06/2021", "Staff Engineer, Acme Corp  Mar 19 - Jun 21")).toHaveLength(1);
+    expect(looseDates("### Staff Engineer | Acme Corp | 03/2019 – 06/2021", "Staff Engineer, Acme Corp  Mar '18 - Jun '21")).toHaveLength(1);
+  });
+
   it("reads Present the same whatever the word (#907)", () => {
     expect(looseDates("### Staff Engineer | Acme Corp | 03/2019 – Present", "Staff Engineer, Acme Corp  March 2019 - Current")).toEqual([]);
   });
