@@ -165,9 +165,11 @@ async function gatherHits(ctx: Context, queries: string[], usage: Usage, report:
   // Results already on the board, counted once each: a run that only finds those says so, not "nothing matched" (#1125).
   const onBoard = new Set<string>();
   const results: PromiseSettledResult<SearchHit[]>[] = [];
+  let fallbacks = 0;
+  const onFallback = () => void fallbacks++;
   for (const [i, q] of queries.entries()) {
     await report(10 + (25 * i) / queries.length, `Searching “${q}”`);
-    results.push(await webSearch(q, usage).then((value) => ({ status: "fulfilled" as const, value }), (reason) => ({ status: "rejected" as const, reason })));
+    results.push(await webSearch(q, usage, undefined, { onFallback }).then((value) => ({ status: "fulfilled" as const, value }), (reason) => ({ status: "rejected" as const, reason })));
   }
   for (const r of results) {
     if (r.status !== "fulfilled") continue;
@@ -186,7 +188,7 @@ async function gatherHits(ctx: Context, queries: string[], usage: Usage, report:
   if (!hits.length && results.length && results.every((r) => r.status === "rejected")) {
     throw (results[0] as PromiseRejectedResult).reason;
   }
-  return { hits: hits.slice(0, 60), onBoard: onBoard.size };
+  return { hits: hits.slice(0, 60), onBoard: onBoard.size, fallbacks };
 }
 
 const Picks = z.object({ picks: z.array(z.number().int()).describe("Indexes of the most promising single job postings") });
@@ -685,7 +687,7 @@ export async function discover(searchId: string, trigger: "scheduled" | "manual"
     ctx.searchProfile = sp.profile;
     await report(6, "Planning searches");
     const queries = await makeQueries(ctx, usage);
-    const { hits, onBoard } = await gatherHits(ctx, queries, usage, report);
+    const { hits, onBoard, fallbacks } = await gatherHits(ctx, queries, usage, report);
     await report(37, `Found ${hits.length} new results. Picking the most promising`);
     const picks = await pickHits(ctx, hits, usage);
     const landed = uniquePages(await fetchAll(picks.map((h) => h.url), report), ctx.knownUrls);
@@ -708,7 +710,7 @@ export async function discover(searchId: string, trigger: "scheduled" | "manual"
     await progress(run.id, 100, doneStep(tally) + eventsNote);
     // A page that opened onto a find already on the board was still read: without it, a run whose every pick redirects
     // to the board reported read 0, told the person no page could be opened, and counted as failed in Metrics (#1649).
-    const summary = makeReport(ctx, { queries, results: hits.length + onBoard, picked: picks.length, read: pages.length + landed.onBoard, tally });
+    const summary = makeReport(ctx, { queries, results: hits.length + onBoard, picked: picks.length, read: pages.length + landed.onBoard, tally, ...(fallbacks ? { fallbacks } : {}) });
     await finishRun(run.id, usage, { found, added, report: summary });
     return { found, added, runId: run.id };
   } catch (e) {
