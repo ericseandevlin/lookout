@@ -65,10 +65,11 @@ const AUTH = /authori[sz]ed to work|work authori[sz]ation|legally (authorized|el
 // "The country of employment", "the country this role is in", "the country where you will be working" and "the hiring
 // country" too (#1590). "The country listed on this job posting", "the job location", "the country where you will be based"
 // and "this country" too (#1696).
+// "The country you will be working in" without "where" too (#1748).
 const MORE_PLACES =
   /\b(country|location)\s+(listed|named|shown|stated|posted)\s+(on|in|for)\s+(this|the)\s+(job\s+)?(posting|listing|advert|role|job|position)\b|\bjob location\b|\bposting['’]?s (country|location)\b|\b(country|location)\s+where\s+(this|the)\s+(role|job|position|opportunity)\s+is\b(?!\s+\w)|\bwhere you(?:['’]ll| will| would) be (based|employed|located)\b|\bin this country\b/i;
 const JOB_PLACE_FIRST =
-  /\b(role|job|position|opportunity) (is|will be) (based|located)\b|\b(role|job|position)'?s (country|location)\b|\b(country|location|place|region)\s+(?:(?:for|in|to) which\s+)?(you are|you're|you['’]re) applying\b|\b(country|location) of (this|the) (role|job|position|opportunity|posting)\b|\b(country|location|place) of (employment|hire)\b|\b(country|location|region|place)\s+(?:(?:where|that|which)\s+)?(this|the) (role|job|position|opportunity) is in\b|\b(country|location|region|place)\s+(?:where|in which)\s+you(?:['’]ll| will| would)\s+(?:be\s+)?work(?:ing)?\b|\bhiring (country|location)\b/i;
+  /\b(role|job|position|opportunity) (is|will be) (based|located)\b|\b(role|job|position)'?s (country|location)\b|\b(country|location|place|region)\s+(?:(?:for|in|to) which\s+)?(you are|you're|you['’]re) applying\b|\b(country|location) of (this|the) (role|job|position|opportunity|posting)\b|\b(country|location|place) of (employment|hire)\b|\b(country|location|region|place)\s+(?:(?:where|that|which)\s+)?(this|the) (role|job|position|opportunity) is in\b|\b(country|location|region|place)\s+(?:(?:where|in which|that|which)\s+)?you(?:['’]ll| will| would)\s+(?:be\s+)?work(?:ing)?\b|\bhiring (country|location)\b/i;
 // Which of the employer's sites the person wants, not where they live: "Which city are you applying for?", "Which city
 // would you like to work in?", "preferred office location" (#1706). "What city do you live in?" and "What city do you
 // work in?" are facts about the person and stay.
