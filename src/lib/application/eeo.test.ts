@@ -310,3 +310,29 @@ describe("options worded as a sentence (#1432)", () => {
     expect(matchOption("Yes", ["I am Hispanic or Latino", "I am not Hispanic or Latino"])).toBe("I am Hispanic or Latino");
   });
 });
+
+describe("options spelled 'Non-' read as 'not' (#1736)", () => {
+  const nonRace = ["Hispanic or Latino", "White (Non-Hispanic)", "Black or African American (Non-Hispanic)", "Asian (Non-Hispanic)", "Two or More Races (Non-Hispanic)", "Decline to self-identify"];
+  const p = (race: string, hispanic: string) => ({ answers: { race, hispanic }, exact: {} });
+  it("never gives a Hispanic person a (Non-Hispanic) race option", () => {
+    expect(resolve(p("White", "Yes"), "Race", nonRace)).toBeNull();
+    expect(resolve(p("Black or African American", "Yes"), "Race", nonRace)).toBeNull();
+    expect(resolve(p("White", "No"), "Race", nonRace)).toBe("White (Non-Hispanic)");
+  });
+  it("picks the Hispanic option, not the Non-Hispanic ones that also name it", () => {
+    const opts = ["Hispanic/Latino", "White (Non-Hispanic)", "Asian (Non Hispanic)", "Decline to self-identify"];
+    expect(matchOption("Hispanic or Latino", opts)).toBe("Hispanic/Latino");
+  });
+  it("answers No with 'Non-Hispanic or Latino'", () => {
+    const opts = ["Hispanic or Latino", "Non-Hispanic or Latino", "Decline to self-identify"];
+    expect(resolve(p("White", "No"), "Ethnicity", opts)).toBe("Non-Hispanic or Latino");
+    expect(resolve(p("White", "Yes"), "Ethnicity", opts)).toBe("Hispanic or Latino");
+  });
+  it("answers Not a veteran with 'Non-Veteran' or 'Nonveteran', and a veteran never gets it", () => {
+    for (const non of ["Non-Veteran", "Nonveteran", "Non Veteran"]) {
+      const opts = ["Protected Veteran", non, "Decline to answer"];
+      expect(matchOption("Not a veteran", opts)).toBe(non);
+      expect(matchOption("Veteran", opts)).toBe("Protected Veteran");
+    }
+  });
+});
