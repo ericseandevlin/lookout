@@ -612,3 +612,22 @@ describe("classifyPage: a closed message quoted as copy to write is not the post
       expect(classifyPage(200, text).state, text).toBe("gone");
   });
 });
+
+describe("past-tense closed wordings (#1692)", () => {
+  it("reads 'the job you were looking for' as closed", () => {
+    for (const msg of [
+      "The page you were looking for doesn't exist.",
+      "Sorry, the page you were looking for could not be found.",
+      "The job you were looking for could not be found.",
+      "The job you were looking for is no longer available.",
+      "The job you were looking for has been filled.",
+      "The position you were looking for has been removed.",
+    ])
+      expect(classifyPage(200, `Acme Careers\n${msg}\nSearch all jobs`).state, msg).toBe("gone");
+  });
+
+  it("still keeps a duty about such a page open", () => {
+    const text = "Content Designer\nWrite microcopy for empty states and the screen that says the page you were looking for doesn't exist.";
+    expect(classifyPage(200, text).state).toBe("open");
+  });
+});
