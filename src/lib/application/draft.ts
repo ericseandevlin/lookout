@@ -184,6 +184,9 @@ export function keywordReport(master: string, tailored: string, d: z.infer<typeo
     });
 }
 
+const NUMBER_WORDS = ["two", "three", "four", "five", "six", "seven", "eight", "nine", "ten", "eleven", "twelve", "thirteen", "fourteen", "fifteen", "sixteen", "seventeen", "eighteen", "nineteen", "twenty"];
+const NUMBER_WORD = new RegExp(`\\b(${NUMBER_WORDS.join("|")})\\b`, "g");
+
 /**
  * Numbers in the draft that never appear in the master resume: the most common way a draft invents facts. A unit counts
  * only when it ends the token, so "6 mid-level" is 6, not 6m (#891).
@@ -218,6 +221,9 @@ export function newNumbers(master: string, draft: string): string[] {
   // A year is written bare, as in the text: "2,000" has a thousands comma, so it is a count, not the year 2000 (#1218).
   const years = new Set((norm(draft).match(/(?<![a-z\d])\$?\d[\d,.]*/gi) ?? []).map((n) => n.replace(/\.$/, "")).filter((n) => /^(19|20)\d\d$/.test(n)));
   const have = new Set([...nums(master)].map(short));
+  // The master's "five designers" is the draft's "5 designers": the same fact in digits (#1760). "one" stays out, since
+  // "one of the leads" is no count.
+  for (const m of master.toLowerCase().matchAll(NUMBER_WORD)) have.add(String(NUMBER_WORDS.indexOf(m[1]) + 2));
   // The master's "over 20" is "20+": a plain "20" in the draft says no more than that (#1148).
   return [...nums(draft)].filter((n) => n && !years.has(n) && !have.has(short(n)) && !have.has(short(n) + "+"));
 }

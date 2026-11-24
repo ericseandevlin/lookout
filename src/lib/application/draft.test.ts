@@ -128,6 +128,11 @@ describe("newNumbers", () => {
 
   it("doesn't take the next word's first letter as a unit (#891)", () => {
     expect(newNumbers("Mentored 6 designers across 3 teams.", "Mentored 6 mid-level designers across 3 business teams.")).toEqual([]);
+    // A number word in the master is the same fact as its digits in the draft (#1760).
+    expect(newNumbers("Managed a team of five designers", "Managed a team of 5 designers")).toEqual([]);
+    expect(newNumbers("Ran Twelve launches across three regions.", "Ran 12 launches across 3 regions.")).toEqual([]);
+    expect(newNumbers("Managed a team of five designers", "Managed a team of 8 designers")).toEqual(["8"]);
+    expect(newNumbers("One of the leads on the team", "1 of 4 leads")).toEqual(["1", "4"]);
     expect(newNumbers("Cut load time to 100ms for 5 brands.", "Cut load time to 100ms for 5 key brands.")).toEqual([]);
     expect(newNumbers("Raised $2M with 10x growth.", "Raised $3M with 10x growth and 10+ hires.")).toEqual(["$3m", "10+"]);
     expect(newNumbers("Led 4 teams.", "Led 4 teams and $5 million in spend.")).toEqual(["$5m"]);
