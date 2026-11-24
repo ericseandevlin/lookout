@@ -792,3 +792,32 @@ describe("rangeBasis: a total compensation package heading over benefits is not 
     expect(r.note).not.toMatch(/total cash/);
   });
 });
+
+describe("salary asks: OTE, on-target earnings and weekly or monthly rates (#1722)", () => {
+  it.each([
+    "Expected OTE",
+    "What are your OTE expectations?",
+    "OTE expectations (USD)",
+    "Desired on-target earnings",
+    "What are your on target earnings expectations?",
+    "Desired weekly rate",
+    "Expected monthly rate",
+    "Annual rate expectations",
+  ])("reads %s as a salary ask", (q) => {
+    expect(isSalaryQuestion(q)).toBe(true);
+  });
+  it.each([
+    "What is your current OTE?",
+    "What was your OTE in your last role?",
+    "Previous on-target earnings",
+    "What is your rate?",
+    "Do you vote in local elections?",
+    "Describe your experience building OTE plans for a sales team.",
+  ])("does not read %s as an ask for the person's number", (q) => {
+    expect(isSalaryQuestion(q)).toBe(false);
+  });
+  it("reads the period of a weekly or monthly rate", () => {
+    expect(askPer("Desired weekly rate")).toBe("week");
+    expect(askPer("Expected monthly rate")).toBe("month");
+  });
+});
