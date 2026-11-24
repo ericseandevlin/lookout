@@ -120,23 +120,24 @@ const WHAT_PAY_SOUGHT = /\bwhat (\w+ ){0,2}(pay|rate)\b[^.?!]{0,30}?\b(looking f
 // Rate wording ("Desired hourly rate", "Expected rate per hour", "Desired day rate") is an ask too (#953, #1194), and so
 // is a period word before "pay" ("Desired hourly pay") (#1376), and so are "pay range", "base pay" and "target pay" (#1437).
 // OTE and on-target earnings are pay words too, and weekly, monthly and annual rates count like hourly ones (#1722).
+// So are "remuneration" (UK, Ireland, Australia) and "CTC", cost to company (India) (#1753).
 const SALARY_ASK = {
   test: (s: string) =>
-    /salary|compensation|wages?\b|pay (expectation|requirement)|expected (base|annual|pay)|desired (base|pay)|\b(desired|expected) (hourly|daily|weekly|monthly|annual|yearly) (base|pay)\b|expect to (earn|make)\b|\b(hourly|pay|bill|day|daily|weekly|monthly|annual|yearly) rate\b|\bote\b|\bon[\s-]?target earnings\b|\brate (expectation|requirement)|\b(desired|expected) rate\b|\bpay range\b|\b(base|annual|target|ideal|preferred) pay\b/i.test(s) ||
+    /salary|compensation|wages?\b|pay (expectation|requirement)|expected (base|annual|pay)|desired (base|pay)|\b(desired|expected) (hourly|daily|weekly|monthly|annual|yearly) (base|pay)\b|expect to (earn|make)\b|\b(hourly|pay|bill|day|daily|weekly|monthly|annual|yearly) rate\b|\bote\b|\bon[\s-]?target earnings\b|\bremunerat\w*|\bctc\b|\brate (expectation|requirement)|\b(desired|expected) rate\b|\bpay range\b|\b(base|annual|target|ideal|preferred) pay\b/i.test(s) ||
     TO_BE_PAID.test(s) ||
     WHAT_PAY_SOUGHT.test(s) ||
     (HOPE_TO_EARN.test(s) && !MAKES_SOMETHING.test(s)),
 };
 // "What are your current salary expectations?" asks what you want, not what you made (#1297).
 const PAST_PAY =
-  /\b(current|previous|prior|last|most recent|present)\b[^.?!]{0,20}\b(salary|compensation|pay|base|wages?|ote|on[\s-]?target earnings)\b(?!(\s+(salary|compensation|pay))?\s+(expectations?|requirements?)\b)|\b(salary|compensation|pay|wage) history\b|\b(salary|compensation|pay|wages?)\b[^.?!]{0,25}\b(current|previous|prior|last) (job|role|position|employer)\b/i;
+  /\b(current|previous|prior|last|most recent|present)\b[^.?!]{0,20}\b(salary|compensation|pay|base|wages?|ote|on[\s-]?target earnings|remuneration|ctc)\b(?!(\s+(salary|compensation|pay))?\s+(expectations?|requirements?)\b)|\b(salary|compensation|pay|wage|remuneration|ctc) history\b|\b(salary|compensation|pay|wages?|remuneration|ctc)\b[^.?!]{0,25}\b(current|previous|prior|last) (job|role|position|employer)\b/i;
 // "Are you comfortable with the posted salary range?" wants yes or no, not a number (#687).
 // "Would you share your salary expectations?" is still an ask.
 const YES_NO = /^\W*(are|is|does|do|would|will|can)\b/i;
 const ABOUT_THEIR_RANGE = /\b(range|posted|listed|stated|above|acceptable|comfortable|work for you|align|meets?)\b/i;
 // "What" asks for the number only right before the pay word: "What salary...", not "What questions do you have about
 // compensation?" (#1069). "Target", "targeting", "seeking" and "looking for" likewise only near the pay word (#1437).
-const PAY_WORD = "(salary|compensation|pay|rate|wages?)";
+const PAY_WORD = "(salary|compensation|remuneration|ctc|pay|rate|wages?)";
 const WHAT_PAY = new RegExp(`\\bwhat (\\w+ ){0,2}${PAY_WORD}\\b`, "i");
 const SEEK_PAY = new RegExp(
   `\\btarget (\\w+ )?${PAY_WORD}\\b|\\b(looking for|seek\\w*|targeting)\\W+(\\w+\\W+){0,4}?${PAY_WORD}\\b|\\b${PAY_WORD}\\W+(\\w+\\W+){0,4}?(looking for|seek\\w*|targeting)\\b`,
@@ -150,7 +151,7 @@ const rangeCheck = (s: string) => YES_NO.test(s) && ABOUT_THEIR_RANGE.test(s) &&
 // A sentence that only mentions pay isn't an ask: "Describe a time you negotiated compensation for your team",
 // "Do you have experience designing compensation tools?" (#712). An ask names the number, says "your salary",
 // says what they seek or expect, or is a short label like "Desired salary".
-const OWN_NUMBER = /\byour (\w+ ){0,3}(salary|compensation|pay|wages?)\b|\b(expect\w*|anticipat\w*)\b/i;
+const OWN_NUMBER = /\byour (\w+ ){0,3}(salary|compensation|remuneration|ctc|pay|wages?)\b|\b(expect\w*|anticipat\w*)\b/i;
 // A sentence about pay work, not the person's own pay: "What compensation tools have you built?", "What is your
 // experience with compensation benchmarking?" (#718). Only a plain ask for their number overrides it.
 const ABOUT_WORK = /\b(experience|tools?|systems?|software|platforms?|programs?|benchmark\w*|strateg\w*|philosophy|built|build|designed|implement\w*|managed|administer\w*|processes|analys[ie]s|reviews|claims?)\b/i;
