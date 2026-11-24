@@ -79,9 +79,11 @@ export function daysUntil(s: string, now = Date.now(), timeZone?: string) {
   const t = new Date(s).getTime();
   return Number.isFinite(t) ? Math.ceil((t - now) / 864e5) : null;
 }
+// Capitalized like "No comp posted" next to it (#1662).
+const NO_DUE = "No due date";
 export function dueText(f: Find, now = Date.now()) {
   const s = attrStr(f, "due");
-  if (!s) return "no date";
+  if (!s) return NO_DUE;
   const d = dueDays(f, now);
   if (d == null) return s;
   return d < 0 ? `${-d}d past` : d === 0 ? "today" : `${d}d left`;
@@ -118,7 +120,7 @@ export const cellQuiet = (f: Find, key: string): boolean =>
   (key === "comp" && !f.comp)
   || (key === "listed" && !f.postedAt)
   || (key === "value" && valueText(f) === "No value posted")
-  || (key === "due" && dueText(f) === "no date")
+  || (key === "due" && dueText(f) === NO_DUE)
   || (key === "setAside" && !attrStr(f, "setAside"))
   || (key === "location" && !f.location);
 
@@ -133,7 +135,7 @@ export function postedDays(f: Find, now = Date.now()) {
 
 export function postedText(f: Find, now = Date.now()) {
   const d = postedDays(f, now);
-  if (d == null) return "no date";
+  if (d == null) return "No date posted";
   if (d < 1) return "today";
   if (d < 7) return `${d}d ago`;
   if (d < 30) return `${Math.floor(d / 7)}w ago`;

@@ -117,7 +117,7 @@ function Live({ run }: { run: RunInfo }) {
         </ol>
       )}
       <div style={{ fontSize: font.base, color: "#A89F92" }}>
-        {queued ? "The search agent checks for new jobs every few minutes." : "This takes a few minutes. You can leave the page; it keeps going."}
+        {queued ? "The search agent checks for new jobs every few minutes." : "You can leave the page; it keeps going."}
       </div>
     </Shell>
   );
