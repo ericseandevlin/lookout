@@ -13,6 +13,10 @@ describe("fileSafe (#1198)", () => {
     expect(fileSafe("Pat\nLee\u0000 - Acme, Inc. Resume")).toBe("Pat Lee - Acme Inc. Resume");
     expect(fileSafe("../../etc")).toBe("....etc");
   });
+  it("keeps apostrophes and '&' in names (#1698)", () => {
+    expect(fileSafe("Seán O'Brien - AT&T Resume")).toBe("Seán O'Brien - AT&T Resume");
+    expect(fileSafe("Dana D’Angelo - Procter & Gamble Cover Letter")).toBe("Dana D’Angelo - Procter & Gamble Cover Letter");
+  });
 });
 
 describe("attachment (#1198)", () => {
