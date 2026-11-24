@@ -81,6 +81,21 @@ describe("the question only (#1449)", () => {
   });
 });
 
+describe("a question is never cut in the middle (#1662)", () => {
+  it("keeps a decimal number whole", () => {
+    const q = "How did you get central line infections down from 1.9 to 0.6?";
+    expect(plainQuestion(q)).toBe(q);
+    expect(plainQuestion(`Your top finds ask for quality monitoring. ${q}`)).toBe(q);
+    expect(shortWhy("Asked by 3 finds with a 2.5 year minimum.")).toBe("Asked by 3 finds with a 2.5 year minimum.");
+  });
+
+  it("keeps the statement a question leans on, and still cuts the evidence", () => {
+    const q = "You said you are working toward a certification. Which one, and how far along are you?";
+    expect(plainQuestion(q)).toBe(q);
+    expect(plainQuestion(`3 of your top finds ask for it. ${q}`)).toBe(q);
+  });
+});
+
 describe("no dashes in what Lookout writes (#1531)", () => {
   it("turns em and en dashes into commas in reasons and questions", () => {
     expect(noDashes("3 of your top 5 finds ask for it — twice")).toBe("3 of your top 5 finds ask for it, twice");
