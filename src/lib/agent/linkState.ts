@@ -64,8 +64,9 @@ const CLOSED = [
   /(the )?(job|position|page) you(['’]re| are| were) looking for (is no longer|could not be|can(['’]|no)t be) (available|found)/i,
   // Not "Applications for this role are closed to agencies" (#1103). Any noun for the job: "this vacancy" too (#1158).
   /applications (for this (job|role|position|posting|vacancy|opportunity|listing|opening) )?(are|is|have) (now )?closed\b(?! to\b)/i,
-  // "Applications are no longer being accepted", but not from agencies or by email, as above (#1158).
-  /applications (are|is) no longer being (accepted|considered)\b(?! (from|via|by (e-?mail|mail|post|phone|fax)|through (e-?mail|mail|linkedin|indeed|recruiters?|agencies))\b)/i,
+  // "Applications are no longer being accepted", but not from agencies or by email, as above (#1158). "Applications for
+  // this position are no longer being accepted" too (#1732).
+  /applications (for this (job|role|position|posting|vacancy|opportunity|listing|opening) )?(are|is) no longer being (accepted|considered)\b(?! (from|via|by (e-?mail|mail|post|phone|fax)|through (e-?mail|mail|linkedin|indeed|recruiters?|agencies))\b)/i,
   // "This job posting has closed", "This vacancy has now closed", "Job Closed", but not "closed to contractors" (#760),
   // a live page's "Position Closed Date: 11/30" label or "closed-loop" (#832).
   // "This job post is closed" and "This job advert has now closed" too (#1279). "This job opening is closed" and

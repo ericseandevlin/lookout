@@ -117,6 +117,15 @@ describe("classifyPage", () => {
   ])("keeps %s open (#1158)", (text) => {
     expect(classifyPage(200, `TITLE: Product Designer\nTEXT: ${text}`).state).toBe("open");
   });
+  it.each(["Applications for this position are no longer being accepted.", "Applications for this role are no longer being considered."])(
+    "reads %s as closed (#1732)",
+    (text) => {
+      expect(classifyPage(200, `TITLE: Product Designer\nTEXT: ${text}`).state).toBe("gone");
+    },
+  );
+  it("keeps 'Applications for this position are no longer being accepted from agencies' open (#1732)", () => {
+    expect(classifyPage(200, "TITLE: Product Designer\nTEXT: Applications for this position are no longer being accepted from agencies. Apply now.").state).toBe("open");
+  });
   it.each([
     "TITLE: Senior Designer\nPosition Closed Date 11/30/2026. Apply now.",
     "TITLE: Director of UX\nOpportunity Closed Date: 12/31/2026",
