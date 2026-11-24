@@ -372,7 +372,7 @@ describe("extension fill: choices", () => {
     expect((p.doc.querySelector("#w-y") as HTMLInputElement).checked).toBe(false);
   });
 
-  it.each(["✱", "(required)"])("checks a question-labeled radio marked %s (#1160)", async (mark) => {
+  it.each(["✱", "(required)", "(optional)", "(Optional)"])("checks a question-labeled radio marked %s (#1160, #1769)", async (mark) => {
     const p = page(`<span id="q9">Can you work onsite? ${mark}</span>
       <input type="radio" name="w" id="w-y" aria-labelledby="q9 l1"><span id="l1">Yes</span>
       <input type="radio" name="w" id="w-n" aria-labelledby="q9 l2"><span id="l2">No</span>`);

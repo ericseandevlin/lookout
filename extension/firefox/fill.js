@@ -68,9 +68,12 @@
     el.dispatchEvent(new MouseEvent("click", { ...o, buttons: 0 }));
   }
 
-  /** What a "question + option" label says past the question and a "(required)" mark ("*" and "✱" are already gone) (#1160, #1179). */
+  /**
+   * What a "question + option" label says past the question and a "(required)" or "(optional)" mark ("*" and "✱" are
+   * already gone) (#1160, #1179, #1769).
+   */
   function optionAfter(label, prompt) {
-    return label.slice(norm(prompt).length).replace(/^\s*\(required\)/, "").trim();
+    return label.slice(norm(prompt).length).replace(/^\s*\((?:required|optional)\)/, "").trim();
   }
 
   function sameText(a, b) {
