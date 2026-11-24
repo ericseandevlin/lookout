@@ -283,14 +283,8 @@ export function dropChrome(html: string) {
   return out + html.slice(at);
 }
 
-export function pageToText(html: string, maxChars = 9000) {
-  const ld: string[] = [];
-  for (const m of html.matchAll(/<script[^>]+application\/ld\+json[^>]*>([\s\S]*?)<\/script>/gi)) {
-    // Clean, then cut: cut first, a long description is no longer valid JSON and keeps its HTML (#1387).
-    if (/JobPosting/i.test(m[1])) ld.push(cleanJsonLd(m[1].trim()).slice(0, 6000));
-  }
-  const title = decodeEntities(html.match(/<title[^>]*>([\s\S]*?)<\/title>/i)?.[1] ?? "").replace(/\s+/g, " ").trim();
-  const text = decodeEntities(
+function htmlText(html: string) {
+  return decodeEntities(
     dropChrome(html)
       .replace(/<(script|style|noscript|svg|nav|footer|header)[\s\S]*?<\/\1>/gi, " ")
       .replace(/<br\s*\/?>|<\/(p|div|li|h\d|tr)>/gi, "\n")
@@ -303,8 +297,36 @@ export function pageToText(html: string, maxChars = 9000) {
     .join("\n")
     .replace(/\n\s*\n+/g, "\n")
     .trim();
+}
+
+// A board's own box for the job text. LinkedIn's guest page puts its sign-up wall, "Report this job" and the rest of
+// its chrome around it (#1662, a repeat of #1312). Only a box with real text in it counts.
+const JOB_BODY = /<(div)\b[^>]*\bclass\s*=\s*["'][^"']*\bshow-more-less-html__markup\b[^"']*["'][^>]*>/i;
+
+/** The job text's own box, when the page has one, or null. */
+export function jobBody(html: string): string | null {
+  const m = JOB_BODY.exec(html);
+  if (!m) return null;
+  const from = m.index + m[0].length;
+  const end = closeOf(html, m[1], from);
+  if (end < 0) return null;
+  const inner = html.slice(from, end);
+  return inner.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim().length >= 200 ? inner : null;
+}
+
+export function pageToText(html: string, maxChars = 9000) {
+  const ld: string[] = [];
+  for (const m of html.matchAll(/<script[^>]+application\/ld\+json[^>]*>([\s\S]*?)<\/script>/gi)) {
+    // Clean, then cut: cut first, a long description is no longer valid JSON and keeps its HTML (#1387).
+    if (/JobPosting/i.test(m[1])) ld.push(cleanJsonLd(m[1].trim()).slice(0, 6000));
+  }
+  const title = decodeEntities(html.match(/<title[^>]*>([\s\S]*?)<\/title>/i)?.[1] ?? "").replace(/\s+/g, " ").trim();
+  const whole = htmlText(html);
+  const main = jobBody(html);
+  const text = main ? htmlText(main) : whole;
   // Pay goes right under the title: ATS pages often list it last, where the length cap would cut it off.
-  const pay = findPay(html, text);
+  // Read from the whole page: a board's own pay box sits outside the job text.
+  const pay = findPay(html, whole);
   return [title && `TITLE: ${title}`, pay && payLine(pay), ld.length && `STRUCTURED DATA:\n${ld.join("\n")}`, `TEXT:\n${text}`]
     .filter(Boolean)
     .join("\n\n")

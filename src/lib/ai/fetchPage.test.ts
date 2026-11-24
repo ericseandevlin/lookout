@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { decodeBody, fetchPage, isPublicIp, pageToText, workdayApi, workdayToHtml } from "./fetchPage";
+import { decodeBody, fetchPage, isPublicIp, jobBody, pageToText, workdayApi, workdayToHtml } from "./fetchPage";
 import { findPay } from "./pay";
 
 describe("isPublicIp", () => {
@@ -157,5 +157,28 @@ describe("decodeBody (#1036)", () => {
     const utf8 = new TextEncoder().encode("<p>Café – $90k</p>");
     expect(decodeBody(utf8, "text/html")).toBe("<p>Café – $90k</p>");
     expect(decodeBody(utf8, "text/html; charset=nonsense-9")).toBe("<p>Café – $90k</p>");
+  });
+});
+
+describe("a board's own job text box (#1662)", () => {
+  const job = "We're looking for an Assistant Controller to lead manufacturing cost accounting, standard costing and variance analysis. ".repeat(3);
+  const page = `<html><head><title>Assistant Controller at CFS | LinkedIn Jobs</title></head><body>
+    <div class="modal"><p>Agree &amp; Join LinkedIn</p><p>By clicking Continue to join or sign in, you agree to LinkedIn's User Agreement.</p></div>
+    <a href="#main">Skip to main content</a><p>Be among the first 25 applicants</p><p>Report this job</p>
+    <div class="compensation"><h3>Base pay range</h3><div>$120,000.00/yr - $130,000.00/yr</div></div>
+    <div class="description__text description__text--rich"><section class="show-more-less-html">
+      <div class="show-more-less-html__markup show-more-less-html__markup--clamp-after-20 relative"><strong>We're Hiring</strong><br><div>${job}</div></div>
+    </section></div><p>See who CFS has hired for this role</p></body></html>`;
+
+  it("keeps only the job text, and still reads the pay box outside it", () => {
+    const t = pageToText(page);
+    expect(t).toContain("lead manufacturing cost accounting");
+    for (const junk of ["Agree & Join", "Skip to main content", "Report this job", "first 25 applicants", "See who CFS has hired"]) expect(t).not.toContain(junk);
+    expect(t).toContain("PAY ON PAGE");
+  });
+
+  it("uses the whole page when the box is missing or nearly empty", () => {
+    expect(jobBody("<div><p>Plain posting</p></div>")).toBeNull();
+    expect(jobBody('<div class="show-more-less-html__markup">Short</div>')).toBeNull();
   });
 });
