@@ -351,6 +351,11 @@ describe("runFill (#385)", () => {
     expect(["3.5", "$95.50", "$2.3K", "7.5 years", "$2.300K", "1.25"].map(numberAnswer)).toEqual(["3.5", "95.50", "2300", "7.5", "2300", "1.25"]);
   });
 
+  it("a space or apostrophe between groups of three is thousands (#1752)", () => {
+    expect(["150 000 €", "150\u00a0000", "150\u202f000 €", "CHF 150'000", "1 250 000", "150 000,00 €", "€120 000 - €140 000"].map(numberAnswer)).toEqual(["150000", "150000", "150000", "150000", "1250000", "150000", "120000"]);
+    expect(["5 years", "2 3", "12 3456", "120 - 150k", "$120 K", "10 1000"].map(numberAnswer)).toEqual(["5", "2", "12", "120000", "120000", "10"]);
+  });
+
   it("a date field gets the answer as yyyy-mm-dd, not \"12/01/2026\" (#1242)", async () => {
     const id = await seed("approved", [{ kind: "answer", prompt: "Earliest start date", content: "12/01/2026" }]);
     page = fakePage([{ kind: "control", label: "Earliest start date", type: "date" }]);
