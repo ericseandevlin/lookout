@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { closedTopics, INTERVIEW_SYSTEM, interviewPrompt, noDashes, plainQuestion, shortWhy, STORY_RULES } from "./interviewer";
+import { closedTopics, INTERVIEW_SYSTEM, interviewPrompt, nameFinds, noDashes, plainQuestion, shortWhy, STORY_RULES } from "./interviewer";
 import { asksToStop, isBareNo, isBareYes, isQuestionBack } from "./rules";
 
 describe("shortWhy (#1449)", () => {
@@ -140,5 +140,17 @@ describe("asksToStop (#1662)", () => {
   });
   it("leaves answers about work alone", () => {
     for (const a of ["I stopped the bleeding on a $2M project.", "We had to end the contract early.", "Done for the quarter: closed the books in 5 days.", "", "x ".repeat(100) + "can we stop?"]) expect(asksToStop(a), a).toBe(false);
+  });
+});
+
+describe("nameFinds (#1662)", () => {
+  const finds = [{ title: "Assistant Controller", company: "CFS" }, { title: "Accounting Manager", company: "Natural Grocers" }];
+  it("names a find the model cited by its list number", () => {
+    expect(nameFinds("Top find 1 lists standard costing as preferred.", finds)).toBe("Assistant Controller at CFS lists standard costing as preferred.");
+    expect(nameFinds("Asked by find #2 and top find 1.", finds)).toBe("Asked by Accounting Manager at Natural Grocers and Assistant Controller at CFS.");
+  });
+  it("leaves other text and unknown numbers alone", () => {
+    expect(nameFinds("3 of your top finds ask for it.", finds)).toBe("3 of your top finds ask for it.");
+    expect(nameFinds("Top find 7 asks for it.", finds)).toBe("Top find 7 asks for it.");
   });
 });
