@@ -232,6 +232,48 @@ function fromText(text: string): Pay | null {
   return null;
 }
 
+// One amount, for a page that gives no range: "Salary: $150,000", "Base pay up to $180,000", "$45/hour" (#1725). A "$" or
+// pound or euro sign leads it, as for a range.
+const SINGLE = new RegExp(String.raw`(?:${PRE}\$|([£€]))\s?(${AMT})(?=([^\n]{0,40}))`, "gi");
+// The clause must name base pay itself, so "$5M raised" or "a $2,000 learning budget" never reads as a salary.
+const PAY_NAME = /\b(?:base|salary|salaries|pay|compensation|wages?|(?:hourly|day|daily|pay) rate|rate of pay)\b/i;
+// Money that isn't a salary even when the clause says pay: "pay up to $5,000 of tuition", "401(k) match up to $6,000".
+const NOT_SALARY = /\b(?:bonus(?:es)?|sign(?:ing|-on)|relocation|equity|stock|rsus?|stipends?|allowances?|budget|reimburse\w*|tuition|match(?:ing)?|401\s?\(?k\)?|referral|funding|raised|revenue|per diem|commission)\b/i;
+// The end of a range the reader turned down ("$10 - $12" is not a year's pay) is not one amount of its own.
+// "up to $180,000" is one amount; "$150,000 to $180,000" is a range.
+const IN_RANGE_BEFORE = /\d[kK]?\s*(?:-|–|—|to|and)\s*\D{0,4}$/i;
+// Extras added on after the amount ("$140,000 plus bonus", "$155,000, plus equity") don't make it extra pay.
+const ADD_ON = /\b(?:plus|and|with)\b|\+|,|\(/i;
+const IN_RANGE_AFTER = /^\s*(?:-|–|—|to\b|and\b)\s*\D{0,4}\d/i;
+
+function single(text: string): Pay | null {
+  for (const m of text.matchAll(SINGLE)) {
+    const [, pre, sign, first, rest = ""] = m;
+    const before = text.slice(Math.max(0, m.index - 16), m.index);
+    if (IN_RANGE_BEFORE.test(before) || IN_RANGE_AFTER.test(rest)) continue;
+    // The words of its own clause, as for a range: since the last number, sentence end or comma.
+    const words = label(text, m.index).split(/\d|[.!?;](?:\s|$)|,\s/).pop() ?? "";
+    // The unit and what the money is for are read only up to the next amount or sentence end.
+    const tail = rest.split(/\$|[.!?;](?:\s|$)/)[0];
+    // What the amount is for, right after it, before any extras added on: "$10,000 signing bonus", "$5,000 of tuition".
+    const own = tail.split(ADD_ON)[0];
+    // Pay may be named before the amount or right after it: "Starting at $130,000 per year (base salary)".
+    if (!(PAY_NAME.test(words) || PAY_NAME.test(tail)) || NOT_SALARY.test(words) || NOT_SALARY.test(own)) continue;
+    const n = amountOf(first);
+    if (!n) continue;
+    const named = PREFIX[(pre ?? sign ?? "").trim().toLowerCase()];
+    const code3 = tail.split(/\d/)[0].match(/\b(CAD|AUD|EUR|GBP|SGD|NZD|HKD|CHF|MXN|TWD|INR|JPY|CNY|USD)\b/)?.[0];
+    const currency = named ?? (code3 && /^\s*$/.test(tail.slice(0, tail.indexOf(code3))) ? code3 : "USD");
+    // The unit right after the amount first ("$45/hour"), then the label before it ("Hourly rate: $45"), as for a range.
+    // A bare "$45" with neither is no year's pay and stays out.
+    const p =
+      annual(n, n, payUnit(tail.replace(SCHEDULE, " "), plausible(n)), currency, "text") ??
+      (plausible(n) ? null : annual(n, n, payUnit(words.replace(SCHEDULE, " ")), currency, "text"));
+    if (p) return p;
+  }
+  return null;
+}
+
 // Discovery passes only the HTML: drop scripts and styles, whose strings can swallow the real range, and decode
 // entities, so "$150,000&ndash;$200,000" and "&#36;150,000" still read (#742).
 const htmlText = (html: string) =>
@@ -239,7 +281,8 @@ const htmlText = (html: string) =>
 
 /** Pay from a fetched page's HTML; `text` is the page's readable text if you already have it. */
 export function findPay(html: string, text?: string): Pay | null {
-  return fromJsonLd(html) ?? fromGreenhouse(html) ?? fromText(text ?? htmlText(html));
+  const t = text ?? htmlText(html);
+  return fromJsonLd(html) ?? fromGreenhouse(html) ?? fromText(t) ?? single(t);
 }
 
 // Pay written in a currency the reader above doesn't parse: "70-90k € brutto", "¥8,000,000", "₹25,00,000", "SEK 50 000"
@@ -256,4 +299,6 @@ const DOLLAR_PAY = /(?<!\bR)\$\s?\d|\bUSD\b/;
  */
 export const foreignPayOnly = (text: string) => FOREIGN.test(text) && !DOLLAR_PAY.test(text);
 
-export const payLine = (p: Pay) => `PAY ON PAGE (${p.source}): ${p.currency} ${p.min.toLocaleString("en-US")} to ${p.max.toLocaleString("en-US")} a year`;
+// One amount reads as itself, not "150,000 to 150,000" (#1725).
+export const payLine = (p: Pay) =>
+  `PAY ON PAGE (${p.source}): ${p.currency} ${p.min.toLocaleString("en-US")}${p.max === p.min ? "" : ` to ${p.max.toLocaleString("en-US")}`} a year`;

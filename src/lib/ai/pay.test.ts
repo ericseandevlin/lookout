@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { findPay, foreignPayOnly, money } from "./pay";
+import { findPay, foreignPayOnly, money, payLine } from "./pay";
 
 describe("money", () => {
   it("reads common formats", () => {
@@ -467,5 +467,64 @@ describe("foreignPayOnly (#1709)", () => {
     expect(foreignPayOnly("Salary: $120,000 - $150,000 per year")).toBe(false);
     expect(foreignPayOnly("Salary: 120,000 - 150,000 USD; our Berlin office pays in €")).toBe(false);
     expect(foreignPayOnly("We have offices in London and Berlin. Founded 2014.")).toBe(false);
+  });
+});
+
+describe("one posted amount (#1725)", () => {
+  it.each([
+    ["Salary: $150,000", 150_000, "USD"],
+    ["Base pay up to $180,000.", 180_000, "USD"],
+    ["Starting at $130,000 per year (base salary)", 130_000, "USD"],
+    ["The base salary for this role is $165,000.", 165_000, "USD"],
+    ["Compensation: $120K", 120_000, "USD"],
+    ["Salary: $150K+", 150_000, "USD"],
+    ["Base salary: $140,000 USD plus bonus", 140_000, "USD"],
+    ["Annual base salary of $155,000, plus equity and benefits.", 155_000, "USD"],
+    ["Salary\n$150,000", 150_000, "USD"],
+    ["Salary: £65,000", 65_000, "GBP"],
+    ["Pay: CA$120,000", 120_000, "CAD"],
+  ])("reads %j as one yearly amount", (t, n, currency) => {
+    expect(findPay("", t)).toEqual({ min: n, max: n, currency, source: "text" });
+  });
+
+  it.each([
+    ["Hourly rate: $45", 93_600],
+    ["Pay: $45/hour", 93_600],
+    ["Pay rate: $1,500/week", 78_000],
+  ])("turns %j into a year by its unit", (t, n) => {
+    expect(findPay("", t)).toMatchObject({ min: n, max: n });
+  });
+
+  it.each([
+    "We raised $5M from investors",
+    "401(k) match up to $6,000",
+    "We pay up to $5,000 of tuition each year",
+    "A $2,000 learning budget",
+    "Referral bonus of $10,000",
+    "Relocation pay up to $15,000",
+    "Salary: competitive. Signing bonus of $20,000.",
+    "Compensation: $250,000 including equity",
+    "Revenue of $40,000,000",
+    "Funding: $20,000,000 Series B. Salary: competitive",
+    // No unit and too small for a year.
+    "Pay: $45",
+    // The ends of a range the reader turned down are not amounts of their own.
+    "Salary range: $10 - $12",
+    "Base salary $150,000 - $1,000",
+  ])("leaves %j out", (t) => {
+    expect(findPay("", t)).toBeNull();
+  });
+
+  it("lets a range win over one amount on the same page", () => {
+    expect(findPay("", "Salary: $150,000 at Level 3.\nThe range is $140,000 - $190,000.")).toMatchObject({ min: 140_000, max: 190_000 });
+  });
+
+  it("reads it from the HTML alone, the way discovery calls it", () => {
+    expect(findPay("<div><h3>Compensation</h3><p>Base salary: $172,000</p></div>")).toMatchObject({ min: 172_000, max: 172_000 });
+  });
+
+  it("writes one amount once in the pay line", () => {
+    expect(payLine({ min: 150_000, max: 150_000, currency: "USD", source: "text" })).toBe("PAY ON PAGE (text): USD 150,000 a year");
+    expect(payLine({ min: 140_000, max: 190_000, currency: "USD", source: "text" })).toBe("PAY ON PAGE (text): USD 140,000 to 190,000 a year");
   });
 });
