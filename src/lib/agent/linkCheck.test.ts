@@ -94,6 +94,29 @@ describe("closeGonePostings", () => {
     expect((await find(id)).notes).toBe("Closed: the posting was gone (page says it's closed) as of 2026-11-12. Lookout archived it.");
   });
 
+  it.each([
+    '<div class="closed-banner" style="display:none">This job is no longer accepting applications.</div><h1>Designer</h1>',
+    "<div hidden><p>This position has been filled.</p></div><h1>Designer</h1>",
+    '<template x-if="job.closed"><p>Sorry, this job is no longer available.</p></template><h1>Designer</h1>',
+    '<!-- <div class="alert"><p>This position has been filled.</p></div> --><h1>Designer</h1>',
+  ])("keeps a live job open when its closed text is hidden from the reader: %s (#1733)", async (html) => {
+    const id = await addFind("https://jobs.test/1");
+    pages.set("https://jobs.test/1", html);
+    await closeGonePostings(userId, T0);
+    expect(await closeGonePostings(userId, hoursLater(20))).toBe(0);
+    const f = await find(id);
+    expect(f.stage).toBe("Not applied");
+    expect(f.linkCheck?.state).toBe("open");
+  });
+
+  it("still closes a job whose closed text is shown, next to a hidden element (#1733)", async () => {
+    const id = await addFind("https://jobs.test/1");
+    pages.set("https://jobs.test/1", '<div style="display:none">Apply now</div><p>This position has been filled.</p>');
+    await closeGonePostings(userId, T0);
+    expect(await closeGonePostings(userId, hoursLater(20))).toBe(1);
+    expect((await find(id)).stage).toBe("Closed");
+  });
+
   it("cancels a queued application for a posting it closes, and leaves one further along (#827)", async () => {
     const queued = await addFind("https://jobs.test/1", { stage: "Auto-applying" });
     const drafted = await addFind("https://jobs.test/2", { stage: "Auto-applying" });

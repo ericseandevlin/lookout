@@ -33,6 +33,11 @@ describe("fetchPage refuses internal targets", () => {
 });
 
 describe("pageToText", () => {
+  it("drops HTML comments with their words (#1733)", () => {
+    const t = pageToText('<main><!-- <div class="alert"><p>This position has been filled.</p></div> --><p>Build the payments platform.</p></main>');
+    expect(t).toContain("Build the payments platform.");
+    expect(t).not.toContain("filled");
+  });
   it("drops dialogs, buttons and lone close marks (#1312)", () => {
     // The Bank of America shape: age and eligibility modals, a referral button and close glyphs around the job.
     const html = `<title>Software Engineer</title>

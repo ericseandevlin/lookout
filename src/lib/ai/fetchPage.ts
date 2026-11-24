@@ -293,6 +293,8 @@ export function pageToText(html: string, maxChars = 9000) {
   const text = decodeEntities(
     dropChrome(html)
       .replace(/<(script|style|noscript|svg|nav|footer|header)[\s\S]*?<\/\1>/gi, " ")
+      // A comment is never shown, and the tag strip below would keep its words: "<!-- <p>Position filled</p> -->" (#1733).
+      .replace(/<!--[\s\S]*?-->/g, " ")
       .replace(/<br\s*\/?>|<\/(p|div|li|h\d|tr)>/gi, "\n")
       .replace(/<[^>]+>/g, " "),
   )
