@@ -69,7 +69,12 @@ const MORE_PLACES =
   /\b(country|location)\s+(listed|named|shown|stated|posted)\s+(on|in|for)\s+(this|the)\s+(job\s+)?(posting|listing|advert|role|job|position)\b|\bjob location\b|\bposting['’]?s (country|location)\b|\b(country|location)\s+where\s+(this|the)\s+(role|job|position|opportunity)\s+is\b(?!\s+\w)|\bwhere you(?:['’]ll| will| would) be (based|employed|located)\b|\bin this country\b/i;
 const JOB_PLACE_FIRST =
   /\b(role|job|position|opportunity) (is|will be) (based|located)\b|\b(role|job|position)'?s (country|location)\b|\b(country|location|place|region)\s+(?:(?:for|in|to) which\s+)?(you are|you're|you['’]re) applying\b|\b(country|location) of (this|the) (role|job|position|opportunity|posting)\b|\b(country|location|place) of (employment|hire)\b|\b(country|location|region|place)\s+(?:(?:where|that|which)\s+)?(this|the) (role|job|position|opportunity) is in\b|\b(country|location|region|place)\s+(?:where|in which)\s+you(?:['’]ll| will| would)\s+(?:be\s+)?work(?:ing)?\b|\bhiring (country|location)\b/i;
-const JOB_PLACE = new RegExp(`${JOB_PLACE_FIRST.source}|${MORE_PLACES.source}`, "i");
+// Which of the employer's sites the person wants, not where they live: "Which city are you applying for?", "Which city
+// would you like to work in?", "preferred office location" (#1706). "What city do you live in?" and "What city do you
+// work in?" are facts about the person and stay.
+const JOB_SITE =
+  /\b(?:which|what)\s+(?:city|office|site|location)s?\b[^?.]{0,40}?\b(?:(?:are|were)\s+you\s+(?:apply\w*|interested)|you(?:['’]re| are)\s+(?:apply\w*|interested)|(?:would|wish|want|like|prefer|hope|plan)\w*\s+(?:to\s+)?(?:be\s+)?(?:work\w*|join\w*|based))\b|\bpreferred\s+(?:work\s+|office\s+|job\s+)?(?:city|office|site|location)\b|\boffice location\b/i;
+const JOB_PLACE = new RegExp(`${JOB_PLACE_FIRST.source}|${MORE_PLACES.source}|${JOB_SITE.source}`, "i");
 // "How did you hear about this position?" is the same question as "...this job?", so it travels the same way (#1545).
 const neverKept = (question: string) =>
   JOB_PLACE.test(question) || NEVER.test(AUTH.test(question) || HEARD.test(question) ? question.replace(/\bthis (role|position|job|opportunity)\b/gi, " ") : question);
@@ -96,7 +101,7 @@ export function match(list: SavedAnswer[], question: string, options?: string[] 
 
 /** For the drafting prompt: the model may reuse these when a question means the same thing. */
 export const savedBlock = (all: SavedAnswer[]) => {
-  // An EEO answer saved before #1059 never reaches the model.
-  const list = all.filter((s) => !onlyThisOne(s.question, s.answer) && !EEO.test(s.question));
+  // An EEO answer saved before #1059, or one job's place saved before #1227 and #1706, never reaches the model.
+  const list = all.filter((s) => !onlyThisOne(s.question, s.answer) && !EEO.test(s.question) && !JOB_PLACE.test(s.question));
   return list.length ? `\n\n<saved_answers from the person's earlier applications; reuse when a question asks the same thing, source "saved answer">\n${list.map((s) => `- ${s.question}: ${s.answer}`).join("\n")}\n</saved_answers>` : "";
 };

@@ -180,6 +180,29 @@ describe("saved answers that depend on where the job is (#1227)", () => {
   });
 });
 
+describe("the employer's city or office the person wants (#1706)", () => {
+  it("is never kept or reused", () => {
+    for (const q of [
+      "Which city are you applying for?",
+      "What is your preferred office location?",
+      "Which city would you like to work in?",
+      "Which office would you prefer to work from?",
+      "Preferred work city",
+      "Which city are you interested in?",
+    ]) {
+      expect(isCommon(q, "New York"), q).toBe(false);
+      expect(match(upsert([], q, "New York"), q, ["New York", "London", "Austin"]), q).toBeNull();
+    }
+  });
+  it("never reaches the drafting model when saved before the fix", () => {
+    const old = [{ key: answerKey("Which city are you applying for?"), question: "Which city are you applying for?", answer: "New York", updatedAt: "2026-11-01T00:00:00.000Z" }];
+    expect(savedBlock(old)).toBe("");
+  });
+  it("still keeps where the person lives or works now", () => {
+    for (const q of ["What city do you live in?", "Current city", "City", "What city do you currently work in?", "City of residence"]) expect(isCommon(q, "New York"), q).toBe(true);
+  });
+});
+
 describe("expected start and notice questions (#1595)", () => {
   it("keeps an expected start or notice period", () => {
     expect(isCommon("What is your expected start date?", "2 weeks after an offer")).toBe(true);
