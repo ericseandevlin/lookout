@@ -446,6 +446,7 @@ async function fillOne(page: Page, s: FillStep): Promise<{ ok: boolean; how: str
  * The answer's first number for a number field. A k or M right after it counts: "$165k" is 165000, not 165 (#1168). In a
  * range the second end's k or M covers a bare first end below 1,000: "$120-150k" is 120000 (#1254). So do "$120 K",
  * "165 thousand" and "1.2 million"; a lone lowercase m after a space ("5 m") is left alone, as months or minutes (#1585).
+ * The second end may start with any currency mark or code: "£60 - £70k" is 60000, as "$60 - $70k" is (#1771).
  */
 const DOT_THOUSANDS = /(?<![\d.,])\d{1,3}(?:\.\d{3})+(?:,\d{1,2})?(?![\d.,]|\s?[kKmM]\b)/g;
 // A space, no-break space, narrow no-break space or apostrophe between groups of three is thousands too: "150 000 €" and
@@ -457,7 +458,7 @@ export const numberAnswer = (t: string) => {
   // (#1747). "3.5", "$95.50" and "$2.300K" keep their decimal point.
   t = t.replace(DOT_THOUSANDS, (n) => n.split(",")[0].replace(/\./g, ""));
   t = t.replace(SPACE_THOUSANDS, (n) => n.split(",")[0].replace(/[ \u00a0\u202f']/g, ""));
-  const m = t.match(/(\d[\d,]*(?:\.\d+)?)((?:\s?(?:[kK]|[tT]housand|[mM]illion)|[mM]|\sM)\b)?(?:\s*(?:-|–|—|to|To|TO)\s*\$?\d[\d,]*(?:\.\d+)?((?:\s?(?:[kK]|[tT]housand|[mM]illion)|[mM]|\sM)\b))?/);
+  const m = t.match(/(\d[\d,]*(?:\.\d+)?)((?:\s?(?:[kK]|[tT]housand|[mM]illion)|[mM]|\sM)\b)?(?:\s*(?:-|–|—|to|To|TO)\s*(?:[$€£¥₹]|[A-Z]{3}\s?)?\d[\d,]*(?:\.\d+)?((?:\s?(?:[kK]|[tT]housand|[mM]illion)|[mM]|\sM)\b))?/);
   if (!m) return "";
   const n = m[1].replace(/,/g, "");
   const unit = m[2] ?? (Number(n) < 1000 ? m[3] : undefined);
