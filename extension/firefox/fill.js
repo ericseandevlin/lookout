@@ -304,7 +304,9 @@
 
   /** The answer's first number, same as the worker: "$165k" is 165000 (#1168), "$120-150k" is 120000 (#1254), "$120 K" is 120000 (#1585). */
   function numberAnswer(t) {
-    const m = String(t || "").match(/(\d[\d,]*(?:\.\d+)?)((?:\s?(?:[kK]|[tT]housand|[mM]illion)|[mM]|\sM)\b)?(?:\s*(?:-|–|—|to|To|TO)\s*\$?\d[\d,]*(?:\.\d+)?((?:\s?(?:[kK]|[tT]housand|[mM]illion)|[mM]|\sM)\b))?/);
+    // Dots grouped in threes are thousands: "€90.000" is 90000, same as the worker (#1747).
+    const s = String(t || "").replace(/(?<![\d.,])\d{1,3}(?:\.\d{3})+(?:,\d{1,2})?(?![\d.,]|\s?[kKmM]\b)/g, (n) => n.split(",")[0].replace(/\./g, ""));
+    const m = s.match(/(\d[\d,]*(?:\.\d+)?)((?:\s?(?:[kK]|[tT]housand|[mM]illion)|[mM]|\sM)\b)?(?:\s*(?:-|–|—|to|To|TO)\s*\$?\d[\d,]*(?:\.\d+)?((?:\s?(?:[kK]|[tT]housand|[mM]illion)|[mM]|\sM)\b))?/);
     if (!m) return "";
     const n = m[1].replace(/,/g, "");
     const unit = m[2] || (Number(n) < 1000 ? m[3] : undefined);

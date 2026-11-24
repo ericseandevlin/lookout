@@ -447,7 +447,12 @@ async function fillOne(page: Page, s: FillStep): Promise<{ ok: boolean; how: str
  * range the second end's k or M covers a bare first end below 1,000: "$120-150k" is 120000 (#1254). So do "$120 K",
  * "165 thousand" and "1.2 million"; a lone lowercase m after a space ("5 m") is left alone, as months or minutes (#1585).
  */
+const DOT_THOUSANDS = /(?<![\d.,])\d{1,3}(?:\.\d{3})+(?:,\d{1,2})?(?![\d.,]|\s?[kKmM]\b)/g;
+
 export const numberAnswer = (t: string) => {
+  // Dots grouped in threes are thousands, as written in much of Europe: "€90.000" is 90000 and "90.000,00 €" too, not 90
+  // (#1747). "3.5", "$95.50" and "$2.300K" keep their decimal point.
+  t = t.replace(DOT_THOUSANDS, (n) => n.split(",")[0].replace(/\./g, ""));
   const m = t.match(/(\d[\d,]*(?:\.\d+)?)((?:\s?(?:[kK]|[tT]housand|[mM]illion)|[mM]|\sM)\b)?(?:\s*(?:-|–|—|to|To|TO)\s*\$?\d[\d,]*(?:\.\d+)?((?:\s?(?:[kK]|[tT]housand|[mM]illion)|[mM]|\sM)\b))?/);
   if (!m) return "";
   const n = m[1].replace(/,/g, "");
