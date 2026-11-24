@@ -202,6 +202,23 @@ describe("sameJob", () => {
     expect(jobKey("https://jobs.smartrecruiters.com/oneclick-ui/company/Acme/publication/1b2c3d4e-1111-2222-3333-444455556666")).toMatch(/^url:/);
   });
 
+  it("keys an Oracle Recruiting Cloud posting and its apply steps as one job (#1708)", () => {
+    const base = "https://eeho.fa.us2.oraclecloud.com/hcmUI/CandidateExperience";
+    const job = `${base}/en/sites/CX_1/job/253011`;
+    expect(jobKey(job)).toBe("oracle:eeho.fa.us2.oraclecloud.com:cx_1:253011");
+    for (const page of [
+      `${base}/en/sites/CX_1/job/253011/apply/email`,
+      `${base}/en/sites/CX_1/job/253011/apply/section/1`,
+      `${base}/en/sites/CX_1/requisitions/preview/253011`,
+      `${base}/en/sites/CX_1/requisitions/preview/253011/apply/email?utm_source=linkedin`,
+      `${base}/en-US/sites/CX_1/job/253011/`,
+    ])
+      expect(sameJob([page], [job]), page).toBe(true);
+    expect(sameJob([`${base}/en/sites/CX_1/job/253012/apply/email`], [job])).toBe(false);
+    expect(sameJob([`${base}/en/sites/CX_2/job/253011`], [job])).toBe(false);
+    expect(sameJob(["https://abcd.fa.us2.oraclecloud.com/hcmUI/CandidateExperience/en/sites/CX_1/job/253011"], [job])).toBe(false);
+  });
+
   it("keys a Dayforce posting by tenant and ID, with or without a locale (#1671)", () => {
     const job = "https://jobs.dayforcehcm.com/en-US/acme/CANDIDATEPORTAL/jobs/12345";
     expect(jobKey(job)).toBe("dayforce:acme:12345");

@@ -57,6 +57,12 @@ export function jobKey(raw: string | null | undefined): string | null {
     (u.pathname.match(/\/([^/]+)\/[^/]+\/jobs\/(\d+)(?:\/apply)?\/?$/i) ??
       u.pathname.match(/^\/candidateportal\/(?:[a-z]{2}(?:-[a-z]{2})?\/)?([^/]+)\/(?:[^/]+\/)*posting\/(?:view|apply)\/(\d+)\/?$/i));
   if (dayforce) return `dayforce:${safeDecode(dayforce[1]).toLowerCase()}:${dayforce[2]}`;
+  // Oracle Recruiting Cloud (#1708): <tenant>.fa.<dc>.oraclecloud.com/hcmUI/CandidateExperience/<locale>/sites/<site>/job/<id>,
+  // also linked as .../requisitions/preview/<id>, with the form at .../apply/email then .../apply/section/<n>.
+  const oracle =
+    /(^|\.)oraclecloud\.com$/.test(host) &&
+    u.pathname.match(/^\/hcmui\/candidateexperience\/(?:[a-z]{2}(?:-[a-z]{2})?\/)?sites\/([^/]+)\/(?:job|requisitions\/(?:preview|job))\/(\d+)(?:\/apply(?:\/.*)?)?\/?$/i);
+  if (oracle) return `oracle:${host}:${safeDecode(oracle[1]).toLowerCase()}:${oracle[2]}`;
   // SmartRecruiters (#1520): /<company>/<15-digit id>, with or without the title slug after it, on jobs. or careers.
   const sr = /(^|\.)smartrecruiters\.com$/.test(host) && u.pathname.match(/^\/([^/]+)\/(\d{10,})(?:-[^/]*)?\/?$/);
   if (sr) return `smartrecruiters:${safeDecode(sr[1]).toLowerCase()}:${sr[2]}`;
