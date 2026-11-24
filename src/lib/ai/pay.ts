@@ -242,4 +242,18 @@ export function findPay(html: string, text?: string): Pay | null {
   return fromJsonLd(html) ?? fromGreenhouse(html) ?? fromText(text ?? htmlText(html));
 }
 
+// Pay written in a currency the reader above doesn't parse: "70-90k € brutto", "¥8,000,000", "₹25,00,000", "SEK 50 000"
+// (#1709). Only next to a number, and only when the page shows no dollar pay, which the reader handles.
+const NOT_DOLLAR = "EUR|GBP|CHF|JPY|INR|PLN|SEK|NOK|DKK|BRL|ZAR|CNY|RMB|KRW|CZK|HUF|ILS|AED";
+const FOREIGN = new RegExp(
+  String.raw`(?:[€£¥₹₩]|\bR\$)\s?\d|\d\s?[kK]?\s?[€£¥₹₩]|\b(?:${NOT_DOLLAR})\s?\d|\d\s?[kK]?\s?(?:${NOT_DOLLAR})\b`,
+);
+const DOLLAR_PAY = /(?<!\bR)\$\s?\d|\bUSD\b/;
+
+/**
+ * True when the page's pay is in another currency and the reader found none: the model was asked for US dollars and
+ * copies the posted numbers as they are, so they must not be saved as dollars or held against the USD floor (#1709).
+ */
+export const foreignPayOnly = (text: string) => FOREIGN.test(text) && !DOLLAR_PAY.test(text);
+
 export const payLine = (p: Pay) => `PAY ON PAGE (${p.source}): ${p.currency} ${p.min.toLocaleString("en-US")} to ${p.max.toLocaleString("en-US")} a year`;

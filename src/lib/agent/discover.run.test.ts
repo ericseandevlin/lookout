@@ -258,6 +258,16 @@ describe("discover (#379)", () => {
     expect(rows).toEqual([{ min: 120000, max: 150000, currency: "CAD" }]);
   });
 
+  it("keeps no pay, not dollars, when the page's pay is in a currency the reader can't parse (#1709)", async () => {
+    results.set("design systems lead", [hit("https://jobs.example.com/a")]);
+    results.set("design systems lead site:greenhouse.io", []);
+    pages.set("https://jobs.example.com/a", posting("<p>Gehalt: 70-90k € brutto pro Jahr.</p>"));
+    verdicts.set("https://jobs.example.com/a", { comp_min: 70000, comp_max: 90000 });
+    await expect(discover(searchId)).resolves.toMatchObject({ found: 1, added: 1 });
+    const rows = await db.select({ min: schema.opportunities.compMin, max: schema.opportunities.compMax }).from(schema.opportunities);
+    expect(rows).toEqual([{ min: null, max: null }]);
+  });
+
   it("still saves US dollar pay as USD and cuts it under the floor (#1095)", async () => {
     results.set("design systems lead", [hit("https://jobs.example.com/a")]);
     results.set("design systems lead site:greenhouse.io", []);
