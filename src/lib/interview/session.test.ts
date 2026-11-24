@@ -27,7 +27,7 @@ const declineKeywords = vi.fn(async (_app: string, _terms: string[]) => {});
 vi.mock("./keywords", async (orig) => ({ ...(await orig<typeof import("./keywords")>()), missingKeywords: async () => focus, declineKeywords }));
 vi.mock("@/lib/ai/runs", async (orig) => ({ ...(await orig<typeof import("@/lib/ai/runs")>()), assertBudget: async () => {} }));
 
-const { act, earlierTurns, interviewView, openInterview, EARLIER_PAGE, SITTING_GAP_MS } = await import("./session");
+const { act, earlierTurns, interviewView, openInterview, EARLIER_PAGE, SITTING_GAP_MS, STOP_NOTE } = await import("./session");
 const { FACTS_IN_PROMPT, TOPICS_IN_PROMPT } = await import("./interviewer");
 const { LOCK } = await import("./rules");
 
@@ -446,5 +446,19 @@ describe("one interview, opened from an application's keywords (#1485)", () => {
     const t = await turns(user.id);
     expect(t.map((x) => [x.topic, x.outcome])).toEqual([["event sales", "skipped"], ["run of show", "pending"]]);
     expect(completeJSON.mock.calls.at(-1)![0].user).not.toContain("- event sales");
+  });
+});
+
+describe("the walkthrough faults (#1662)", () => {
+  it("stops when asked to: the facts are saved, no next question, and the note says it stopped", async () => {
+    const { user } = await seedUser(ALL_ANSWERS);
+    replies = [ask("F&B programs")];
+    const v = await openInterview(user.id);
+    // The model would ask another question; a stop request wins.
+    replies = [{ backs: [], facts: [{ text: "Ran F&B for 3 venues", kind: "result", private: false, reason: "" } as never], next: { type: "new_topic", topic: "Budgets", question: "Tell me about budgets.", why: "", closest: "" } }];
+    const r = await act(user.id, v.current!.id, "answer", "Ran F&B for 3 venues. Ok, enough for today, can we stop here?");
+    expect(r.note).toBe(STOP_NOTE);
+    expect((await turns(user.id)).filter((t) => t.outcome === "pending")).toHaveLength(0);
+    expect((await facts(user.id)).map((f) => f.text)).toContain("Ran F&B for 3 venues");
   });
 });
