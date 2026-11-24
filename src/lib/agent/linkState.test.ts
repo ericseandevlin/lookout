@@ -659,3 +659,24 @@ describe("past-tense closed wordings (#1692)", () => {
     expect(classifyPage(200, text).state).toBe("open");
   });
 });
+
+describe("closed to new applicants, and a requested page that does not exist (#1754)", () => {
+  it.each([
+    "This job is closed to new applicants.",
+    "This position is now closed to further applications.",
+    "This role has been closed to new candidates.",
+    "The page you requested does not exist.",
+    "Sorry, the page you've requested doesn't exist",
+  ])("reads %s as closed", (text) => {
+    expect(classifyPage(200, `Careers\n${text}`).state).toBe("gone");
+  });
+  it.each([
+    "This role is closed to new applicants from agencies.",
+    "This role is closed to contractors.",
+    "Once the position is closed to new applicants, we review every submission.",
+    "You will fix the case where the page you requested does not exist and users land on a dead end.",
+    "Build the screen that says the page you requested does not exist.",
+  ])("keeps %s open", (text) => {
+    expect(classifyPage(200, `TITLE: Product Designer\nTEXT: ${text}`).state).toBe("open");
+  });
+});
