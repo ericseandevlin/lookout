@@ -261,7 +261,7 @@ export const kinds: Record<string, KindConfig> = { job, rfp };
 export function answeredCount(cfg: KindConfig, a: Record<string, string | string[]>) {
   return cfg.questions.filter((q) => {
     if (q.kind === "text") return !!str(a[q.key]);
-    if (q.kind === "comp") return !!(str(a[q.floorKey]) || str(a[q.targetKey]));
+    if (q.kind === "comp") return [a[q.floorKey], a[q.targetKey]].some(readablePay);
     return arr(a[q.modesKey]).length > 0 || !!str(a[q.areaKey]);
   }).length;
 }
@@ -294,6 +294,19 @@ const labelNumber = (a: RegExpMatchArray, rest: string) =>
   a[1] === "1099" ||
   (/^(401|403|457)$/.test(a[1]) && (/^[kb]$/.test(a[2] ?? "") || /^\s*\(\s*[kb]\s*\)/.test(rest))) ||
   (/^(19|20)\d{2}$/.test(a[1]) && !a[2] && !PER_UNIT.test(rest));
+/** An amount Lookout can use: "abc" and "-5" are not pay, so they don't count as an answer (#1662). */
+const readablePay = (v: unknown) => !/^\s*-/.test(str(v)) && parseMoney(v) !== null;
+
+/** What's wrong with the pay answer, in words, or null (#1662). An empty box is fine: the question is optional. */
+export function payProblem(floor: unknown, target: unknown): string | null {
+  if (str(floor) && !readablePay(floor)) return "Enter the floor as an amount, like 120,000.";
+  if (str(target) && !readablePay(target)) return "Enter an amount, like 160,000.";
+  const f = parseMoney(floor);
+  const t = parseMoney(target);
+  if (f !== null && t !== null && f > t) return "The floor is above the pay that would make you jump.";
+  return null;
+}
+
 export function parseMoney(v: unknown): number | null {
   const s = str(v).toLowerCase().replace(/[,$]/g, "").replace(/(\d)\s+(?=\d{3}\b)/g, "$1");
   if (!s || /[€£¥₹]|\b(eur|euros?|gbp|pounds?|inr|jpy)\b/.test(s) || /\bfigures?\b/.test(s)) return null;

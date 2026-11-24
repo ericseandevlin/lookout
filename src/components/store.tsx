@@ -173,8 +173,10 @@ function useStoreValue(initial: AppState) {
           const { link } = await api<{ link: Link }>("/api/materials/links", { method: "POST", json: { url } });
           setState((s) => ({ ...s, materials: { ...s.materials, links: [...s.materials.links, link] } }));
           recheckLinks();
+          return true;
         } catch (e) {
           fail(e);
+          return false;
         }
       },
       async updateLink(id: string, patch: { url?: string; kind?: string | null }) {

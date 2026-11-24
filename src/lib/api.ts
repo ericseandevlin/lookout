@@ -62,12 +62,21 @@ export function publicRoute<C = object>(fn: (req: Request, ctx: C) => Promise<Re
   };
 }
 
+/** What a person can act on, in place of zod's "Invalid input" (#1662). Anything else stays "Invalid input", which the sign-in forms read. */
+export function plainIssue(issues: z.core.$ZodIssue[]) {
+  const i = issues[0];
+  if (i?.code === "invalid_format" && i.format === "url") return "Paste a full link, starting with https://";
+  if (i?.code === "invalid_format" && i.format === "email") return "Enter a valid email address.";
+  if (i?.code === "custom" && i.message) return i.message;
+  return "Invalid input";
+}
+
 export function errorResponse(e: unknown, req?: Request) {
   if (e instanceof HttpError) return json({ error: e.message }, { status: e.status });
   // Known limits, not crashes: say what happened instead of "Something went wrong" (#201).
   if (e instanceof BudgetError) return json({ error: e.message }, { status: 429 });
   if (e instanceof AiConfigError || e instanceof SearchConfigError) return json({ error: e.message }, { status: 503 });
-  if (e instanceof z.ZodError) return json({ error: "Invalid input", issues: e.issues }, { status: 400 });
+  if (e instanceof z.ZodError) return json({ error: plainIssue(e.issues), issues: e.issues }, { status: 400 });
   console.error(e);
   // Kept for Admin > Errors (#12). Imported late so modules that only need HttpError don't load the database.
   void import("@/lib/errorLog").then((m) => m.recordError("route", e, { path: req && new URL(req.url).pathname, method: req?.method })).catch(() => {});

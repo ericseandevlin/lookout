@@ -115,8 +115,9 @@ export function Materials() {
   const add = () => {
     const u = draft.trim();
     if (!u) return;
-    m.addLink(u);
     setDraft("");
+    // A refused link goes back in the box, next to the reason (#1662).
+    void m.addLink(u).then((ok) => { if (!ok) setDraft(u); });
   };
   const saveEdit = () => {
     if (!editId) return;
