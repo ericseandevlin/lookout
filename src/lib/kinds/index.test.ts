@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { BONUS_KEY, answeredCount, job, kindOf, kinds, parseMoney, rfp } from ".";
+import { BONUS_KEY, answeredCount, job, kindOf, kinds, parseMoney, payProblem, rfp } from ".";
 
 describe("job brief", () => {
   it("adds bonus context when given", () => {
@@ -82,6 +82,12 @@ describe("answeredCount", () => {
     expect(answeredCount(job, { floor: "$120k" })).toBe(1);
     expect(answeredCount(job, { target: "$160k" })).toBe(1);
     expect(answeredCount(job, { floor: "$120k", target: "$160k" })).toBe(1);
+  });
+
+  it("doesn't count pay Lookout can't read, like \"abc\" or \"-5\" (#1662)", () => {
+    expect(answeredCount(job, { floor: "abc" })).toBe(0);
+    expect(answeredCount(job, { floor: "-5" })).toBe(0);
+    expect(answeredCount(job, { floor: "abc", target: "160k" })).toBe(1);
   });
 
   it("counts a work-mode question for a mode or an area", () => {
@@ -209,5 +215,21 @@ describe("parseMoney: 'p/h' is per hour (#1386)", () => {
 
   it("reads p/a as a yearly number, not an unknown rate", () => {
     expect(parseMoney("150 p/a")).toBe(150000);
+  });
+});
+
+describe("payProblem (#1662)", () => {
+  it("is fine with readable pay, or none", () => {
+    expect(payProblem("", "")).toBeNull();
+    expect(payProblem("95000", "")).toBeNull();
+    expect(payProblem("$120k", "$160,000")).toBeNull();
+  });
+  it("names a floor or a jump number it can't read", () => {
+    expect(payProblem("abc", "")).toBe("Enter the floor as an amount, like 120,000.");
+    expect(payProblem("-5", "")).toBe("Enter the floor as an amount, like 120,000.");
+    expect(payProblem("95000", "lots")).toBe("Enter an amount, like 160,000.");
+  });
+  it("flags a floor above the jump number", () => {
+    expect(payProblem("200000", "120000")).toBe("The floor is above the pay that would make you jump.");
   });
 });

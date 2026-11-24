@@ -4,7 +4,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useState, useSyncExternalStore } from "react";
 import { fillTemplate, parseTemplate, type Chunk } from "@/lib/blanks";
-import { BONUS_KEY, kindOf } from "@/lib/kinds";
+import { BONUS_KEY, kindOf, payProblem } from "@/lib/kinds";
 import { WORK_MODE_LABEL } from "@/lib/onboarding";
 import { searchBlocker } from "@/lib/ready";
 import { togglePhrase } from "@/lib/phrases";
@@ -333,6 +333,9 @@ export function Profile() {
                       <input id={j === 0 ? `q-${q.key}` : undefined} className="f-brick" inputMode="numeric" value={str(k)} onChange={set(k)} placeholder={ph} maxLength={40} style={{ ...inputBase, height: 42, padding: "0 13px", fontSize: font.md, textTransform: "none", letterSpacing: 0, fontWeight: 500 }} />
                     </label>
                   ))}
+                  {payProblem(str(q.floorKey), str(q.targetKey)) && (
+                    <div role="alert" style={{ flexBasis: "100%", fontSize: font.base, color: color.brick }}>{payProblem(str(q.floorKey), str(q.targetKey))}</div>
+                  )}
                 </div>
               )}
 

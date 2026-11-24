@@ -19,11 +19,21 @@ describe("LinkUrl", () => {
     expect(LinkUrl.safeParse("https://a.co/" + "x".repeat(500)).success).toBe(false);
   });
 
-  it("a scheme split by a tab or newline gets through, but hrefOf makes it an https link", () => {
+  it("a scheme split by a tab or newline is refused, and hrefOf would make it an https link anyway", () => {
     // Browsers drop tabs and newlines inside URLs, so the link must never reach an href as-is.
     for (const u of ["java\tscript:alert(1)", "java\nscript:alert(1)"]) {
-      expect(LinkUrl.safeParse(u).success).toBe(true);
-      expect(hrefOf(LinkUrl.parse(u))).toMatch(/^https:\/\//);
+      expect(LinkUrl.safeParse(u).success).toBe(false);
+      expect(hrefOf(u)).toMatch(/^https:\/\//);
+    }
+  });
+
+  it("refuses text that isn't a web address (#1662)", () => {
+    for (const u of ["not a link at all", "ftp://x", "ftp://files.example.com", "portfolio", "mailto:a@b.co"]) {
+      expect(LinkUrl.safeParse(u).success, u).toBe(false);
+    }
+    expect(LinkUrl.safeParse("not a link at all").error!.issues[0].message).toBe("Paste a web address, like yoursite.com");
+    for (const u of ["dana-portfolio.example.com", "http://behance.net/dana", "www.site.co.uk/work?x=1#top"]) {
+      expect(LinkUrl.safeParse(u).success, u).toBe(true);
     }
   });
 });

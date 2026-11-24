@@ -1,3 +1,4 @@
+import { z } from "zod";
 import { describe, expect, it, vi } from "vitest";
 
 vi.mock("@/lib/auth/session", () => ({ getSessionUser: vi.fn(), refreshSession: vi.fn() }));
@@ -15,6 +16,14 @@ const { SearchConfigError } = await import("@/lib/ai/search");
 const read = async (r: Response) => ({ status: r.status, body: await r.json() });
 
 describe("errorResponse (#201)", () => {
+  it("says what to fix for a bad link, a bad email or a rule's own message (#1662)", async () => {
+    const err = (schema: z.ZodType, v: unknown) => schema.safeParse(v).error!;
+    expect((await read(errorResponse(err(z.object({ url: z.string().url() }), { url: "accounting manager denver" })))).body.error).toBe("Paste a full link, starting with https://");
+    expect((await read(errorResponse(err(z.object({ email: z.string().email() }), { email: "not an email" })))).body.error).toBe("Enter a valid email address.");
+    expect((await read(errorResponse(err(z.object({ u: z.string().refine(() => false, "Use an http(s) link") }), { u: "ftp://x" })))).body.error).toBe("Use an http(s) link");
+    const other = await read(errorResponse(err(z.object({ n: z.number() }), { n: "a" })));
+    expect(other).toMatchObject({ status: 400, body: { error: "Invalid input" } });
+  });
   it("passes HttpError through", async () => expect(await read(errorResponse(new HttpError(409, "Busy")))).toEqual({ status: 409, body: { error: "Busy" } }));
 
   it("says the budget is used up, as a 429, without logging a crash", async () => {
