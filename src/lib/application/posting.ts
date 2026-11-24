@@ -95,18 +95,36 @@ function hiddenByDeclarations(value: string) {
   }
   const zero = (v?: string) => !!v && /^(0+(\.0*)?|\.0+)(px|pt|em|rem|%)?$/.test(v);
   const color = d.get("color");
-  const font = d.get("font-size")?.match(/^(\d*\.?\d+)(px|pt)$/);
+  const font = d.get("font-size")?.match(/^(\d*\.?\d+)(px|pt|em|rem)$/);
+  const opacity = d.get("opacity")?.match(/^(\d*\.?\d+)(%)?$/);
+  const px = (v?: string) => (v?.match(/^(-?\d*\.?\d+)px$/) ? Number(v.slice(0, -2)) : null);
+  const tiny = (v?: string) => zero(v) || (px(v) ?? 2) <= 1;
+  // Far off screen by a margin or right/bottom offset; a small negative margin is layout, not hiding (#620).
+  const offScreen = ["margin-left", "margin-top", "margin-right", "margin-bottom", "right", "bottom"].some((k) => (px(d.get(k)) ?? 0) <= -1000);
   return (
     d.get("display") === "none" ||
     d.get("visibility") === "hidden" ||
+    d.get("visibility") === "collapse" ||
     zero(d.get("opacity")) ||
+    // "opacity:0.01" is as invisible as 0 (#1720).
+    (!!opacity && Number(opacity[1]) / (opacity[2] ? 100 : 1) < 0.05) ||
     zero(d.get("font-size")) ||
-    (!!font && Number(font[1]) < 2) ||
+    (!!font && Number(font[1]) < (/em$/.test(font[2]) ? 0.1 : 2)) ||
     color === "transparent" ||
     (!!color && /^rgba\((.*,){3}\s*0(\.0*)?\s*\)$/.test(color)) ||
-    ((zero(d.get("height")) || zero(d.get("max-height"))) && d.get("overflow") === "hidden")
+    (!!color && WHITE.test(color)) ||
+    // "transform:scale(0)" and "clip-path:inset(50%)" draw nothing (#1720).
+    /\bscale[xy]?\(\s*0(\.0*)?\s*[,)]/.test(d.get("transform") ?? "") ||
+    Number(d.get("clip-path")?.match(/^inset\(\s*(\d+(?:\.\d+)?)%/)?.[1] ?? 0) >= 50 ||
+    offScreen ||
+    ((zero(d.get("height")) || zero(d.get("max-height"))) && d.get("overflow") === "hidden") ||
+    // The 1px box screen-reader text uses: no one sees it (#1720).
+    (tiny(d.get("width")) && tiny(d.get("height")) && d.get("overflow") === "hidden")
   );
 }
+
+// White in the forms HIDDEN_STYLE's #fff and rgb(255, 255, 255) miss: "rgb(255 255 255)", "hsl(0, 0%, 100%)", "#ffffffff" (#1720).
+const WHITE = /^(?:#f{4}|#f{8}|rgba?\(\s*255\s*,?\s*255\s*,?\s*255\s*(?:[,/][^)]*)?\)|hsla?\(\s*[\d.]+(?:deg)?\s*,?\s*[\d.]+%\s*,?\s*100%\s*(?:[,/][^)]*)?\))$/;
 
 const isHiddenTag = (attrs: string) => {
   // Quoted, or unquoted as HTML allows ("style=display:none"), read with quotes so the patterns' value ends still match (#967).
@@ -136,7 +154,8 @@ export function stripHidden(html: string): { html: string; hidden: string[] } {
   let at = 0;
   const re = /<(\w+)\b([^>]*)>/g;
   for (let m = re.exec(html); m; m = re.exec(html)) {
-    if (m[0].endsWith("/>") || !isHiddenTag(m[2])) continue;
+    // A <template> is never drawn (#1720).
+    if (m[0].endsWith("/>") || !(isHiddenTag(m[2]) || /^template$/i.test(m[1]))) continue;
     const close = closingTag(html, m[1], re.lastIndex);
     if (!close) continue;
     const t = html.slice(re.lastIndex, close.start).replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim();
