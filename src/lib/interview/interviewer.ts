@@ -126,11 +126,14 @@ export function asksWhatIsKnown(question: string, closest: string, known: string
 // The prompt's own examples and field names, when a model runs on past the reason into them.
 const LEAK = /\s*(?:\b(?:Bad|Good):\s*["\u201c]|\s-\s(?:topic|question|why|facts|backs):)/;
 
+/** One sentence. A point inside a number ("1.9", "0.6") does not end it (#1662). */
+const SENTENCE = /(?:[^.!?]|\.(?=\d))+[.!?]*/g;
+
 export function shortWhy(why: string): string {
   why = noDashes(why);
   const leak = why.search(LEAK);
   if (leak > 0) why = why.slice(0, leak);
-  const sentences = why.trim().match(/[^.!?]+[.!?]*/g) ?? [];
+  const sentences = why.trim().match(SENTENCE) ?? [];
   const kept: string[] = [];
   for (const raw of sentences) {
     const t = raw.trim();
@@ -151,17 +154,18 @@ export function shortWhy(why: string): string {
 /**
  * The question only (#1449): statements before it are cut, since the evidence lives in the reason tooltip.
  * "4 of your top 5 finds are B2B SaaS companies. Have you worked on B2B SaaS?" becomes "Have you worked on B2B SaaS?".
- * With no question mark ("Walk me through..."), only leading sentences that cite the finds, the resume or the posting go.
+ * Only leading sentences that cite the finds, the resume or the posting go; a statement the question leans on stays.
  */
 const EVIDENCE = /\b(finds?|resume|profile|postings?)\b/i;
 export function plainQuestion(q: string): string {
   q = noDashes(q);
-  const parts = q.trim().match(/[^.!?]+[.!?]*/g) ?? [];
+  const parts = q.trim().match(SENTENCE) ?? [];
   const first = parts.findIndex((p) => p.trim().endsWith("?"));
-  if (first > 0) return parts.slice(first).join("").trim();
-  if (first === 0) return q.trim();
+  // Only statements that cite the evidence go. One that sets up the question stays, or the question
+  // reads "Which one, and how far along are you?" with nothing to point at (#1662).
+  const last = first > 0 ? first : parts.length - 1;
   let i = 0;
-  while (i < parts.length - 1 && EVIDENCE.test(parts[i])) i++;
+  while (i < last && EVIDENCE.test(parts[i])) i++;
   return parts.slice(i).join("").trim();
 }
 
