@@ -55,6 +55,25 @@ describe("keyword evidence (#121)", () => {
     expect(supportFor("people leadership", "Acme: Ran WCAG accessibility audits across 12 products", resume, [])).toEqual({ line: "Ran WCAG accessibility audits across 12 products", from: "resume" });
   });
 
+  it("an employer, city or the person's name does not back a skill (#1688)", () => {
+    const master = [
+      "# Ruby Chen",
+      "Senior Software Engineer",
+      "Silver Spring, MD • ruby@example.com • 555-123-4567",
+      "## Experience",
+      "### Senior Software Engineer, American Express | New York, NY | 01/2020 – Present",
+      "- Built the card rewards checkout in TypeScript and Node.js",
+      "### Acme Corp | 2014 – 2020",
+      "#### Product Engineer | 2016 – 2020",
+      "- Shipped billing dashboards in Angular",
+    ].join("\n");
+    for (const t of ["Express", "Spring", "Ruby", "Acme"]) expect(supportFor(t, undefined, master, [])).toBeNull();
+    // The title, the headline and the bullets still back a term.
+    expect(supportFor("Software Engineer", undefined, master, [])).toEqual({ line: "Senior Software Engineer", from: "resume" });
+    expect(supportFor("Product Engineer", undefined, master, [])).toEqual({ line: "Product Engineer", from: "resume" });
+    expect(supportFor("Node.js", undefined, master, [])).toEqual({ line: "Built the card rewards checkout in TypeScript and Node.js", from: "resume" });
+  });
+
   it("a note without details is not evidence; a note with details is", () => {
     expect(supportFor("Kubernetes", undefined, resume, upsertNote([], "Kubernetes", ""))).toBeNull();
     expect(supportFor("Kubernetes", undefined, resume, upsertNote([], "kubernetes", "Run the k3s cluster for my side project"))).toEqual({ line: "Run the k3s cluster for my side project", from: "notes" });
