@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { doneStep, noNewBody, whyNoneAdded } from "./runOutcome";
+import { doneStep, dropLine, noNewBody, whyNoneAdded } from "./runOutcome";
 
 const tally = (t: Partial<{ postings: number; known: number; dealbreaker: number; belowFloor: number; added: number; unscored: number }>) => ({ postings: 0, known: 0, dealbreaker: 0, belowFloor: 0, added: 0, ...t });
 
@@ -75,5 +75,17 @@ describe("postings that couldn't be scored (#1456)", () => {
   });
   it("a tally from before #1456 reads as before", () => {
     expect(doneStep(tally({ postings: 2, known: 2 }))).toBe("No new finds this time. Everything matching is already on your board");
+  });
+});
+
+describe("dropLine (#1662)", () => {
+  const none = { known: 0, dealbreaker: 0, belowFloor: 0, offLocation: 0 };
+  it("is empty when nothing dropped out", () => expect(dropLine(none)).toBe(""));
+  it("never says pay only marks a role down: under the floor is cut", () => {
+    expect(dropLine({ ...none, belowFloor: 2 })).toBe("Of the job posts: 2 under your pay floor.");
+  });
+  it("leaves two or more off on location to their tip, and notes a single one", () => {
+    expect(dropLine({ ...none, offLocation: 3 })).toBe("Of the job posts: 3 off on location.");
+    expect(dropLine({ ...none, offLocation: 1 })).toBe("Of the job posts: 1 off on location, on your board marked down.");
   });
 });

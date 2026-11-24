@@ -61,8 +61,8 @@ export function Landing({ inviteOnly, channel, pages = false }: { inviteOnly: bo
                 threw out.
               </Step>
               <Step n={3} title="You decide" media={<Clip src="/landing/how-decide.mp4" poster="/landing/how-decide.jpg" label="Turning on the pay filter, archiving two low matches and pinning a strong one." />}>
-                Every find gets a score from 1 to 5 and the reasons. A dealbreaker never makes the board. A role under your floor still shows up, marked
-                down. Your call.
+                Every find gets a score from 1 to 5 and the reasons. A dealbreaker or a role under your floor never makes the board. The rest is
+                your call.
               </Step>
             </div>
           </section>

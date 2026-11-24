@@ -44,3 +44,18 @@ export function noNewBody(found: number, t: Pick<RunTally, "postings" | "known" 
   if (!t || allKnown(t) || !why.length) return `${read}, and ${found === 1 ? "it's" : "they're"} already on your board. It'll look again on your schedule.`;
   return `${read} and added none: ${why.join(", ")}. It'll look again on your schedule.`;
 }
+
+/**
+ * Where the job posts dropped out, in one line, or "" (#1662). Under the floor is cut from the board (#740), so the
+ * line no longer says pay "only marks a role down". Two or more off on location get their own tip, so only one
+ * gets the "still on your board" note here.
+ */
+export function dropLine(t: Pick<RunTally, "known" | "dealbreaker" | "belowFloor" | "offLocation">): string {
+  const outs = [
+    t.known && `${t.known} already on your board`,
+    t.dealbreaker && `${t.dealbreaker} hit a dealbreaker`,
+    t.belowFloor && `${t.belowFloor} under your pay floor`,
+    t.offLocation && `${t.offLocation} off on location${t.offLocation === 1 ? ", on your board marked down" : ""}`,
+  ].filter(Boolean) as string[];
+  return outs.length ? `Of the job posts: ${outs.join(" · ")}.` : "";
+}
