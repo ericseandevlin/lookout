@@ -389,6 +389,11 @@ describe("no em dashes in match reasons (#1531)", () => {
     expect(r.reasonsMatch).toEqual(["Design systems, your core strength"]);
     expect(r.reasonsGap).toEqual(["Heavy mobile focus, check fit"]);
   });
+  it("keeps a range between two numbers a range (#1766)", () => {
+    const r = applyRules({ score: 4, reasonsMatch: ["Pays $180k–$220k, above your floor", "Salary £90,000 – £110,000"], reasonsGap: ["Hybrid, 2–3 days a week in office", "Series B — 40–60 people"], locationFit: true, dealbreaker: false, compMin: 180000, compMax: 220000 }, null)!;
+    expect(r.reasonsMatch).toEqual(["Pays $180k-$220k, above your floor", "Salary £90,000-£110,000"]);
+    expect(r.reasonsGap).toEqual(["Hybrid, 2-3 days a week in office", "Series B, 40-60 people"]);
+  });
 });
 
 describe("listPage: search and board pages are not jobs (#1537)", () => {
