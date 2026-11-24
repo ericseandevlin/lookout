@@ -146,8 +146,63 @@ describe("scanPosting (#378)", () => {
   });
 
   it("keeps other page errors as they are (#1464)", async () => {
-    fetchPage.mockRejectedValueOnce(new Error("The page answered 503"));
-    await expect(scanPosting("https://jobs.lever.co/engines/abc-123", emptyUsage())).rejects.toThrow("The page answered 503");
+    fetchPage.mockRejectedValueOnce(new Error("The page answered 500"));
+    await expect(scanPosting("https://jobs.lever.co/engines/abc-123", emptyUsage())).rejects.toThrow("The page answered 500");
+    expect(fetchPage).toHaveBeenCalledTimes(1);
+  });
+
+  describe("a busy site (#1724)", () => {
+    const BUSY_URL = "https://example.com/careers/busy";
+    const busy = (status: number, retryAfterMs?: number) => Object.assign(new Error(`The page answered ${status}`), { status, retryAfterMs });
+    beforeEach(() => {
+      vi.useFakeTimers();
+      pages.set(BUSY_URL, "<label>Portfolio link</label>");
+      replies["apply-scan"] = () => ({ hasForm: true, hasEeo: false, howToApply: "", items: [{ prompt: "Portfolio link", required: false, fieldType: "text", options: [] }] });
+    });
+    afterEach(() => vi.useRealTimers());
+
+    it.each([429, 503])("reads the page again after a %i and goes on when it answers", async (status) => {
+      fetchPage.mockRejectedValueOnce(busy(status));
+      const scan = scanPosting(BUSY_URL, emptyUsage());
+      await vi.advanceTimersByTimeAsync(2_000);
+      await expect(scan).resolves.toMatchObject({ source: "page" });
+      expect(fetchPage).toHaveBeenCalledTimes(2);
+    });
+
+    it("waits as long as Retry-After asks, up to 5 seconds", async () => {
+      fetchPage.mockRejectedValueOnce(busy(429, 4_000));
+      const scan = scanPosting(BUSY_URL, emptyUsage());
+      await vi.advanceTimersByTimeAsync(3_900);
+      expect(fetchPage).toHaveBeenCalledTimes(1);
+      await vi.advanceTimersByTimeAsync(100);
+      expect(fetchPage).toHaveBeenCalledTimes(2);
+      await scan;
+
+      fetchPage.mockClear();
+      fetchPage.mockRejectedValueOnce(busy(429, 120_000));
+      const capped = scanPosting(BUSY_URL, emptyUsage());
+      await vi.advanceTimersByTimeAsync(5_000);
+      expect(fetchPage).toHaveBeenCalledTimes(2);
+      await capped;
+    });
+
+    it("says in plain words that the site is limiting requests when it is still busy, and reads it only twice", async () => {
+      fetchPage.mockRejectedValueOnce(busy(429)).mockRejectedValueOnce(busy(429));
+      const scan = scanPosting(BUSY_URL, emptyUsage());
+      const done = expect(scan).rejects.toThrow("The job site is limiting requests right now. Try again in a few minutes.");
+      await vi.advanceTimersByTimeAsync(2_000);
+      await done;
+      expect(fetchPage).toHaveBeenCalledTimes(2);
+      expect(completeJSON).not.toHaveBeenCalled();
+    });
+
+    it("still calls a posting closed when the second read answers 404", async () => {
+      fetchPage.mockRejectedValueOnce(busy(503)).mockRejectedValueOnce(new Error("The page answered 404"));
+      const scan = scanPosting(BUSY_URL, emptyUsage());
+      const done = expect(scan).rejects.toThrow("This posting is closed: its page is gone.");
+      await vi.advanceTimersByTimeAsync(2_000);
+      await done;
+    });
   });
 
   it("falls back to reading the page with the model when the form API fails", async () => {

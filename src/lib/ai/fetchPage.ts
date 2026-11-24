@@ -81,7 +81,26 @@ const agent = new Agent({ connect: { timeout: 8_000, lookup: safeLookup } });
 
 const MAX_BYTES = 2_000_000;
 
-export class FetchError extends Error {}
+export class FetchError extends Error {
+  /** The HTTP status, when the page answered with one. */
+  status?: number;
+  /** How long the site asked us to wait (Retry-After), in milliseconds, when it said (#1724). */
+  retryAfterMs?: number;
+  constructor(message: string, opts: { status?: number; retryAfterMs?: number } = {}) {
+    super(message);
+    this.status = opts.status;
+    this.retryAfterMs = opts.retryAfterMs;
+  }
+}
+
+/** Retry-After as milliseconds: seconds ("5") or an HTTP date. Undefined when missing or unreadable (#1724). */
+export function retryAfterMs(header: string | null, now = Date.now()): number | undefined {
+  const v = header?.trim();
+  if (!v) return undefined;
+  if (/^\d+$/.test(v)) return Number(v) * 1000;
+  const t = Date.parse(v);
+  return Number.isFinite(t) ? Math.max(0, t - now) : undefined;
+}
 
 /**
  * Workday posting pages are JavaScript shells with no posting text (#724). The same posting is public JSON at
@@ -169,7 +188,7 @@ async function fetchRaw(rawUrl: string): Promise<{ url: string; html: string }> 
       url = new URL(loc, url);
       continue;
     }
-    if (!res.ok) throw new FetchError(`The page answered ${res.status}`);
+    if (!res.ok) throw new FetchError(`The page answered ${res.status}`, { status: res.status, retryAfterMs: retryAfterMs(res.headers.get("retry-after")) });
     const type = res.headers.get("content-type") ?? "";
     if (!/html|json|text\/plain|xml/i.test(type)) throw new FetchError("That link isn't a web page");
     const reader = res.body?.getReader();
