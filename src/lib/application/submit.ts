@@ -448,11 +448,15 @@ async function fillOne(page: Page, s: FillStep): Promise<{ ok: boolean; how: str
  * "165 thousand" and "1.2 million"; a lone lowercase m after a space ("5 m") is left alone, as months or minutes (#1585).
  */
 const DOT_THOUSANDS = /(?<![\d.,])\d{1,3}(?:\.\d{3})+(?:,\d{1,2})?(?![\d.,]|\s?[kKmM]\b)/g;
+// A space, no-break space, narrow no-break space or apostrophe between groups of three is thousands too: "150 000 €" and
+// "CHF 150'000" are 150000, not 150 (#1752).
+const SPACE_THOUSANDS = /(?<![\d.,'])\d{1,3}(?:[ \u00a0\u202f']\d{3})+(?:,\d{1,2})?(?![\d.,'])/g;
 
 export const numberAnswer = (t: string) => {
   // Dots grouped in threes are thousands, as written in much of Europe: "€90.000" is 90000 and "90.000,00 €" too, not 90
   // (#1747). "3.5", "$95.50" and "$2.300K" keep their decimal point.
   t = t.replace(DOT_THOUSANDS, (n) => n.split(",")[0].replace(/\./g, ""));
+  t = t.replace(SPACE_THOUSANDS, (n) => n.split(",")[0].replace(/[ \u00a0\u202f']/g, ""));
   const m = t.match(/(\d[\d,]*(?:\.\d+)?)((?:\s?(?:[kK]|[tT]housand|[mM]illion)|[mM]|\sM)\b)?(?:\s*(?:-|–|—|to|To|TO)\s*\$?\d[\d,]*(?:\.\d+)?((?:\s?(?:[kK]|[tT]housand|[mM]illion)|[mM]|\sM)\b))?/);
   if (!m) return "";
   const n = m[1].replace(/,/g, "");
