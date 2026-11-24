@@ -16,7 +16,7 @@ afterEach(() => vi.useRealTimers());
 describe("postedDays and postedText", () => {
   it("has no date when the posting has none", () => {
     expect(postedDays(find())).toBeNull();
-    expect(postedText(find())).toBe("no date");
+    expect(postedText(find())).toBe("No date posted");
   });
 
   it("counts days, then weeks, then months", () => {
@@ -141,7 +141,7 @@ describe("RFP cells", () => {
     expect(dueText(rfp({ due: "2026-11-07" }))).toBe("today");
     expect(dueText(rfp({ due: "2026-11-04" }))).toBe("3d past");
     expect(dueText(rfp({ due: "When funded" }))).toBe("When funded");
-    expect(dueText(rfp({}))).toBe("no date");
+    expect(dueText(rfp({}))).toBe("No due date");
   });
 
   it("fills each board column", () => {
