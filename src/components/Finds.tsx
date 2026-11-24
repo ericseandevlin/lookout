@@ -14,7 +14,7 @@ import { useStore } from "./store";
 import { useHydratedNow } from "./useHydratedNow";
 import { NextStep } from "./Profile";
 import { trackClient } from "./track";
-import { sortsFor, chip, seg, type SortKey } from "./finds/shared";
+import { menuEscape, sortsFor, chip, seg, type SortKey } from "./finds/shared";
 import { IconBtn, Menu, StageMenu, Switch } from "./finds/Controls";
 import { SetupPanel } from "./finds/SetupPanel";
 import { FirstWeek } from "./finds/FirstWeek";
@@ -167,6 +167,16 @@ export function Finds() {
     setStageMenu(null);
     setFitMenu(false);
   };
+  const menuOpen = !!stageMenu || fitMenu;
+  useEffect(() => {
+    if (!menuOpen) return;
+    const onKey = menuEscape(() => {
+      setStageMenu(null);
+      setFitMenu(false);
+    });
+    window.addEventListener("keydown", onKey, true);
+    return () => window.removeEventListener("keydown", onKey, true);
+  }, [menuOpen]);
   // Ended stages archive the find, whichever kind it is (#180, #8).
   const setStage = (f: Find, s: string) => {
     if (!kindOf(f.type).endedStages.includes(s)) return patchFind(f.id, { stage: s });

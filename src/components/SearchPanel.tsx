@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useState, useSyncExternalStore } from "react";
 import type { RunReport } from "@/lib/db/schema";
 import type { RunInfo } from "@/lib/types";
-import { noNewBody } from "@/lib/agent/runOutcome";
+import { dropLine, noNewBody } from "@/lib/agent/runOutcome";
 import { USER_CAP_MESSAGE } from "@/lib/spend";
 import { CheckIcon, XIcon } from "./icons";
 import { useStore } from "./store";
@@ -190,12 +190,7 @@ function Report({ r }: { r: RunReport }) {
     [t.postings, t.postings === 1 ? "job post" : "job posts"],
     [t.added, "added"],
   ];
-  const outs = [
-    t.known && `${t.known} already on your board`,
-    t.dealbreaker && `${t.dealbreaker} hit a dealbreaker`,
-    t.belowFloor && `${t.belowFloor} under your pay floor`,
-    t.offLocation && `${t.offLocation} off on location`,
-  ].filter(Boolean) as string[];
+  const drops = dropLine(t);
   const closedNote = t.closed ? `${t.closed} ${t.closed === 1 ? "posting on your board was" : "postings on your board were"} taken down, so ${t.closed === 1 ? "it's" : "they're"} now Closed and archived.` : "";
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 12, marginTop: 8 }}>
@@ -208,7 +203,7 @@ function Report({ r }: { r: RunReport }) {
           </li>
         ))}
       </ol>
-      {outs.length > 0 && <div style={{ fontSize: font.base, color: "#A89F92" }}>Of the job posts: {outs.join(" · ")}. Pay and location only mark a role down; it still goes on your board.</div>}
+      {drops && <div style={{ fontSize: font.base, color: "#A89F92" }}>{drops}</div>}
       {closedNote && <div style={{ fontSize: font.base, color: "#A89F92" }}>{closedNote}</div>}
       {r.tips.length > 0 && (
         <ul style={{ listStyle: "none", margin: 0, padding: 0, display: "flex", flexDirection: "column", gap: 8 }}>

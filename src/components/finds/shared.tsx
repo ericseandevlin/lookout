@@ -21,3 +21,15 @@ const ON = { bg: color.brick, ink: "#fff", border: color.brick };
 const OFF = { bg: "#fff", ink: color.ink, border: color.border };
 export const chip = (on: boolean) => (on ? ON : OFF);
 export const seg = (on: boolean) => (on ? { bg: "#fff", ink: color.ink, shadow: "0 1px 3px rgba(29,26,15,.12)" } : { bg: "transparent", ink: color.t2, shadow: "none" });
+
+/**
+ * Escape closes an open board menu (#1662). Used as a capture listener on window, so it runs before the drawer's own
+ * Escape handler and stops it: the first Escape closes the menu, the next one the drawer.
+ */
+export function menuEscape(close: () => void) {
+  return (e: Pick<KeyboardEvent, "key" | "stopPropagation">) => {
+    if (e.key !== "Escape") return;
+    e.stopPropagation();
+    close();
+  };
+}
