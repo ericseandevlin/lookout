@@ -3,12 +3,15 @@
  * Nestlé Resume" kept only ASCII before and reached the employer as "Zo Mller - Nestl Resume".
  */
 
-/** A name safe on disk: letters, digits and marks in any script, spaces, dots, dashes and underscores. Everything else drops. */
+/**
+ * A name safe on disk: letters, digits and marks in any script, spaces, dots, dashes, underscores, apostrophes and "&".
+ * Everything else drops. "O'Brien" and "AT&T" reach the employer as written (#1698).
+ */
 export const fileSafe = (s: string) =>
   s
     .normalize("NFC")
     .replace(/\s+/g, " ")
-    .replace(/[^\p{L}\p{N}\p{M} ._-]/gu, "")
+    .replace(/[^\p{L}\p{N}\p{M} ._'’&-]/gu, "")
     .replace(/ {2,}/g, " ")
     .trim();
 
