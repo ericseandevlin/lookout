@@ -88,6 +88,9 @@ const CLOSED = [
   // "Applications closed" on its own line, and "The application deadline has passed".
   /(?:^|\n)\s*applications? (?:are )?closed\s*[.!]?\s*(?:\n|$)/i,
   /\b(application|applications|submission) deadline (has|have) (now )?passed\b/i,
+  // "The deadline to apply for this job has passed", "The deadline for this position has passed", "The application
+  // deadline for this role has now passed" (#1714). The job or applying must follow "deadline".
+  /\bdeadline (?:to apply|for (?:applications|applying|submissions|(?:this|the) (?:job|role|position|posting|vacancy|opening|opportunity)))\b[^.!?\n]{0,40}?\bhas (?:now |already )?passed\b/i,
   // "We're no longer hiring for this role", "We are no longer recruiting for this position" (#1458). The job must follow,
   // so "no longer hiring for our old office" or "we're no longer recruiting through agencies" stays open.
   /\bno longer (hiring|recruiting) for (this|the) (job|role|position|posting|opening|vacancy|requisition|opportunity)\b/i,
