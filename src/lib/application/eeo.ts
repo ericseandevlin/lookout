@@ -34,6 +34,12 @@ export const EEO_CHOICES: Record<EeoCategory, { label: string; choices: string[]
   disability: { label: "Disability", choices: ["No", "Yes", DECLINE] },
 };
 
+const KIN = String.raw`(?:family(?: members?)?|relatives?|partners?|spouses?|husband|wife|parents?|guardians?|child(?:ren)?|sons?|daughters?|siblings?|brothers?|sisters?|household)`;
+const OTHER_PERSON = new RegExp(
+  String.raw`\b(?:your|any|a) ${KIN}\b|\banyone in your\b|\b${KIN} (?:of|to|for)\b|\bcaregiver\b|\b(?:someone|somebody|anyone|another person) (?:with|who)\b|\b(?:of|to|for) (?:a|an) (?:person|individual) (?:with|who)\b`,
+  "i",
+);
+
 /** Which category a form question asks about, or null when it isn't an EEO question we know. */
 export function classify(prompt: string): EeoCategory | null {
   const p = prompt.toLowerCase();
@@ -56,6 +62,10 @@ export function classify(prompt: string): EeoCategory | null {
   // under other than honorable conditions" and "currently serving on active duty" are not veteran status. The EEO
   // answer must never fill them: ask the person (#1512).
   if (/accommodat/.test(first)) return null;
+  // A question about someone else, "Is anyone in your family a veteran?", "Is your partner a veteran?", "Are you a family
+  // member of someone with a disability?", is not the person's own status: ask the person (#1746). "Are you a person with
+  // a disability?" is still their own.
+  if (OTHER_PERSON.test(first)) return null;
   if (/discharg|honorabl|court.?martial/.test(p)) return null;
   // "currently" only about service: "Do you currently have a disability?" is still the disability question (#1683).
   const serving = /\bcurrently (?:serving|enlisted|a member of|in the (?:military|armed forces|reserves?|national guard|service))\b/;
