@@ -293,6 +293,16 @@ describe("recruiterChecks: a greeting with no comma (#1396)", () => {
   it.each(["Hello! ", "Hi there! ", "Dear Ms. Lee, "])("finds the stock opening after %j", (greeting) => {
     expect(whats(greeting + body)).toContain("The opening line is the stock one.");
   });
+
+  // Other greetings (#1761).
+  it.each(["To the Hiring Team,\n\n", "To the hiring manager: ", "Greetings,\n", "Hey team, ", "Good morning, "])("finds the stock opening after %j", (greeting) => {
+    expect(whats(greeting + body)).toContain("The opening line is the stock one.");
+  });
+
+  it("keeps a first sentence that starts 'To the'", () => {
+    const f = recruiterChecks("cover_letter", "To the best of my knowledge, I am writing to apply.\n\nBest,\nEric");
+    expect(f.map((x) => x.what)).not.toContain("The opening line is the stock one.");
+  });
 });
 
 describe("recruiterChecks: length counts words, not markdown marks (#1447)", () => {
