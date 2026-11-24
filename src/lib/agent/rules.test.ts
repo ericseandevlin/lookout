@@ -145,6 +145,17 @@ describe("dedupe keys", () => {
 });
 
 describe("placesDiffer (#1285)", () => {
+  it("reads a job listed at several places by its first (#1700)", () => {
+    for (const b of ["New York, NY; San Francisco, CA", "New York, NY or San Francisco, CA", "New York, NY | Austin, TX", "New York, NY / Austin, TX"]) {
+      expect(placesDiffer("New York, NY", b), b).toBe(false);
+      expect(placeId(b), b).toBe("us-ny");
+    }
+    expect(placesDiffer("New York, NY (Hybrid)", "New York, NY (Hybrid); Chicago, IL")).toBe(false);
+    // "OR" is a state, and "or Remote" names no second place.
+    expect(placesDiffer("Portland, OR", "Portland, OR or Remote")).toBe(false);
+    expect(placesDiffer("Portland, OR", "Portland, ME")).toBe(true);
+  });
+
   it("reads a state or country in parentheses (#1426)", () => {
     expect(placesDiffer("Remote (US)", "Remote (Canada)")).toBe(true);
     expect(placesDiffer("Remote (United States)", "Remote (Canada)")).toBe(true);

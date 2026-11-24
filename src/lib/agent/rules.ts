@@ -213,9 +213,12 @@ const withoutZone = (p: string) => {
  * The state and country after a location's first comma: "Portland, OR" is { state: "us-or", country: "us" }, "Remote,
  * Canada" is { country: "ca" }. A country not known here stands as its own text, so "Remote, Mexico" still differs from
  * "Remote, US". ZIP codes are dropped ("NY 10001").
+ * A job listed at several places is read by its first, the one the fingerprint keeps: "New York, NY; San Francisco, CA"
+ * is New York, not California (#1700). "Portland, OR or Remote" has no second place, and a list in brackets stays whole.
  */
+const OTHER_PLACES = /\s*[;|]\s*(?![^()]*\))|\s+\/\s+(?![^()]*\))|\s+(?:or|and)\s+(?=[^,()]+,)(?![^()]*\))/;
 export function region(raw: string) {
-  const location = remoteFirst(raw);
+  const location = remoteFirst(raw.split(OTHER_PLACES)[0]);
   let state: string | null = null;
   let country: string | null = null;
   let other: string | null = null;
