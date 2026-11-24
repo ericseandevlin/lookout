@@ -146,7 +146,7 @@ export function hasKeyword(text: string, keyword: string) {
 }
 
 /**
- * A one- or two-character skill ("R", "Go", "C#") as its own word, not a piece of "R&D", "P&L", "go-to-market" or
+ * A one- or two-character skill ("R", "Go", "C#") as its own word, not a piece of "R&D", "P&L", "go-to-market", "go-live" or
  * "C-suite", which would back a skill the person never named (#1087). "AI-driven" and "R/Python" still count.
  */
 function shortWordIn(text: string, k: string) {
@@ -160,7 +160,9 @@ export function shortWordAt(text: string, i: number, k: string) {
   const after = text[i + k.length] ?? " ";
   if (/[a-z0-9&+#]/.test(before) || /[a-z0-9&+#]/.test(after)) return false;
   if (k.length === 1 && (before === "-" || after === "-")) return false;
-  if (k === "go" && text.startsWith("-to", i + k.length)) return false;
+  // "go-to", "go-live", "go-ahead", "go-forward", "go-getter" and "no-go" are plain English, not the language (#1759).
+  // "Go-based services" is still Go.
+  if (k === "go" && (/^(?:-(?:to|live|ahead|forward|getter|between)|[-/]no-go)\b/.test(text.slice(i + k.length)) || /\bno-$/.test(text.slice(0, i)))) return false;
   return true;
 }
 

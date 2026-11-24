@@ -74,6 +74,12 @@ describe("keywords", () => {
     // A short skill is its own word, not a piece of R&D, go-to-market or C-suite (#1087).
     expect(hasKeyword("Ran the R&D design team of 12", "R")).toBe(false);
     expect(hasKeyword("Led go-to-market launches", "Go")).toBe(false);
+    // Nor go-live, go-ahead, go-forward or a go/no-go call (#1759).
+    expect(hasKeyword("Led the go-live of the billing platform", "Go")).toBe(false);
+    expect(hasKeyword("Got the go-ahead on the rollout", "Go")).toBe(false);
+    expect(hasKeyword("Set the go-forward plan", "Go")).toBe(false);
+    expect(hasKeyword("Ran the go/no-go review", "Go")).toBe(false);
+    expect(hasKeyword("Built Go-based services", "Go")).toBe(true);
     expect(hasKeyword("Presented to the C-suite", "C")).toBe(false);
     expect(hasKeyword("Owned the P&L", "P")).toBe(false);
     expect(hasKeyword("Built models in Python or R.", "R")).toBe(true);
