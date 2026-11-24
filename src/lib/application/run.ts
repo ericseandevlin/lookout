@@ -117,6 +117,33 @@ async function ashbyEmbedOrForm(org: string, id: string, postingUrl: string) {
 /** A 404 or 410 from a job board or a posting page: the posting is gone (#1464). */
 const isGone = (e: unknown) => e instanceof Error && /answered (404|410)\b/.test(e.message);
 
+/** A 429 or 503: the site asks us to slow down, not that the posting is gone (#1724). */
+const isBusy = (e: unknown) => e instanceof Error && /answered (429|503)\b/.test(e.message);
+
+/** The longest wait between two reads of a busy page; a longer Retry-After is the person's to wait out (#1724). */
+const BUSY_WAIT_MAX_MS = 5_000;
+const BUSY_WAIT_MS = 2_000;
+
+/**
+ * The apply page, read again once after a short wait when the site answers 429 or 503 (#1724). The wait is the site's
+ * Retry-After when it says one, capped at BUSY_WAIT_MAX_MS. Still busy: the person sees why in plain words.
+ */
+async function readApplyPage(url: string) {
+  try {
+    return await fetchPage(url);
+  } catch (e) {
+    if (!isBusy(e)) throw e;
+    const asked = (e as { retryAfterMs?: number }).retryAfterMs;
+    await new Promise((r) => setTimeout(r, Math.min(BUSY_WAIT_MAX_MS, asked ?? BUSY_WAIT_MS)));
+    try {
+      return await fetchPage(url);
+    } catch (again) {
+      if (isBusy(again)) throw new Error("The job site is limiting requests right now. Try again in a few minutes.");
+      throw again;
+    }
+  }
+}
+
 /** Read the application. Published forms first; the model reads the page only when there is no form to fetch. */
 export async function scanPosting(postingUrl: string, usage: Usage): Promise<ScanResult> {
   const ref = detectAts(postingUrl);
@@ -142,7 +169,7 @@ export async function scanPosting(postingUrl: string, usage: Usage): Promise<Sca
   }
   let html: string;
   try {
-    ({ html } = await fetchPage(applyUrl));
+    ({ html } = await readApplyPage(applyUrl));
   } catch (e) {
     // The link check reads 404 and 410 as gone too (#1464); the person sees why, not the HTTP status.
     if (isGone(e)) throw new Error("This posting is closed: its page is gone.");
