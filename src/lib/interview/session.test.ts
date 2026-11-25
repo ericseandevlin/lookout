@@ -450,6 +450,21 @@ describe("one interview, opened from an application's keywords (#1485)", () => {
 });
 
 describe("the walkthrough faults (#1662)", () => {
+  it("backs only the keywords the question asked about or the answer names, and the note keeps its stops", async () => {
+    const APP = "00000000-0000-4000-8000-000000000001";
+    const { user } = await seedUser(ALL_ANSWERS);
+    focus = ["automated distribution systems", "SAP", "Kronos", "pick-to-light"];
+    replies = [ask("automated distribution systems", "Tell me about automated distribution systems you ran.")];
+    const v = await openInterview(user.id, APP);
+    const story = "I ran a sorter and a pick-to-light module. Uptime went from 91% to 98.5%.";
+    const fact = (text: string) => ({ text, kind: "result", namesPerson: false, complaint: false, confidential: false, personal: false });
+    replies = [{ facts: [fact("Ran a sorter and a pick-to-light module"), fact("Raised sorter uptime from 91% to 98.5%")], backs: ["automated distribution systems", "SAP", "Kronos", "pick-to-light"], next: { type: "done", topic: "", question: "", why: "", closest: "" } } as never];
+    await act(user.id, v.current!.id, "answer", story, APP);
+    const [p] = await db.select({ notes: schema.profiles.skillNotes }).from(schema.profiles).where(eq(schema.profiles.userId, user.id));
+    expect((p.notes ?? []).map((n) => n.skill).sort()).toEqual(["automated distribution systems", "pick-to-light"]);
+    expect(p.notes?.[0].story).toBe("Ran a sorter and a pick-to-light module. Raised sorter uptime from 91% to 98.5%");
+  });
+
   it("stops when asked to: the facts are saved, no next question, and the note says it stopped", async () => {
     const { user } = await seedUser(ALL_ANSWERS);
     replies = [ask("F&B programs")];
