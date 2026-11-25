@@ -265,11 +265,23 @@ describe("discover (#379)", () => {
   it("keeps no pay, not dollars, when the page's pay is in a currency the reader can't parse (#1709)", async () => {
     results.set("design systems lead", [hit("https://jobs.example.com/a")]);
     results.set("design systems lead site:greenhouse.io", []);
-    pages.set("https://jobs.example.com/a", posting("<p>Gehalt: 70-90k € brutto pro Jahr.</p>"));
-    verdicts.set("https://jobs.example.com/a", { comp_min: 70000, comp_max: 90000 });
+    pages.set("https://jobs.example.com/a", posting("<p>연봉 ₩90,000,000 - ₩120,000,000</p>"));
+    verdicts.set("https://jobs.example.com/a", { comp_min: 90000000, comp_max: 120000000 });
     await expect(discover(searchId)).resolves.toMatchObject({ found: 1, added: 1 });
     const rows = await db.select({ min: schema.opportunities.compMin, max: schema.opportunities.compMax }).from(schema.opportunities);
     expect(rows).toEqual([{ min: null, max: null }]);
+  });
+
+  it("saves euro pay after a k range in euros, and the USD floor leaves it alone (#1709)", async () => {
+    results.set("design systems lead", [hit("https://jobs.example.com/a")]);
+    results.set("design systems lead site:greenhouse.io", []);
+    pages.set("https://jobs.example.com/a", posting("<p>Gehalt: 70-90k € brutto pro Jahr.</p>"));
+    verdicts.set("https://jobs.example.com/a", { comp_min: 70000, comp_max: 90000 });
+    await expect(discover(searchId)).resolves.toMatchObject({ found: 1, added: 1 });
+    const rows = await db
+      .select({ min: schema.opportunities.compMin, max: schema.opportunities.compMax, currency: schema.opportunities.currency })
+      .from(schema.opportunities);
+    expect(rows).toEqual([{ min: 70000, max: 90000, currency: "EUR" }]);
   });
 
   it("still saves US dollar pay as USD and cuts it under the floor (#1095)", async () => {

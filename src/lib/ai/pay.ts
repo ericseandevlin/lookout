@@ -9,7 +9,13 @@ export type Pay = { min: number; max: number; currency: string; source: string }
 
 const HOURS_PER_YEAR = 2080;
 const DAYS_PER_YEAR = 260;
-const plausible = (n: number) => n >= 20_000 && n <= 2_000_000;
+// Rough units per US dollar, only to judge whether a number is a year's pay: "¥8,000,000" or "₹25,00,000" is a normal
+// salary, and "SEK 50 000" is a month's (#1709). Nothing is converted; the find keeps its own currency.
+const SCALE: Record<string, number> = { JPY: 150, INR: 85, SEK: 10, NOK: 10, DKK: 7, PLN: 4, BRL: 5 };
+const plausible = (n: number, currency = "USD") => {
+  const v = n / (SCALE[currency] ?? 1);
+  return v >= 20_000 && v <= 2_000_000;
+};
 
 /** "$224,000", "224000", "$224K", "224.5k" -> 224000 */
 export function money(s: string): number | null {
@@ -22,7 +28,7 @@ function annual(min: number, max: number, unit: string, currency: string, source
   // A day rate is 260 working days, the same as the pay floor reads it (#982, #1187).
   const k = /hour/i.test(unit) ? HOURS_PER_YEAR : /day/i.test(unit) ? DAYS_PER_YEAR : /semimonth/i.test(unit) ? 24 : /month/i.test(unit) ? 12 : /biweek/i.test(unit) ? 26 : /week/i.test(unit) ? 52 : 1;
   const lo = Math.round(Math.min(min, max) * k), hi = Math.round(Math.max(min, max) * k);
-  return plausible(lo) && plausible(hi) && hi <= lo * 4 ? { min: lo, max: hi, currency, source } : null;
+  return plausible(lo, currency) && plausible(hi, currency) && hi <= lo * 4 ? { min: lo, max: hi, currency, source } : null;
 }
 
 /**
@@ -31,7 +37,7 @@ function annual(min: number, max: number, unit: string, currency: string, source
  */
 export function currencyCode(x: unknown): string {
   const s = typeof x === "string" ? x.trim().toUpperCase() : "";
-  const sym: Record<string, string> = { $: "USD", US$: "USD", "€": "EUR", "£": "GBP" };
+  const sym: Record<string, string> = { $: "USD", US$: "USD", "€": "EUR", "£": "GBP", "¥": "JPY", "₹": "INR", R$: "BRL" };
   return sym[s] ?? (/^[A-Z]{3}$/.test(s) ? s : "USD");
 }
 
@@ -98,7 +104,8 @@ const CODE = String.raw`(?:\s?(${CODES})\b)?`;
 const CODE_LEAD = String.raw`\b(${CODES})\s?(?=\d)`;
 // The second end may carry the same symbol as the first: "£60,000 - £70,000" (#1186). The 40-character tail is read in a
 // lookahead, so a bonus range the reader throws out doesn't swallow the salary right after it (#1205).
-const range = (start: string, sep: string, lead = String.raw`${PRE}\$`, end = "") =>
+// "R$" is the Brazilian real, not a dollar (#1709).
+const range = (start: string, sep: string, lead = String.raw`${PRE}(?<!\bR)\$`, end = "") =>
   new RegExp(String.raw`${start}${lead}\s?(${AMT})(${FIRST_UNIT})?${CODE}\s*${sep}\s*${PRE}[$£€]?\s?(${AMT})${end}(?=([^\n]{0,40}))`, "gi");
 // A pound or euro sign leads a range the way "$" does: "£60,000 - £70,000", "€50k - €60k" (#1186). Before, only Greenhouse
 // and structured data read them, so a UK posting's pay reached the find as dollars and the USD floor cut it.
@@ -129,14 +136,31 @@ const EU_RANGES = [
 ];
 const EU_NUMBER = new RegExp(`^${EU_AMT}$`);
 /** "60.000" or "60 000,50" -> 60000 / 60000.5; anything else as money() reads it. */
-const amountOf = (s: string) => (EU_NUMBER.test(s) ? Number(s.replace(/[.\u00a0\u202f ]/g, "").replace(",", ".")) : money(s));
-const PREFIX: Record<string, string> = { us: "USD", ca: "CAD", c: "CAD", a: "AUD", s: "SGD", sg: "SGD", nz: "NZD", hk: "HKD", au: "AUD", mx: "MXN", nt: "TWD", "£": "GBP", "€": "EUR", eur: "EUR", gbp: "GBP", chf: "CHF", usd: "USD", cad: "CAD", aud: "AUD", sgd: "SGD", nzd: "NZD", hkd: "HKD", mxn: "MXN", twd: "TWD" };
+// Swiss "120'000" and Indian lakh grouping "25,00,000" (#1709).
+const APOS_AMT = String.raw`\d{1,3}(?:['’]\d{3})+(?:\.\d{1,2})?`;
+const LAKH_AMT = String.raw`\d{1,2}(?:,\d{2})+,\d{3}`;
+const GROUPED = new RegExp(`^(?:${APOS_AMT}|${LAKH_AMT})$`);
+const amountOf = (s: string) =>
+  EU_NUMBER.test(s) ? Number(s.replace(/[.\u00a0\u202f ]/g, "").replace(",", ".")) : GROUPED.test(s) ? Number(s.replace(/['’,]/g, "")) : money(s);
+// Pay in other currencies, with the same match groups as RANGES (#1709): a sign before ("¥8,000,000 - ¥12,000,000",
+// "₹25,00,000 - ₹40,00,000", "R$ 15.000 - R$ 20.000"), a code before ("JPY 8,000,000 - 12,000,000", "SEK 50 000 - 60 000",
+// "CHF 120'000 - 140'000"), or a sign or code after ("70-90k € brutto", "18 000 - 24 000 PLN").
+const F_AMT = `${LAKH_AMT}|${APOS_AMT}|${EU_AMT}|${AMT}`;
+const F_CODES = "JPY|INR|PLN|SEK|NOK|DKK|BRL|CHF|EUR|GBP";
+const F_SEP = "(?:-|–|—|to|bis|a|até)";
+const F_TAIL = String.raw`(?=([^\n]{0,40}))`;
+const FOREIGN_RANGES = [
+  new RegExp(String.raw`(R\$|[¥₹])\s?(${F_AMT})(${FIRST_UNIT})?()\s*${F_SEP}\s*(R\$|[¥₹])?\s?(${F_AMT})${F_TAIL}`, "gi"),
+  new RegExp(String.raw`\b(${F_CODES})\s?(${F_AMT})(${FIRST_UNIT})?()\s*${F_SEP}\s*()(${F_AMT})${F_TAIL}`, "gi"),
+  new RegExp(String.raw`()(?<![\d.,'’$€£¥₹])(${F_AMT})(${FIRST_UNIT})?()\s*${F_SEP}\s*()(${F_AMT})(?=\s?(?:[€£¥₹]|(?:${F_CODES})\b))${F_TAIL}`, "gi"),
+];
+const PREFIX: Record<string, string> = { us: "USD", ca: "CAD", c: "CAD", a: "AUD", s: "SGD", sg: "SGD", nz: "NZD", hk: "HKD", au: "AUD", mx: "MXN", nt: "TWD", "£": "GBP", "€": "EUR", "¥": "JPY", "₹": "INR", r$: "BRL", jpy: "JPY", inr: "INR", pln: "PLN", sek: "SEK", nok: "NOK", dkk: "DKK", brl: "BRL", eur: "EUR", gbp: "GBP", chf: "CHF", usd: "USD", cad: "CAD", aud: "AUD", sgd: "SGD", nzd: "NZD", hkd: "HKD", mxn: "MXN", twd: "TWD" };
 
 // What the range is per, from the words after it. The unit named first wins, so "per year, paid monthly" stays yearly (#484)
 // and "per hour, plus an annual bonus" stays hourly (#646).
 const UNITS: [string, RegExp][] = [
   // "per hr", "an hr", "per mo", "per wk" and "per yr" read like the full words (#752).
-  ["YEAR", /\/\s?y(?:ea)?r\b|\b(?:per|a|an|each) year\b|\bper (?:yr|annum)\b|\bannual(?:ly)?\b|\byearly\b/i],
+  ["YEAR", /\/\s?y(?:ea)?r\b|\b(?:per|a|an|each) year\b|\bper (?:yr|annum)\b|\bannual(?:ly)?\b|\byearly\b|\bpro jahr\b|\bjährlich\b/i],
   ["HOUR", /\/\s?h(?:ou)?r\b|\/\s?h\b|\b(?:per|a|an|each) hour\b|\b(?:per|an) hr\b|\bhourly\b/i],
   // "$600 - $800 per day", "a day rate of" after the numbers (#1187).
   ["DAY", /\/\s?day\b|\b(?:per|a|an|each) day\b|\bdaily\b|\bday rate\b/i],
@@ -145,7 +169,7 @@ const UNITS: [string, RegExp][] = [
   ["WEEK", /\/\s?w(?:ee)?k\b|\b(?:per|a|each) week\b|\bper wk\b|\bweekly\b/i],
   // "semi-monthly" is named before "monthly" inside it, so it wins the same way: 24 pay periods (#714).
   ["SEMIMONTH", /\bsemi-?monthly\b|\btwice (?:a|per|each) month\b/i],
-  ["MONTH", /\/\s?mo(?:nth)?\b|\b(?:per|a|each) month\b|\bper mo\b|\bmonthly\b/i],
+  ["MONTH", /\/\s?mo(?:nth)?\b|\b(?:per|a|each) month\b|\bper mo\b|\bmonthly\b|\bpro monat\b|\bmonatlich\b|\bpor m[eê]s\b|\bpar mois\b/i],
 ];
 // "Paid bi-weekly" or "benefits paid monthly" says how often a paycheck comes, not what the range is per (#716).
 const SCHEDULE = /\bpaid\s+(?:on\s+an?\s+)?(?:bi-?weekly|weekly|semi-?monthly|monthly|every (?:two|2) weeks|twice (?:a|per|each) month)\b/gi;
@@ -154,7 +178,7 @@ const WORKLOAD = /\b(?:\d+(?:\.\d+)?|one|two|three|four|five)(?:\s?(?:-|to)\s?\d
 // Only spaces, a currency code, "/" or "-" between the numbers and the unit: "/mo", " USD per month". After a comma or
 // "(" the word starts something else: "$95,000 - $115,000, monthly bonus eligible", "(daily standups)" (#1373). A "+"
 // or "&" joins something else to the pay.
-const RIGHT_AFTER = /^[\s\/-]*(?:(?:usd|cad|aud|eur|gbp|sgd|nzd|hkd|chf|jpy|inr|mxn)\b[\s\/-]*)?$/i;
+const RIGHT_AFTER = /^[\s\/-]*(?:(?:usd|cad|aud|eur|gbp|sgd|nzd|hkd|chf|jpy|inr|mxn|pln|sek|nok|dkk|brl)\b[\s\/-]*)?$/i;
 
 /**
  * A range that already looks like a year's pay takes another unit only when it comes right after the numbers. Further
@@ -199,7 +223,7 @@ const namesExtra = (before: string, tail: string) => {
 
 function fromText(text: string): Pay | null {
   // In page order, so the first range on the page still wins.
-  for (const m of [...RANGES, ...EU_RANGES].flatMap((re) => [...text.matchAll(re)]).sort((x, y) => x.index - y.index)) {
+  for (const m of [...RANGES, ...EU_RANGES, ...FOREIGN_RANGES].flatMap((re) => [...text.matchAll(re)]).sort((x, y) => x.index - y.index)) {
     const [, pre1, first, firstUnit, code, pre2, second, rest = ""] = m;
     if (namesExtra(label(text, m.index), rest)) continue;
     // The unit is read only up to the next dollar amount: "$150,000 - $200,000 ($72-$96/hr)" stays yearly (#746).
@@ -214,15 +238,15 @@ function fromText(text: string): Pay | null {
     // The currency is read only up to the next number, so a Canada range after a US one doesn't make it CAD (#811).
     const own = tail.split(/\d/)[0];
     // Any common code there counts, so "SGD" or "NZD" after a range isn't read as US dollars (#883).
-    const code3 = own.match(/\b(CAD|AUD|EUR|GBP|SGD|NZD|HKD|CHF|MXN|TWD|INR|JPY|CNY|USD)\b|€|£/)?.[0];
+    const code3 = own.match(/\b(CAD|AUD|EUR|GBP|SGD|NZD|HKD|CHF|MXN|TWD|INR|JPY|CNY|PLN|SEK|NOK|DKK|BRL|USD)\b|€|£|¥|₹/)?.[0];
     // After a "$" lead another currency counts only as a code right after the numbers ("$60,000 - $70,000 EUR"). Further
     // on, or as a sign, it is another office's pay: "$150,000 - $180,000 (£110,000 - £130,000 in London)" (#1204).
     const adjacent = !!code3 && code3.length === 3 && /^[\s,.;:()[\]\/-]*$/.test(own.slice(0, own.indexOf(code3)));
     const dollarLead = /^\D*\$/.test(m[0]) && !!code3 && !adjacent && !new RegExp(`^(?:${DOLLARS})$`).test(code3);
-    const currency = named ?? (dollarLead ? "USD" : code3 === "€" ? "EUR" : code3 === "£" ? "GBP" : (code3 ?? "USD"));
+    const currency = named ?? (dollarLead ? "USD" : (code3 && code3.length === 1 ? PREFIX[code3] : (code3 ?? "USD")));
     // A range that is already a year's pay stays yearly when only a pay schedule follows it; "$4,000 - $5,000 paid
     // twice a month" still reads by the schedule (#716).
-    const yearly = plausible(a) && plausible(b);
+    const yearly = plausible(a, currency) && plausible(b, currency);
     const p =
       annual(a, b, payUnit(said.replace(SCHEDULE, " "), yearly), currency, "text") ??
       annual(a, b, payUnit(said, yearly), currency, "text") ??
@@ -234,7 +258,7 @@ function fromText(text: string): Pay | null {
 
 // One amount, for a page that gives no range: "Salary: $150,000", "Base pay up to $180,000", "$45/hour" (#1725). A "$" or
 // pound or euro sign leads it, as for a range.
-const SINGLE = new RegExp(String.raw`(?:${PRE}\$|([£€]))\s?(${AMT})(?=([^\n]{0,40}))`, "gi");
+const SINGLE = new RegExp(String.raw`(?:${PRE}(?<!\bR)\$|([£€]))\s?(${AMT})(?=([^\n]{0,40}))`, "gi");
 // The clause must name base pay itself, so "$5M raised" or "a $2,000 learning budget" never reads as a salary.
 const PAY_NAME = /\b(?:base|salary|salaries|pay|compensation|wages?|(?:hourly|day|daily|pay) rate|rate of pay)\b/i;
 // Money that isn't a salary even when the clause says pay: "pay up to $5,000 of tuition", "401(k) match up to $6,000".
@@ -267,8 +291,8 @@ function single(text: string): Pay | null {
     // The unit right after the amount first ("$45/hour"), then the label before it ("Hourly rate: $45"), as for a range.
     // A bare "$45" with neither is no year's pay and stays out.
     const p =
-      annual(n, n, payUnit(tail.replace(SCHEDULE, " "), plausible(n)), currency, "text") ??
-      (plausible(n) ? null : annual(n, n, payUnit(words.replace(SCHEDULE, " ")), currency, "text"));
+      annual(n, n, payUnit(tail.replace(SCHEDULE, " "), plausible(n, currency)), currency, "text") ??
+      (plausible(n, currency) ? null : annual(n, n, payUnit(words.replace(SCHEDULE, " ")), currency, "text"));
     if (p) return p;
   }
   return null;
