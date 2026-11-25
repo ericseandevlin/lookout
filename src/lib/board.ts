@@ -3,6 +3,14 @@ import { compLabel } from "@/lib/digestComp";
 import { color } from "@/lib/tokens";
 
 export const STAGES: Stage[] = ["Not applied", "Auto-applying", "Applied", "Interview", "Offer", "Closed", "Ghosted", "Not selected", "Nope"];
+/**
+ * The stages a person can pick (#1662): "Auto-applying" only with Auto-apply on, or for a find already in it. The
+ * menu's divider moves up by one when it is hidden.
+ */
+export function stageChoices(stages: string[], autoApply: boolean, current: string) {
+  const shown = autoApply || current === "Auto-applying" ? stages : stages.filter((s) => s !== "Auto-applying");
+  return { stages: shown, dividerAfter: 4 - (stages.length - shown.length) };
+}
 /** Stages that end a find. Moving a find into one archives it (#180). */
 export const ENDED_STAGES: Stage[] = ["Closed", "Ghosted", "Not selected", "Nope"];
 export const STAGE_STYLE: Record<string, { bg: string; ink: string }> = {

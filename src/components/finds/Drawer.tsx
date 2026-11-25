@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { cellQuiet, cellText, slugOf, stageStyle } from "@/lib/board";
+import { cellQuiet, cellText, slugOf, stageChoices, stageStyle } from "@/lib/board";
 import { kindOf } from "@/lib/kinds";
 import type { Find } from "@/lib/types";
 import { applicationLabel } from "@/lib/applyLabels";
@@ -198,7 +198,7 @@ export function Drawer({ f, currentComp, close, toggle, setStage, enter, nav }: 
           <div>
             <Label style={{ marginBottom: 8 }}>Stage</Label>
             <div style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 6 }}>
-              {cfg.stages.map((s) => {
+              {stageChoices(cfg.stages, state.user.autoApply, f.stage).stages.map((s) => {
                 const on = f.stage === s, ss = stageStyle(s);
                 return (
                   <button key={s} onClick={() => setStage(f, s)} aria-pressed={on} data-tip={cfg.endedStages.includes(s) ? "Archives it" : undefined} style={{ height: 36, borderRadius: 9, border: `1.5px solid ${on ? ss.bg : color.border}`, background: on ? ss.bg : "#fff", color: on ? ss.ink : color.t2, fontSize: font.base, fontWeight: 600, cursor: "pointer", padding: "0 4px" }}>
