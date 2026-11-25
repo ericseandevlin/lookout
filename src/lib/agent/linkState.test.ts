@@ -679,6 +679,17 @@ describe("closed to new applicants, and a requested page that does not exist (#1
   ])("keeps %s open", (text) => {
     expect(classifyPage(200, `TITLE: Product Designer\nTEXT: ${text}`).state).toBe("open");
   });
+  it.each(["Job not found", "Job not found.", "Oops! Job not found", "Job Not Found | Acme Careers"])("reads %s as closed", (text) => {
+    expect(classifyPage(200, `Careers\n${text}\nBrowse other jobs`).state).toBe("gone");
+  });
+  it.each([
+    "You will debug job not found errors in our ATS.",
+    "Fix the bug where a job not found page shows a blank screen.",
+    "Handle cases where the job is not found in the index.",
+    "Root cause issues not found by QA.",
+  ])("keeps a live posting that says %s open", (text) => {
+    expect(classifyPage(200, `TITLE: Product Designer\nTEXT: ${text}`).state).toBe("open");
+  });
 });
 
 describe("classifyPage: a closed line with no full stop, then a new sentence (#1765)", () => {
