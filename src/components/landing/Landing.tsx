@@ -96,7 +96,7 @@ export function Landing({ inviteOnly, channel, pages = false }: { inviteOnly: bo
                 </ul>
               </div>
               <Playable className={s.shot}>
-                <Clip src="/landing/how-applying.mp4" poster="/landing/how-applying.jpg" label="A drafted resume, its Recruiter Analysis at 86 out of 100, and the Approve button." />
+                <Clip src="/landing/how-applying.mp4" poster="/landing/how-applying.jpg" label="A drafted application: keywords matched 5 of 7, a change asked for in chat, a cover letter strategy picked, then Approve." />
               </Playable>
             </div>
           </section>
