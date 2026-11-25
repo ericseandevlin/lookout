@@ -567,3 +567,17 @@ describe("pay in other currencies (#1709)", () => {
     expect(findPay("", "€60.000 - €70.000")).toMatchObject({ min: 60000, max: 70000, currency: "EUR" });
   });
 });
+
+describe("a job site's own estimate is not posted pay (#1662)", () => {
+  it("skips a range marked as an estimate on the next line or in its label", () => {
+    expect(findPay("", "Distribution Center Operations Manager\nPosted 3d ago\n$95k - $140k\n\nSite estimate, not employer-provided\n\nDetails")).toBeNull();
+    expect(findPay("", "Estimated salary: $95,000 - $140,000 a year")).toBeNull();
+    expect(findPay("", "Estimated pay: $120,000 per year")).toBeNull();
+  });
+  it("keeps pay with an unrelated 'estimated' nearby", () => {
+    expect(findPay("", "Salary: $100,000 - $120,000\nEstimated start date: January")).toMatchObject({ min: 100000, max: 120000 });
+  });
+  it("still reads posted pay further down the page", () => {
+    expect(findPay("", "$95k - $140k\nSite estimate, not employer-provided\n\nSalary range: $105,000 - $130,000 per year")).toMatchObject({ min: 105000, max: 130000 });
+  });
+});

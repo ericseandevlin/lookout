@@ -275,7 +275,7 @@ export type ScoredT = z.infer<typeof Scored> & { url: string; currency?: string 
 
 // Built per call: the server runs for days between deploys, and the date decides what still looks open (#608).
 const scorerSystem = () => `You score job postings for one candidate. Today is ${today()}.
-Only use facts on the page. Never invent pay or dates; use null when the page doesn't state them. Annualize hourly pay only if it is clearly full time.
+Only use facts on the page. Never invent pay or dates; use null when the page doesn't state them. A pay range the job site marks as its own estimate is not posted pay: use null. Annualize hourly pay only if it is clearly full time.
 Reasons are read on a phone: short, concrete, no filler. No em dashes.
 Read the resume before you write a reason it may not fit. Never claim a gap the resume contradicts: if it lists an iOS app, the person is not "web only".`;
 
