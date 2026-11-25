@@ -49,12 +49,26 @@ export const termsOf = (topic: string, terms: string[]) => {
   return terms.filter((t) => k.includes(topicKey(t)));
 };
 
+/**
+ * The keywords an answer really backs (#1662): ones the model names that the question asked about, or that the answer
+ * itself says. A story about a sorter does not back "SAP" or "Kronos" because the model listed them.
+ */
+export function keywordsBacked(focus: string[], claimed: string[], topic: string, said: string) {
+  const words = ` ${topicKey(said)} `;
+  return focus.filter(
+    (t) => claimed.some((b) => topicKey(b) === topicKey(t)) && (termsOf(topic, [t]).length > 0 || (!!topicKey(t) && words.includes(` ${topicKey(t)} `))),
+  );
+}
+
+/** Facts as one note: each ends with a stop, so "...around the sorter Raised sorter uptime..." can't happen (#1662). */
+const asNote = (facts: string[]) => facts.map((f, i) => (i < facts.length - 1 && !/[.!?;]$/.test(f.trim()) ? `${f.trim()}.` : f.trim())).join(" ");
+
 /** The answer's shareable facts back these keywords: each gets them as its experience note. */
 export async function backKeywords(userId: string, terms: string[], facts: string[]) {
   if (!terms.length || !facts.length) return;
   const [prof] = await db.select({ notes: schema.profiles.skillNotes }).from(schema.profiles).where(eq(schema.profiles.userId, userId));
   let notes = prof?.notes ?? [];
-  for (const t of terms) notes = upsertNote(notes, t, facts.join(" ").slice(0, 1500));
+  for (const t of terms) notes = upsertNote(notes, t, asNote(facts).slice(0, 1500));
   if (prof) await db.update(schema.profiles).set({ skillNotes: notes }).where(eq(schema.profiles.userId, userId));
   else await db.insert(schema.profiles).values({ userId, skillNotes: notes });
 }

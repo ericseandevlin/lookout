@@ -10,7 +10,7 @@ import { kindOf } from "@/lib/kinds";
 import { getActiveSearch } from "@/lib/searches";
 import type { FactKind, TurnOutcome } from "@/lib/db/schema";
 import { closedTopics, FACTS_IN_PROMPT, INTERVIEW_SYSTEM, interviewPrompt, asksWhatIsKnown, InterviewTurnOut, isYesNoQuestion, nameFinds, plainQuestion, shortWhy, STORY_ASK, STORY_FOLLOW_UP, type InterviewInput } from "./interviewer";
-import { backKeywords, declineKeywords, keywordQuestion, missingKeywords, termsOf } from "./keywords";
+import { backKeywords, declineKeywords, keywordQuestion, keywordsBacked, missingKeywords, termsOf } from "./keywords";
 import { asksToStop, factKey, isBareNo, isBareYes, isQuestionBack, lockReason, topicKey } from "./rules";
 import { isAnswered, readSetupAnswer, setupFact, setupQuestionText, SETUP_WHY } from "./setup";
 
@@ -171,7 +171,7 @@ async function interviewStep(userId: string, answered: { turn: Turn; root: Turn;
       if (await addFact(userId, { text: f.text.trim(), kind: f.kind, source: "interview", quote: answered.turn.answer ?? "", turnId: answered.turn.id, flags: f })) shareable.push(f.text.trim());
     }
     // A keyword is backed when a fact the person may use in writing shows they did it; a private one stays background.
-    const backed = focus.filter((t) => (out.backs ?? []).some((b) => topicKey(b) === topicKey(t)));
+    const backed = keywordsBacked(focus, out.backs ?? [], answered.root.topic, [answered.turn.answer ?? "", ...shareable].join(" "));
     await backKeywords(userId, backed, shareable);
     // They asked to stop: no next question, and no "every gap" note that isn't true (#1662).
     if (asksToStop(answered.turn.answer)) {
