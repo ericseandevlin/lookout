@@ -180,6 +180,12 @@ const COUNTRY_NAME: Record<string, string> = {
   vn: "vietnam", za: "south africa",
   uae: "united arab emirates", czechia: "czech republic", turkiye: "turkey", korea: "south korea",
   "republic of korea": "south korea",
+  // A country's own name and a second English one: "Berlin, Deutschland" and "Amsterdam, Holland" against the English
+  // name LinkedIn writes (#1677).
+  holland: "netherlands", deutschland: "germany", espana: "spain", italia: "italy", brasil: "brazil",
+  osterreich: "austria", schweiz: "switzerland", suisse: "switzerland", svizzera: "switzerland", polska: "poland",
+  sverige: "sweden", norge: "norway", danmark: "denmark", suomi: "finland", nippon: "japan", nihon: "japan",
+  "republic of ireland": "ireland", eire: "ireland", "people s republic of china": "china", prc: "china",
 };
 
 // States and regions outside the US and Canada, as the country region() reads for them: ATS feeds write "Munich,
@@ -282,7 +288,11 @@ export function region(raw: string) {
       if (!state && q.length === 2) code = q;
       state ??= s;
     } else if (COUNTRIES.has(q)) country ??= COUNTRIES.get(q)!;
-    else other = SUBDIVISION[q] ?? COUNTRY_NAME[q] ?? q;
+    else {
+      // "The Netherlands" and "Netherlands", "The Philippines" and "Philippines" are one country (#1677).
+      const n = q.replace(/^the (?=\S)/, "");
+      other = SUBDIVISION[n] ?? COUNTRY_NAME[n] ?? n;
+    }
   }
   return { state, country: country ?? state?.slice(0, 2) ?? other, code: country ? null : code };
 }
