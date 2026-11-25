@@ -459,7 +459,11 @@ describe("foreignPayOnly (#1709)", () => {
     "18 000 - 24 000 PLN gross per month",
     "SEK 50 000 - 60 000 per month",
     "R$ 15.000 - R$ 20.000 por mês",
-  ])("is true for pay the reader can't parse: %s", (t) => {
+  ])("is true for pay in another currency: %s", (t) => {
+    expect(foreignPayOnly(t)).toBe(true);
+  });
+  it("is true for pay the reader still can't parse", () => {
+    const t = "연봉 ₩50,000,000 - ₩70,000,000";
     expect(foreignPayOnly(t)).toBe(true);
     expect(findPay(`<p>${t}</p>`)).toBeNull();
   });
@@ -526,5 +530,40 @@ describe("one posted amount (#1725)", () => {
   it("writes one amount once in the pay line", () => {
     expect(payLine({ min: 150_000, max: 150_000, currency: "USD", source: "text" })).toBe("PAY ON PAGE (text): USD 150,000 a year");
     expect(payLine({ min: 140_000, max: 190_000, currency: "USD", source: "text" })).toBe("PAY ON PAGE (text): USD 140,000 to 190,000 a year");
+  });
+});
+
+describe("pay in other currencies (#1709)", () => {
+  it.each([
+    ["Gehalt: 70-90k € brutto pro Jahr", 70000, 90000, "EUR"],
+    ["70k - 90k € per year", 70000, 90000, "EUR"],
+    ["60-75k £ per annum", 60000, 75000, "GBP"],
+    ["¥8,000,000 - ¥12,000,000 per year", 8000000, 12000000, "JPY"],
+    ["JPY 8,000,000 - 12,000,000", 8000000, 12000000, "JPY"],
+    ["₹25,00,000 - ₹40,00,000 per annum", 2500000, 4000000, "INR"],
+    ["INR 2,500,000 - 4,000,000", 2500000, 4000000, "INR"],
+    ["CHF 120'000 - 140'000", 120000, 140000, "CHF"],
+    ["120'000 - 140'000 CHF", 120000, 140000, "CHF"],
+    ["18 000 - 24 000 PLN gross per month", 216000, 288000, "PLN"],
+    ["SEK 50 000 - 60 000 per month", 600000, 720000, "SEK"],
+    ["R$ 15.000 - R$ 20.000 por mês", 180000, 240000, "BRL"],
+    ["Gehalt 5.000 - 6.000 € pro Monat", 60000, 72000, "EUR"],
+  ])("reads %s in its own currency", (text, min, max, currency) => {
+    expect(findPay(`<p>${text}</p>`)).toMatchObject({ min, max, currency });
+  });
+
+  it("does not read R$ as US dollars", () => {
+    expect(findPay("", "R$15,000 - 20,000 per month")).toMatchObject({ min: 180000, max: 240000, currency: "BRL" });
+  });
+
+  it("does not take yen or rupee amounts too small for a year's pay", () => {
+    expect(findPay("", "¥1,000 - ¥2,000 per year")).toBeNull();
+    expect(findPay("", "₹50,000 - ₹80,000 per year")).toBeNull();
+  });
+
+  it("keeps dollar ranges as they were", () => {
+    expect(findPay("", "$150,000 - $200,000 per year")).toMatchObject({ min: 150000, max: 200000, currency: "USD" });
+    expect(findPay("", "150,000 - 180,000 USD")).toMatchObject({ currency: "USD" });
+    expect(findPay("", "€60.000 - €70.000")).toMatchObject({ min: 60000, max: 70000, currency: "EUR" });
   });
 });
