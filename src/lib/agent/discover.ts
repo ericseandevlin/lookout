@@ -253,6 +253,8 @@ async function fetchAll(urls: string[], report?: Report): Promise<Page[]> {
 const Scored = z.object({
   index: z.number().int().describe("The [n] of the page this entry is about"),
   is_open_job_posting: z.boolean().describe("True only if the page is one specific job that still looks open"),
+  // Optional so the search agent's older answers still read (#1662).
+  is_job_posting: z.boolean().optional().describe("True if the page is one specific job posting, open or closed. False for an article, a company page, a list of jobs or anything else"),
   company: z.string(),
   title: z.string(),
   location: z.string().describe("City and state, plus (on-site), (hybrid) or (remote) when known"),
@@ -724,7 +726,8 @@ export async function discover(searchId: string, trigger: "scheduled" | "manual"
  * the scorer calls it closed. The in-process read and the search agent's answer both come through here (#876).
  */
 export async function saveAddedLink(ctx: Context, runId: string, url: string, scored: ScoredT[], usage: Usage) {
-  const one = scored.slice(0, 1).map((s) => ({ ...s, url, is_open_job_posting: s.is_open_job_posting || !!s.title }));
+  // A closed posting is kept; a page that is not a job at all (an article about warehouses) is not (#1662).
+  const one = scored.slice(0, 1).map((s) => ({ ...s, url, is_open_job_posting: s.is_job_posting !== false && (s.is_open_job_posting || !!s.title) }));
   // save() counts an entry with no company or title as not a posting; only a counted posting can be "already on your board" (#668).
   const { added, postings } = await save(ctx, one, "manual");
   if (postings) await progress(runId, 100, added ? `Added ${one[0].title} at ${one[0].company}` : "That posting is already on your board");
