@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
-  cellQuiet, cellText, dueDays, isNewFind, postedDays, scoreStyle, shortDate, slugOf, stageStyle,
+  cellQuiet, cellText, dueDays, isNewFind, postedDays, scoreStyle, shortDate, slugOf, stageChoices, stageStyle,
 } from "@/lib/board";
 import { kindOf } from "@/lib/kinds";
 import type { Find } from "@/lib/types";
@@ -383,7 +383,7 @@ export function Finds() {
                         <ChevronDown />
                       </button>
                       {stageMenu === f.id && menuSurface === "desk" && (
-                        <StageMenu stages={kindOf(f.type).stages} ended={kindOf(f.type).endedStages} current={f.stage} style={{ ...menuAt, minWidth: 150 }} onPick={(s) => { setStage(f, s); setStageMenu(null); }} />
+                        <StageMenu {...stageChoices(kindOf(f.type).stages, store.state.user.autoApply, f.stage)} ended={kindOf(f.type).endedStages} current={f.stage} style={{ ...menuAt, minWidth: 150 }} onPick={(s) => { setStage(f, s); setStageMenu(null); }} />
                       )}
                     </div>
                     <div role="cell" style={{ fontSize: font.base, color: color.t2, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} data-tip={cellText(f, cfg.board.tail.key)}>{cellText(f, cfg.board.tail.key)}</div>
@@ -426,7 +426,7 @@ export function Finds() {
                           <ChevronDown size={11} />
                         </button>
                         {stageMenu === f.id && menuSurface === "mob" && (
-                          <StageMenu stages={kindOf(f.type).stages} ended={kindOf(f.type).endedStages} mobile current={f.stage} style={{ ...menuAt, minWidth: 170 }} onPick={(s) => { setStage(f, s); setStageMenu(null); }} />
+                          <StageMenu {...stageChoices(kindOf(f.type).stages, store.state.user.autoApply, f.stage)} ended={kindOf(f.type).endedStages} mobile current={f.stage} style={{ ...menuAt, minWidth: 170 }} onPick={(s) => { setStage(f, s); setStageMenu(null); }} />
                         )}
                       </div>
                     </div>

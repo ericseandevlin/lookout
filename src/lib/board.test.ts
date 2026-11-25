@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { attrNum, attrStr, cellQuiet, cellText, compText, daysUntil, dueText, initialsOf, isNewFind, postedDays, postedText, scoreStyle, slugOf, stageStyle, valueText } from "./board";
+import { attrNum, attrStr, cellQuiet, cellText, compText, daysUntil, dueText, initialsOf, isNewFind, postedDays, postedText, scoreStyle, slugOf, stageChoices, stageStyle, valueText } from "./board";
 import type { Find } from "./types";
 import { color } from "@/lib/tokens";
 
@@ -192,5 +192,16 @@ describe("dates wait for the browser while the page hydrates (#1531)", () => {
     const noon = new Date("2026-11-21T12:00:00").getTime();
     expect(cellText(f, "listed", noon)).toBe("1d ago");
     expect(isNewFind(f, 7)).toBe(true);
+  });
+});
+
+describe("stageChoices (#1662)", () => {
+  const job = ["Not applied", "Auto-applying", "Applied", "Interview", "Offer", "Closed", "Ghosted", "Not selected", "Nope"];
+  it("hides Auto-applying without Auto-apply and moves the divider up", () => {
+    expect(stageChoices(job, false, "Not applied")).toEqual({ stages: job.filter((s) => s !== "Auto-applying"), dividerAfter: 3 });
+  });
+  it("keeps it with Auto-apply, or for a find already in it", () => {
+    expect(stageChoices(job, true, "Applied")).toEqual({ stages: job, dividerAfter: 4 });
+    expect(stageChoices(job, false, "Auto-applying").stages).toContain("Auto-applying");
   });
 });
