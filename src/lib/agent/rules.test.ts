@@ -238,6 +238,26 @@ describe("placesDiffer (#1285)", () => {
     expect(placeId("Paris, FR")).toBe("france");
   });
 
+  it("reads a country's own name, a second name and a leading 'The' as one country (#1677)", () => {
+    expect(placesDiffer("Amsterdam, The Netherlands", "Amsterdam, Netherlands")).toBe(false);
+    expect(placesDiffer("Amsterdam, Holland", "Amsterdam, Netherlands")).toBe(false);
+    expect(placesDiffer("Amsterdam, NL", "Amsterdam, Holland")).toBe(false);
+    expect(placesDiffer("Berlin, Deutschland", "Berlin, Germany")).toBe(false);
+    expect(placesDiffer("Madrid, España", "Madrid, Spain")).toBe(false);
+    expect(placesDiffer("Vienna, Österreich", "Vienna, AT")).toBe(false);
+    expect(placesDiffer("Zurich, Schweiz", "Zurich, Switzerland")).toBe(false);
+    expect(placesDiffer("São Paulo, Brasil", "São Paulo, Brazil")).toBe(false);
+    expect(placesDiffer("Manila, The Philippines", "Manila, PH")).toBe(false);
+    expect(placesDiffer("Dublin, Éire", "Dublin, Republic of Ireland")).toBe(false);
+    expect(placesDiffer("Shanghai, People's Republic of China", "Shanghai, CN")).toBe(false);
+    expect(placesDiffer("Remote (Deutschland)", "Remote (Germany)")).toBe(false);
+    // North Holland is the province, still the Netherlands; other countries still differ.
+    expect(placesDiffer("Amsterdam, North Holland", "Amsterdam, Holland")).toBe(false);
+    expect(placesDiffer("Berlin, Deutschland", "Berlin, NY")).toBe(true);
+    expect(placesDiffer("Amsterdam, Holland", "Amsterdam, Germany")).toBe(true);
+    expect(placeId("Amsterdam, The Netherlands")).toBe("netherlands");
+  });
+
   it("tells apart the same city in another state or country", () => {
     expect(placesDiffer("Remote, US", "Remote, Canada")).toBe(true);
     expect(placesDiffer("Cambridge, MA", "Cambridge, United Kingdom")).toBe(true);
