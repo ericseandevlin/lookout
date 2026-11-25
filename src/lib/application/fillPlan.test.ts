@@ -221,6 +221,11 @@ describe("CONFIRMATION (#692, #748, #762)", () => {
       "Thankyou for applying",
       "Thanks! Your resume has been submitted.",
       "Your CV was submitted",
+      // #1777
+      "Success! You've applied.",
+      "You have applied to Acme.",
+      "You’ve applied for Product Designer!",
+      "You have now applied",
     ])
       expect(CONFIRMATION.test(t), t).toBe(true);
   });
@@ -285,6 +290,13 @@ describe("CONFIRMATION (#692, #748, #762)", () => {
       "Your resume was received",
       "Resume uploaded",
       "Your resume has not been submitted",
+      // #1777
+      "Have you applied to Acme before?",
+      "You have applied to this job before.",
+      "You've already applied for this role previously.",
+      "If you have applied, check your email.",
+      "Once you have applied, we will email you.",
+      "You have not applied yet.",
     ])
       expect(CONFIRMATION.test(t), t).toBe(false);
   });
