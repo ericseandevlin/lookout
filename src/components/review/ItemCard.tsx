@@ -55,7 +55,7 @@ export function ItemCard({ appId, item, locked, act, analysis, template, accent,
   };
 
   return (
-    <div style={{ ...card, display: "flex", flexDirection: "column", gap: 10, borderColor: isApproved ? "#9CC68E" : color.border }}>
+    <div id={`item-${item.id}`} style={{ ...card, display: "flex", flexDirection: "column", gap: 10, scrollMarginTop: 80, borderColor: isApproved ? "#9CC68E" : color.border }}>
       <div style={{ display: "flex", alignItems: "baseline", gap: 8, flexWrap: "wrap" }}>
         <label htmlFor={`it-${item.id}`} style={{ flex: 1, minWidth: 0, fontSize: font.md, fontWeight: 600 }}>
           {item.prompt}
@@ -65,11 +65,10 @@ export function ItemCard({ appId, item, locked, act, analysis, template, accent,
       </div>
       {blocked && !locked && (
         <div style={{ ...muted, fontSize: font.sm }}>
-          This resume is written from the keywords you approve.{" "}
           <a href="#keywords" onClick={(e) => { e.preventDefault(); document.getElementById("keywords")?.scrollIntoView({ behavior: "smooth", block: "start" }); }}>
-            Check the keywords above
+            Press &ldquo;Use these keywords&rdquo;
           </a>{" "}
-          and press &ldquo;Use these keywords&rdquo; to write it.
+          to write it.
         </div>
       )}
 
@@ -139,7 +138,7 @@ export function ItemCard({ appId, item, locked, act, analysis, template, accent,
         <>
           <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
             {outreach && (
-              <button onClick={copy} disabled={!text.trim()} style={btn("solid")}>
+              <button onClick={copy} disabled={!text.trim()} style={btn("outline")}>
                 {copied ? "Copied" : "Copy draft"}
               </button>
             )}

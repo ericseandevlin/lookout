@@ -132,7 +132,10 @@ export function ApplyPage() {
 
   return (
     <div className="page-pad lk-page w-page" style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-      <PageHead eyebrow="Beta" title="Auto-apply" intro="Lookout drafts each application for your review and only sends what you approve." action={control} />
+      {/* The one line that explains the feature, so it reads first: open a row, approve, then it's sent (#1664). */}
+      <PageHead eyebrow="Beta" title="Auto-apply" action={control}>
+        <p style={{ margin: "10px 0 0", fontSize: font.lg, fontWeight: 600, lineHeight: 1.4, color: color.ink, maxWidth: 640, textWrap: "pretty" }}>Open an application to review what Lookout drafted. Nothing is sent until you approve it.</p>
+      </PageHead>
       <InterviewBanner />
 
       {err && <div role="alert" style={{ fontSize: font.base, color: color.brick }}>{err}</div>}

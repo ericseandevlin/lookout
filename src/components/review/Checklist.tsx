@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { toPlain as toPlainText } from "@/lib/application/resumeLayout";
+import { InfoIcon } from "../chat";
 import { btn } from "../Settings";
 import { card, muted, type Detail } from "./shared";
 import { color, font } from "@/lib/tokens";
@@ -33,9 +34,13 @@ export function Checklist({ d, onDone }: { d: Detail; onDone: () => void }) {
       {locked ? (
         <p style={{ ...muted, margin: 0 }}>Applied {d.submittedAt ? new Date(d.submittedAt).toLocaleString() : ""}. This is the exact text you approved.</p>
       ) : (
-        <p style={{ ...muted, margin: 0 }}>
-          Open the application, then copy each answer in. Upload the resume and cover letter as Word files where the form asks for them. Takes about two minutes.
-        </p>
+        // How it's sent shows only here, once everything is approved; the reason is a tooltip (#1664).
+        d.submit.mode === "press" && (
+          <div style={{ fontSize: font.base, lineHeight: 1.5 }}>
+            Lookout can&apos;t send this one for you. <InfoIcon tip={d.submit.why} label="Why not" />{" "}
+            The <a href="/ext/lookout-autofill.xpi" style={{ color: color.brick }}>Firefox extension</a> fills the form, and you press Submit. Or copy each part in:
+          </div>
+        )
       )}
       {!locked && d.report.applyUrl && (
         <a href={d.report.applyUrl} target="_blank" rel="noreferrer" style={{ ...btn("solid"), display: "inline-flex", alignItems: "center", alignSelf: "flex-start", textDecoration: "none" }}>
@@ -52,7 +57,7 @@ export function Checklist({ d, onDone }: { d: Detail; onDone: () => void }) {
               </button>
               {(r.kind === "resume" || r.kind === "cover_letter") && !locked && (
                 <>
-                  <a href={`/api/apply/${d.id}/items/${r.key}/docx`} title="The file Lookout uploads" download style={{ ...btn("solid"), height: 32, display: "inline-flex", alignItems: "center", textDecoration: "none" }}>
+                  <a href={`/api/apply/${d.id}/items/${r.key}/docx`} title="The file Lookout uploads" download style={{ ...btn("outline"), height: 32, display: "inline-flex", alignItems: "center", textDecoration: "none" }}>
                     Download .docx
                   </a>
                   <button onClick={() => download(r.prompt, r.content)} style={{ ...btn("outline"), height: 32 }}>
@@ -80,7 +85,7 @@ export function Checklist({ d, onDone }: { d: Detail; onDone: () => void }) {
         </div>
       )}
       {!locked && (
-        <button onClick={onDone} style={{ ...btn("outline"), alignSelf: "flex-start" }}>
+        <button onClick={onDone} style={{ ...btn("solid"), alignSelf: "flex-end" }}>
           I submitted it
         </button>
       )}

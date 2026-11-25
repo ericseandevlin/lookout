@@ -3,12 +3,11 @@
 import Link from "next/link";
 import { useCallback, useEffect, useState, useSyncExternalStore } from "react";
 import type { ApplicationStatus } from "@/lib/db/schema";
-import { applicationLabel } from "@/lib/applyLabels";
 import { useConfirm } from "./Confirm";
 import { api } from "./store";
 import { letterHeaderFrom, readable, TEMPLATE_STYLE, type Template } from "@/lib/application/resumeLayout";
-import { SubmitModeNote } from "./SubmitModeNote";
-import { card, muted, resumeText, type Detail } from "./review/shared";
+import { InfoIcon } from "./chat";
+import { card, muted, resumeText, type Detail, type Item } from "./review/shared";
 import { Checklist } from "./review/Checklist";
 import { EeoSection } from "./review/EeoSection";
 import { ItemCard } from "./review/ItemCard";
@@ -121,9 +120,6 @@ export function ApplicationReview({ id }: { id: string }) {
 
   if (!d) return <div className="page-pad lk-page" role="status" style={muted}>{err ?? "Loading…"}</div>;
 
-  const st = applicationLabel(d.status, "user");
-  const required = d.items.filter((i) => i.required);
-  const approved = required.filter((i) => i.approvedVersionId).length;
   const open = d.items.filter((i) => i.question);
   const locked = d.status === "submitted";
 
@@ -131,17 +127,13 @@ export function ApplicationReview({ id }: { id: string }) {
     <div className="page-pad lk-page" style={{ display: "flex", flexDirection: "column", gap: 16, maxWidth: 1180 }}>
       <style>{`.lk-review{display:grid;grid-template-columns:minmax(0,1fr);gap:18px;align-items:start}@media(min-width:1000px){.lk-review{grid-template-columns:minmax(0,1fr) 360px}.lk-review aside{position:sticky;top:16px;max-height:calc(100vh - 32px);overflow:auto}}`}</style>
       <Link href="/apply" style={{ fontSize: font.base, color: color.ink }}>← All applications</Link>
-      <div style={{ display: "flex", alignItems: "flex-start", gap: 12, flexWrap: "wrap" }}>
+      {/* Company first, as on the list; the role is the subtitle (#1664). */}
+      <header style={{ display: "flex", alignItems: "flex-start", gap: 12, flexWrap: "wrap" }}>
         <div style={{ flex: "1 1 320px", minWidth: 0 }}>
-          <h1 style={{ margin: 0, fontSize: font["4xl"], fontWeight: 700, letterSpacing: "-0.02em" }}>{d.role}</h1>
-          <div style={{ ...muted, marginTop: 4 }}>
-            {d.company}
-            {d.ats ? ` · ${d.ats === "other" ? "company site" : d.ats}` : ""}
-            {d.report.usd ? ` · AI cost $${d.report.usd.toFixed(3)}` : ""}
-          </div>
+          <h1 style={{ margin: 0, fontSize: font["4xl"], fontWeight: 700, letterSpacing: "-0.02em" }}>{d.company}</h1>
+          <div style={{ marginTop: 2, fontSize: font.xl, fontWeight: 600, color: color.ink }}>{d.role}</div>
         </div>
-        <span style={{ padding: "6px 12px", borderRadius: 999, fontSize: font.base, fontWeight: 600, background: st.bg, color: st.ink }}>{st.label}</span>
-      </div>
+      </header>
 
       <div aria-live="polite" style={{ ...muted, minHeight: 20 }}>{said}</div>
       {err && <div role="alert" style={{ fontSize: font.base, color: color.brick }}>{err}</div>}
@@ -152,24 +144,7 @@ export function ApplicationReview({ id }: { id: string }) {
       {!working && d.items.length > 0 && (
         <div className="lk-review">
           <div style={{ display: "flex", flexDirection: "column", gap: 16, minWidth: 0 }}>
-            {!locked && (
-              <div style={{ ...card, display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
-                <div style={{ flex: 1, minWidth: 200 }}>
-                  <div style={{ fontSize: font.md, fontWeight: 700 }}>
-                    {approved} of {required.length} required items approved
-                  </div>
-                  <div style={muted}>{d.status === "manual" ? "Ready. Use the checklist at the bottom to send it." : d.status === "approved" ? "Ready. Lookout can send it for you, or use the checklist." : "Approve each item you want sent."}</div>
-                </div>
-                <div style={{ flexBasis: "100%" }}>
-                  <SubmitModeNote submit={d.submit} />
-                  {d.submit.mode === "press" && (
-                    <p style={{ ...muted, margin: "8px 0 0" }}>
-                      To send, open the job in Firefox with the Lookout extension: it fills the form and you press Submit. No extension? Use the two-minute checklist at the bottom.
-                    </p>
-                  )}
-                </div>
-              </div>
-            )}
+            {!locked && <Progress steps={reviewSteps(d)} />}
 
             {open.length > 0 && !locked && (
               <section aria-labelledby="qs" style={{ ...card, borderColor: color.orange, background: "#FFF9F3" }}>
@@ -205,8 +180,15 @@ export function ApplicationReview({ id }: { id: string }) {
               if (!list.length) return null;
               return (
                 <section key={s.title} aria-labelledby={`sec-${s.title}`} style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-                  <h2 id={`sec-${s.title}`} style={{ margin: "6px 0 0", fontSize: font.xl, fontWeight: 700 }}>{s.title}</h2>
-                  {s.help && !locked && <div style={{ ...muted, marginTop: -4 }}>{s.help}</div>}
+                  <h2 id={`sec-${s.title}`} style={{ margin: "6px 0 0", fontSize: font.xl, fontWeight: 700 }}>
+                    {s.title}
+                    {s.help && !locked && (
+                      <>
+                        {" "}
+                        <InfoIcon tip={s.help} label={`About ${s.title}`} />
+                      </>
+                    )}
+                  </h2>
                   {s.title === "Resume" && d.keywordRows && <KeywordSection d={d} rows={d.keywordRows} reload={load} locked={locked} />}
                   {list.map((i) => (
                     <ItemCard key={i.id} appId={d.id} item={i} locked={locked} act={act} analysis={d.report.recruiter?.[i.id]} template={d.template} accent={d.accent} header={i.kind === "cover_letter" ? letterHeaderFrom(resumeText(d), "") : null} letter={i.kind === "cover_letter" && d.letter ? { ...(d.letter.items[i.id] ?? { strategy: d.letter.strategy, ready: [], writing: false }), suggested: d.letter.suggested, why: d.letter.why } : null} onTemplate={pickTemplate} onAccent={pickAccent} needsKeywords={!!d.keywordRows && !d.keywordsApproved} />
@@ -231,6 +213,60 @@ export function ApplicationReview({ id }: { id: string }) {
         </div>
       )}
     </div>
+  );
+}
+
+type Step = { label: string; done: boolean; href: string };
+
+/**
+ * What's left before this application can go (#1664): the keyword list when the resume waits on it, then each
+ * required item. An item waiting on an answer points at the questions box, where it's asked.
+ */
+export function reviewSteps(d: Pick<Detail, "keywordRows" | "keywordsApproved" | "items">): Step[] {
+  const label = (i: Item) => (i.kind === "resume" ? "Resume" : i.kind === "cover_letter" ? "Cover letter" : i.prompt);
+  return [
+    ...(d.keywordRows ? [{ label: "Keywords", done: d.keywordsApproved, href: "#keywords" }] : []),
+    ...d.items.filter((i) => i.required && i.kind !== "eeo").map((i) => ({ label: label(i), done: !!i.approvedVersionId, href: i.question ? "#qs" : `#item-${i.id}` })),
+  ];
+}
+
+const jump = (e: React.MouseEvent<HTMLAnchorElement>) => {
+  const el = document.querySelector(e.currentTarget.getAttribute("href") ?? "");
+  if (!el) return;
+  e.preventDefault();
+  el.scrollIntoView({ behavior: "smooth", block: "start" });
+};
+
+/** The page's one job in plain words, how far along it is, and what's left; each part left jumps to it (#1664). */
+function Progress({ steps }: { steps: Step[] }) {
+  const done = steps.filter((s) => s.done).length;
+  const left = steps.filter((s) => !s.done);
+  return (
+    <section aria-label="Progress" style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+      <div style={{ fontSize: font.lg, fontWeight: 700 }}>{left.length ? "Approve each part, then send it." : "Everything is approved."}</div>
+      <div role="progressbar" aria-valuemin={0} aria-valuemax={steps.length} aria-valuenow={done} aria-label={`${done} of ${steps.length} approved`} style={{ height: 6, borderRadius: 999, background: color.border, overflow: "hidden", maxWidth: 480 }}>
+        <div style={{ height: "100%", width: `${steps.length ? (done / steps.length) * 100 : 0}%`, background: color.greenText, borderRadius: 999, transition: "width .3s" }} />
+      </div>
+      <div style={{ fontSize: font.base, color: color.t2 }}>
+        {done} of {steps.length} approved
+        {left.length ? (
+          <>
+            {" · Left: "}
+            {left.map((s, n) => (
+              <span key={s.href + s.label}>
+                {n > 0 && ", "}
+                <a href={s.href} onClick={jump} style={{ color: color.ink }}>{s.label}</a>
+              </span>
+            ))}
+          </>
+        ) : (
+          <>
+            {" · "}
+            <a href="#send" onClick={jump} style={{ color: color.ink }}>Send it</a>
+          </>
+        )}
+      </div>
+    </section>
   );
 }
 
