@@ -232,7 +232,7 @@ function MatchScore({ d, locked }: { d: Detail; locked: boolean }) {
   if (pct === null) return null;
   const raise = !locked && d.interviewKeywords && pct < 100;
   return (
-    <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 2 }}>
+    <div style={{ marginLeft: "auto", display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 2 }}>
       <div style={{ fontSize: font["4xl"], fontWeight: 700, lineHeight: 1 }}>{pct}%</div>
       <div style={{ fontSize: font.base, color: color.t2 }}>
         Resume match <InfoIcon tip="How much of this posting your experience backs. The more Lookout knows about your work, the higher it goes." label="About the resume match" />

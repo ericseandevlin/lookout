@@ -199,7 +199,7 @@ export function ItemCard({ appId, item, locked, act, template, accent, header, l
                 Unapprove
               </button>
             ) : (
-              <button onClick={() => shown && run("approve", { action: "approve", versionId: shown.id }, `Approved v${shown.version}.`)} disabled={!!busy || !shown?.content.trim()} style={btn("solid")}>
+              <button onClick={() => shown && run("approve", { action: "approve", versionId: shown.id }, `Approved v${shown.version}.`)} disabled={!!busy || !shown?.content.trim()} style={{ ...btn("solid"), marginLeft: "auto" }}>
                 {busy === "approve" ? "Approving…" : `Approve v${shown?.version ?? 1}`}
               </button>
             )}
@@ -240,7 +240,7 @@ function ReviseBox({ id, label, placeholder, value, onChange, onSend, busy, bloc
         rows={Math.min(4, Math.max(1, Math.ceil(value.length / 70)))}
         placeholder={placeholder}
         disabled={busy}
-        style={{ flex: 1, minWidth: 0, padding: "9px 0", border: 0, outline: "none", resize: "none", fontFamily: "inherit", fontSize: font.md, lineHeight: 1.4, background: "transparent", color: color.ink }}
+        style={{ flex: 1, minWidth: 0, padding: "9px 0", border: 0, outline: "none", resize: "none", fieldSizing: "content", maxHeight: 160, fontFamily: "inherit", fontSize: font.md, lineHeight: 1.4, background: "transparent", color: color.ink }}
       />
       <button type="submit" disabled={!ready} aria-label="Send" aria-busy={busy || undefined} data-tip={busy ? "Working…" : tip} style={{ width: 38, height: 38, flex: "none", padding: 0, border: 0, borderRadius: 999, background: "transparent", cursor: ready ? "pointer" : "default", display: "flex", alignItems: "center", justifyContent: "center" }}>
         <span style={{ width: 32, height: 32, borderRadius: 999, display: "flex", alignItems: "center", justifyContent: "center", background: ready ? color.brick : color.border, color: "#fff", transition: "background .15s", animation: busy ? "lookout-pulse 1.4s ease-in-out infinite" : undefined }}>
