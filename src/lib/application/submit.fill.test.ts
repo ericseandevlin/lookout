@@ -358,6 +358,11 @@ describe("runFill (#385)", () => {
     expect(["5 years", "2 3", "12 3456", "120 - 150k", "$120 K", "10 1000"].map(numberAnswer)).toEqual(["5", "2", "12", "120000", "120000", "10"]);
   });
 
+  it("a curly apostrophe groups thousands, and ',-' is no cents (#1773)", () => {
+    expect(["CHF 150’000", "1’250’000", "€ 90.000,-", "90.000,-- EUR", "150 000,- €", "€85.000,- - €95.000,-"].map(numberAnswer)).toEqual(["150000", "1250000", "90000", "90000", "150000", "85000"]);
+    expect(["it’s 5 years", "5’ 000"].map(numberAnswer)).toEqual(["5", "5"]);
+  });
+
   it("a date field gets the answer as yyyy-mm-dd, not \"12/01/2026\" (#1242)", async () => {
     const id = await seed("approved", [{ kind: "answer", prompt: "Earliest start date", content: "12/01/2026" }]);
     page = fakePage([{ kind: "control", label: "Earliest start date", type: "date" }]);
