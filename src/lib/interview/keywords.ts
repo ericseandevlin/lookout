@@ -40,6 +40,9 @@ export async function missingKeywords(userId: string, appId: string): Promise<st
   }
 }
 
+/** A story question for a topic, with no number to ask for (#1662). */
+export const storyQuestion = (topic: string) => `Tell me about your work on ${topic.trim()}: where it was, your part, and what changed.`;
+
 /** A plain story question for one keyword, when the model asks none. */
 export const keywordQuestion = (term: string) => `Tell me about a time you worked on ${term}: where it was, your part, and how big it was.`;
 

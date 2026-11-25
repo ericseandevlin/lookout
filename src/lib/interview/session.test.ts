@@ -339,6 +339,16 @@ describe("the walkthrough faults (#1531)", () => {
     expect(retry.user).toContain('they already told you: "Led a team of 3 designers on the booking product"');
   });
 
+  it("asks a refused topic as a story when the retry asks the same number again (#1662)", async () => {
+    const { user } = await seedUser(ALL_ANSWERS);
+    await db.insert(schema.materials).values({ userId: user.id, kind: "resume", extracted: { text: "Operations Manager\nP&L for a site budget of $24M" } });
+    const numberAsk = { backs: [], facts: [], next: { type: "new_topic" as const, topic: "multi-site P&L ownership", question: "How big a budget have you owned?", why: "Two finds ask for it.", closest: "P&L for a site budget of $24M" } };
+    replies = [numberAsk, numberAsk];
+    const v = await openInterview(user.id);
+    expect(v.note).toBeNull();
+    expect(v.current?.question).toBe("Tell me about your work on multi-site P&L ownership: where it was, your part, and what changed.");
+  });
+
   it("keeps a question whose closest line is not really in the resume", async () => {
     const { user } = await seedUser(ALL_ANSWERS);
     replies = [{ backs: [], facts: [], next: { type: "new_topic", topic: "team size", question: "How many people did you manage?", why: "It shows scope.", closest: "Led a team of 3 designers" } }];
