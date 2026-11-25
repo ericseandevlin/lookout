@@ -309,9 +309,10 @@
   function numberAnswer(t) {
     // Dots grouped in threes are thousands: "€90.000" is 90000, same as the worker (#1747).
     // A space or apostrophe between groups of three is thousands too: "150 000 €" and "CHF 150'000" (#1752).
+    // A curly apostrophe counts the same, and ",-" after the number is no cents: "CHF 150’000", "€ 90.000,-" (#1773).
     const s = String(t || "")
-      .replace(/(?<![\d.,])\d{1,3}(?:\.\d{3})+(?:,\d{1,2})?(?![\d.,]|\s?[kKmM]\b)/g, (n) => n.split(",")[0].replace(/\./g, ""))
-      .replace(/(?<![\d.,'])\d{1,3}(?:[ \u00a0\u202f']\d{3})+(?:,\d{1,2})?(?![\d.,'])/g, (n) => n.split(",")[0].replace(/[ \u00a0\u202f']/g, ""));
+      .replace(/(?<![\d.,])\d{1,3}(?:\.\d{3})+(?:,\d{1,2}|,-{1,2})?(?![\d.,]|\s?[kKmM]\b)/g, (n) => n.split(",")[0].replace(/\./g, ""))
+      .replace(/(?<![\d.,'\u2019])\d{1,3}(?:[ \u00a0\u202f'\u2019]\d{3})+(?:,\d{1,2}|,-{1,2})?(?![\d.,'\u2019])/g, (n) => n.split(",")[0].replace(/[ \u00a0\u202f'\u2019]/g, ""));
     const m = s.match(/(\d[\d,]*(?:\.\d+)?)((?:\s?(?:[kK]|[tT]housand|[mM]illion)|[mM]|\sM)\b)?(?:\s*(?:-|–|—|to|To|TO)\s*(?:[$€£¥₹]|[A-Z]{3}\s?)?\d[\d,]*(?:\.\d+)?((?:\s?(?:[kK]|[tT]housand|[mM]illion)|[mM]|\sM)\b))?/);
     if (!m) return "";
     const n = m[1].replace(/,/g, "");
