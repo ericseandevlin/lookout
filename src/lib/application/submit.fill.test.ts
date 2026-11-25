@@ -381,6 +381,19 @@ describe("runFill (#385)", () => {
     ).toEqual(["2026-12-01", "2026-12-01", "2026-12-01", "2026-12-01", "2027-03-05", "", ""]);
   });
 
+  it("a date with a month name between dashes, 'of' before the month, or dots is read (#1774)", () => {
+    expect(["1-Dec-2026", "01-Dec-2026", "1st of December 2026", "2026.12.01", "01.12.2026", "1.12.2026", "31.02.2026", "Version 1.2.3"].map(dateAnswer)).toEqual([
+      "2026-12-01",
+      "2026-12-01",
+      "2026-12-01",
+      "2026-12-01",
+      "2026-12-01",
+      "2026-12-01",
+      "",
+      "",
+    ]);
+  });
+
   it("a date answered year first with slashes or with a two-digit year is read; an impossible day is not (#1295)", () => {
     expect(["2026/12/01", "12/15/26", "12-15-26", "Available 3/5/27", "2026-02-30", "02/29/2027", "02/29/2028"].map(dateAnswer)).toEqual([
       "2026-12-01",
