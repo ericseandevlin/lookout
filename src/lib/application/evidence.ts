@@ -52,13 +52,17 @@ export function planFrom(d: z.infer<typeof KeywordPlanDraft>, posting: string): 
     .slice(0, KEYWORD_CAP);
 }
 
+// The rest of a page's JSON after the text it held: `","datePosted":"2026-11-22..."` (#1662).
+const JSON_TAIL = /\\?"\s*,\s*\\?"@?[A-Za-z][\w-]*\\?"\s*:[^\n]*/g;
+
 /**
  * Some boards hand back the posting as JSON-escaped HTML ("\\u003cli\\u003e", "\\n"), and older postings were stored
  * that way, so the quote showed raw escapes (#1481). Decode the escapes and turn tags into line breaks.
  */
 export function cleanPostingText(posting: string) {
-  if (!/\\u00[0-9a-f]{2}|\\n/i.test(posting)) return posting;
+  if (!/\\u00[0-9a-f]{2}|\\n/i.test(posting)) return posting.replace(JSON_TAIL, "");
   return posting
+    .replace(JSON_TAIL, "")
     .replace(/\\u([0-9a-f]{4})/gi, (_, h) => String.fromCharCode(parseInt(h, 16)))
     .replace(/\\[nr]/g, "\n")
     .replace(/\\t/g, " ")

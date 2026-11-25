@@ -114,6 +114,15 @@ describe("keyword evidence (#121)", () => {
   });
 });
 
+describe("postingSnippet and a page's JSON (#1662)", () => {
+  it("quotes the sentence, not the JSON fields after it", () => {
+    const tail = String.raw`\",\"datePosted\":\"2026-11-22T14:24:27.000Z\",\"dateModified\":\"2026-11-22T14:24:27.000Z\"`;
+    const posting = `Proficiency in Microsoft Office Suite\nExcellent verbal, written and listening interpersonal skills, ability to lead other and influence at various levels of the organization${tail}`;
+    expect(postingSnippet(posting, "interpersonal skills")).toBe("Excellent verbal, written and listening interpersonal skills, ability to lead other and influence at various levels of the organization");
+    expect(postingSnippet(`Lead the team","datePosted":"2026-11-22"`, "Lead the team")).toBe("Lead the team");
+  });
+});
+
 describe("postingSnippet window (#1314)", () => {
   const long = `Job expectations include familiarity with at least one area of engineering, acting as a go to reference across the organization, and applying knowledge to improve technical competencies through recruitment and development activities.</p><p><b>Position Summary:</b></p><p>This job is responsible for defining and leading the engineering approach and strategy for AI solutions across ${"the wider program and portfolio of solutions ".repeat(8)}for Global Markets Regulatory Reporting, to deliver significant business outcomes`;
   it("shows the term even when it sits far into a long passage", () => {
