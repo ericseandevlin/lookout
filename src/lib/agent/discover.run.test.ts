@@ -517,6 +517,14 @@ describe("addByUrl (#379)", () => {
     expect(await runRow()).toMatchObject({ status: "failed", error: "That page didn't look like a job posting" });
   });
 
+  it("records an error when the scorer says the page is not a job at all, even with a title (#1662)", async () => {
+    pages.set(URL_A, posting());
+    verdicts.set(URL_A, { company: "Wikipedia", title: "Warehouse - Wikipedia", is_open_job_posting: false, is_job_posting: false });
+    await expect(addByUrl(searchId, URL_A)).resolves.toEqual({ added: 0 });
+    expect(await runRow()).toMatchObject({ status: "failed", found: 0, error: "That page didn't look like a job posting" });
+    expect(await board()).toEqual([]);
+  });
+
   it("records an error, not 'already on your board', when the scorer finds no company or title (#668)", async () => {
     pages.set(URL_A, posting());
     for (const v of [{ company: "" }, { title: "", is_open_job_posting: false }]) {
