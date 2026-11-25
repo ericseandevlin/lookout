@@ -1,12 +1,13 @@
 "use client";
 
+import Link from "next/link";
 import { useState } from "react";
 import type { Template } from "@/lib/application/resumeLayout";
-import type { RecruiterAnalysis } from "@/lib/application/recruiter";
+import { recruiterChecks } from "@/lib/application/recruiter";
+import { InfoIcon } from "../chat";
 import { btn } from "../Settings";
 import { DocPreview } from "./DocPreview";
 import { InfoTip } from "./InfoTip";
-import { RecruiterPanel } from "./RecruiterPanel";
 import { TemplatePicker } from "./TemplatePicker";
 import { VersionNotes } from "./VersionNotes";
 import { card, muted, OptionChecks, type Act, type Item, type LetterInfo } from "./shared";
@@ -17,19 +18,25 @@ import { DownloadIcon, EyeIcon, PencilIcon, RedoIcon } from "../icons";
 
 const iconBtn: React.CSSProperties = { ...btn("outline"), width: 38, padding: 0, display: "inline-flex", alignItems: "center", justifyContent: "center" };
 
-export function ItemCard({ appId, item, locked, act, analysis, template, accent, header, letter, onTemplate, onAccent, needsKeywords = false }: { appId: string; item: Item; locked: boolean; act: Act; needsKeywords?: boolean; analysis?: RecruiterAnalysis; template: Template; accent: string | null; header: { name: string; contact: string; headline?: string } | null; letter?: LetterPick | null; onTemplate: (t: Template) => void; onAccent: (hex: string) => void }) {
+/** The cover letter's top fix from the quick checks, as a request Lookout can act on, ready to send (#1665). */
+export const letterFix = (kind: string, content: string) => (kind === "cover_letter" ? recruiterChecks(kind, content).find((f) => !f.needsFact)?.fix ?? "" : "");
+
+const ASK: Record<string, string> = { resume: "Ask Lookout to update your resume", cover_letter: "Ask Lookout to update your cover letter", outreach: "Ask Lookout to update this message" };
+
+export function ItemCard({ appId, item, locked, act, template, accent, header, letter, onTemplate, onAccent, needsKeywords = false, interviewHref = null }: { appId: string; item: Item; locked: boolean; act: Act; needsKeywords?: boolean; interviewHref?: string | null; template: Template; accent: string | null; header: { name: string; contact: string; headline?: string } | null; letter?: LetterPick | null; onTemplate: (t: Template) => void; onAccent: (hex: string) => void }) {
   const latest = item.versions[0];
   const [pick, setPick] = useState<string | null>(null);
   const shown = item.versions.find((v) => v.id === pick) ?? item.versions.find((v) => v.id === item.approvedVersionId) ?? latest;
   const [text, setText] = useState(shown?.content ?? "");
-  const [instr, setInstr] = useState("");
-  const [busy, setBusy] = useState<null | "save" | "revise" | "approve" | "analyze">(null);
+  const [instr, setInstr] = useState(() => letterFix(item.kind, shown?.content ?? ""));
+  const [busy, setBusy] = useState<null | "save" | "revise" | "approve">(null);
   // Reset the editor when the shown version changes (a pick, or a new version from the server).
   const key = `${shown?.id}:${shown?.content}`;
   const [seen, setSeen] = useState(key);
   if (seen !== key) {
     setSeen(key);
     setText(shown?.content ?? "");
+    setInstr(letterFix(item.kind, shown?.content ?? ""));
   }
 
   const outreach = item.kind === "outreach";
@@ -50,7 +57,6 @@ export function ItemCard({ appId, item, locked, act, analysis, template, accent,
     setBusy(kind);
     const ok = await act(item.id, payload, done);
     if (ok && kind !== "approve") setPick(null);
-    if (ok && kind === "revise") setInstr("");
     setBusy(null);
   };
 
@@ -122,20 +128,28 @@ export function ItemCard({ appId, item, locked, act, analysis, template, accent,
         </div>
       )}
 
-      {doc && shown && !editing && (
-        <RecruiterPanel
-          kind={item.kind}
-          text={text}
-          analysis={analysis?.versionId === shown.id && !dirty ? analysis : undefined}
-          locked={locked}
-          busy={busy}
-          onAnalyze={() => run("analyze", { action: "analyze", versionId: shown.id }, "Recruiter Analysis is ready.")}
-          onFix={(f) => run("revise", { action: "revise", instruction: f.fix, versionId: shown.id }, "Lookout made a new version with that fix.")}
-        />
-      )}
-
       {!locked && (
         <>
+          {item.kind !== "field" && (
+            <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+              <ReviseBox
+                id={`rv-${item.id}`}
+                label={`Ask Lookout to revise ${item.prompt}`}
+                placeholder={ASK[item.kind] ?? "Ask Lookout to update this answer"}
+                value={instr}
+                onChange={setInstr}
+                busy={busy === "revise"}
+                blocked={!!busy || dirty}
+                tip={dirty ? "Save your edits first" : "Send"}
+                onSend={() => run("revise", { action: "revise", instruction: instr, ...(shown ? { versionId: shown.id } : {}) }, "Lookout made a new version.")}
+              />
+              {item.kind === "cover_letter" && interviewHref && (
+                <Link href={interviewHref} data-tip="The more Lookout knows about you, the better it can tie one of your stories to this company." style={{ ...btn("text"), height: 38, display: "inline-flex", alignItems: "center" }}>
+                  Add a story
+                </Link>
+              )}
+            </div>
+          )}
           <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
             {outreach && (
               <button onClick={copy} disabled={!text.trim()} style={btn("outline")}>
@@ -190,32 +204,53 @@ export function ItemCard({ appId, item, locked, act, analysis, template, accent,
               </button>
             )}
           </div>
-          {item.kind !== "field" && (
-            <form
-              onSubmit={(e) => {
-                e.preventDefault();
-                if (instr.trim() && !dirty) run("revise", { action: "revise", instruction: instr, ...(shown ? { versionId: shown.id } : {}) }, "Lookout made a new version.");
-              }}
-              style={{ display: "flex", gap: 8, flexWrap: "wrap" }}
-            >
-              <label htmlFor={`rv-${item.id}`} className="sr-only" style={{ position: "absolute", width: 1, height: 1, overflow: "hidden", clip: "rect(0 0 0 0)" }}>
-                Ask Lookout to revise {item.prompt}
-              </label>
-              <input
-                id={`rv-${item.id}`}
-                value={instr}
-                onChange={(e) => setInstr(e.target.value)}
-                placeholder={item.kind === "resume" ? "Ask Lookout: lead with the platform work, cut to one page…" : outreach ? "Ask Lookout: shorter, warmer, change the request…" : "Ask Lookout: shorter, more specific, mention…"}
-                style={{ flex: "1 1 260px", height: 38, borderRadius: 10, border: `1.5px solid ${color.border}`, padding: "0 12px", fontSize: font.base }}
-              />
-              <button type="submit" disabled={!instr.trim() || !!busy || dirty} data-tip={dirty ? "Save your edits first" : undefined} style={btn("outline")}>
-                {busy === "revise" ? "Revising…" : "Revise"}
-              </button>
-            </form>
-          )}
         </>
       )}
     </div>
+  );
+}
+
+/**
+ * The revise box (#1665): a chat input with the interview's round send button inside it, in place of a Revise
+ * button. Enter sends.
+ */
+function ReviseBox({ id, label, placeholder, value, onChange, onSend, busy, blocked, tip }: { id: string; label: string; placeholder: string; value: string; onChange: (v: string) => void; onSend: () => void; busy: boolean; blocked: boolean; tip: string }) {
+  const ready = !blocked && !!value.trim();
+  return (
+    <form
+      onSubmit={(e) => {
+        e.preventDefault();
+        if (ready) onSend();
+      }}
+      style={{ flex: "1 1 260px", minWidth: 0, display: "flex", alignItems: "flex-end", gap: 4, border: `1.5px solid ${color.border}`, borderRadius: 14, background: "#fff", padding: "1px 3px 3px 12px" }}
+    >
+      <label htmlFor={id} className="sr-only">
+        {label}
+      </label>
+      {/* Grows to show a prefilled fix in full, so the person reads what they send. Enter sends; Shift+Enter is a new line. */}
+      <textarea
+        id={id}
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        onKeyDown={(e) => {
+          if (e.key !== "Enter" || e.shiftKey || e.nativeEvent.isComposing) return;
+          e.preventDefault();
+          if (ready) onSend();
+        }}
+        rows={Math.min(4, Math.max(1, Math.ceil(value.length / 70)))}
+        placeholder={placeholder}
+        disabled={busy}
+        style={{ flex: 1, minWidth: 0, padding: "9px 0", border: 0, outline: "none", resize: "none", fontFamily: "inherit", fontSize: font.md, lineHeight: 1.4, background: "transparent", color: color.ink }}
+      />
+      <button type="submit" disabled={!ready} aria-label="Send" aria-busy={busy || undefined} data-tip={busy ? "Working…" : tip} style={{ width: 38, height: 38, flex: "none", padding: 0, border: 0, borderRadius: 999, background: "transparent", cursor: ready ? "pointer" : "default", display: "flex", alignItems: "center", justifyContent: "center" }}>
+        <span style={{ width: 32, height: 32, borderRadius: 999, display: "flex", alignItems: "center", justifyContent: "center", background: ready ? color.brick : color.border, color: "#fff", transition: "background .15s", animation: busy ? "lookout-pulse 1.4s ease-in-out infinite" : undefined }}>
+          <svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M12 19V5" />
+            <path d="M6 11l6-6 6 6" />
+          </svg>
+        </span>
+      </button>
+    </form>
   );
 }
 
@@ -229,7 +264,9 @@ function StrategyPicker({ letter, busy, onPick }: { letter: LetterPick; busy: bo
   const current = letter.strategy;
   return (
     <div role="group" aria-label="Cover letter strategy" style={{ display: "flex", gap: 6, flexWrap: "wrap", alignItems: "center" }}>
-      <span style={{ fontSize: font.base, fontWeight: 600, marginRight: 4 }}>Strategy</span>
+      <span style={{ fontSize: font.base, fontWeight: 600, marginRight: 4 }}>
+        3 ways to write it <InfoIcon tip="Each fits a different kind of role. All three are written, so switching is instant." label="Why three" />
+      </span>
       {LETTER_STRATEGIES.map((s) => {
         const on = s === current;
         const waiting = !on && !letter.ready.includes(s);
@@ -240,7 +277,7 @@ function StrategyPicker({ letter, busy, onPick }: { letter: LetterPick; busy: bo
             disabled={busy || waiting}
             aria-pressed={on}
             aria-busy={waiting || undefined}
-            data-tip={s === letter.suggested ? `${STRATEGY[s].blurb} Suggested: ${letter.why}` : STRATEGY[s].blurb}
+            data-tip={s === letter.suggested ? `${STRATEGY[s].blurb} Suggested: ${letter.why}` : `${STRATEGY[s].blurb} Best ${STRATEGY[s].when}`}
             style={{ height: 32, padding: "0 12px", borderRadius: 999, fontSize: font.base, fontWeight: 600, cursor: on ? "default" : waiting ? "progress" : "pointer", border: `1.5px solid ${on ? color.ink : color.border}`, background: on ? color.ink : "#fff", color: on ? "#fff" : color.ink, animation: waiting ? "lookout-pulse 1.4s ease-in-out infinite" : undefined }}
           >
             {STRATEGY[s].label}

@@ -9,20 +9,24 @@ import type { StoryTheme } from "./stories";
 export const LETTER_STRATEGIES = ["proof", "match", "why"] as const;
 export type LetterStrategy = (typeof LETTER_STRATEGIES)[number];
 
-export const STRATEGY: Record<LetterStrategy, { label: string; blurb: string; rule: string }> = {
+/** `when` finishes "Best …": when this strategy is the better choice, shown on the buttons Lookout didn't pick (#1665). */
+export const STRATEGY: Record<LetterStrategy, { label: string; blurb: string; when: string; rule: string }> = {
   proof: {
     label: "Lead with proof",
     blurb: "Opens with your strongest result for this role, then one more example.",
+    when: "for senior roles, which are hired on results.",
     rule: "Cover letter strategy: lead with proof. The first sentence names the role and the single strongest result that shows the person fits it. One short paragraph with one more example that matches the posting's main ask. One closing line.",
   },
   match: {
     label: "Match the asks",
     blurb: "Takes the two or three things the posting asks for most and answers each with your work.",
+    when: "when the posting lists clear asks.",
     rule: "Cover letter strategy: match the asks. One opening sentence naming the role. Then the two or three things the posting asks for most, each answered by one sentence of the person's matching work. One closing line.",
   },
   why: {
     label: "Why this team",
     blurb: "Opens with why this company, from one of your stories, then the proof.",
+    when: "when one of your stories fits what the company does.",
     rule: "Cover letter strategy: why this team. Open with one line on why this company: from a personal story that truly fits (see the opening rule), else from what the posting says the team does, never an invented connection. Then the role and the strongest proof, one example, and one closing line.",
   },
 };

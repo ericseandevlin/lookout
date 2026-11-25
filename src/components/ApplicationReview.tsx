@@ -133,6 +133,7 @@ export function ApplicationReview({ id }: { id: string }) {
           <h1 style={{ margin: 0, fontSize: font["4xl"], fontWeight: 700, letterSpacing: "-0.02em" }}>{d.company}</h1>
           <div style={{ marginTop: 2, fontSize: font.xl, fontWeight: 600, color: color.ink }}>{d.role}</div>
         </div>
+        <MatchScore d={d} locked={locked} />
       </header>
 
       <div aria-live="polite" style={{ ...muted, minHeight: 20 }}>{said}</div>
@@ -191,7 +192,7 @@ export function ApplicationReview({ id }: { id: string }) {
                   </h2>
                   {s.title === "Resume" && d.keywordRows && <KeywordSection d={d} rows={d.keywordRows} reload={load} locked={locked} />}
                   {list.map((i) => (
-                    <ItemCard key={i.id} appId={d.id} item={i} locked={locked} act={act} analysis={d.report.recruiter?.[i.id]} template={d.template} accent={d.accent} header={i.kind === "cover_letter" ? letterHeaderFrom(resumeText(d), "") : null} letter={i.kind === "cover_letter" && d.letter ? { ...(d.letter.items[i.id] ?? { strategy: d.letter.strategy, ready: [], writing: false }), suggested: d.letter.suggested, why: d.letter.why } : null} onTemplate={pickTemplate} onAccent={pickAccent} needsKeywords={!!d.keywordRows && !d.keywordsApproved} />
+                    <ItemCard key={i.id} appId={d.id} item={i} locked={locked} act={act} template={d.template} accent={d.accent} header={i.kind === "cover_letter" ? letterHeaderFrom(resumeText(d), "") : null} letter={i.kind === "cover_letter" && d.letter ? { ...(d.letter.items[i.id] ?? { strategy: d.letter.strategy, ready: [], writing: false }), suggested: d.letter.suggested, why: d.letter.why } : null} onTemplate={pickTemplate} onAccent={pickAccent} needsKeywords={!!d.keywordRows && !d.keywordsApproved} interviewHref={d.interviewKeywords ? `/interview?app=${d.id}` : null} />
                   ))}
                 </section>
               );
@@ -211,6 +212,35 @@ export function ApplicationReview({ id }: { id: string }) {
             {d.posting ? <PostingFold text={d.posting} /> : <div style={muted}>No description saved for this role.</div>}
           </aside>
         </div>
+      )}
+    </div>
+  );
+}
+
+/** How much of the posting's keywords the person's experience backs, as a percent; null without a keyword list. */
+export function resumeMatch(rows: Detail["keywordRows"]) {
+  const live = (rows ?? []).filter((r) => !r.removed);
+  return live.length ? Math.round((live.filter((r) => r.support).length / live.length) * 100) : null;
+}
+
+/**
+ * The page's one score (#1665): how well the person's experience matches this posting. Telling Lookout more in the
+ * interview backs more keywords, so the score is also the way into the interview.
+ */
+function MatchScore({ d, locked }: { d: Detail; locked: boolean }) {
+  const pct = resumeMatch(d.keywordRows);
+  if (pct === null) return null;
+  const raise = !locked && d.interviewKeywords && pct < 100;
+  return (
+    <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 2 }}>
+      <div style={{ fontSize: font["4xl"], fontWeight: 700, lineHeight: 1 }}>{pct}%</div>
+      <div style={{ fontSize: font.base, color: color.t2 }}>
+        Resume match <InfoIcon tip="How much of this posting your experience backs. The more Lookout knows about your work, the higher it goes." label="About the resume match" />
+      </div>
+      {raise && (
+        <Link href={`/interview?app=${d.id}`} style={{ fontSize: font.base, fontWeight: 600, color: color.brick }}>
+          Raise it
+        </Link>
       )}
     </div>
   );

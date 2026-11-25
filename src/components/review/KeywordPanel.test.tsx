@@ -37,10 +37,23 @@ describe("the keyword panel (#1485)", () => {
     expect(html).not.toContain("Green keywords are backed");
     expect(t).not.toContain("Nothing is added for a skip");
     // One interview: the Missing column links to the interview page for this application.
-    expect(t).toContain("A short interview adds missing keywords.");
+    expect(html).toContain('data-tip="A short interview adds missing keywords."');
     expect(html).toContain('href="/interview?app=');
     expect(t).toContain("Interview me");
     expect(t).toContain("Use these keywords");
+  });
+
+  it("puts Missing first, keeps the card as the final list, and the add box behind an icon (#1665)", () => {
+    const html = render(true);
+    const t = text(html);
+    expect(t.indexOf("Missing (2)")).toBeLessThan(t.indexOf("In your resume (1)"));
+    // The go sits inside the card, after the resume's keywords.
+    expect(t.indexOf("In your resume (1)")).toBeLessThan(t.indexOf("Use these keywords"));
+    expect(t).not.toContain("Final list");
+    expect(html).toContain('aria-label="Add your own keyword"');
+    expect(html).not.toContain('id="kw-add"');
+    // Interview me is secondary; the one red button is the go.
+    expect(html).toMatch(/<a[^>]*data-tip="A short interview adds missing keywords\."[^>]*>/);
   });
 
   it("puts the posting quote in the keyword's tooltip, with the line that backs it", () => {
