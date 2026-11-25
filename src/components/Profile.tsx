@@ -244,8 +244,9 @@ export function Profile() {
   const arr = (k: string) => (Array.isArray(a[k]) ? (a[k] as string[]) : []);
   const set = (k: string) => (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => editAnswers({ [k]: e.target.value }, [k]);
 
+  // A refused save (a pay floor above the jump number) says why and never says "Saved" (#1662).
   const onSave = async () => {
-    await saveProfile();
+    if (!(await saveProfile())) return;
     setSavedAt(new Date().toLocaleTimeString([], { hour: "numeric", minute: "2-digit" }));
   };
   const closeNote = () => {
@@ -268,7 +269,7 @@ export function Profile() {
   const onNext = async () => {
     setBusy(true);
     try {
-      await saveProfile();
+      if (!(await saveProfile())) return;
       await next.run();
     } catch (e) {
       fail(e);

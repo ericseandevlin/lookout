@@ -46,6 +46,23 @@ beforeEach(async () => {
 });
 
 describe("PUT /api/profile (#539)", () => {
+  it("keeps the draft but refuses Save when the pay can't be used, and says why (#1662)", async () => {
+    for (const [floor, target, msg] of [
+      ["abc", "", "Enter the floor as an amount, like 120,000."],
+      ["200000", "95000", "The floor is above the pay that would make you jump."],
+    ]) {
+      const res = await put({ answers: { floor, target }, save: true });
+      expect(res.status).toBe(400);
+      expect(await res.json()).toMatchObject({ error: msg });
+      const s = await search(activeId);
+      expect(s.answers).toMatchObject({ floor, target });
+      expect(s.savedAt).toBeNull();
+    }
+    const ok = await put({ answers: { floor: "105000", target: "135000" }, save: true });
+    expect(ok.status).toBe(200);
+    expect((await search(activeId)).savedAt).not.toBeNull();
+  });
+
   it("needs a session", async () => {
     current = null;
     expect((await put({ answers: { q1: "x" } })).status).toBe(401);

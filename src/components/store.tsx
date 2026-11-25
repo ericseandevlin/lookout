@@ -111,8 +111,10 @@ function useStoreValue(initial: AppState) {
       try {
         const r = await api<{ savedAt: string | null }>("/api/profile", { method: "PUT", json: { answers, clearAuto, save } });
         if (save) setState((s) => ({ ...s, profile: { ...s.profile, savedAt: r.savedAt } }));
+        return true;
       } catch (e) {
         fail(e);
+        return false;
       }
     },
     [fail],
@@ -274,7 +276,7 @@ export function StoreProvider({ initial, readOnly = false, children }: { initial
       putSettings: refuse,
       setName: refuse,
       editAnswers: () => void refuse(),
-      saveProfile: refuse,
+      saveProfile: async () => (await refuse(), false),
       addFindByUrl: refuse,
       searchNow: refuse,
       switchSearch: refuse,
