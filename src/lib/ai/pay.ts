@@ -221,11 +221,18 @@ const namesExtra = (before: string, tail: string) => {
   return EXTRA.test(words) || EXTRA_AFTER.test(tail);
 };
 
+// A job site's own guess is not the employer's pay: "Estimated salary: $95k - $140k", or "$95k - $140k" with
+// "(site) estimate, not employer-provided" on the next line (#1662).
+const ESTIMATE_LABEL = /\b(?:estimated\s+(?:base\s+)?(?:salary|pay|compensation|range)|(?:salary|pay)\s+estimate)\b/i;
+const ESTIMATE_NOTE = /\bnot\s+(?:employer|company)[- ]provided\b|\bestimate\b[^\n]{0,40}\bnot\b[^\n]{0,10}\b(?:from|by)\s+the\s+employer\b/i;
+const estimated = (text: string, at: number, end: number) =>
+  ESTIMATE_LABEL.test(label(text, at)) || ESTIMATE_NOTE.test(text.slice(end, end + 160).split("\n").map((l) => l.trim()).filter(Boolean).slice(0, 1).join(" "));
+
 function fromText(text: string): Pay | null {
   // In page order, so the first range on the page still wins.
   for (const m of [...RANGES, ...EU_RANGES, ...FOREIGN_RANGES].flatMap((re) => [...text.matchAll(re)]).sort((x, y) => x.index - y.index)) {
     const [, pre1, first, firstUnit, code, pre2, second, rest = ""] = m;
-    if (namesExtra(label(text, m.index), rest)) continue;
+    if (namesExtra(label(text, m.index), rest) || estimated(text, m.index, m.index + m[0].length)) continue;
     // The unit is read only up to the next dollar amount: "$150,000 - $200,000 ($72-$96/hr)" stays yearly (#746).
     const tail = rest.split("$")[0];
     let a = amountOf(first);
@@ -274,7 +281,7 @@ function single(text: string): Pay | null {
   for (const m of text.matchAll(SINGLE)) {
     const [, pre, sign, first, rest = ""] = m;
     const before = text.slice(Math.max(0, m.index - 16), m.index);
-    if (IN_RANGE_BEFORE.test(before) || IN_RANGE_AFTER.test(rest)) continue;
+    if (IN_RANGE_BEFORE.test(before) || IN_RANGE_AFTER.test(rest) || estimated(text, m.index, m.index + m[0].length)) continue;
     // The words of its own clause, as for a range: since the last number, sentence end or comma.
     const words = label(text, m.index).split(/\d|[.!?;](?:\s|$)|,\s/).pop() ?? "";
     // The unit and what the money is for are read only up to the next amount or sentence end.
