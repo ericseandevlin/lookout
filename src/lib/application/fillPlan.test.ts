@@ -221,6 +221,9 @@ describe("CONFIRMATION (#692, #748, #762)", () => {
       "Thankyou for applying",
       "Thanks! Your resume has been submitted.",
       "Your CV was submitted",
+      // #1802: a "could not" elsewhere on the page, or in an earlier sentence, does not undo the confirmation
+      "We could not be happier to hear from you. Your application has been received.",
+      "Thank you, your application has been received. If we cannot verify your details, we will email you.",
       // #1777
       "Success! You've applied.",
       "You have applied to Acme.",
@@ -297,6 +300,12 @@ describe("CONFIRMATION (#692, #748, #762)", () => {
       "If you have applied, check your email.",
       "Once you have applied, we will email you.",
       "You have not applied yet.",
+      // #1802
+      "We could not confirm your application has been received.",
+      "We couldn't verify that your application was submitted. Please try again.",
+      "We were unable to confirm that your application was received",
+      "The site failed to confirm your submission was received.",
+      "We can't tell if your application was sent.",
     ])
       expect(CONFIRMATION.test(t), t).toBe(false);
   });
