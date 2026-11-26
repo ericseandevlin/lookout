@@ -121,7 +121,7 @@ export function ApplicationReview({ id }: { id: string }) {
 
   const required = d.items.filter((i) => i.required);
   const approved = required.filter((i) => i.approvedVersionId).length;
-  const open = d.items.filter((i) => i.question);
+  const open = d.items.filter(askedInBox);
   const locked = d.status === "submitted";
 
   return (
@@ -241,6 +241,12 @@ function PostingFold({ text }: { text: string }) {
   );
 }
 
+/**
+ * A question the box at the top asks: a form answer Lookout needs typed in. A resume or letter with a question
+ * stays in its section and shows the question on its card: typing into the box would replace the whole draft (#1662).
+ */
+export const askedInBox = (i: { kind: string; question: string | null }) => !!i.question && i.kind !== "resume" && i.kind !== "cover_letter";
+
 /** One section's items. An item waiting on an answer sits in the box at the top instead, so it isn't asked twice (#1531). */
 export const sectionItems = <T extends { kind: string; question: string | null }>(items: T[], kinds: string[], locked: boolean) =>
-  items.filter((i) => kinds.includes(i.kind) && (locked || !i.question));
+  items.filter((i) => kinds.includes(i.kind) && (locked || !askedInBox(i)));
