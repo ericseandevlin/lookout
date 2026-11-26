@@ -120,10 +120,10 @@ export function Settings() {
       <Row title="Name" help="Shown in the sidebar and used when Lookout drafts applications.">
         <input value={name} onChange={(e) => setNameDraft(e.target.value)} placeholder="Your full name" aria-label="Name" maxLength={120} className="f-brick" style={{ width: "100%", maxWidth: 360, height: 42, border: `1.5px solid ${color.border}`, background: "#fff", borderRadius: 10, padding: "0 13px", fontSize: font.base, outline: "none", color: color.ink }} />
       </Row>
-      <Row title="Email" help="You sign in with this address. Discovery summaries are sent here too.">
+      <Row title="Email" help="You sign in with this address. Search summaries are sent here too.">
         <EmailChange current={state.user.email} />
       </Row>
-      <Row title="Email summary" help="A short list of new matches after each run.">
+      <Row title="Email summary" help="A short list of new matches after each search.">
         <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
           <Switch on={st.digest} onClick={() => put({ digest: !st.digest })} tip="Email summary" />
           <span style={{ fontSize: font.base, color: color.t2 }}>{st.digest ? `On · sent to ${state.user.email}` : "Off"}</span>
@@ -141,7 +141,7 @@ export function Settings() {
         <ReferralLink />
       </Row>
 
-      <Section id="discovery">Discovery</Section>
+      <Section id="discovery">Search</Section>
       <Row title="How often to search" help="Lookout checks job boards and company sites on this schedule.">
         <Seg opts={[["Weekly", "Weekly"], ["Twice a week", "Twice a week"], ["Daily", "Daily"]]} cur={st.freq} pick={(v) => put({ freq: v })} />
       </Row>
@@ -232,7 +232,7 @@ function DeleteModal({ close }: { close: () => void }) {
         <div style={{ background: color.ink, color: "#fff", padding: "22px 24px 20px", display: "flex", alignItems: "flex-start", gap: 12 }}>
           <div style={{ flex: 1, minWidth: 0 }}>
             <div style={{ fontSize: font.base, fontWeight: 700, letterSpacing: ".14em", textTransform: "uppercase", color: color.orange }}>Delete everything</div>
-            <div id="del-title" style={{ fontSize: font["2xl"], fontWeight: 700, letterSpacing: "-0.01em", marginTop: 6 }}>Start Lookout from scratch?</div>
+            <div id="del-title" style={{ fontSize: font["2xl"], fontWeight: 700, letterSpacing: "-0.01em", marginTop: 6 }}>Delete your account?</div>
           </div>
           <button onClick={close} aria-label="Close" style={{ border: 0, background: "rgba(255,255,255,.1)", color: "#fff", width: 30, height: 30, borderRadius: "50%", cursor: "pointer", fontSize: font.lg, lineHeight: 1, flex: "none" }}>×</button>
         </div>

@@ -96,6 +96,12 @@ describe("answeredCount", () => {
     expect(answeredCount(job, { modes: [], area: " " })).toBe(0);
   });
 
+  it("doesn't count an answer with no letter or number, like \"?????\" (#1662)", () => {
+    expect(answeredCount(job, { q1: "?????", q5: "..." })).toBe(0);
+    expect(answeredCount(job, { area: "--" })).toBe(0);
+    expect(answeredCount(job, { q1: "VP", q4: "Cut close 40%", q5: "Ne pas déménager" })).toBe(3);
+  });
+
   it("ignores blank text answers", () => {
     expect(answeredCount(job, { q1: "  ", q4: "", q5: "No travel" })).toBe(1);
   });

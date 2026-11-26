@@ -2,7 +2,7 @@
 
 import { Fragment, useMemo, useState } from "react";
 import { boardEvents, defaultDir, EMPTY_FILTER, eventTally, type EventFilter, type EventSort, type EventView, type EventWhere } from "@/lib/eventsBoard";
-import type { NetworkingEvent } from "@/lib/networking";
+import { shortCost, type NetworkingEvent } from "@/lib/networking";
 import { ArchiveIcon, PinIcon, SearchIcon } from "../icons";
 import { IconBtn } from "../finds/Controls";
 import { chip, seg } from "../finds/shared";
@@ -172,12 +172,12 @@ export function EventsBoard({ events, searching, canSearch, onSearch, onPatch, o
                     <div role="cell" style={{ ...muted, paddingRight: 12 }}>{e.online ? "Online" : e.place || "–"}</div>
                     <div role="cell" style={{ fontSize: font.base, fontVariantNumeric: "tabular-nums" }}>{distance(e)}</div>
                     <div role="cell" style={{ fontSize: font.base, fontWeight: 700 }}>{e.fit ?? "–"}</div>
-                    <div role="cell" style={muted}>{e.cost || "–"}</div>
+                    <div role="cell" style={muted}>{shortCost(e.cost) || "–"}</div>
                   </div>
                   {open && (
                     <div role="row" style={{ padding: "12px 18px 16px 88px", borderBottom: `1px solid ${color.surface}`, background: color.surface, display: "flex", flexDirection: "column", gap: 8 }}>
                       <div role="cell" style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                        <div style={{ fontSize: font.base }}>{[when(e), e.time].filter(Boolean).join(", ")} · {e.online ? "Online" : e.place} {e.cost && `· ${e.cost}`}</div>
+                        <div style={{ fontSize: font.base }}>{[when(e), e.time].filter(Boolean).join(", ")} · {e.online ? "Online" : e.place} {e.cost && `· ${shortCost(e.cost)}`}</div>
                         {e.why && <div style={{ fontSize: font.base }}>{e.why}</div>}
                         <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
                           <a href={e.url} target="_blank" rel="noopener noreferrer" style={{ ...btn("solid"), height: 34, display: "inline-flex", alignItems: "center", textDecoration: "none" }}>See the event</a>
