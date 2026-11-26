@@ -383,7 +383,7 @@ export function Profile() {
           <button onClick={onNext} disabled={!saved || busy} title={saved ? undefined : "Save your profile first"} style={{ height: 46, padding: "0 22px", borderRadius: 12, border: "1.5px solid #1D1A0F", background: "#fff", color: color.ink, fontSize: font.base, fontWeight: 600, cursor: saved && !busy ? "pointer" : "default", opacity: saved && !busy ? 1 : 0.45 }}>
             {busy ? "One moment…" : `${next.label} →`}
           </button>
-          {savedAt && <div aria-live="polite" style={{ flexBasis: "100%", fontSize: font.base, color: color.t2 }}>Saved at {savedAt}. The next discovery run will use it.</div>}
+          {savedAt && <div aria-live="polite" style={{ flexBasis: "100%", fontSize: font.base, color: color.t2 }}>Saved at {savedAt}. The next search will use it.</div>}
         </div>
 
         {/* Current pay only means something next to posted pay ranges (#109). */}

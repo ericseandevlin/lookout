@@ -49,7 +49,7 @@ export const EventsDraft = z.object({
         time: z.string().describe("As stated, e.g. '6:30 pm'; empty if not stated"),
         place: z.string().describe("Venue and city, or 'Online'"),
         online: z.boolean(),
-        cost: z.string().describe("As stated: 'Free', '$25'; empty if not stated"),
+        cost: z.string().describe("The price only: 'Free', '$25', '$545'; no discounts or conditions; empty if not stated"),
         why: z.string().describe("One sentence: why it fits this person's field and interests"),
         url: z.string().describe("The page the event is on, copied from the <page url>"),
         fit: z.number().describe("1 to 5: how well it fits their field and interests (5 = a must-go)"),
@@ -128,6 +128,17 @@ export function eventQueries(interests: string, where: string, reach: EventReach
 }
 
 /**
+ * The price for the Cost column: "$545 (save $150 off the regular price of $695 if you register...)" is "$545".
+ * A cut at a fixed length left "...if you registe" (#1662), so asides go and a long one ends at a word.
+ */
+export function shortCost(raw: string) {
+  const s = raw.replace(/\s*[([][\s\S]*$/, "").replace(/\s*;[\s\S]*$/, "").replace(/\s+/g, " ").trim();
+  if (s.length <= 40) return s;
+  const cut = s.slice(0, 40);
+  return `${cut.slice(0, cut.lastIndexOf(" ") > 0 ? cut.lastIndexOf(" ") : 40).replace(/[\s,;:.-]+$/, "")}…`;
+}
+
+/**
  * Keep what the model found only if it's well formed: a real date on or after today, a link to a
  * page that was actually read, online-ness that matches the person's reach, and not a duplicate.
  */
@@ -144,7 +155,7 @@ export function cleanEvents(drafts: z.infer<typeof EventsDraft>["events"], opts:
     const fingerprint = eventFingerprint(title, d.startsOn);
     if (seen.has(fingerprint)) continue;
     seen.add(fingerprint);
-    out.push({ title: title.slice(0, 200), host: d.host.trim().slice(0, 120), startsOn: d.startsOn, endsOn, time: d.time.trim().slice(0, 40), place: (d.online ? d.place || "Online" : d.place).trim().slice(0, 160), online: d.online, cost: d.cost.trim().slice(0, 60), why: d.why.trim().slice(0, 300), url: d.url, fit: fitOf(d.fit), miles: d.online ? null : milesOf(d.miles), fingerprint });
+    out.push({ title: title.slice(0, 200), host: d.host.trim().slice(0, 120), startsOn: d.startsOn, endsOn, time: d.time.trim().slice(0, 40), place: (d.online ? d.place || "Online" : d.place).trim().slice(0, 160), online: d.online, cost: shortCost(d.cost), why: d.why.trim().slice(0, 300), url: d.url, fit: fitOf(d.fit), miles: d.online ? null : milesOf(d.miles), fingerprint });
   }
   return out;
 }

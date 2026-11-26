@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { cleanEvents, eventFingerprint, eventQueries, eventsDue, isPast, joinInterests, splitInterests, suggestInterests } from "./networking";
+import { cleanEvents, eventFingerprint, shortCost, eventQueries, eventsDue, isPast, joinInterests, splitInterests, suggestInterests } from "./networking";
 
 const now = new Date("2026-11-06T12:00:00Z");
 
@@ -16,6 +16,23 @@ describe("eventQueries", () => {
     expect(eventQueries("", "NYC", "both", now)).toEqual([]);
   });
   it("skips nearby queries when there's no place", () => expect(eventQueries("AI", "Remote", "nearby", now)).toEqual([]));
+});
+
+describe("shortCost (#1662)", () => {
+  it("keeps the price and drops an aside", () => {
+    expect(shortCost("$545 (save $150 off the regular price of $695 if you register by Nov 30)")).toBe("$545");
+    expect(shortCost("$25; members free")).toBe("$25");
+  });
+  it("leaves a short cost as it is", () => {
+    expect(shortCost(" Free ")).toBe("Free");
+    expect(shortCost("$1,200 members, $1,500 others")).toBe("$1,200 members, $1,500 others");
+    expect(shortCost("")).toBe("");
+  });
+  it("ends a long cost at a word, never mid-word", () => {
+    const c = shortCost("Pay what you can with a suggested donation of twenty dollars at the door");
+    expect(c).toBe("Pay what you can with a suggested…");
+    expect(c.length).toBeLessThanOrEqual(41);
+  });
 });
 
 describe("cleanEvents", () => {

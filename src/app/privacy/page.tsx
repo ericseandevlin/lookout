@@ -20,7 +20,7 @@ export default function Privacy() {
         <li>Your answers to the five profile questions.</li>
         <li>Your resume and LinkedIn PDF, if you upload them: the files and the text pulled from them. Uploaded files are stored encrypted.</li>
         <li>Links you add, and the text Lookout reads from those pages.</li>
-        <li>Your search profile: the summary Lookout builds from all of the above. You can see it under Profile, What Lookout sees.</li>
+        <li>Your search profile: the summary Lookout builds from all of the above. You can see it under Search profile.</li>
         <li>Your searches: what each one looks for (jobs, or RFPs for a business), and its board: the finds, plus your stages, notes, pins and &ldquo;Not a fit&rdquo; reasons.</li>
         <li>If you turn on events: your event interests, and the public events Lookout found for you. Past events are deleted.</li>
         <li>Your application drafts and approved versions, including public people Lookout suggests you contact and your outreach message drafts. Lookout never sends those messages.</li>

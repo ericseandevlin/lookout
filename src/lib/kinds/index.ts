@@ -257,12 +257,15 @@ export const rfp: KindConfig = {
 
 export const kinds: Record<string, KindConfig> = { job, rfp };
 
+/** An answer needs a letter or a number: "?????" or "..." isn't one (#1662). */
+const saysSomething = (v: unknown) => /[\p{L}\p{N}]/u.test(str(v));
+
 /** Count answered questions the same way the prototype does: a question counts once any of its fields is set. */
 export function answeredCount(cfg: KindConfig, a: Record<string, string | string[]>) {
   return cfg.questions.filter((q) => {
-    if (q.kind === "text") return !!str(a[q.key]);
+    if (q.kind === "text") return saysSomething(a[q.key]);
     if (q.kind === "comp") return [a[q.floorKey], a[q.targetKey]].some(readablePay);
-    return arr(a[q.modesKey]).length > 0 || !!str(a[q.areaKey]);
+    return arr(a[q.modesKey]).length > 0 || saysSomething(a[q.areaKey]);
   }).length;
 }
 
