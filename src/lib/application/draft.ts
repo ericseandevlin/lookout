@@ -186,8 +186,31 @@ export function keywordReport(master: string, tailored: string, d: z.infer<typeo
     });
 }
 
-const NUMBER_WORDS = ["two", "three", "four", "five", "six", "seven", "eight", "nine", "ten", "eleven", "twelve", "thirteen", "fourteen", "fifteen", "sixteen", "seventeen", "eighteen", "nineteen", "twenty"];
-const NUMBER_WORD = new RegExp(`\\b(${NUMBER_WORDS.join("|")})\\b`, "g");
+const UNITS = ["one", "two", "three", "four", "five", "six", "seven", "eight", "nine"];
+const TEENS = ["ten", "eleven", "twelve", "thirteen", "fourteen", "fifteen", "sixteen", "seventeen", "eighteen", "nineteen"];
+const TENS = ["twenty", "thirty", "forty", "fifty", "sixty", "seventy", "eighty", "ninety"];
+const BELOW_100 = `(?:(?:${TENS.join("|")})(?:[-\\s](?:${UNITS.join("|")}))?|${TEENS.join("|")}|${UNITS.join("|")})`;
+// "thirty", "twenty-five", "one hundred and fifty", "a dozen" (#1798).
+const NUMBER_WORD = new RegExp(`\\b(?:(a|${UNITS.join("|")})\\s+hundred(?:\\s+(?:and\\s+)?(${BELOW_100}))?|(${BELOW_100})|(?:a\\s+)?(dozen))\\b`, "gi");
+
+/** "twenty-five" is 25: a tens word, a unit, a teen, or a unit alone. */
+const below100 = (w: string) => {
+  const [a, b] = w.toLowerCase().split(/[-\s]+/);
+  const tens = TENS.indexOf(a);
+  if (tens >= 0) return (tens + 2) * 10 + (b ? UNITS.indexOf(b) + 1 : 0);
+  return TEENS.includes(a) ? TEENS.indexOf(a) + 10 : UNITS.indexOf(a) + 1;
+};
+
+/**
+ * The master's numbers in words, in digits: "thirty engineers" is "30 engineers", so the draft's digits match (#1760,
+ * #1798). A lone "one" stays a word, since "one of the leads" is no count.
+ */
+const spelledToDigits = (s: string) =>
+  s.replace(NUMBER_WORD, (all, hundreds?: string, rest?: string, small?: string, dozen?: string) => {
+    if (dozen) return "12";
+    if (hundreds) return String((hundreds.toLowerCase() === "a" ? 1 : UNITS.indexOf(hundreds.toLowerCase()) + 1) * 100 + (rest ? below100(rest) : 0));
+    return small!.toLowerCase() === "one" ? all : String(below100(small!));
+  });
 
 /**
  * Numbers in the draft that never appear in the master resume: the most common way a draft invents facts. A unit counts
@@ -200,7 +223,8 @@ export function newNumbers(master: string, draft: string): string[] {
   const norm = (s: string) =>
     s
       .replace(/\b(?:0?[1-9]|1[0-2])\/(?:19|20)\d\d\b/g, " ")
-      .replace(/(\d)\s*(thousand|million|billion|percent)\b/gi, (_, d: string, u: string) => d + UNIT[u.toLowerCase()])
+      // British "per cent" is "percent" (#1798).
+      .replace(/(\d)\s*(thousand|million|billion|percent|per cent)\b/gi, (_, d: string, u: string) => d + UNIT[u.toLowerCase().replace(" ", "")])
       .replace(/\b(?:over|more than)\s+(\$?\d[\d,.]*(?:%|k|m|b)?)(?![\w+])/gi, "$1+");
   const nums = (raw: string) => {
     const s = norm(raw);
@@ -222,10 +246,8 @@ export function newNumbers(master: string, draft: string): string[] {
   };
   // A year is written bare, as in the text: "2,000" has a thousands comma, so it is a count, not the year 2000 (#1218).
   const years = new Set((norm(draft).match(/(?<![a-z\d])\$?\d[\d,.]*/gi) ?? []).map((n) => n.replace(/\.$/, "")).filter((n) => /^(19|20)\d\d$/.test(n)));
-  const have = new Set([...nums(master)].map(short));
-  // The master's "five designers" is the draft's "5 designers": the same fact in digits (#1760). "one" stays out, since
-  // "one of the leads" is no count.
-  for (const m of master.toLowerCase().matchAll(NUMBER_WORD)) have.add(String(NUMBER_WORDS.indexOf(m[1]) + 2));
+  // The master's "five designers" is the draft's "5 designers": the same fact in digits (#1760, #1798).
+  const have = new Set([...nums(spelledToDigits(master))].map(short));
   // The master's "over 20" is "20+": a plain "20" in the draft says no more than that (#1148).
   return [...nums(draft)].filter((n) => n && !years.has(n) && !have.has(short(n)) && !have.has(short(n) + "+"));
 }

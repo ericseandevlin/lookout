@@ -144,6 +144,23 @@ describe("newNumbers", () => {
     expect(newNumbers("Led 4 teams.", "Led 4 teams and $5 million in spend.")).toEqual(["$5m"]);
   });
 
+  it("reads tens, hundreds, a dozen and 'per cent' in the master as the draft's digits (#1798)", () => {
+    expect(newNumbers("Led thirty engineers", "Led 30 engineers")).toEqual([]);
+    expect(newNumbers("Opened Forty stores", "Opened 40 stores")).toEqual([]);
+    expect(newNumbers("Managed twenty-five designers and sixty one vendors", "Managed 25 designers and 61 vendors")).toEqual([]);
+    expect(newNumbers("Served one hundred clients", "Served 100 clients")).toEqual([]);
+    expect(newNumbers("Served two hundred and fifty clients", "Served 250 clients")).toEqual([]);
+    expect(newNumbers("Ran a dozen launches", "Ran 12 launches")).toEqual([]);
+    expect(newNumbers("Cut costs by ten percent", "Cut costs by 10%")).toEqual([]);
+    expect(newNumbers("Grew revenue by 35 per cent", "Grew revenue by 35%")).toEqual([]);
+    expect(newNumbers("Grew revenue by 35%", "Grew revenue by 35 per cent")).toEqual([]);
+    expect(newNumbers("Reached ten thousand users", "Reached 10,000 users")).toEqual([]);
+    // Still flagged: a different number, and "hundreds" or "dozens" are no count.
+    expect(newNumbers("Led thirty engineers", "Led 35 engineers")).toEqual(["35"]);
+    expect(newNumbers("Served hundreds of clients across dozens of teams", "Served 100 clients across 12 teams")).toEqual(["100", "12"]);
+    expect(newNumbers("One of the leads on the team", "1 of the leads")).toEqual(["1"]);
+  });
+
   it("reads a + after a unit the way it reads one after a plain number (#1611)", () => {
     expect(newNumbers("Served 50K+ users.", "Served over 50,000 users.")).toEqual([]);
     expect(newNumbers("Served over 50,000 users.", "Served 50K+ users.")).toEqual([]);
