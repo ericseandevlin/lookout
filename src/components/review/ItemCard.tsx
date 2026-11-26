@@ -84,6 +84,11 @@ export function ItemCard({ appId, item, locked, act, interview = false, template
         </label>
         {isApproved && <span style={{ fontSize: font.base, fontWeight: 600, color: color.greenText }}>{item.kind === "field" ? "✓ Will be filled" : `✓ Approved v${shown.version}`}</span>}
       </div>
+      {doc && item.question && !locked && (
+        <div role="note" style={{ padding: "8px 12px", borderRadius: 10, background: "#FFF9F3", border: `1px solid ${color.orange}`, fontSize: font.base }}>
+          {item.question}
+        </div>
+      )}
       {blocked && !locked && (
         <div style={{ ...muted, fontSize: font.sm }}>
           This resume is written from the keywords you approve.{" "}
