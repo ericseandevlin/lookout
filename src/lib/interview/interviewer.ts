@@ -130,6 +130,20 @@ const LEAK = /\s*(?:\b(?:Bad|Good):\s*["\u201c]|\s-\s(?:topic|question|why|facts
 const SENTENCE = /(?:[^.!?]|\.(?=\d))+[.!?]*/g;
 
 /** "Top find 1 lists X" means nothing to the person: the list number becomes the find's title and company (#1662). */
+/**
+ * "4 of your top finds ask for controls" with 2 finds on the board (#1662): a count above the real number becomes
+ * "Your top finds". With one find or none, a reason built on a count says nothing true, so it goes.
+ */
+export function trueFindCount(why: string, count: number): string {
+  let wrong = false;
+  const out = why.replace(/\b(\d+) of (?:your|the) top(?: (\d+))? finds\b/gi, (m, n: string, of: string | undefined, at: number) => {
+    if (Number(n) <= count && (!of || Number(of) <= count)) return m;
+    wrong = true;
+    return /(^|[.!?]\s*)$/.test(why.slice(0, at)) ? "Your top finds" : "your top finds";
+  });
+  return wrong && count < 2 ? "" : out;
+}
+
 export function nameFinds(why: string, finds: { title: string; company: string }[]): string {
   return why.replace(/\b(?:top\s+)?find\s*(?:#|no\.?\s*)?(\d+)\b/gi, (m, n: string) => {
     const f = finds[Number(n) - 1];

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { closedTopics, INTERVIEW_SYSTEM, interviewPrompt, nameFinds, noDashes, plainQuestion, shortWhy, STORY_RULES } from "./interviewer";
+import { closedTopics, INTERVIEW_SYSTEM, interviewPrompt, nameFinds, noDashes, plainQuestion, shortWhy, STORY_RULES, trueFindCount } from "./interviewer";
 import { asksToStop, isBareNo, isBareYes, isQuestionBack } from "./rules";
 
 describe("shortWhy (#1449)", () => {
@@ -155,5 +155,21 @@ describe("nameFinds (#1662)", () => {
   it("leaves other text and unknown numbers alone", () => {
     expect(nameFinds("3 of your top finds ask for it.", finds)).toBe("3 of your top finds ask for it.");
     expect(nameFinds("Top find 7 asks for it.", finds)).toBe("Top find 7 asks for it.");
+  });
+});
+
+describe("trueFindCount (#1662)", () => {
+  it("rewrites a count above the finds on the board", () => {
+    expect(trueFindCount("Regulatory compliance is a priority keyword, and 4 of your top finds ask for controls and audit work.", 2)).toBe(
+      "Regulatory compliance is a priority keyword, and your top finds ask for controls and audit work.",
+    );
+    expect(trueFindCount("4 of your top 5 finds ask for B2B SaaS.", 3)).toBe("Your top finds ask for B2B SaaS.");
+  });
+  it("keeps a true count", () => {
+    expect(trueFindCount("1 of your top 2 finds lists that.", 2)).toBe("1 of your top 2 finds lists that.");
+    expect(trueFindCount("3 of your top 5 finds ask for it.", 5)).toBe("3 of your top 5 finds ask for it.");
+  });
+  it("drops a count-based reason with one find or none", () => {
+    expect(trueFindCount("2 of your top finds ask for it.", 1)).toBe("");
   });
 });

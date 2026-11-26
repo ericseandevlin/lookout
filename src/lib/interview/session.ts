@@ -9,7 +9,7 @@ import { masterForDrafts } from "@/lib/application/masterCheck";
 import { kindOf } from "@/lib/kinds";
 import { getActiveSearch } from "@/lib/searches";
 import type { FactKind, TurnOutcome } from "@/lib/db/schema";
-import { closedTopics, FACTS_IN_PROMPT, INTERVIEW_SYSTEM, interviewPrompt, asksWhatIsKnown, InterviewTurnOut, isYesNoQuestion, nameFinds, plainQuestion, shortWhy, STORY_ASK, STORY_FOLLOW_UP, type InterviewInput } from "./interviewer";
+import { closedTopics, FACTS_IN_PROMPT, INTERVIEW_SYSTEM, interviewPrompt, asksWhatIsKnown, InterviewTurnOut, isYesNoQuestion, nameFinds, plainQuestion, trueFindCount, shortWhy, STORY_ASK, STORY_FOLLOW_UP, type InterviewInput } from "./interviewer";
 import { backKeywords, declineKeywords, keywordQuestion, keywordsBacked, missingKeywords, termsOf } from "./keywords";
 import { asksToStop, factKey, isBareNo, isBareYes, isQuestionBack, lockReason, topicKey } from "./rules";
 import { isAnswered, readSetupAnswer, setupFact, setupQuestionText, SETUP_WHY } from "./setup";
@@ -218,7 +218,7 @@ async function interviewStep(userId: string, answered: { turn: Turn; root: Turn;
     // After a question back, the line that answers it stays in front of the question.
     question: (askedBack ? n.question.trim() : plainQuestion(n.question)).slice(0, 600),
     // With no finds yet, a reason that cites finds is made up; no reason beats a wrong one (#1531).
-    why: (!ctx.finds.length && /\bfinds?\b/i.test(n.why) ? "" : nameFinds(shortWhy(n.why), ctx.finds)).slice(0, 300),
+    why: (!ctx.finds.length && /\bfinds?\b/i.test(n.why) ? "" : nameFinds(trueFindCount(shortWhy(n.why), ctx.finds.length), ctx.finds)).slice(0, 300),
     parentId: follow ? answered.root.id : null,
     ...(!answered && { costUsd: addUsd(usage) }),
   });
