@@ -9,7 +9,7 @@ import { masterForDrafts } from "@/lib/application/masterCheck";
 import { kindOf } from "@/lib/kinds";
 import { getActiveSearch } from "@/lib/searches";
 import type { FactKind, TurnOutcome } from "@/lib/db/schema";
-import { closedTopics, FACTS_IN_PROMPT, INTERVIEW_SYSTEM, interviewPrompt, asksWhatIsKnown, InterviewTurnOut, isYesNoQuestion, nameFinds, plainQuestion, shortWhy, STORY_ASK, STORY_FOLLOW_UP, type InterviewInput } from "./interviewer";
+import { closedTopics, FACTS_IN_PROMPT, INTERVIEW_SYSTEM, interviewPrompt, asksWhatIsKnown, InterviewTurnOut, isYesNoQuestion, nameFinds, plainQuestion, trueFindCount, shortWhy, STORY_ASK, STORY_FOLLOW_UP, type InterviewInput } from "./interviewer";
 import { backKeywords, declineKeywords, keywordQuestion, keywordsBacked, missingKeywords, termsOf } from "./keywords";
 import { asksToStop, factKey, isBareNo, isBareYes, isQuestionBack, lockReason, topicKey } from "./rules";
 import { isAnswered, readSetupAnswer, setupFact, setupQuestionText, SETUP_WHY } from "./setup";
@@ -152,8 +152,10 @@ async function interviewStep(userId: string, answered: { turn: Turn; root: Turn;
   const covered = new Set(ctx.past.filter((p) => p.outcome === "answered").map((p) => topicKey(p.topic)));
   // Keywords already asked about, skipped or answered, aren't asked first again.
   const priority = focus.filter((t) => ![...closed, ...covered].some((k) => k.includes(topicKey(t))));
+  // The keyword this answer was asked about is covered by now, so it isn't in priority; the model still has to see it to back it (#1662).
+  const answering = answered ? focus.filter((t) => termsOf(answered.root.topic, [t]).length) : [];
   const ask = (refused?: string, refusedWhy?: string) =>
-    completeJSON({ name: "interview-turn", schema: InterviewTurnOut, system: INTERVIEW_SYSTEM, user: interviewPrompt({ ...ctx, thread: answered?.thread, followUpsLeft, refused, refusedWhy, priority }), maxTokens: 2000, usage });
+    completeJSON({ name: "interview-turn", schema: InterviewTurnOut, system: INTERVIEW_SYSTEM, user: interviewPrompt({ ...ctx, thread: answered?.thread, followUpsLeft, refused, refusedWhy, priority, answering }), maxTokens: 2000, usage });
   // What the person already told Lookout: a question must not ask for it again (#1531).
   const known = [ctx.resume, ...ctx.facts.map((f) => f.text)].join("\n");
   // With no answer to follow, a "follow_up" is a first question: read it as a new topic.
@@ -216,7 +218,7 @@ async function interviewStep(userId: string, answered: { turn: Turn; root: Turn;
     // After a question back, the line that answers it stays in front of the question.
     question: (askedBack ? n.question.trim() : plainQuestion(n.question)).slice(0, 600),
     // With no finds yet, a reason that cites finds is made up; no reason beats a wrong one (#1531).
-    why: (!ctx.finds.length && /\bfinds?\b/i.test(n.why) ? "" : nameFinds(shortWhy(n.why), ctx.finds)).slice(0, 300),
+    why: (!ctx.finds.length && /\bfinds?\b/i.test(n.why) ? "" : nameFinds(trueFindCount(shortWhy(n.why), ctx.finds.length), ctx.finds)).slice(0, 300),
     parentId: follow ? answered.root.id : null,
     ...(!answered && { costUsd: addUsd(usage) }),
   });

@@ -32,7 +32,7 @@ const { FACTS_IN_PROMPT, TOPICS_IN_PROMPT } = await import("./interviewer");
 const { LOCK } = await import("./rules");
 
 const ALL_ANSWERS: schema.ProfileAnswers = { q1: "Director of Events", floor: "140000", target: "180000", modes: ["Hybrid"], area: "New York", q4: "Grew revenue 38%", q5: "No relocation" };
-const ask = (topic: string, question = `Tell me about ${topic}.`, type: InterviewTurnOut["next"]["type"] = "new_topic"): InterviewTurnOut => ({ backs: [], facts: [], next: { type, topic, question, why: "Asked by 3 of your top 5 finds.", closest: "" } });
+const ask = (topic: string, question = `Tell me about ${topic}.`, type: InterviewTurnOut["next"]["type"] = "new_topic"): InterviewTurnOut => ({ backs: [], facts: [], next: { type, topic, question, why: "Asked by 1 of your top finds.", closest: "" } });
 
 let seq = 0;
 async function seedUser(answers: schema.ProfileAnswers) {
@@ -313,7 +313,7 @@ describe("a plain question, and a question back (#1449)", () => {
     replies = [ask("B2B SaaS", "4 of your top 5 finds are B2B SaaS companies. Have you worked on B2B SaaS products?")];
     let v = await openInterview(user.id);
     expect(v.current?.question).toBe("Have you worked on B2B SaaS products?");
-    expect(v.current?.why).toBe("Asked by 3 of your top 5 finds.");
+    expect(v.current?.why).toBe("Asked by 1 of your top finds.");
 
     // A question back gets a one-line answer and the same question; that line stays in front of it.
     replies = [ask("B2B SaaS", "Most of your top finds sell software to businesses. Have you worked on B2B SaaS products?", "follow_up")];
@@ -463,6 +463,19 @@ describe("the walkthrough faults (#1662)", () => {
     const [p] = await db.select({ notes: schema.profiles.skillNotes }).from(schema.profiles).where(eq(schema.profiles.userId, user.id));
     expect((p.notes ?? []).map((n) => n.skill).sort()).toEqual(["automated distribution systems", "pick-to-light"]);
     expect(p.notes?.[0].story).toBe("Ran a sorter and a pick-to-light module. Raised sorter uptime from 91% to 98.5%");
+  });
+
+  it("shows the model the keyword the answer was asked about, so it can back it (#1662)", async () => {
+    const APP = "00000000-0000-4000-8000-000000000001";
+    const { user } = await seedUser(ALL_ANSWERS);
+    focus = ["financial reporting", "budgeting"];
+    replies = [ask("financial reporting", "Tell me about financial reporting you owned.")];
+    const v = await openInterview(user.id, APP);
+    replies = [{ backs: [], facts: [], next: { type: "new_topic", topic: "budgeting", question: "Tell me about a budget you built.", why: "", closest: "" } }];
+    await act(user.id, v.current!.id, "answer", "Each month I produce the consolidated statements and a variance pack for the board.", APP);
+    const prompt = completeJSON.mock.calls.at(-1)![0].user as string;
+    expect(prompt).toContain("<answer_keywords the newest answer was asked about; it can back these>\n- financial reporting\n</answer_keywords>");
+    expect(prompt).toContain("<priority_keywords from a job they are applying to; ask about these first>\n- budgeting\n</priority_keywords>");
   });
 
   it("stops when asked to: the facts are saved, no next question, and the note says it stopped", async () => {

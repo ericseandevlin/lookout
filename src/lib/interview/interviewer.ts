@@ -67,7 +67,7 @@ export const FactOut = z.object({
 
 export const InterviewTurnOut = z.object({
   facts: z.array(FactOut),
-  backs: z.array(z.string()).describe("Priority keywords the newest answer shows the person did themselves, copied exactly. Empty if none, or if there are no priority keywords"),
+  backs: z.array(z.string()).describe("Priority keywords or answer keywords the newest answer shows the person did themselves, copied exactly. Empty if none, or if there are none listed"),
   next: z.object({
     type: z.enum(["follow_up", "new_topic", "done"]),
     topic: z.string(),
@@ -130,6 +130,20 @@ const LEAK = /\s*(?:\b(?:Bad|Good):\s*["\u201c]|\s-\s(?:topic|question|why|facts
 const SENTENCE = /(?:[^.!?]|\.(?=\d))+[.!?]*/g;
 
 /** "Top find 1 lists X" means nothing to the person: the list number becomes the find's title and company (#1662). */
+/**
+ * "4 of your top finds ask for controls" with 2 finds on the board (#1662): a count above the real number becomes
+ * "Your top finds". With one find or none, a reason built on a count says nothing true, so it goes.
+ */
+export function trueFindCount(why: string, count: number): string {
+  let wrong = false;
+  const out = why.replace(/\b(\d+) of (?:your|the) top(?: (\d+))? finds\b/gi, (m, n: string, of: string | undefined, at: number) => {
+    if (Number(n) <= count && (!of || Number(of) <= count)) return m;
+    wrong = true;
+    return /(^|[.!?]\s*)$/.test(why.slice(0, at)) ? "Your top finds" : "your top finds";
+  });
+  return wrong && count < 2 ? "" : out;
+}
+
 export function nameFinds(why: string, finds: { title: string; company: string }[]): string {
   return why.replace(/\b(?:top\s+)?find\s*(?:#|no\.?\s*)?(\d+)\b/gi, (m, n: string) => {
     const f = finds[Number(n) - 1];
@@ -195,6 +209,11 @@ export type InterviewInput = {
   refusedWhy?: string;
   /** Keywords a job they are applying to asks for that their resume doesn't show yet: asked about first (#1485). */
   priority?: string[];
+  /**
+   * Keywords the answered question asked about. The topic counts as covered once answered, so they drop out of
+   * priority; listed here so the model can still name them in backs (#1662).
+   */
+  answering?: string[];
 };
 
 /** Topics never to ask again: skipped or doesn't apply. */
@@ -216,5 +235,6 @@ export function interviewPrompt(inp: InterviewInput) {
         .map((t, i, all) => `Q: ${t.question}\nA${i === all.length - 1 ? " (newest: read this one)" : " (facts already saved)"}: ${t.answer ?? "(no answer)"}`)
         .join("\n")}\n</this_topic>\nFollow-ups left on this topic: ${inp.followUpsLeft}`
     : "\n\nNo answer to read this turn. Return no facts and pick the next question.";
-  return `<profile from the setup questions>\n${inp.profile || "(not given)"}\n</profile>\n\n<resume>\n${inp.resume.slice(0, 12000) || "(no resume yet)"}\n</resume>\n\n<known_facts>\n${facts.map((f) => `- ${f.text.slice(0, FACT_CHARS)}${f.shareable ? "" : " (private: understand it, never quote it)"}`).join("\n") || "(none yet)"}\n</known_facts>\n\n<top_finds the ${inp.finds.length} highest-match finds the person hasn't ruled out>\n${finds}\n</top_finds>\n\nTopics already covered: ${covered.join("; ") || "(none)"}\nNever ask again: ${closed.join("; ") || "(none)"}${inp.priority?.length ? `\n\n<priority_keywords from a job they are applying to; ask about these first>\n${inp.priority.map((t) => `- ${t}`).join("\n")}\n</priority_keywords>` : ""}${inp.refused ? `\nYou picked "${inp.refused}", which is not allowed${inp.refusedWhy ? `: ${inp.refusedWhy}` : ""}. Pick another question or return "done".` : ""}${thread}`;
+  const answering = inp.thread?.length && inp.answering?.length ? `\n\n<answer_keywords the newest answer was asked about; it can back these>\n${inp.answering.map((t) => `- ${t}`).join("\n")}\n</answer_keywords>` : "";
+  return `<profile from the setup questions>\n${inp.profile || "(not given)"}\n</profile>\n\n<resume>\n${inp.resume.slice(0, 12000) || "(no resume yet)"}\n</resume>\n\n<known_facts>\n${facts.map((f) => `- ${f.text.slice(0, FACT_CHARS)}${f.shareable ? "" : " (private: understand it, never quote it)"}`).join("\n") || "(none yet)"}\n</known_facts>\n\n<top_finds the ${inp.finds.length} highest-match finds the person hasn't ruled out>\n${finds}\n</top_finds>\n\nTopics already covered: ${covered.join("; ") || "(none)"}\nNever ask again: ${closed.join("; ") || "(none)"}${inp.priority?.length ? `\n\n<priority_keywords from a job they are applying to; ask about these first>\n${inp.priority.map((t) => `- ${t}`).join("\n")}\n</priority_keywords>` : ""}${answering}${inp.refused ? `\nYou picked "${inp.refused}", which is not allowed${inp.refusedWhy ? `: ${inp.refusedWhy}` : ""}. Pick another question or return "done".` : ""}${thread}`;
 }
