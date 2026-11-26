@@ -32,6 +32,7 @@ describe("extension THANKS matches the worker's CONFIRMATION (#1134)", () => {
       ["Thank you for your interest in joining our team. Please complete the form below.", false],
       ["Once your application has been received, we will review it.", false],
       ["Your application has not been successfully submitted.", false],
+      ["We could not confirm your application has been received.", false],
     ] as const)
       expect(re.test(t), `${file}: ${t}`).toBe(sent);
   });
