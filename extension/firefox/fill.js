@@ -584,14 +584,17 @@
     // With a "Country" question on the form too, only the picker beside the phone, and only if the question went elsewhere (#1498).
     const el = country.length ? pickers.find(isPhoneCountry) : pickers[0];
     if (!el || country.some((s) => controlFor(s.prompt) === el)) return null;
+    // The country the phone number dials from (#1794): "United Kingdom +44", never "United States Minor Outlying Islands".
+    const want = packet.phoneCountry || "United States";
+    const isWant = (text) => new RegExp(`^\\s*${want.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}(?!\\s*[\\p{L}])`, "iu").test(text);
     if (el.tagName === "SELECT") {
-      const opt = [...el.options].find((o) => /^united states(?!\s+minor)/i.test(o.textContent.trim()));
-      if (!opt) return { prompt: "Phone country", ok: false, how: "United States not in the list" };
+      const opt = [...el.options].find((o) => isWant(o.textContent));
+      if (!opt) return { prompt: "Phone country", ok: false, how: `${want} not in the list` };
       el.value = opt.value;
       el.dispatchEvent(new Event("change", { bubbles: true }));
       return { prompt: "Phone country", ok: true, how: "selected" };
     }
-    const r = await pickFromCombobox(el, packet.phoneCountry || "United States", (text) => /^\s*united states(?!\s+minor)/i.test(text));
+    const r = await pickFromCombobox(el, want, isWant);
     return { prompt: "Phone country", ...r };
   }
 

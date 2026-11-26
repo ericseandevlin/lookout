@@ -14,6 +14,7 @@ import { loadEeo } from "./eeoStore";
 import { autoSubmitOn, CAPTCHA_STOP } from "./submitMode";
 import { patchReport } from "./reportStore";
 import { statusAfterFill } from "./flowRules";
+import { countryOption, phoneCountryOf } from "./phoneCountry";
 
 /**
  * Auto-apply step 5, browser half (#42): fill the real form with the approved versions in headless
@@ -106,7 +107,7 @@ export async function runFill(appId: string, mode: "test" | "submit"): Promise<F
     }
     const phone = steps.find((s) => /^phone\b/i.test(s.prompt));
     if (phone) {
-      const r = await phoneCountry(page, steps.filter((s) => /^country\b/i.test(s.prompt)));
+      const r = await phoneCountry(page, steps.filter((s) => /^country\b/i.test(s.prompt)), phoneCountryOf(steps));
       if (r) report.log.push({ prompt: "Phone country", ok: r.ok, how: r.how });
     }
     const dir = shotDir(appId);
@@ -182,10 +183,10 @@ async function exactControl(page: Page, prompt: string) {
 
 /**
  * Greenhouse's phone input carries its own required "Country" picker that isn't one of the API questions (#167).
- * Pick United States. Returns null when the page has no such picker. With a "Country" question on the form too, only
+ * Pick the country the phone number dials from, United States without a code (#1794). Returns null when the page has no such picker. With a "Country" question on the form too, only
  * the picker beside the phone, and only if the question went to another control (#1505).
  */
-async function phoneCountry(page: Page, country: FillStep[]): Promise<{ ok: boolean; how: string } | null> {
+async function phoneCountry(page: Page, country: FillStep[], want: string): Promise<{ ok: boolean; how: string } | null> {
   const boxes = page.getByRole("combobox", { name: /^country\*?$/i });
   let box = boxes.first();
   if (country.length) {
@@ -203,11 +204,11 @@ async function phoneCountry(page: Page, country: FillStep[]): Promise<{ ok: bool
   if (!(await box.count())) return null;
   try {
     await box.click();
-    await box.fill("United States").catch(() => {});
-    const opt = page.getByRole("option", { name: /^United States(?!\s+Minor)/ }).first();
-    if (!(await opt.isVisible().catch(() => false))) return { ok: false, how: "United States not in the list" };
+    await box.fill(want).catch(() => {});
+    const opt = page.getByRole("option", { name: countryOption(want) }).first();
+    if (!(await opt.isVisible().catch(() => false))) return { ok: false, how: `${want} not in the list` };
     await opt.click();
-    return { ok: true, how: "picked United States" };
+    return { ok: true, how: `picked ${want}` };
   } catch (e) {
     return { ok: false, how: e instanceof Error ? e.message.split("\n")[0].slice(0, 120) : "error" };
   }
