@@ -394,6 +394,22 @@ describe("runFill (#385)", () => {
     ]);
   });
 
+  it("a month and year with no day is the first of that month (#1801)", () => {
+    expect(["January 2027", "Available from Jan. 2027", "Sept 2026", "December, 2026", "01/2027", "1/2027", "2027-01", "13/2027", "2026-2027", "market 2026", "May 2027 or later"].map(dateAnswer)).toEqual([
+      "2027-01-01",
+      "2027-01-01",
+      "2026-09-01",
+      "2026-12-01",
+      "2027-01-01",
+      "2027-01-01",
+      "2027-01-01",
+      "",
+      "",
+      "",
+      "2027-05-01",
+    ]);
+  });
+
   it("a date answered year first with slashes or with a two-digit year is read; an impossible day is not (#1295)", () => {
     expect(["2026/12/01", "12/15/26", "12-15-26", "Available 3/5/27", "2026-02-30", "02/29/2027", "02/29/2028"].map(dateAnswer)).toEqual([
       "2026-12-01",

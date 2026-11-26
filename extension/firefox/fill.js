@@ -344,6 +344,13 @@
     // "1-Dec-2026" and "1st of December 2026" too (#1774).
     m = s.match(/\b(\d{1,2})(?:st|nd|rd|th)?(?:\s+of\s+|\s+|-)(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*\.?(?:,?\s+|-)(\d{4})\b/i);
     if (m) return iso(+m[3], mon(m[2]), +m[1]);
+    // A month and year with no day, "January 2027", "01/2027" or "2027-01", is the first of that month (#1801).
+    m = s.match(/\b(jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|june?|july?|aug(?:ust)?|sept?(?:ember)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)\.?,?\s+(\d{4})\b/i);
+    if (m) return iso(+m[2], mon(m[1]), 1);
+    m = s.match(/\b(\d{1,2})\/(\d{4})\b/);
+    if (m) return iso(+m[2], +m[1], 1);
+    m = s.match(/\b(\d{4})-(\d{1,2})\b(?![-/.]?\d)/);
+    if (m) return iso(+m[1], +m[2], 1);
     return "";
   }
 
