@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { askPer, asksBase, asksThousands, isSalaryQuestion, rangeBasis, suggestSalary } from "./salary";
+import { askCurrency, askPer, asksBase, asksThousands, isSalaryQuestion, rangeBasis, suggestSalary } from "./salary";
 
 describe("suggestSalary", () => {
   it("leaves a non-USD range blank and asks, showing it in its own currency (#914)", () => {
@@ -843,5 +843,55 @@ describe("salary asks: remuneration and CTC (#1753)", () => {
     "Remuneration history",
   ])("does not read %s as an ask for the person's number", (q) => {
     expect(isSalaryQuestion(q)).toBe(false);
+  });
+});
+
+describe("askCurrency (#1796)", () => {
+  it.each([
+    ["What are your salary expectations in GBP?", "GBP"],
+    ["Expected annual salary (€)", "EUR"],
+    ["Desired salary (£'000)", "GBP"],
+    ["Expected base salary in euros", "EUR"],
+    ["Salary expectation (CHF)", "CHF"],
+    ["Desired salary (C$)", "CAD"],
+    ["Expected salary in AU$", "AUD"],
+    ["Expected CTC in INR", "INR"],
+    ["Salary expectations (SEK)", "SEK"],
+    ["Expected salary (USD)", "USD"],
+    ["Desired salary ($000)", "USD"],
+    ["Expected salary, in USD or EUR", "USD"],
+    ["What are your salary expectations?", null],
+    ["Expected salary for this European role", null],
+  ])("%s asks in %s", (q, code) => {
+    expect(askCurrency(q)).toBe(code);
+  });
+});
+
+describe("suggestSalary: a question in another currency (#1796)", () => {
+  const me = { floor: "150k", target: "170k" };
+  it("leaves the dollar target out of a GBP question, and asks", () => {
+    const r = suggestSalary({ ...me, min: null, max: null, currency: null, asksIn: "GBP" });
+    expect(r?.amount).toBeNull();
+    expect(r?.question).toContain("What do you want to ask for, in GBP?");
+  });
+
+  it("leaves it out with a dollar range posted too, and in thousands", () => {
+    expect(suggestSalary({ ...me, min: 150_000, max: 190_000, currency: "USD", asksIn: "EUR" })?.amount).toBeNull();
+    expect(suggestSalary({ ...me, min: null, max: null, currency: null, asksIn: "GBP", thousands: true })?.amount).toBeNull();
+  });
+
+  it("a range posted in the same other currency keeps its own note, with the range", () => {
+    const r = suggestSalary({ ...me, min: 80_000, max: 95_000, currency: "GBP", asksIn: "GBP" });
+    expect(r?.amount).toBeNull();
+    expect(r?.note).toContain("not in US dollars");
+  });
+
+  it("a question in dollars, or naming none, is answered as before", () => {
+    expect(suggestSalary({ ...me, min: null, max: null, currency: null, asksIn: "USD" })?.amount).toBe("$170,000");
+    expect(suggestSalary({ ...me, min: null, max: null, currency: null, asksIn: null })?.amount).toBe("$170,000");
+  });
+
+  it("with no floor, target or range there is still nothing to suggest", () => {
+    expect(suggestSalary({ min: null, max: null, currency: null, asksIn: "GBP" })).toBeNull();
   });
 });
