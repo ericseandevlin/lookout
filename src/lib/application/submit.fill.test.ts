@@ -721,6 +721,20 @@ describe("runFill controls (#567)", () => {
     expect(r.log[0]).toMatchObject({ ok: false, how: "option did not show: Paris" });
   });
 
+  it("picks the country the phone number dials from: United Kingdom for +44 (#1794)", async () => {
+    const id = await seed("approved", [{ kind: "field", prompt: "Phone", content: "+44 20 7946 0958" }]);
+    page = fakePage([
+      { kind: "control", label: "Phone", type: "tel" },
+      { kind: "control", label: "Country", role: "combobox" },
+      { kind: "option", label: "United States", role: "option" },
+      { kind: "option", label: "United Kingdom", role: "option" },
+    ]);
+    const r = await runFill(id, "test");
+    expect(r.log.at(-1)).toEqual({ prompt: "Phone country", ok: true, how: "picked United Kingdom" });
+    expect(page.did).toContain("click United Kingdom");
+    expect(page.did).not.toContain("click United States");
+  });
+
   it("logs the phone country as not filled when United States isn't listed, without stopping", async () => {
     const id = await seed("approved", [{ kind: "field", prompt: "Phone", content: "555-0100" }]);
     page = fakePage([

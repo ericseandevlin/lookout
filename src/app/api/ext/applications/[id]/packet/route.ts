@@ -3,6 +3,7 @@ import path from "node:path";
 import { HttpError, json } from "@/lib/api";
 import { ownApplication } from "@/lib/application/review";
 import { preparePacket } from "@/lib/application/submit";
+import { phoneCountryOf } from "@/lib/application/phoneCountry";
 import { extensionRoute } from "@/lib/extension";
 
 type Ctx = { params: Promise<{ id: string }> };
@@ -22,7 +23,8 @@ export const GET = extensionRoute<Ctx>(async (_req, { user, params }) => {
     id: a.id,
     company: opp?.company ?? "",
     title: opp?.title ?? "",
-    phoneCountry: "United States",
+    // The dial code the phone answer carries, for the picker beside the phone input (#1794).
+    phoneCountry: phoneCountryOf(steps),
     steps: await Promise.all(
       steps.map(async ({ file, ...s }) => ({
         ...s,

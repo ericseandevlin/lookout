@@ -744,6 +744,25 @@ describe("extension fill: custom dropdowns", () => {
     expect((p.doc.querySelector("#cc") as HTMLInputElement).dataset.picked).toBe("United States");
   });
 
+  it("sets the phone's picker to the country the packet names (#1794)", async () => {
+    const p = page(`<label for="ph">Phone</label><input id="ph"><label for="cc">Country</label><input id="cc" role="combobox">`);
+    combobox(p.w, "cc", ["United States", "United Kingdom +44"]);
+    const log = await p.fill({ steps: [text("Phone", "+44 20 7946 0958")], phoneCountry: "United Kingdom" });
+    expect(log[1]).toEqual({ prompt: "Phone country", ok: true, how: "picked option" });
+    expect((p.doc.querySelector("#cc") as HTMLInputElement).dataset.picked).toBe("United Kingdom +44");
+  });
+
+  it("selects the packet's country in a native <select>, and says so when it isn't there (#1794)", async () => {
+    const opts = `<option value="us">United States</option><option value="de">Germany</option>`;
+    const p = page(`<label for="ph">Phone</label><input id="ph"><label for="cc">Country</label><select id="cc">${opts}</select>`);
+    const log = await p.fill({ steps: [text("Phone", "+49 30 123456")], phoneCountry: "Germany" });
+    expect(log[1]).toEqual({ prompt: "Phone country", ok: true, how: "selected" });
+    expect(p.value("#cc")).toBe("de");
+    const q = page(`<label for="ph">Phone</label><input id="ph"><label for="cc">Country</label><select id="cc">${opts}</select>`);
+    const miss = await q.fill({ steps: [text("Phone", "+33 1 23 45 67 89")], phoneCountry: "France" });
+    expect(miss[1]).toEqual({ prompt: "Phone country", ok: false, how: "France not in the list" });
+  });
+
   it("picks United States from a native country <select> next to the phone", async () => {
     const p = page(`<label for="ph">Phone</label><input id="ph"><label for="cc">Country</label>
       <select id="cc"><option value="um">United States Minor Outlying Islands</option><option value="us">United States</option></select>`);
