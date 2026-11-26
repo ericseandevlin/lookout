@@ -327,6 +327,9 @@ describe("more closed wordings (#1251)", () => {
   ])("keeps %s open", (text) => {
     expect(classifyPage(200, `TITLE: Product Designer\nTEXT: ${text}`).state).toBe("open");
   });
+  it("leaves a temporarily unavailable page unknown, not closed", () => {
+    expect(classifyPage(200, "Acme Careers\nThis position is temporarily unavailable.").state).toBe("unknown");
+  });
 });
 
 describe("a job that was removed (#1271)", () => {
@@ -344,6 +347,9 @@ describe("a job that was removed (#1271)", () => {
     "We will review applications until the position was filled. Apply now.",
   ])("keeps %s open", (text) => {
     expect(classifyPage(200, `TITLE: Product Designer\nTEXT: ${text}`).state).toBe("open");
+  });
+  it("leaves a temporarily unavailable page unknown, not closed", () => {
+    expect(classifyPage(200, "Acme Careers\nThis position is temporarily unavailable.").state).toBe("unknown");
   });
 });
 
@@ -364,6 +370,9 @@ describe("a job post or advert that expired, closed or was archived (#1279)", ()
     "We archived our old design system and this role will build the new one. Apply now.",
   ])("keeps %s open", (text) => {
     expect(classifyPage(200, `TITLE: Product Designer\nTEXT: ${text}`).state).toBe("open");
+  });
+  it("leaves a temporarily unavailable page unknown, not closed", () => {
+    expect(classifyPage(200, "Acme Careers\nThis position is temporarily unavailable.").state).toBe("unknown");
   });
 });
 
@@ -391,6 +400,9 @@ describe("stock closed-job pages (#1427)", () => {
   ])("keeps %s open", (text) => {
     expect(classifyPage(200, `TITLE: Product Designer\nTEXT: ${text}`).state).toBe("open");
   });
+  it("leaves a temporarily unavailable page unknown, not closed", () => {
+    expect(classifyPage(200, "Acme Careers\nThis position is temporarily unavailable.").state).toBe("unknown");
+  });
 });
 
 describe("a deadline that has passed (#1714)", () => {
@@ -409,6 +421,9 @@ describe("a deadline that has passed (#1714)", () => {
     "You will manage projects and track when the deadline for each deliverable has passed.",
   ])("keeps %s open", (text) => {
     expect(classifyPage(200, `TITLE: Product Designer\nTEXT: ${text}`).state).toBe("open");
+  });
+  it("leaves a temporarily unavailable page unknown, not closed", () => {
+    expect(classifyPage(200, "Acme Careers\nThis position is temporarily unavailable.").state).toBe("unknown");
   });
 });
 
@@ -429,6 +444,9 @@ describe("apply-to and soft 404 wordings (#1441)", () => {
     "We built a page that cannot be found anywhere else: our design system docs. Apply now.",
   ])("keeps %s open", (text) => {
     expect(classifyPage(200, `TITLE: Product Designer\nTEXT: ${text}`).state).toBe("open");
+  });
+  it("leaves a temporarily unavailable page unknown, not closed", () => {
+    expect(classifyPage(200, "Acme Careers\nThis position is temporarily unavailable.").state).toBe("unknown");
   });
 });
 
@@ -454,6 +472,9 @@ describe("no longer live, deleted, withdrawn and cancelled (#1451)", () => {
   ])("keeps %s open", (text) => {
     expect(classifyPage(200, `TITLE: Product Designer\nTEXT: ${text}`).state).toBe("open");
   });
+  it("leaves a temporarily unavailable page unknown, not closed", () => {
+    expect(classifyPage(200, "Acme Careers\nThis position is temporarily unavailable.").state).toBe("unknown");
+  });
 });
 
 describe("no longer hiring and stopped accepting applications (#1458)", () => {
@@ -475,6 +496,9 @@ describe("no longer hiring and stopped accepting applications (#1458)", () => {
     "You will lead hiring for this role's team as it grows. Apply now.",
   ])("keeps %s open", (text) => {
     expect(classifyPage(200, `TITLE: Product Designer\nTEXT: ${text}`).state).toBe("open");
+  });
+  it("leaves a temporarily unavailable page unknown, not closed", () => {
+    expect(classifyPage(200, "Acme Careers\nThis position is temporarily unavailable.").state).toBe("unknown");
   });
 });
 
@@ -690,6 +714,9 @@ describe("closed to new applicants, and a requested page that does not exist (#1
   ])("keeps a live posting that says %s open", (text) => {
     expect(classifyPage(200, `TITLE: Product Designer\nTEXT: ${text}`).state).toBe("open");
   });
+  it("leaves a temporarily unavailable page unknown, not closed", () => {
+    expect(classifyPage(200, "Acme Careers\nThis position is temporarily unavailable.").state).toBe("unknown");
+  });
 });
 
 describe("classifyPage: a closed line with no full stop, then a new sentence (#1765)", () => {
@@ -702,5 +729,35 @@ describe("classifyPage: a closed line with no full stop, then a new sentence (#1
   });
   it("keeps a duty whose condition wraps onto the next line", () => {
     expect(classifyPage(200, "Product Designer, Jobs\nMake sure a listing is no longer live\nonce the role is filled, and tell candidates.").state).toBe("open");
+  });
+});
+
+describe("classifyPage: unavailable, not accepting new applications, and one-line banners (#1800)", () => {
+  it.each([
+    "This job is unavailable",
+    "This position is currently unavailable.",
+    "Sorry, the job posting is unavailable!",
+    "This job is not accepting new applications",
+    "This position is currently not accepting applications.",
+    "Position filled",
+    "Job filled.",
+    "This role has been filled",
+    "Not accepting applications",
+    "Not currently accepting applications.",
+  ])("reads %j as closed", (text) => {
+    expect(classifyPage(200, `Acme Careers\n${text}\nSee all jobs`).state).toBe("gone");
+  });
+  it.each([
+    "This role is unavailable for visa sponsorship.",
+    "The job is not accepting applications from agencies.",
+    "This role is not accepting new applications via email; apply below.",
+    "Once the position is filled, we close the posting.",
+    "You will make sure a position filled in Workday shows on the board.",
+    "We are not accepting applications from recruiters for this job.",
+  ])("keeps %j open", (text) => {
+    expect(classifyPage(200, `TITLE: Product Designer\nTEXT: ${text}`).state).toBe("open");
+  });
+  it("leaves a temporarily unavailable page unknown, not closed", () => {
+    expect(classifyPage(200, "Acme Careers\nThis position is temporarily unavailable.").state).toBe("unknown");
   });
 });
