@@ -254,6 +254,32 @@ const THOUSANDS = new RegExp(
   "i",
 );
 
+// The currency a question asks in (#1796). "C$", "A$" and the like are not US dollars, so a bare "$" counts only alone.
+const ASK_CURRENCY: [RegExp, string][] = [
+  [/\b(?:usd|us\$|u\.?s\.? dollars?)(?![a-z])|(?<![a-z])\$/i, "USD"],
+  [/£|\bgbp\b|\bpounds?(?: sterling)?\b|\bsterling\b/i, "GBP"],
+  [/€|\beur\b|\beuros?\b/i, "EUR"],
+  [/\bchf\b|\bswiss francs?\b/i, "CHF"],
+  [/\bcad\b|\bca?\$|\bcanadian dollars?\b/i, "CAD"],
+  [/\baud\b|\bau?\$|\baustralian dollars?\b/i, "AUD"],
+  [/\bnzd\b|\bnz\$/i, "NZD"],
+  [/\bsgd\b|\bs\$/i, "SGD"],
+  [/\bhkd\b|\bhk\$/i, "HKD"],
+  [/₹|\binr\b|\brupees?\b/i, "INR"],
+  [/¥|\bjpy\b|\byen\b/i, "JPY"],
+  [/\b(sek|nok|dkk|pln|czk|huf|mxn|brl|zar|cny|ils|aed)\b/i, ""],
+];
+
+/**
+ * The currency a salary question names, as a code, or null when it names none. One that also names US dollars ("USD or
+ * EUR") is USD, since the floor and target are in dollars and can go in as asked.
+ */
+export function askCurrency(prompt: string): string | null {
+  const found = ASK_CURRENCY.filter(([re]) => re.test(prompt)).map(([re, code]) => code || prompt.match(re)![0].toUpperCase());
+  if (!found.length) return null;
+  return found.includes("USD") ? "USD" : found[0];
+}
+
 // 260 working days a year, the same rule discovery uses to read a day rate on a posting (#1187).
 const PER: Record<Per, { n: number; how: string }> = {
   hour: { n: 2080, how: "2,080 working hours" },
@@ -281,7 +307,14 @@ export function suggestSalary(i: Parameters<typeof yearlyAsk>[0] & { per?: Per |
   return { ...r, amount, ...(r.question ? { question: r.question.replace(r.amount, `${amount} per ${i.per}`) } : {}), note: `${r.note}\n• This question asks per ${i.per}, so the ask is ${r.amount} a year divided by ${p.how}: ${amount} per ${i.per}.` };
 }
 
-function yearlyAsk(i: { floor?: unknown; target?: unknown; min?: number | null; max?: number | null; basis?: "total" | "base" | null; asksBase?: boolean; asksMinimum?: boolean; currency?: string | null }): { amount: string | null; note: string; question?: string } | null {
+function yearlyAsk(i: { floor?: unknown; target?: unknown; min?: number | null; max?: number | null; basis?: "total" | "base" | null; asksBase?: boolean; asksMinimum?: boolean; currency?: string | null; asksIn?: string | null }): { amount: string | null; note: string; question?: string } | null {
+  // The floor and target are US dollars: a question in another currency can't take them, and Lookout doesn't convert
+  // (#1796). A posted range in another currency says so below, with the range.
+  const postedOther = !!i.currency && i.currency.toUpperCase() !== "USD";
+  if (i.asksIn && i.asksIn !== "USD" && !postedOther && (parseMoney(i.floor) || parseMoney(i.target) || i.min || i.max)) {
+    const note = `This question asks in ${i.asksIn}. Your floor and target are in US dollars, and Lookout doesn't convert currencies, so it left this blank.`;
+    return { amount: null, note, question: `${note} What do you want to ask for, in ${i.asksIn}?` };
+  }
   // The same reading discovery uses for the floor, so "150" is $150,000 in both places (#761).
   const floor = parseMoney(i.floor);
   const target = parseMoney(i.target);
