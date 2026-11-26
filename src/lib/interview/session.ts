@@ -10,7 +10,7 @@ import { kindOf } from "@/lib/kinds";
 import { getActiveSearch } from "@/lib/searches";
 import type { FactKind, TurnOutcome } from "@/lib/db/schema";
 import { closedTopics, FACTS_IN_PROMPT, INTERVIEW_SYSTEM, interviewPrompt, asksWhatIsKnown, InterviewTurnOut, isYesNoQuestion, nameFinds, plainQuestion, shortWhy, STORY_ASK, STORY_FOLLOW_UP, type InterviewInput } from "./interviewer";
-import { backKeywords, declineKeywords, keywordQuestion, keywordsBacked, missingKeywords, termsOf } from "./keywords";
+import { backKeywords, declineKeywords, keywordQuestion, keywordsBacked, missingKeywords, storyQuestion, termsOf } from "./keywords";
 import { asksToStop, factKey, isBareNo, isBareYes, isQuestionBack, lockReason, topicKey } from "./rules";
 import { isAnswered, readSetupAnswer, setupFact, setupQuestionText, SETUP_WHY } from "./setup";
 
@@ -192,8 +192,13 @@ async function interviewStep(userId: string, answered: { turn: Turn; root: Turn;
   if (!allowed(out.next)) {
     const n0 = out.next;
     console.info("[interview] refused", { type: n0.type, topic: n0.topic });
-    const retry = firstAsk(await ask(n0.topic, asksWhatIsKnown(n0.question, n0.closest ?? "", known) ? `they already told you: "${n0.closest.trim()}"` : undefined));
-    out = { facts: out.facts, backs: out.backs, next: allowed(retry.next) ? retry.next : { type: "done", topic: "", question: "", why: "", closest: "" } };
+    const numberKnown = asksWhatIsKnown(n0.question, n0.closest ?? "", known);
+    const retry = firstAsk(await ask(n0.topic, numberKnown ? `they already told you: "${n0.closest.trim()}"` : undefined));
+    // A new topic refused only for asking a number the resume gives is still a gap: ask it as a story, so a new
+    // account doesn't open the interview to "That's every gap" (#1662).
+    const story = { type: "new_topic" as const, topic: n0.topic, question: storyQuestion(n0.topic), why: n0.why, closest: "" };
+    const fallback = numberKnown && n0.type === "new_topic" && n0.topic.trim() && allowed(story) ? story : { type: "done" as const, topic: "", question: "", why: "", closest: "" };
+    out = { facts: out.facts, backs: out.backs, next: allowed(retry.next) ? retry.next : fallback };
   }
   // A missing keyword the model didn't ask about still gets asked, as a plain story question (#1485).
   const left = priority.filter((t) => !answered || !termsOf(answered.root.topic, [t]).length);
