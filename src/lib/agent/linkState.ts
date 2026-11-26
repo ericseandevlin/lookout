@@ -88,6 +88,13 @@ const CLOSED = [
   // available for visa sponsorship" stay open.
   /\b(job|position|posting|role|opening|listing|vacancy|requisition)( listing| posting| post| ad)?\b[^.!?\n]{0,40}?\b(no longer exists?|does(?:n['’]t| not) exist)( anymore| any longer)?\s*(?:[.!?\n]|$)/i,
   /\b(this|the) (job|position|posting|role|opening|listing|vacancy)( you(['’]re| are) looking for)? is (currently )?not available( anymore)?\s*(?:[.!?\n]|$)/i,
+  // "This job is unavailable", "This position is currently unavailable." Only as the end of the sentence, so "this role is
+  // unavailable for visa sponsorship" stays open (#1800). "Temporarily unavailable" proves nothing, below.
+  /\b(this|the) (job|position|posting|role|opening|listing|vacancy)( listing| posting| post| ad)? is (currently |now )?unavailable\s*(?:[.!?\n]|$)/i,
+  // "This job is not accepting new applications", but not from agencies or by email, as above (#1800).
+  /\b(job|position|posting|role|opening|listing|vacancy|requisition)( listing| posting| post| ad)? is (currently |now )?not accepting (any )?(new |further |more )?(applications|applicants|candidates|submissions)\b(?!,? (from|via|by|through)\b)/i,
+  // A banner alone on its line: "Position filled", "Job filled", "Not accepting applications" (#1800).
+  /(?:^|\n)\s*(?:(?:this )?(?:job|position|role|posting|vacancy) (?:has been )?filled|not (?:currently )?accepting (?:new )?applications)\s*[.!]?\s*(?:\n|$)/i,
   // "This position is not currently accepting applications", but not from agencies or by email, as above.
   /\b(is|are) not currently accepting (applications|applicants|candidates)\b(?!,? (from|via|by|through)\b)/i,
   // "Applications closed" on its own line, and "The application deadline has passed".
