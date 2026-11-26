@@ -465,6 +465,19 @@ describe("the walkthrough faults (#1662)", () => {
     expect(p.notes?.[0].story).toBe("Ran a sorter and a pick-to-light module. Raised sorter uptime from 91% to 98.5%");
   });
 
+  it("shows the model the keyword the answer was asked about, so it can back it (#1662)", async () => {
+    const APP = "00000000-0000-4000-8000-000000000001";
+    const { user } = await seedUser(ALL_ANSWERS);
+    focus = ["financial reporting", "budgeting"];
+    replies = [ask("financial reporting", "Tell me about financial reporting you owned.")];
+    const v = await openInterview(user.id, APP);
+    replies = [{ backs: [], facts: [], next: { type: "new_topic", topic: "budgeting", question: "Tell me about a budget you built.", why: "", closest: "" } }];
+    await act(user.id, v.current!.id, "answer", "Each month I produce the consolidated statements and a variance pack for the board.", APP);
+    const prompt = completeJSON.mock.calls.at(-1)![0].user as string;
+    expect(prompt).toContain("<answer_keywords the newest answer was asked about; it can back these>\n- financial reporting\n</answer_keywords>");
+    expect(prompt).toContain("<priority_keywords from a job they are applying to; ask about these first>\n- budgeting\n</priority_keywords>");
+  });
+
   it("stops when asked to: the facts are saved, no next question, and the note says it stopped", async () => {
     const { user } = await seedUser(ALL_ANSWERS);
     replies = [ask("F&B programs")];

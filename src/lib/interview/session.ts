@@ -152,8 +152,10 @@ async function interviewStep(userId: string, answered: { turn: Turn; root: Turn;
   const covered = new Set(ctx.past.filter((p) => p.outcome === "answered").map((p) => topicKey(p.topic)));
   // Keywords already asked about, skipped or answered, aren't asked first again.
   const priority = focus.filter((t) => ![...closed, ...covered].some((k) => k.includes(topicKey(t))));
+  // The keyword this answer was asked about is covered by now, so it isn't in priority; the model still has to see it to back it (#1662).
+  const answering = answered ? focus.filter((t) => termsOf(answered.root.topic, [t]).length) : [];
   const ask = (refused?: string, refusedWhy?: string) =>
-    completeJSON({ name: "interview-turn", schema: InterviewTurnOut, system: INTERVIEW_SYSTEM, user: interviewPrompt({ ...ctx, thread: answered?.thread, followUpsLeft, refused, refusedWhy, priority }), maxTokens: 2000, usage });
+    completeJSON({ name: "interview-turn", schema: InterviewTurnOut, system: INTERVIEW_SYSTEM, user: interviewPrompt({ ...ctx, thread: answered?.thread, followUpsLeft, refused, refusedWhy, priority, answering }), maxTokens: 2000, usage });
   // What the person already told Lookout: a question must not ask for it again (#1531).
   const known = [ctx.resume, ...ctx.facts.map((f) => f.text)].join("\n");
   // With no answer to follow, a "follow_up" is a first question: read it as a new topic.
