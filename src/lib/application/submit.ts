@@ -474,6 +474,7 @@ export const numberAnswer = (t: string) => {
 
 const MONTHS = ["jan", "feb", "mar", "apr", "may", "jun", "jul", "aug", "sep", "oct", "nov", "dec"];
 const MON = String.raw`(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*\.?`;
+const MONTH_WORD = String.raw`(jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|june?|july?|aug(?:ust)?|sept?(?:ember)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)\.?`;
 
 /**
  * The answer as yyyy-mm-dd for a date field: "12/01/2026" (month first, as US forms ask), "December 1, 2026" and
@@ -498,6 +499,14 @@ export const dateAnswer = (t: string) => {
   // "1-Dec-2026" and "1st of December 2026" too (#1774).
   m = t.match(new RegExp(String.raw`\b(\d{1,2})(?:st|nd|rd|th)?(?:\s+of\s+|\s+|-)${MON}(?:,?\s+|-)(\d{4})\b`, "i"));
   if (m) return iso(+m[3], mon(m[2]), +m[1]);
+  // A month and year with no day, "January 2027", "Jan. 2027", "01/2027" or "2027-01", is the first of that month (#1801).
+  // Whole month names only, so "market 2026" is no date.
+  m = t.match(new RegExp(String.raw`\b${MONTH_WORD},?\s+(\d{4})\b`, "i"));
+  if (m) return iso(+m[2], mon(m[1]), 1);
+  m = t.match(/\b(\d{1,2})\/(\d{4})\b/);
+  if (m) return iso(+m[2], +m[1], 1);
+  m = t.match(/\b(\d{4})-(\d{1,2})\b(?![-/.]?\d)/);
+  if (m) return iso(+m[1], +m[2], 1);
   return "";
 };
 

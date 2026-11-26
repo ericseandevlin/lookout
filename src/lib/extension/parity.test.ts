@@ -46,6 +46,11 @@ describe("fill.js answer rules match the worker's (#1541)", () => {
 
   it("reads the same date", () => {
     for (const t of [
+      "January 2027",
+      "Jan. 2027",
+      "01/2027",
+      "2027-01",
+      "market 2026",
       "12/01/2026",
       "12-01-2026",
       "2026-12-01",
