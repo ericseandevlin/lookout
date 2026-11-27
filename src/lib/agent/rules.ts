@@ -394,6 +394,28 @@ const jobsSearch = (url: URL) =>
     .some((p) => JOB_PARAM.test(pairName(p)));
 
 /**
+ * A job board search link that names one job, as that job's own page on the same country site (#1813): LinkedIn's
+ * ?currentJobId= beside a search or collection, Indeed's ?vjk= on a search page, Glassdoor's ?jl= on a listing page. These
+ * are read and deduped like any other copy of the job; listPage would drop them as searches. Any other link is unchanged.
+ */
+export function jobPageUrl(u: string): string {
+  const key = jobKey(u);
+  const m = key?.match(/^(linkedin|indeed|glassdoor):(.+)$/);
+  if (!m) return u;
+  const url = new URL(u);
+  const id = encodeURIComponent(m[2]);
+  const page =
+    m[1] === "linkedin"
+      ? `/jobs/view/${id}/`
+      : m[1] === "indeed"
+        ? `/viewjob?jk=${id}`
+        : `/partner/jobListing.htm?jobListingId=${id}`;
+  // Already the job's own page ("/jobs/view/<title>-<id>", "viewjob?jk=", "jobListing.htm"): keep the link as written.
+  if (m[1] === "linkedin" ? /\/jobs\/view\//i.test(url.pathname) : m[1] === "indeed" ? /^\/viewjob\/?$/i.test(url.pathname) : /joblisting\.htm$/i.test(url.pathname)) return u;
+  return `${url.protocol}//${url.host}${page}`;
+}
+
+/**
  * A search result that lists jobs rather than being one: a job board search page, or an ATS board home such as
  * jobs.lever.co/acme or acme.wd1.myworkdayjobs.com/External (#1537). Dropped before triage so it doesn't take a pick.
  */

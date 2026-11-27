@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { applyRules, bareCompany, fingerprint, legacyFingerprint, listPage, normUrl, placeId, placesDiffer, remoteFirst, suffixedFingerprint } from "./rules";
+import { applyRules, bareCompany, fingerprint, jobPageUrl, legacyFingerprint, listPage, normUrl, placeId, placesDiffer, remoteFirst, suffixedFingerprint } from "./rules";
+import { jobKey } from "@/lib/extension/match";
 
 const base = { score: 5, reasonsMatch: ["Director title"], reasonsGap: [], locationFit: true, dealbreaker: false, compMin: 140000, compMax: 160000 };
 
@@ -552,5 +553,43 @@ describe("listPage: search and board pages are not jobs (#1537)", () => {
       "https://jobs.dayforcehcm.com/en-US/acme/CANDIDATEPORTAL/jobs/12345",
     ])
       expect(listPage(u), u).toBe(false);
+  });
+});
+
+describe("jobPageUrl: a board search link that names one job is that job (#1813)", () => {
+  it("turns LinkedIn, Indeed and Glassdoor search links into the job's own page, on the same country site", () => {
+    expect(jobPageUrl("https://www.linkedin.com/jobs/collections/recommended/?currentJobId=3912345678")).toBe("https://www.linkedin.com/jobs/view/3912345678/");
+    expect(jobPageUrl("https://uk.linkedin.com/jobs/search/?currentJobId=3912345678&keywords=designer")).toBe("https://uk.linkedin.com/jobs/view/3912345678/");
+    expect(jobPageUrl("https://www.indeed.com/jobs?q=designer&vjk=0123456789abcdef")).toBe("https://www.indeed.com/viewjob?jk=0123456789abcdef");
+    expect(jobPageUrl("https://uk.indeed.com/jobs?q=designer&l=London&vjk=0123456789ABCDEF")).toBe("https://uk.indeed.com/viewjob?jk=0123456789abcdef");
+    expect(jobPageUrl("https://www.glassdoor.com/Job/new-york-designer-jobs-SRCH_IL.0,8.htm?jl=1009123456")).toBe(
+      "https://www.glassdoor.com/partner/jobListing.htm?jobListingId=1009123456",
+    );
+  });
+
+  it("keeps the job's own page and every other link as written", () => {
+    for (const u of [
+      "https://www.linkedin.com/jobs/view/product-designer-at-acme-3912345678",
+      "https://www.indeed.com/viewjob?jk=0123456789abcdef&from=serp",
+      "https://www.glassdoor.com/partner/jobListing.htm?jobListingId=1009123456&pos=101",
+      "https://www.linkedin.com/jobs/search/?keywords=designer",
+      "https://www.indeed.com/jobs?q=designer",
+      "https://job-boards.greenhouse.io/acme/jobs/4012345",
+      "https://acme.com/careers/jobs",
+      "not a url",
+    ])
+      expect(jobPageUrl(u), u).toBe(u);
+  });
+
+  it("is read as one job, not a list page, and keys like the job's own page", () => {
+    for (const u of [
+      "https://www.linkedin.com/jobs/collections/recommended/?currentJobId=3912345678",
+      "https://www.indeed.com/jobs?q=designer&vjk=0123456789abcdef",
+      "https://www.glassdoor.com/Job/new-york-designer-jobs-SRCH_IL.0,8.htm?jl=1009123456",
+    ]) {
+      expect(listPage(u), u).toBe(true);
+      expect(listPage(jobPageUrl(u)), u).toBe(false);
+      expect(jobKey(jobPageUrl(u)), u).toBe(jobKey(u));
+    }
   });
 });
