@@ -375,6 +375,21 @@ const ATS_MORE = /(^|\.)(smartrecruiters\.com|workable\.com|teamtailor\.com|icim
 const NAMES_ID = /\d{4,}|[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i;
 // Paylocity's board for one company is /Recruiting/Jobs/All/<company id>.
 const PAYLOCITY_BOARD = /(^|\.)paylocity\.com\/recruiting\/jobs\/all(\/|$)/i;
+// A query pair that names one job: "?jobId=", "?id=", "?gh_jid=", "?req=", "?posting=" (#1806).
+const JOB_PARAM = /^(?:.*id|job|req|requisition|posting|position)$/i;
+
+/**
+ * A company's own job search with a query: "acme.com/jobs?location=NYC", "metacareers.com/jobs?q=designer", "/jobs/?page=2"
+ * (#1806). The bare "/jobs" was already a list; its query only filters it. A query with a job ID or a long number names one job.
+ */
+const jobsSearch = (url: URL) =>
+  /\/jobs\/?$/i.test(url.pathname) &&
+  !!url.search &&
+  !NAMES_ID.test(url.search) &&
+  !url.search
+    .slice(1)
+    .split("&")
+    .some((p) => JOB_PARAM.test(pairName(p)));
 
 /**
  * A search result that lists jobs rather than being one: a job board search page, or an ATS board home such as
@@ -392,7 +407,9 @@ export function listPage(u: string): boolean {
   }
   if (!jobKey(u)?.startsWith("url:")) return false;
   if (ATS_HOST.test(host)) return true;
-  const { pathname, search } = new URL(u);
+  const url = new URL(u);
+  if (jobsSearch(url)) return true;
+  const { pathname, search } = url;
   if (PAYLOCITY_BOARD.test(host + pathname)) return true;
   return ATS_MORE.test(host) && !/^jobs\.workable\.com$/i.test(host) && !NAMES_ID.test(pathname + search);
 }
