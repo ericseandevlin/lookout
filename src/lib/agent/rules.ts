@@ -427,7 +427,7 @@ const ATS_MORE = /(^|\.)(smartrecruiters\.com|workable\.com|teamtailor\.com|icim
 const NAMES_ID = /\d{4,}|[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i;
 // Paylocity's board for one company is /Recruiting/Jobs/All/<company id>.
 const PAYLOCITY_BOARD = /(^|\.)paylocity\.com\/recruiting\/jobs\/all(\/|$)/i;
-// ATS hosts whose postings sit under one path part (#1812): BambooHR /careers/<id>, Recruitee /o/<slug>, Personio
+// ATS hosts whose postings sit under one path part (#1812, #1856): BambooHR /careers/<id>, Recruitee /o/<slug>, Personio
 // /job/<id>, JazzHR /apply/<code>/<slug>, Jobvite /<company>/job/<id>. Any other address there is the company's board.
 const ATS_POSTING: [RegExp, RegExp][] = [
   [/(^|\.)bamboohr\.com$/i, /^\/careers\/\d+(?:\/|$)|^\/jobs\/view\.php$/i],
@@ -435,6 +435,13 @@ const ATS_POSTING: [RegExp, RegExp][] = [
   [/(^|\.)jobs\.personio\.(?:de|com)$/i, /^\/job\/\d+(?:\/|$)/i],
   [/(^|\.)applytojob\.com$/i, /^\/apply\/(?!jobs\/?$)[0-9a-z]{6,}(?:\/|$)/i],
   [/^jobs\.jobvite\.com$/i, /^\/[^/]+\/job\/[0-9a-z]+(?:\/|$)/i],
+  // Gem /<company>/<id>, Breezy HR /p/<id>-<slug>, Pinpoint /postings/<uuid> (a locale may come first), Polymer
+  // /<company>/<id>, Trakstar Hire /jobs/<code> (#1856).
+  [/^jobs\.gem\.com$/i, /^\/[^/]+\/[^/]+/i],
+  [/(^|\.)breezy\.hr$/i, /^\/p\/[^/]+/i],
+  [/(^|\.)pinpointhq\.com$/i, /^\/(?:[a-z]{2}(?:-[a-z]{2})?\/)?postings\/[^/]+/i],
+  [/^jobs\.polymer\.co$/i, /^\/[^/]+\/\d+(?:\/|$)/i],
+  [/(^|\.)hire\.trakstar\.com$/i, /^\/jobs\/[^/]+/i],
 ];
 // A query pair that names one job: "?jobId=", "?id=", "?gh_jid=", "?req=", "?posting=" (#1806).
 const JOB_PARAM = /^(?:.*id|job|req|requisition|posting|position)$/i;

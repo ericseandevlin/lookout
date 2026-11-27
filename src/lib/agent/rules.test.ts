@@ -667,6 +667,32 @@ describe("listPage: search and board pages are not jobs (#1537)", () => {
     ])
       expect(listPage(u), u).toBe(false);
   });
+
+  it("drops Gem, Breezy HR, Pinpoint, Polymer and Trakstar Hire board homes, not their postings (#1856)", () => {
+    for (const u of [
+      "https://jobs.gem.com/acme",
+      "https://jobs.gem.com/acme/",
+      "https://acme.breezy.hr/",
+      "https://acme.breezy.hr/?department=design",
+      "https://acme.pinpointhq.com/",
+      "https://acme.pinpointhq.com/en",
+      "https://acme.pinpointhq.com/postings",
+      "https://jobs.polymer.co/acme",
+      "https://acme.hire.trakstar.com/",
+      "https://acme.hire.trakstar.com/jobs",
+    ])
+      expect(listPage(u), u).toBe(true);
+    for (const u of [
+      "https://jobs.gem.com/acme/am9icG9zdDo0NjU3",
+      "https://acme.breezy.hr/p/1a2b3c4d5e6f-product-designer",
+      "https://acme.breezy.hr/p/1a2b3c4d5e6f-product-designer/apply",
+      "https://acme.pinpointhq.com/postings/1b2c3d4e-1111-2222-3333-444455556666",
+      "https://acme.pinpointhq.com/en/postings/1b2c3d4e-1111-2222-3333-444455556666",
+      "https://jobs.polymer.co/acme/12345",
+      "https://acme.hire.trakstar.com/jobs/fk0abc/",
+    ])
+      expect(listPage(u), u).toBe(false);
+  });
 });
 
 describe("jobPageUrl: a board search link that names one job is that job (#1813)", () => {
