@@ -15,7 +15,7 @@ import { traceAs } from "@/lib/ai/trace";
 import { startBudgetedRun, finishRun, progress, startRun } from "@/lib/ai/runs";
 import { webSearch, type SearchHit } from "@/lib/ai/search";
 import { getAiConfig } from "@/lib/config";
-import { applyRules, fingerprint, fullTitle, legacyFingerprint, listPage, normUrl, placeId, placesDiffer, suffixedFingerprint } from "./rules";
+import { applyRules, fingerprint, fullTitle, jobPageUrl, legacyFingerprint, listPage, normUrl, placeId, placesDiffer, suffixedFingerprint } from "./rules";
 import { closeGonePostings } from "./linkCheck";
 import { findEventsIfDue } from "./networking";
 import { featureOn } from "@/lib/features";
@@ -173,7 +173,9 @@ async function gatherHits(ctx: Context, queries: string[], usage: Usage, report:
   }
   for (const r of results) {
     if (r.status !== "fulfilled") continue;
-    for (const h of r.value) {
+    for (const hit of r.value) {
+      // A board search link that names one job is that job (#1813).
+      const h = { ...hit, url: jobPageUrl(hit.url) };
       const keys = [normUrl(h.url), atsKey(h.url)].filter((k): k is string => !!k);
       if (listPage(h.url) || keys.some((k) => seen.has(k))) continue;
       if (keys.some((k) => known.has(k))) {
@@ -501,7 +503,8 @@ export async function save(ctx: Context, finds: ScoredT[], via: "agent" | "manua
   for (const raw of finds) {
     // A reply with the ends the wrong way round ($200,000 low, $150,000 high) is one range: the top judges the floor (#1526).
     const [lo, hi] = [annualPay(raw.comp_min), annualPay(raw.comp_max)];
-    const f = { ...raw, ...(lo != null && hi != null && lo > hi ? { comp_min: hi, comp_max: lo } : { comp_min: lo, comp_max: hi }) };
+    // In agent mode the model may send back a board search link that names one job: save that job's own page (#1813).
+    const f = { ...raw, ...(via === "agent" ? { url: jobPageUrl(raw.url) } : {}), ...(lo != null && hi != null && lo > hi ? { comp_min: hi, comp_max: lo } : { comp_min: lo, comp_max: hi }) };
     // In agent mode this is the only list-page check gatherHits would have made; a link the person added is theirs (#1631).
     if (!f.is_open_job_posting || !f.company || !f.title || (via === "agent" && listPage(f.url))) {
       t.notPostings++;
