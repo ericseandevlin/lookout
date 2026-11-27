@@ -761,3 +761,32 @@ describe("classifyPage: unavailable, not accepting new applications, and one-lin
     expect(classifyPage(200, "Acme Careers\nThis position is temporarily unavailable.").state).toBe("unknown");
   });
 });
+
+describe("classifyPage: not available anymore, hiring paused, recruiting ended (#1864)", () => {
+  it.each([
+    "Oops! This job isn't available anymore",
+    "This job isn’t available anymore.",
+    "This position is not open any longer.",
+    "Hiring for this role has paused",
+    "Hiring for this position is currently on hold.",
+    "Hiring is paused for this role.",
+    "Recruiting for this position has ended",
+    "Recruitment for this vacancy has now closed.",
+    "The search for this role has concluded.",
+    "This role is on hold.",
+  ])("reads %j as closed", (text) => {
+    expect(classifyPage(200, `Acme Careers\n${text}\nSee all jobs`).state).toBe("gone");
+  });
+  it.each([
+    "Visa sponsorship for this role isn't available anymore.",
+    "Relocation support for this position is not available any longer.",
+    "Hiring is paused for our Berlin office, but this team is growing.",
+    "We paused hiring last year and are back.",
+    "Recruiting for this role is open to agencies we work with.",
+    "Recruitment for this position closed to contractors last month; employees only.",
+    "You will put a role on hold in Greenhouse when a budget slips.",
+    "If hiring for this role is paused, we will email you.",
+  ])("keeps %j open", (text) => {
+    expect(classifyPage(200, `TITLE: Product Designer\nTEXT: ${text}`).state).toBe("open");
+  });
+});
