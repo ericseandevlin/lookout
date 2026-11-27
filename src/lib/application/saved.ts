@@ -19,8 +19,11 @@ const EEO = /ethnic|\brace\b|racial|hispanic|latin[oax]|gender|\bsex\b|sexual or
 // Questions about one employer: a No is true almost everywhere, but a Yes or a referrer's name is about that company only.
 // \b: "referr" sits inside "preferred", which made every preferred name a referrer's (#1048).
 const ONE_EMPLOYER = /previously (worked|employed)|ever (been )?employed by|worked (here|for us)|\breferr/i;
-// "When would you be available to start?" and "availability to start" too (#1596).
-const START = /start date|earliest.*start|when can you start|availab(le|ility) to start/i;
+// "When would you be available to start?" and "availability to start" too (#1596). "When are you able to start?", "How
+// soon could you start?", "What date can you begin?" and "Earliest date you could join?" too (#1874), but not "When can
+// you join a call?".
+const START =
+  /start date|earliest.*(start|join|begin)|when can you start|availab(le|ility) to start|\b(?:when|how soon|what date)\b[^?.]{0,30}?\b(?:can|could|would|will|are|might)\s+you\b[^?.]{0,20}?\b(?:start|begin|join)\b(?!\s+(?:a|an|the|our)\s+(?:call|interview|meeting|conversation|chat)\b)/i;
 // A notice period that names a day ("Ends January 31", "My last day is Friday") is as dated as a start day (#1852).
 const NOTICE = /notice period|how much notice/i;
 // A calendar date ("12/1", "2026-12-01", "Dec 1", "June 1st", "1st December", "January 2027") passes;
@@ -95,7 +98,7 @@ const neverKept = (question: string) =>
   JOB_PLACE.test(question) || NEVER.test(AUTH.test(question) || HEARD.test(question) ? question.replace(/\bthis (role|position|job|opportunity)\b/gi, " ") : question);
 
 export function isCommon(question: string, answer: string) {
-  return COMMON.test(question) && !neverKept(question) && !EEO.test(question) && answer.trim().length > 0 && answer.length <= 300 && !onlyThisOne(question, answer);
+  return (COMMON.test(question) || START.test(question)) && !neverKept(question) && !EEO.test(question) && answer.trim().length > 0 && answer.length <= 300 && !onlyThisOne(question, answer);
 }
 
 export function upsert(list: SavedAnswer[], question: string, answer: string): SavedAnswer[] {
