@@ -241,6 +241,12 @@ describe("CONFIRMATION (#692, #748, #762)", () => {
       "Your application was completed successfully.",
       "Applied!",
       "Product Designer\nApplied!\nWe will be in touch.",
+      // #1875
+      "Thank you so much for applying!",
+      "Thank you very much for your application.",
+      "Thank you so very much for applying to Acme.",
+      "Thanks again for applying to Acme.",
+      "Thanks so much for your submission",
     ])
       expect(CONFIRMATION.test(t), t).toBe(true);
   });
@@ -324,6 +330,10 @@ describe("CONFIRMATION (#692, #748, #762)", () => {
       "Applied! 3 days ago",
       "Jobs you applied! to",
       "Is your application on its way? Check your email.",
+      // #1875
+      "Thank you so much for your interest. Please complete the form below.",
+      "Thanks again for considering Acme.",
+      "Once you apply, thank you so much for applying will show here.",
     ])
       expect(CONFIRMATION.test(t), t).toBe(false);
   });
