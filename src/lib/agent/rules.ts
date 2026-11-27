@@ -459,9 +459,10 @@ const JOB_PARAM = /^(?:.*id|job|req|requisition|posting|position)$/i;
 // "/job-search?q=designer", "/open-positions", "/en/careers/open-roles", and the root of careers.acme.com or jobs.acme.com.
 // "/careers?gh_jid=4001234005" is one job (Greenhouse's embed), and a hash route ("#/jobs/123") is left alone.
 // Phenom's search ("/us/en/search-results"), "/jobs/search", "/careers/all-jobs", "/job-listings" and "/positions" too, and
-// a careers host's locale root ("careers.acme.com/us/en", "/en-gb"), Phenom's home (#1857).
+// a careers host's locale root ("careers.acme.com/us/en", "/en-gb"), Phenom's home (#1857). A bare "/search/" with a
+// query too: SuccessFactors career sites search at "careers.acme.com/search/?q=designer" (#1882).
 const LIST_PATH =
-  /\/(?:jobs|careers|careers\/search|jobs\/search|job-?search|search-jobs|search-results|all-jobs|job-listings|positions|open-positions|open-roles|openings|job-openings|current-openings)\/?$/i;
+  /\/(?:jobs|careers|search|careers\/search|jobs\/search|job-?search|search-jobs|search-results|all-jobs|job-listings|positions|open-positions|open-roles|openings|job-openings|current-openings)\/?$/i;
 const CAREERS_HOST = /^(?:careers|jobs)\.[^.]+\.[a-z.]+$/i;
 const LOCALE_ROOT = /^(?:\/[a-z]{2}(?:[-_][a-z]{2})?){0,2}\/?$/i;
 const jobsSearch = (url: URL) =>
