@@ -234,6 +234,13 @@ describe("CONFIRMATION (#692, #748, #762)", () => {
       "You have applied to Acme.",
       "You’ve applied for Product Designer!",
       "You have now applied",
+      // #1858
+      "Thanks, Jane! Your application is on its way.",
+      "Your application is now on its way to the hiring team.",
+      "Application completed successfully",
+      "Your application was completed successfully.",
+      "Applied!",
+      "Product Designer\nApplied!\nWe will be in touch.",
     ])
       expect(CONFIRMATION.test(t), t).toBe(true);
   });
@@ -311,6 +318,12 @@ describe("CONFIRMATION (#692, #748, #762)", () => {
       "We were unable to confirm that your application was received",
       "The site failed to confirm your submission was received.",
       "We can't tell if your application was sent.",
+      // #1858
+      "Your application has been submitted unsuccessfully.",
+      "Application was sent unsuccessfully",
+      "Applied! 3 days ago",
+      "Jobs you applied! to",
+      "Is your application on its way? Check your email.",
     ])
       expect(CONFIRMATION.test(t), t).toBe(false);
   });
