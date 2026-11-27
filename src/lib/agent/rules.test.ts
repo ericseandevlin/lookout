@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { applyRules, bareCompany, fingerprint, jobPageUrl, legacyFingerprint, listPage, normUrl, placeId, placesDiffer, remoteFirst, suffixedFingerprint } from "./rules";
+import { applyRules, bareCompany, fingerprint, jobPageUrl, legacyFingerprint, listPage, normUrl, placeId, placesDiffer, remoteFirst, suffixedFingerprint, unspelledFingerprint } from "./rules";
 import { jobKey } from "@/lib/extension/match";
 
 const base = { score: 5, reasonsMatch: ["Director title"], reasonsGap: [], locationFit: true, dealbreaker: false, compMin: 140000, compMax: 160000 };
@@ -82,6 +82,20 @@ describe("dedupe keys", () => {
     expect(suffixedFingerprint("Acme, Inc.", "Designer", "Paris")).not.toBe(fingerprint("Acme, Inc.", "Designer", "Paris"));
     expect(suffixedFingerprint("Acme", "Designer", "Paris")).toBe(fingerprint("Acme", "Designer", "Paris"));
     expect(legacyFingerprint("Acme, Inc.", "Designer", "Paris")).toBe(suffixedFingerprint("Acme, Inc.", "Designer", "Paris"));
+  });
+  it("reads 'Sr.', 'Sr' and 'Snr' as senior and 'Jr.' as junior in the title (#1828)", () => {
+    const k = (t: string) => fingerprint("Acme", t, "New York, NY");
+    for (const t of ["Sr. Product Designer", "Sr Product Designer", "SR. PRODUCT DESIGNER", "Snr Product Designer", "Sr.Product Designer"]) expect(k(t), t).toBe(k("Senior Product Designer"));
+    expect(k("Product Designer, Sr.")).toBe(k("Product Designer, Senior"));
+    expect(k("Jr. Designer")).toBe(k("Junior Designer"));
+    // Only a whole word: "Srinivasan" and "Jrnl" stay as they are, and senior stays apart from junior.
+    expect(k("Srinivasan Designer")).not.toBe(k("Senior inivasan Designer"));
+    expect(k("Sr. Designer")).not.toBe(k("Jr. Designer"));
+    // The key from before #1828 keeps "sr", and is the same as the new one for a title without it.
+    expect(unspelledFingerprint("Acme", "Sr. Product Designer", "New York, NY")).not.toBe(k("Sr. Product Designer"));
+    expect(unspelledFingerprint("Acme, Inc.", "Product Designer", "New York, NY")).toBe(fingerprint("Acme, Inc.", "Product Designer", "New York, NY"));
+    // The older keys are frozen: they never spell the rank out.
+    expect(suffixedFingerprint("Acme", "Sr. Product Designer", "New York, NY")).toBe(unspelledFingerprint("Acme", "Sr. Product Designer", "New York, NY"));
   });
   it("keeps marks in non-Latin text, so डिज़ाइनर and डिजाइन stay apart (#1269)", () => {
     expect(fingerprint("मेरा", "डिज़ाइनर", "दिल्ली")).toBe(legacyFingerprint("मेरा", "डिज़ाइनर", "दिल्ली"));

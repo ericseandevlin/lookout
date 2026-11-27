@@ -12,7 +12,7 @@ const db = drizzle(pg, { schema });
 vi.mock("@/lib/db", () => ({ db, schema }));
 
 const { loadContext, save, realDate } = await import("./discover");
-const { fingerprint, legacyFingerprint, suffixedFingerprint } = await import("./rules");
+const { fingerprint, legacyFingerprint, suffixedFingerprint, unspelledFingerprint } = await import("./rules");
 type Ctx = Awaited<ReturnType<typeof loadContext>>;
 type Find = Parameters<typeof save>[1][number];
 
@@ -470,6 +470,21 @@ describe("save", () => {
     const old = suffixedFingerprint("Acme, Inc.", "Director of Design", "New York, NY");
     await db.insert(schema.opportunities).values({ company: "Acme, Inc.", title: "Director of Design", sourceUrl: "https://jobs.example.com/a", fingerprint: old });
     await save(ctx(), [find({ url: "https://jobs.example.com/b", company: "Acme, Inc.", location: "New York, NY" })], "agent");
+    const opps = await db.select().from(schema.opportunities);
+    expect(opps.map((o) => [o.fingerprint, o.sourceUrl])).toEqual([[old, "https://jobs.example.com/a"]]);
+  });
+
+  it("merges 'Sr. Product Designer' and 'Senior Product Designer' as one job (#1828)", async () => {
+    await save(ctx(), [find({ url: "https://www.linkedin.com/jobs/view/4012345678", title: "Sr. Product Designer" })], "agent");
+    const t = await save(ctx(), [find({ url: "https://job-boards.greenhouse.io/acme/jobs/123", title: "Senior Product Designer" })], "agent");
+    expect(t.added).toBe(0);
+    expect(await db.select().from(schema.opportunities)).toHaveLength(1);
+  });
+
+  it("matches a posting stored under the key from before #1828, not a second row", async () => {
+    const old = unspelledFingerprint("Acme", "Sr. Product Designer", "New York, NY");
+    await db.insert(schema.opportunities).values({ company: "Acme", title: "Sr. Product Designer", sourceUrl: "https://jobs.example.com/a", fingerprint: old });
+    await save(ctx(), [find({ url: "https://jobs.example.com/b", company: "Acme", title: "Sr. Product Designer", location: "New York, NY" })], "agent");
     const opps = await db.select().from(schema.opportunities);
     expect(opps.map((o) => [o.fingerprint, o.sourceUrl])).toEqual([[old, "https://jobs.example.com/a"]]);
   });
