@@ -289,7 +289,7 @@
   }
 
   function checksBox(answer) {
-    return /^(yes|true|(i(( have|'ve|’ve)? read| understand) and |read and |i (hereby )?)?(agreed?|acknowledged?|confirm(ed)?|consent(ed)?|certif(y|ied)|accept(ed)?|authori[sz]e[ds]?|attest(ed)?|affirm(ed)?)|(i(( have|'ve|’ve)? read and)? |read and )?underst(and|ood))\b/.test(norm(answer));
+    return /^(yes|true|(i(( have|'ve|’ve)? (read|reviewed)(,? understood,?)?| understand) and |(read|reviewed)(,? understood,?)? and |i (hereby )?)?(agreed?|acknowledged?|confirm(ed)?|consent(ed)?|certif(y|ied)|accept(ed)?|authori[sz]e[ds]?|attest(ed)?|affirm(ed)?|declared?)|i (hereby )?give (my )?consent|(i(( have|'ve|’ve)? (read|reviewed) and)? |(read|reviewed) and )?underst(and|ood))\b/.test(norm(answer));
   }
 
   /**

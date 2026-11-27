@@ -136,9 +136,10 @@ export function answersBox(answer: string): boolean {
  * past tense too ("Agreed"), and "I have read and agree", "I understand" (#681), "I have read and understand", "I've read and understood" (#796),
  * "I hereby agree", "I hereby certify", a bare "Understood" and "Read and agreed" (#899).
  * "I authorize", "I attest" and "I affirm", for background-check and attestation boxes (#911).
+ * "I have read, understood and agree", "I have reviewed and agree", "I declare" and "I give my consent" (#1824).
  * Anything else, including empty, leaves the box as it is.
  */
 export function checksBox(answer: string): boolean {
   const a = answer.replace(/\*/g, "").replace(/\s+/g, " ").trim().toLowerCase();
-  return /^(yes|true|(i(( have|'ve|’ve)? read| understand) and |read and |i (hereby )?)?(agreed?|acknowledged?|confirm(ed)?|consent(ed)?|certif(y|ied)|accept(ed)?|authori[sz]e[ds]?|attest(ed)?|affirm(ed)?)|(i(( have|'ve|’ve)? read and)? |read and )?underst(and|ood))\b/.test(a);
+  return /^(yes|true|(i(( have|'ve|’ve)? (read|reviewed)(,? understood,?)?| understand) and |(read|reviewed)(,? understood,?)? and |i (hereby )?)?(agreed?|acknowledged?|confirm(ed)?|consent(ed)?|certif(y|ied)|accept(ed)?|authori[sz]e[ds]?|attest(ed)?|affirm(ed)?|declared?)|i (hereby )?give (my )?consent|(i(( have|'ve|’ve)? (read|reviewed) and)? |(read|reviewed) and )?underst(and|ood))\b/.test(a);
 }

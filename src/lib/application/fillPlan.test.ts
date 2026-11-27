@@ -99,6 +99,11 @@ describe("checksBox (#669)", () => {
     for (const a of ["I authorize", "I authorise", "I attest", "I affirm", "Authorized", "I authorize Acme to conduct a background check", "I hereby attest that the above is true", "I affirm the information is accurate"]) expect(checksBox(a), a).toBe(true);
     for (const a of ["I do not authorize", "Authorization pending", "Affirmative action statement"]) expect(checksBox(a), a).toBe(false);
   });
+
+  it("ticks for a read-and-understood list, a review, a declaration and a given consent (#1824)", () => {
+    for (const a of ["I have read, understood and agree", "I have read, understood, and agree to the terms", "I've read, understood and accept", "Read, understood and agreed", "I have reviewed and agree", "Reviewed and understood", "I declare", "I hereby declare that the above is true", "Declared", "I give my consent", "I give consent", "I hereby give my consent"]) expect(checksBox(a), a).toBe(true);
+    for (const a of ["I have read the privacy notice", "I have read, understood and do not agree", "I have reviewed the terms", "I give up", "Declaration pending"]) expect(checksBox(a), a).toBe(false);
+  });
   it("leaves the box on no, empty or anything else", () => {
     for (const a of ["", "No", "false", "No, I do not agree", "I do not agree", "I don't consent", "Yesterday", "Agreement pending", "N/A", "Maybe", "I have read the terms", "I do not understand", "Disagreed", "Acceptance pending"]) expect(checksBox(a), a).toBe(false);
   });
