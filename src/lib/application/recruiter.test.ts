@@ -261,6 +261,31 @@ describe("recruiterChecks: cover letter", () => {
     expect(recruiterChecks("cover_letter", "Dear Team,\n\nI am so used to shipping weekly that Acme's pace fits me.\n\nBest,\nMaya").some((x) => x.what === "The opening line is the stock one.")).toBe(false);
   });
 
+  it.each([
+    "I am eager to apply for the Senior Designer role at Acme.",
+    "I’m keen to apply for this role.",
+    "I am delighted to apply for the Senior Designer role.",
+    "I am happy to apply for this role.",
+    "I was delighted to see the Senior Designer opening.",
+    "I am submitting my application for the Senior Designer role.",
+    "Please consider my application for the Senior Designer role.",
+    "I came across your posting for a Senior Designer and knew I had to apply.",
+    "I recently came across the Senior Designer role.",
+    "It is with great enthusiasm that I apply for the Senior Designer role.",
+    "I would be thrilled to join Acme.",
+    "I’d be delighted to join the team.",
+    "Allow me to introduce myself.",
+  ])("flags the stock opening %j (#1888)", (s) => {
+    expect(recruiterChecks("cover_letter", `Dear Hiring Team,\n\n${s} I led the checkout redesign, which lifted conversion 12%.\n\nBest regards,\nMaya`).some((x) => x.what === "The opening line is the stock one.")).toBe(true);
+  });
+
+  it.each(["I am confident Acme's checkout can convert 12% better; I did it at Shopco.", "I am happy shipping weekly, and I grew Acme's design system to 40 teams.", "I came to design from journalism and grew Acme's newsroom tools to 40 teams."])(
+    "does not flag %j (#1888)",
+    (s) => {
+      expect(recruiterChecks("cover_letter", `Dear Team,\n\n${s}\n\nBest,\nMaya`).some((x) => x.what === "The opening line is the stock one.")).toBe(false);
+    },
+  );
+
   it("passes a strong short letter", () => {
     expect(recruiterChecks("cover_letter", "Dear Team,\n\nI grew Acme's design system to 40 teams in two years.\n\nBest,\nMaya")).toEqual([]);
   });
