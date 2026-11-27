@@ -489,20 +489,25 @@ export const dateAnswer = (t: string) => {
   const mon = (w: string) => MONTHS.indexOf(w.slice(0, 3).toLowerCase()) + 1;
   // Year first with - or / ("2026/12/01"), and month first with a two-digit year ("12/15/26" is 2026) (#1295).
   // Dots too, and dots with the day first, the way dotted dates are written ("2026.12.01", "01.12.2026") (#1774).
-  let m = t.match(/\b(\d{4})([/.-])(\d{1,2})\2(\d{1,2})\b/);
+  // A time may follow: "2026-12-01T09:00:00Z" is 2026-12-01 (#1862).
+  let m = t.match(/\b(\d{4})([/.-])(\d{1,2})\2(\d{1,2})(?!\d)/);
   if (m) return iso(+m[1], +m[3], +m[4]);
   m = t.match(/\b(\d{1,2})\.(\d{1,2})\.(\d{4})\b/);
   if (m) return iso(+m[3], +m[2], +m[1]);
+  // Month first, unless the first number can't be a month: "15/01/2027" is January 15, as UK and EU forms ask (#1862).
   m = t.match(/\b(\d{1,2})[/-](\d{1,2})[/-](\d{4}|\d{2})\b/);
-  if (m) return iso(m[3].length === 2 ? 2000 + +m[3] : +m[3], +m[1], +m[2]);
+  if (m) {
+    const dayFirst = +m[1] > 12 && +m[2] <= 12;
+    return iso(m[3].length === 2 ? 2000 + +m[3] : +m[3], dayFirst ? +m[2] : +m[1], dayFirst ? +m[1] : +m[2]);
+  }
   m = t.match(new RegExp(String.raw`\b${MON}\s+(\d{1,2})(?:st|nd|rd|th)?,?\s+(\d{4})\b`, "i"));
   if (m) return iso(+m[3], mon(m[1]), +m[2]);
   // "1-Dec-2026" and "1st of December 2026" too (#1774).
   m = t.match(new RegExp(String.raw`\b(\d{1,2})(?:st|nd|rd|th)?(?:\s+of\s+|\s+|-)${MON}(?:,?\s+|-)(\d{4})\b`, "i"));
   if (m) return iso(+m[3], mon(m[2]), +m[1]);
   // A month and year with no day, "January 2027", "Jan. 2027", "01/2027" or "2027-01", is the first of that month (#1801).
-  // Whole month names only, so "market 2026" is no date.
-  m = t.match(new RegExp(String.raw`\b${MONTH_WORD},?\s+(\d{4})\b`, "i"));
+  // Whole month names only, so "market 2026" is no date. A dash may join them: "Dec-2026" (#1862).
+  m = t.match(new RegExp(String.raw`\b${MONTH_WORD}(?:,?\s+|-)(\d{4})\b`, "i"));
   if (m) return iso(+m[2], mon(m[1]), 1);
   m = t.match(/\b(\d{1,2})\/(\d{4})\b/);
   if (m) return iso(+m[2], +m[1], 1);

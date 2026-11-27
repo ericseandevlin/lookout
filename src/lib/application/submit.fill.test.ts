@@ -380,7 +380,21 @@ describe("runFill (#385)", () => {
     expect(r.log[0]).toMatchObject({ ok: false, how: "date field, answer is not a date" });
     expect(
       ["December 1, 2026", "Dec. 1st 2026", "1 December 2026", "2026-12-01", "Available 3/5/2027", "13/01/2026", "ASAP"].map(dateAnswer),
-    ).toEqual(["2026-12-01", "2026-12-01", "2026-12-01", "2026-12-01", "2027-03-05", "", ""]);
+    ).toEqual(["2026-12-01", "2026-12-01", "2026-12-01", "2026-12-01", "2027-03-05", "2026-01-13", ""]);
+  });
+
+  it("a day-first date, a month and year joined by a dash, and a timestamp are read (#1862)", () => {
+    expect(["15/01/2027", "31-12-2026", "15/13/2027", "1/12/2026", "Dec-2026", "December-2026", "2026-12-01T09:00:00Z", "2026-12-01 09:00", "2026-12-011"].map(dateAnswer)).toEqual([
+      "2027-01-15",
+      "2026-12-31",
+      "",
+      "2026-01-12",
+      "2026-12-01",
+      "2026-12-01",
+      "2026-12-01",
+      "2026-12-01",
+      "",
+    ]);
   });
 
   it("a date with a month name between dashes, 'of' before the month, or dots is read (#1774)", () => {
