@@ -279,6 +279,19 @@ describe("kindFor: phone labels (#1412)", () => {
   });
 });
 
+describe("kindFor: address labels (#1826)", () => {
+  it("reads paired and numbered address labels as basic fields", () => {
+    for (const l of ["Zip/Postal Code", "Zip / Postal Code *", "City, State", "City/State", "Address Line 1", "Address Line 2", "Address 2", "Street Address", "State", "State/Province", "Province", "Country", "Country *"])
+      expect(kindFor(l, "text"), l).toBe("field");
+    expect(kindFor("Country", "select")).toBe("field");
+  });
+
+  it("keeps a question that starts with one of those words an answer", () => {
+    for (const l of ["Country of citizenship", "State your salary expectations", "Country code", "City you would like to work in", "Address any gaps in your employment history", "Which state do you live in?", "Address Line 1: is this your mailing address?"])
+      expect(kindFor(l, "text"), l).toBe("answer");
+  });
+});
+
 describe("kindFor: legal name, surname and postal code labels (#1489)", () => {
   it("reads them as basic fields", () => {
     for (const l of ["Legal First Name", "Legal Last Name *", "Legal Name", "Legal Full Name", "Given Name", "Family Name", "Surname", "Middle Name", "Zip Code", "Zip", "Postal Code", "Post Code"])
