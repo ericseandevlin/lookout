@@ -292,6 +292,18 @@ describe("kindFor: address labels (#1826)", () => {
   });
 });
 
+describe("kindFor: postcode, telephone, town and paired name labels (#1892)", () => {
+  it("reads them as basic fields, like their twins", () => {
+    for (const l of ["Postal/Zip Code", "Postal / Zip Code *", "Postcode", "Town/City", "City/Town", "Town", "Telephone", "Telephone Number", "Telephone number *", "Surname/Last Name", "Last Name / Family Name", "First Name / Given Name"])
+      expect(kindFor(l, "text"), l).toBe("field");
+  });
+
+  it("keeps a question that starts with one of those words an answer", () => {
+    for (const l of ["Telephone interview availability", "Telephone interview: which times work?", "Town you would like to work in", "Postal address of your referrer", "Country code", "Surname at birth, if different"])
+      expect(kindFor(l, "text"), l).toBe("answer");
+  });
+});
+
 describe("kindFor: legal name, surname and postal code labels (#1489)", () => {
   it("reads them as basic fields", () => {
     for (const l of ["Legal First Name", "Legal Last Name *", "Legal Name", "Legal Full Name", "Given Name", "Family Name", "Surname", "Middle Name", "Zip Code", "Zip", "Postal Code", "Post Code"])
