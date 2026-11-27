@@ -589,6 +589,30 @@ describe("listPage: search and board pages are not jobs (#1537)", () => {
       expect(listPage(u), u).toBe(false);
   });
 
+  it("drops a Phenom careers home and search and more list paths, not a job under them (#1857)", () => {
+    for (const u of [
+      "https://careers.acme.com/us/en",
+      "https://careers.acme.com/us/en/",
+      "https://careers.acme.com/en-gb",
+      "https://careers.acme.com/us/en/search-results",
+      "https://careers.acme.com/us/en/search-results?keywords=designer",
+      "https://acme.com/jobs/search",
+      "https://acme.com/careers/all-jobs",
+      "https://acme.com/careers/job-listings",
+      "https://acme.com/careers/positions",
+    ])
+      expect(listPage(u), u).toBe(true);
+    for (const u of [
+      "https://careers.acme.com/us/en/job/R12345/Product-Designer",
+      "https://careers.acme.com/us/en/job/R12345",
+      "https://careers.acme.com/design",
+      "https://acme.com/careers/positions/product-designer",
+      "https://careers.acme.com/role",
+      "https://careers.acme.com/us/en/design",
+    ])
+      expect(listPage(u), u).toBe(false);
+  });
+
   it("keeps single postings, on those sites too", () => {
     for (const u of [
       "https://www.glassdoor.com/job-listing/ux-director-acme-JV_IC1132348_KO0,11_KE12,16.htm?jl=1009",
