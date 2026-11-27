@@ -12,7 +12,7 @@ const db = drizzle(pg, { schema });
 vi.mock("@/lib/db", () => ({ db, schema }));
 
 const { loadContext, save, realDate } = await import("./discover");
-const { fingerprint, legacyFingerprint, suffixedFingerprint, unspelledFingerprint } = await import("./rules");
+const { fingerprint, legacyFingerprint, suffixedFingerprint, unspelledFingerprint, usFormFingerprint } = await import("./rules");
 type Ctx = Awaited<ReturnType<typeof loadContext>>;
 type Find = Parameters<typeof save>[1][number];
 
@@ -485,6 +485,21 @@ describe("save", () => {
     const old = unspelledFingerprint("Acme", "Sr. Product Designer", "New York, NY");
     await db.insert(schema.opportunities).values({ company: "Acme", title: "Sr. Product Designer", sourceUrl: "https://jobs.example.com/a", fingerprint: old });
     await save(ctx(), [find({ url: "https://jobs.example.com/b", company: "Acme", title: "Sr. Product Designer", location: "New York, NY" })], "agent");
+    const opps = await db.select().from(schema.opportunities);
+    expect(opps.map((o) => [o.fingerprint, o.sourceUrl])).toEqual([[old, "https://jobs.example.com/a"]]);
+  });
+
+  it("merges 'Acme Pvt Ltd' and 'Acme' as one job (#1831)", async () => {
+    await save(ctx(), [find({ url: "https://job-boards.greenhouse.io/acme/jobs/123", company: "Acme Pvt Ltd" })], "agent");
+    const t = await save(ctx(), [find({ url: "https://www.linkedin.com/jobs/view/4012345678", company: "Acme" })], "agent");
+    expect(t.added).toBe(0);
+    expect(await db.select().from(schema.opportunities)).toHaveLength(1);
+  });
+
+  it("matches a posting stored under the key from before #1831, not a second row", async () => {
+    const old = usFormFingerprint("Acme Pvt Ltd", "Director of Design", "New York, NY");
+    await db.insert(schema.opportunities).values({ company: "Acme Pvt Ltd", title: "Director of Design", sourceUrl: "https://jobs.example.com/a", fingerprint: old });
+    await save(ctx(), [find({ url: "https://jobs.example.com/b", company: "Acme Pvt Ltd", location: "New York, NY" })], "agent");
     const opps = await db.select().from(schema.opportunities);
     expect(opps.map((o) => [o.fingerprint, o.sourceUrl])).toEqual([[old, "https://jobs.example.com/a"]]);
   });
