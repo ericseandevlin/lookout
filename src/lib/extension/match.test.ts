@@ -211,6 +211,18 @@ describe("sameJob", () => {
     expect(jobKey("https://www.dice.com/company-profile/acme")).toMatch(/^url:/);
   });
 
+  it("keys a JazzHR job by its code, with or without the title (#1870)", () => {
+    const job = "https://acme.applytojob.com/apply/AbC123xYz/Product-Designer";
+    expect(jobKey(job)).toBe("jazzhr:acme.applytojob.com:abc123xyz");
+    expect(sameJob(["https://acme.applytojob.com/apply/AbC123xYz"], [job])).toBe(true);
+    expect(sameJob(["https://acme.applytojob.com/apply/AbC123xYz/?source=LinkedIn"], [job])).toBe(true);
+    expect(sameJob(["https://acme.applytojob.com/apply/ZzZ987wVu/Product-Designer"], [job])).toBe(false);
+    expect(sameJob(["https://globex.applytojob.com/apply/AbC123xYz/Product-Designer"], [job])).toBe(false);
+    // The board home has no code.
+    expect(jobKey("https://acme.applytojob.com/apply")).toMatch(/^url:/);
+    expect(jobKey("https://acme.applytojob.com/apply/jobs")).toMatch(/^url:/);
+  });
+
   it("matches a Paylocity form to its posting by job ID (#1435)", () => {
     const job = "https://recruiting.paylocity.com/Recruiting/Jobs/Details/1234567";
     expect(jobKey(job)).toBe("paylocity:1234567");
