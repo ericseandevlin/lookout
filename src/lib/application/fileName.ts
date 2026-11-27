@@ -5,13 +5,15 @@
 
 /**
  * A name safe on disk: letters, digits and marks in any script, spaces, dots, dashes, underscores, apostrophes and "&".
- * Everything else drops. "O'Brien" and "AT&T" reach the employer as written (#1698).
+ * Everything else drops. "O'Brien" and "AT&T" reach the employer as written (#1698). "+" stays and a slash between two
+ * words is a dash, so "Smith+Nephew" and "R/GA" are not "SmithNephew" and "RGA" (#1808).
  */
 export const fileSafe = (s: string) =>
   s
     .normalize("NFC")
     .replace(/\s+/g, " ")
-    .replace(/[^\p{L}\p{N}\p{M} ._'’&-]/gu, "")
+    .replace(/(?<=[\p{L}\p{N}])[/\\](?=[\p{L}\p{N}])/gu, "-")
+    .replace(/[^\p{L}\p{N}\p{M} ._'’&+-]/gu, "")
     .replace(/ {2,}/g, " ")
     .trim();
 
