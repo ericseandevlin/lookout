@@ -247,6 +247,12 @@ describe("CONFIRMATION (#692, #748, #762)", () => {
       "Thank you so very much for applying to Acme.",
       "Thanks again for applying to Acme.",
       "Thanks so much for your submission",
+      // #1886
+      "Your application is submitted",
+      "Thanks! Your application is now submitted.",
+      "Your application is received.",
+      "Your submission is received",
+      "Your application is successfully submitted.",
     ])
       expect(CONFIRMATION.test(t), t).toBe(true);
   });
@@ -334,6 +340,14 @@ describe("CONFIRMATION (#692, #748, #762)", () => {
       "Thank you so much for your interest. Please complete the form below.",
       "Thanks again for considering Acme.",
       "Once you apply, thank you so much for applying will show here.",
+      // #1886
+      "Your application is not submitted.",
+      "Your application is not yet submitted.",
+      "Once your application is submitted, we will review it.",
+      "Until your application is submitted, you can edit it.",
+      "Make sure your application is submitted by Friday.",
+      "Please check that your application is received.",
+      "Your application is submitted only after the last step.",
     ])
       expect(CONFIRMATION.test(t), t).toBe(false);
   });
