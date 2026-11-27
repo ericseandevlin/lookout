@@ -453,7 +453,8 @@ async function fillOne(page: Page, s: FillStep): Promise<{ ok: boolean; how: str
  * range the second end's k or M covers a bare first end below 1,000: "$120-150k" is 120000 (#1254). So do "$120 K",
  * "165 thousand" and "1.2 million"; a lone lowercase m after a space ("5 m") is left alone, as months or minutes (#1585).
  * The second end may start with any currency mark or code: "£60 - £70k" is 60000, as "$60 - $70k" is (#1771).
- * "And" joins the ends like "to": "Between 150 and 170k" is 150000 (#1851).
+ * "And" joins the ends like "to": "Between 150 and 170k" is 150000 (#1851). "1,2 Mio", "1.2 mil" and "25 lakh" are
+ * 1200000, 1200000 and 2500000 (#1863).
  */
 const DOT_THOUSANDS = /(?<![\d.,])\d{1,3}(?:\.\d{3})+(?:,\d{1,2}|,-{1,2})?(?![\d.,]|\s?[kKmM]\b)/g;
 // A space, no-break space, narrow no-break space or apostrophe between groups of three is thousands too: "150 000 €" and
@@ -461,7 +462,22 @@ const DOT_THOUSANDS = /(?<![\d.,])\d{1,3}(?:\.\d{3})+(?:,\d{1,2}|,-{1,2})?(?![\d
 // and ",-" after the number is no cents, as German and Swiss prices write it ("€ 90.000,-") (#1773).
 const SPACE_THOUSANDS = /(?<![\d.,'\u2019])\d{1,3}(?:[ \u00a0\u202f'\u2019]\d{3})+(?:,\d{1,2}|,-{1,2})?(?![\d.,'\u2019])/g;
 
+// Millions written "1,2 Mio", "1.2 mil", "1.2 mn" or "$1.2MM", and India's lakh (100,000) and crore (10 million): "25 lakh",
+// "30L", "18 LPA", "1.5 crore". Each end of a range is scaled: "25-30 lakh" is 2500000 (#1863). A comma before one or two
+// digits is the decimal mark there, as "1,2 Mio" is written in German.
+const BIG_UNIT = /(?<![\d.,])(?:(\d+(?:[.,]\d{1,2})?)(\s*(?:-|–|—|to|and)\s*))?(\d+(?:[.,]\d{1,2})?)\s?(mio|mil|mn|MM|lakhs?|lacs?|L|LPA|crores?|cr)\.?(?![a-z])/gi;
+const BIG_SCALE = (u: string) => (/^(?:l|lakhs?|lacs?|lpa)$/i.test(u) ? 1e5 : /^(?:crores?|cr)$/i.test(u) ? 1e7 : 1e6);
+const bigUnits = (t: string) =>
+  t.replace(BIG_UNIT, (all, a: string | undefined, sep: string | undefined, b: string, u: string) => {
+    // "L" and "MM" only as written, so "5 l" and "5 mm" stay as they are.
+    if ((u.toLowerCase() === "l" && u !== "L") || (u.toLowerCase() === "mm" && u !== "MM")) return all;
+    const k = BIG_SCALE(u);
+    const n = (x: string) => String(Math.round(Number(x.replace(",", ".")) * k));
+    return a ? `${n(a)}${sep}${n(b)}` : n(b);
+  });
+
 export const numberAnswer = (t: string) => {
+  t = bigUnits(t);
   // Dots grouped in threes are thousands, as written in much of Europe: "€90.000" is 90000 and "90.000,00 €" too, not 90
   // (#1747). "3.5", "$95.50" and "$2.300K" keep their decimal point.
   t = t.replace(DOT_THOUSANDS, (n) => n.split(",")[0].replace(/\./g, ""));

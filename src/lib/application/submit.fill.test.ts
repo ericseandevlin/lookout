@@ -348,6 +348,22 @@ describe("runFill (#385)", () => {
     expect(["5 m", "5 months", "2 Months", "3 mo"].map(numberAnswer)).toEqual(["5", "5", "2", "3"]);
   });
 
+  it("reads Mio, mil, MM, lakh and crore as units (#1863)", () => {
+    expect(["1,2 Mio", "1,2 Mio. €", "1.2 mil", "1.2 mn", "$1.2MM", "25 lakh", "30L", "18 LPA", "25-30 lakh", "1.5 crore"].map(numberAnswer)).toEqual([
+      "1200000",
+      "1200000",
+      "1200000",
+      "1200000",
+      "1200000",
+      "2500000",
+      "3000000",
+      "1800000",
+      "2500000",
+      "15000000",
+    ]);
+    expect(["5 l", "5 mm", "3 miles", "10 milestones", "2 credits"].map(numberAnswer)).toEqual(["5", "5", "3", "10", "2"]);
+  });
+
   it("dots grouped in threes are thousands (#1747)", () => {
     expect(["€90.000", "90.000 EUR", "1.250.000", "90.000,00 €", "€85.000 - €95.000"].map(numberAnswer)).toEqual(["90000", "90000", "1250000", "90000", "85000"]);
     expect(["3.5", "$95.50", "$2.3K", "7.5 years", "$2.300K", "1.25"].map(numberAnswer)).toEqual(["3.5", "95.50", "2300", "7.5", "2300", "1.25"]);
