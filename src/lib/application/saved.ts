@@ -92,7 +92,15 @@ const RELOCATE_SITE =
 // vacancy is based" (#1818). The "(s)" broke "location of this role", and "vacancy" wasn't read like "role".
 const PLURAL_PLACES =
   /\b(?:country|countries|location|locations)(?:\s*\((?:s|ies)\))?\s+(?:of|for)\s+(?:this|the)\s+(?:role|job|position|opportunity|posting|vacancy)\b|\bposting (?:country|location)\b|\bvacancy\b[^?.]{0,20}?\b(?:is|will be)\s+(?:based|located)\b|\b(?:country|location)\s+of\s+(?:this|the)\s+vacancy\b/i;
-const JOB_PLACE = new RegExp(`${JOB_PLACE_FIRST.source}|${MORE_PLACES.source}|${JOB_SITE.source}|${RELOCATE_SITE.source}|${PLURAL_PLACES.source}`, "i");
+// "The country where you are applying", "the opportunity's location", "the advertised role" and "the advertised location"
+// (#1893). "For which" and "in which" were read before; "where" was not, and "opportunity" and "vacancy" had no possessive.
+// "How did you hear about this advertised position?" names no place and still travels.
+const APPLYING_PLACES =
+  /\b(?:country|countries|location|region|place)\s+(?:where|in which)\s+(?:you are|you['’]re)\s+applying\b|\b(?:opportunity|vacancy|posting|listing)['’]s\s+(?:country|location)\b|\badvertised\s+(?:location|country)\b|\b(?:country|location)\s+(?:of|for)\s+(?:the|this)\s+advertised\s+(?:role|job|position|vacancy|opportunity)\b/i;
+const JOB_PLACE = new RegExp(
+  `${JOB_PLACE_FIRST.source}|${MORE_PLACES.source}|${JOB_SITE.source}|${RELOCATE_SITE.source}|${PLURAL_PLACES.source}|${APPLYING_PLACES.source}`,
+  "i",
+);
 // "How did you hear about this position?" is the same question as "...this job?", so it travels the same way (#1545).
 const neverKept = (question: string) =>
   JOB_PLACE.test(question) || NEVER.test(AUTH.test(question) || HEARD.test(question) ? question.replace(/\bthis (role|position|job|opportunity)\b/gi, " ") : question);
