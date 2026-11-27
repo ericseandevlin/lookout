@@ -276,6 +276,34 @@ describe("available to start (#1596)", () => {
   });
 });
 
+describe("other ways to ask when you can start (#1874)", () => {
+  const asks = [
+    "When are you able to start?",
+    "When could you start?",
+    "How soon can you start?",
+    "How soon could you start?",
+    "When would you be able to start?",
+    "What date can you start?",
+    "When can you begin?",
+    "Earliest date you could join?",
+  ];
+  it("keeps a start span", () => {
+    for (const q of asks) expect(isCommon(q, "Two weeks after an offer"), q).toBe(true);
+  });
+  it("keeps a calendar date with one application", () => {
+    for (const q of asks) expect(isCommon(q, "January 5, 2027"), q).toBe(false);
+    expect(onlyThisOne("How soon can you start?", "Next Monday")).toBe(true);
+  });
+  it("leaves a call or interview alone", () => {
+    expect(isCommon("When can you join a call with the team?", "Tomorrow at 2")).toBe(false);
+    expect(isCommon("How soon could you start the interview process?", "Any time")).toBe(false);
+  });
+  it("matches a saved answer asked the same way", () => {
+    const list = upsert([], "How soon can you start?", "Two weeks after an offer");
+    expect(match(list, "How soon can you start?")).toBe("Two weeks after an offer");
+  });
+});
+
 describe("other ways to ask work authorization (#1597)", () => {
   it("keeps legally able, eligible and right to work", () => {
     expect(isCommon("Are you legally able to work in the US?", "Yes")).toBe(true);
