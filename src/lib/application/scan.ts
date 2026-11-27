@@ -119,8 +119,9 @@ const BOTH = /(?<![\p{L}\p{N}])(?:r[eé]sum[eé]|cv)\s*(?:\/|&|\+|and|or)\s*(?:(
 // What may follow the resume words and still be just the upload: "Resume/CV *", "CV (PDF)", "Resume or CV", "Resume link" (#972).
 const RESUME_TAIL = /^\s*(?:(?:\/|or|and|&)\s*(?:r[eé]sum[eé]|cv|curriculum vitae)\s*)?(?:(?:file|upload|attachment|document|link|url)\s*)?(?:\([^)]*\)\s*)?[*:]?\s*$/iu;
 // "Mobile Phone", "Cell Phone" and "Home Phone" are the phone too; they come first so the whole name is the field (#1412).
-// "Legal First Name", "Surname" and "Zip Code" are basic fields too (#1489).
-const FIELD = /^((?:mobile|cell(?:ular)?|home|primary) phone(?: number)?|(?:legal )?(?:first name|last name|full name|name)|preferred (first )?name|given name|family name|surname|middle name|zip(?: code)?|postal code|post code|email|e-mail|phone|phone number|mobile|linkedin( profile| url)?|website|portfolio( url| link)?|github( url)?|current company|current location|location|city|address)\b/i;
+// "Legal First Name", "Surname" and "Zip Code" are basic fields too (#1489). So are "Street Address", "State", "Province" and
+// "Country" (#1826).
+const FIELD = /^((?:mobile|cell(?:ular)?|home|primary) phone(?: number)?|(?:legal )?(?:first name|last name|full name|name)|preferred (first )?name|given name|family name|surname|middle name|zip(?: code)?|postal code|post code|email|e-mail|phone|phone number|mobile|linkedin( profile| url)?|website|portfolio( url| link)?|github( url)?|current company|current location|location|city|street address|address|state|province|country)\b/i;
 
 /**
  * A basic field is just its name ("Email address", "Current Location (City, State)"). Fields are approved
@@ -129,7 +130,9 @@ const FIELD = /^((?:mobile|cell(?:ular)?|home|primary) phone(?: number)?|(?:lega
  */
 // What may follow the field name and still be just the name: "Email Address", "LinkedIn Profile URL", "Website or
 // portfolio link". "Current company size" or "Email me job updates" is a question (#725).
-const FIELD_TAIL = /^(?:(?:address|url|link|number|profile)\s*|(?:or|and|\/)\s*(?:website|portfolio|linkedin|github|phone|mobile|e-?mail)\s*)*$/i;
+// An address part may pair with another or carry a line number: "Zip/Postal Code", "City, State", "Address Line 1" (#1826).
+const FIELD_TAIL =
+  /^(?:(?:address|url|link|number|profile)\s*|(?:line\s*)?\d\s*|(?:or|and|\/|,)\s*(?:website|portfolio|linkedin|github|phone|mobile|e-?mail|zip(?: code)?|postal code|post code|city|state|province|region|country)\s*)*$/i;
 function isBasicField(label: string) {
   if (!FIELD.test(label) || label.includes("?")) return false;
   const words = label.replace(/\([^)]*\)/g, " ").replace(/[*:]/g, " ").trim().split(/\s+/);
