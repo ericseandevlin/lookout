@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { applyRules, bareCompany, fingerprint, jobPageUrl, legacyFingerprint, listPage, normUrl, placeId, placesDiffer, remoteFirst, suffixedFingerprint, unspelledFingerprint, usFormFingerprint } from "./rules";
+import { applyRules, bareCompany, fingerprint, jobPageUrl, legacyFingerprint, listPage, normUrl, placeId, placesDiffer, remoteFirst, suffixedFingerprint, unspelledCityFingerprint, unspelledFingerprint, usFormFingerprint } from "./rules";
 import { jobKey } from "@/lib/extension/match";
 
 const base = { score: 5, reasonsMatch: ["Director title"], reasonsGap: [], locationFit: true, dealbreaker: false, compMin: 140000, compMax: 160000 };
@@ -114,6 +114,26 @@ describe("dedupe keys", () => {
     // The keys before it are frozen too.
     expect(unspelledFingerprint("Acme Pvt Ltd", "Designer", "Paris")).toBe(usFormFingerprint("Acme Pvt Ltd", "Designer", "Paris"));
     expect(unspelledFingerprint("Acme, Inc.", "Designer", "Paris")).toBe(fingerprint("Acme", "Designer", "Paris"));
+  });
+  it("keys one city written two common ways as one place (#1830)", () => {
+    const k = (l: string) => fingerprint("Acme", "Senior Product Designer", l);
+    for (const l of ["New York City, NY", "New York City", "NYC", "NYC, NY", "nyc"]) expect(k(l), l).toBe(k("New York, NY"));
+    expect(k("St. Louis, MO")).toBe(k("Saint Louis, MO"));
+    expect(k("St Paul, MN")).toBe(k("Saint Paul, MN"));
+    expect(k("Ft. Lauderdale, FL")).toBe(k("Fort Lauderdale, FL"));
+    expect(k("Mt. Vernon, NY")).toBe(k("Mount Vernon, NY"));
+    expect(k("Washington D.C.")).toBe(k("Washington, DC"));
+    expect(k("Washington DC")).toBe(k("Washington, DC"));
+    // The short forms only as the city's first word, and other cities stay apart.
+    expect(k("East St. Louis, IL")).not.toBe(k("East Saint Louis, IL"));
+    expect(k("Stamford, CT")).toBe(unspelledCityFingerprint("Acme", "Senior Product Designer", "Stamford, CT"));
+    expect(k("New York Mills, MN")).not.toBe(k("New York, NY"));
+    expect(k("Washington Crossing, PA")).not.toBe(k("Washington, DC"));
+    // The key from before #1830 keeps the city as written, and is the same as the new one for a city with no other spelling.
+    expect(unspelledCityFingerprint("Acme", "Designer", "NYC")).not.toBe(fingerprint("Acme", "Designer", "NYC"));
+    expect(unspelledCityFingerprint("Acme Pvt Ltd", "Sr. Designer", "Paris")).toBe(fingerprint("Acme Pvt Ltd", "Sr. Designer", "Paris"));
+    // The keys before it are frozen too.
+    for (const old of [usFormFingerprint, unspelledFingerprint, suffixedFingerprint, legacyFingerprint]) expect(old("Acme", "Designer", "NYC")).not.toBe(fingerprint("Acme", "Designer", "NYC"));
   });
   it("keeps marks in non-Latin text, so डिज़ाइनर and डिजाइन stay apart (#1269)", () => {
     expect(fingerprint("मेरा", "डिज़ाइनर", "दिल्ली")).toBe(legacyFingerprint("मेरा", "डिज़ाइनर", "दिल्ली"));
