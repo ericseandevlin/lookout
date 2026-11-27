@@ -40,7 +40,7 @@ const ext = new Function(`${NAMES.map(grab).join("\n")}\nreturn { numberAnswer, 
 
 describe("fill.js answer rules match the worker's (#1541)", () => {
   it("reads the same number", () => {
-    for (const t of ["$165,000", "$165k", "165K", "$120-150k", "120 - 150k", "100 to 120k", "$1.5M", "1.2m", "$95.50", "12", "5+ years", "Over a decade", "", "$1,200,000", "150k-180k", "about 2,000 hours", "$120 K", "$120 K - $150 K", "165 thousand", "1.2 million", "5 m", "5 months", "2 Months", "120 TO 150K", "€90.000", "90.000,00 €", "1.250.000", "$2.300K", "150 000 €", "CHF 150'000", "1\u00a0250\u00a0000", "150 000,00 €", "12 3456", "CHF 150’000", "1’250’000", "€ 90.000,-", "90.000,-- EUR", "150 000,- €", "it’s 5 years"])
+    for (const t of ["$165,000", "$165k", "165K", "$120-150k", "120 - 150k", "100 to 120k", "$1.5M", "1.2m", "$95.50", "12", "5+ years", "Over a decade", "", "$1,200,000", "150k-180k", "about 2,000 hours", "$120 K", "$120 K - $150 K", "165 thousand", "1.2 million", "5 m", "5 months", "2 Months", "120 TO 150K", "€90.000", "90.000,00 €", "1.250.000", "$2.300K", "150 000 €", "CHF 150'000", "1\u00a0250\u00a0000", "150 000,00 €", "12 3456", "CHF 150’000", "1’250’000", "€ 90.000,-", "90.000,-- EUR", "150 000,- €", "it’s 5 years", "Between 150 and 170k", "150 and 170k", "5 years and 3 months"])
       expect(ext.numberAnswer(t), t).toBe(numberAnswer(t));
   });
 

@@ -356,6 +356,8 @@ describe("runFill (#385)", () => {
   it("a space or apostrophe between groups of three is thousands (#1752)", () => {
     expect(["150 000 €", "150\u00a0000", "150\u202f000 €", "CHF 150'000", "1 250 000", "150 000,00 €", "€120 000 - €140 000"].map(numberAnswer)).toEqual(["150000", "150000", "150000", "150000", "1250000", "150000", "120000"]);
     expect(["5 years", "2 3", "12 3456", "120 - 150k", "$120 K", "10 1000"].map(numberAnswer)).toEqual(["5", "2", "12", "120000", "120000", "10"]);
+    // "And" joins a range like "to" (#1851); a count of years and months is no range.
+    expect(["Between 150 and 170k", "150 and 170k", "$150 AND $170K", "5 years and 3 months", "2 and 3"].map(numberAnswer)).toEqual(["150000", "150000", "150000", "5", "2"]);
   });
 
   it("a curly apostrophe groups thousands, and ',-' is no cents (#1773)", () => {
