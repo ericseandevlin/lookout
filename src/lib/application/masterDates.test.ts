@@ -145,4 +145,22 @@ Staff Engineer | 2010 - 2011`;
     // A one-title employer heading is still checked.
     expect(looseDates("### Acme | New York | 06/2018 – 02/2021\n- Built it.", "Acme\n06/2018 – 02/2021")).toHaveLength(1);
   });
+
+  it("reads 'to date', 'till date', a dash then 'Date' and 'Ongoing' as the open end (#1844)", () => {
+    const md = "### Designer | Acme | Mar 2019 - Present";
+    for (const end of ["to date", "Till Date", "till now", "until present", "Date", "Ongoing", "Present"])
+      expect(looseDates(md, `Designer, Acme  March 2019 – ${end}`), end).toEqual([]);
+    // "Date" only counts after a dash: "Start date" before the years is no open end.
+    expect(looseDates(md, "Designer, Acme start date March 2019")).toHaveLength(1);
+  });
+
+  it("reads a two-digit end year after a full one as that year (#1844)", () => {
+    expect(looseDates("### Designer | Acme | 2019 - 2021", "Designer, Acme 2019-21")).toEqual([]);
+    // Across a century it stays as written: "1998-02" could be February 1998.
+    expect(looseDates("### Designer | Acme | 1998 - 2002", "Designer, Acme 1998 – 02")).toHaveLength(1);
+    expect(looseDates("### Designer | Acme | 2019 - 2021", "Designer, Acme 2019 – 21")).toEqual([]);
+    // ISO year and month stays a month: "2019-05" is not 2019 to 2005, and a full ISO date is left alone.
+    expect(looseDates("### Designer | Acme | May 2019 - Present", "Designer, Acme 2019-05 - present")).toEqual([]);
+    expect(looseDates("### Designer | Acme | 2019 - 2021", "Designer, Acme 2019-05-01")).toHaveLength(1);
+  });
 });
