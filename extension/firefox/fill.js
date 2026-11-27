@@ -351,6 +351,18 @@
     if (m) return iso(+m[2], +m[1], 1);
     m = s.match(/\b(\d{4})-(\d{1,2})\b(?![-/.]?\d)/);
     if (m) return iso(+m[1], +m[2], 1);
+    // A day and month with no year, "Dec 1" or "1 December", is the next time that day comes, today included (#1850).
+    // "May" followed by a word is the verb.
+    const month = String.raw`(jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may(?!\s+[a-z])|june?|july?|aug(?:ust)?|sept?(?:ember)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)\.?`;
+    const next = (mo, d) => {
+      const now = new Date();
+      const y = now.getFullYear();
+      return Date.UTC(y, mo - 1, d) < Date.UTC(y, now.getMonth(), now.getDate()) ? iso(y + 1, mo, d) : iso(y, mo, d);
+    };
+    m = s.match(new RegExp(String.raw`\b${month}\s+(\d{1,2})(?:st|nd|rd|th)?\b(?![:.]?\d)(?!\s*(?:days?|weeks?|wks?|months?|years?)\b)`, "i"));
+    if (m) return next(mon(m[1]), +m[2]);
+    m = s.match(new RegExp(String.raw`\b(\d{1,2})(?:st|nd|rd|th)?(?:\s+of\s+|\s+|-)${month}(?![a-z])`, "i"));
+    if (m) return next(mon(m[2]), +m[1]);
     return "";
   }
 

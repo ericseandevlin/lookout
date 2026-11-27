@@ -410,6 +410,30 @@ describe("runFill (#385)", () => {
     ]);
   });
 
+  it("a day and month with no year is the next time that day comes, today included (#1850)", () => {
+    vi.useFakeTimers({ now: new Date(2026, 10, 27, 12), toFake: ["Date"] });
+    try {
+      expect(["Dec 1", "December 1st", "1 December", "the 1st of December", "Available Jan 5", "Nov 27", "Nov 26", "15-Mar", "Feb 29", "Feb 30", "I may start in 2 weeks", "May 2 weeks after an offer", "5 years in marketing", "Augmented 3"].map(dateAnswer)).toEqual([
+        "2026-12-01",
+        "2026-12-01",
+        "2026-12-01",
+        "2026-12-01",
+        "2027-01-05",
+        "2026-11-27",
+        "2027-11-26",
+        "2027-03-15",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+      ]);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
   it("a date answered year first with slashes or with a two-digit year is read; an impossible day is not (#1295)", () => {
     expect(["2026/12/01", "12/15/26", "12-15-26", "Available 3/5/27", "2026-02-30", "02/29/2027", "02/29/2028"].map(dateAnswer)).toEqual([
       "2026-12-01",

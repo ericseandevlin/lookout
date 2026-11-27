@@ -507,7 +507,23 @@ export const dateAnswer = (t: string) => {
   if (m) return iso(+m[2], +m[1], 1);
   m = t.match(/\b(\d{4})-(\d{1,2})\b(?![-/.]?\d)/);
   if (m) return iso(+m[1], +m[2], 1);
+  // A day and month with no year, "Dec 1", "December 1st", "1 December" or "the 1st of December", is the next time that day
+  // comes, today included (#1850). "May" followed by a word is the verb: "I may 2 weeks" is no date.
+  m = t.match(new RegExp(String.raw`\b${NO_YEAR_MONTH}\s+(\d{1,2})(?:st|nd|rd|th)?\b(?![:.]?\d)(?!\s*(?:days?|weeks?|wks?|months?|years?)\b)`, "i"));
+  if (m) return nextDay(iso, mon(m[1]), +m[2]);
+  m = t.match(new RegExp(String.raw`\b(\d{1,2})(?:st|nd|rd|th)?(?:\s+of\s+|\s+|-)${NO_YEAR_MONTH}(?![a-z])`, "i"));
+  if (m) return nextDay(iso, mon(m[2]), +m[1]);
   return "";
+};
+
+// Whole month names and their short forms; "may" only when no word follows it.
+const NO_YEAR_MONTH = String.raw`(jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may(?!\s+[a-z])|june?|july?|aug(?:ust)?|sept?(?:ember)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)\.?`;
+
+/** This year's day, or next year's when it has passed (#1850). */
+const nextDay = (iso: (y: number, m: number, d: number) => string, m: number, d: number) => {
+  const now = new Date();
+  const y = now.getFullYear();
+  return Date.UTC(y, m - 1, d) < Date.UTC(y, now.getMonth(), now.getDate()) ? iso(y + 1, m, d) : iso(y, m, d);
 };
 
 /**

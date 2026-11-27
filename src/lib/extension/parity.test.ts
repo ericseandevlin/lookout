@@ -71,6 +71,13 @@ describe("fill.js answer rules match the worker's (#1541)", () => {
       "02/29/2027",
       "13/01/2026",
       "Two weeks after an offer",
+      "Dec 1",
+      "1 December",
+      "the 1st of December",
+      "Jan 5",
+      "Feb 30",
+      "I may start in 2 weeks",
+      "May 2 weeks after an offer",
       "ASAP",
       "",
     ])
