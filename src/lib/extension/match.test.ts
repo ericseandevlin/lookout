@@ -153,6 +153,18 @@ describe("sameJob", () => {
     // An employer param alone names no job, so it does not change the key.
     expect(jobKey("https://career4.successfactors.com/career?company=acmeP")).toBe("url:career4.successfactors.com/career");
   });
+  it("matches a SuccessFactors career site's apply page to its posting by host and ID (#1869)", () => {
+    const job = "https://jobs.acme.com/job/New-York-Senior-Designer-NY-10001/1234567801/";
+    expect(jobKey(job)).toBe("jobid:jobs.acme.com:1234567801");
+    expect(sameJob(["https://jobs.acme.com/talentcommunity/apply/1234567801/?locale=en_US"], [job])).toBe(true);
+    expect(sameJob(["https://jobs.acme.com/job/New-York-Senior-Designer/1234567801"], [job])).toBe(true);
+    expect(sameJob(["https://jobs.acme.com/talentcommunity/apply/1234567802/?locale=en_US"], [job])).toBe(false);
+    expect(sameJob(["https://jobs.globex.com/talentcommunity/apply/1234567801/"], [job])).toBe(false);
+    // A /job/<slug> page without a long ID, or with more after it, keeps its path key.
+    expect(jobKey("https://acme.com/job/senior-designer")).toBe("url:acme.com/job/senior-designer");
+    expect(jobKey("https://acme.com/job/senior-designer/12345")).toMatch(/^url:/);
+    expect(jobKey("https://acme.com/job/nyc/1234567801/details")).toMatch(/^url:/);
+  });
   it("keeps a hash route as part of the job, but not a plain anchor (#841)", () => {
     expect(sameJob(["https://careers.acme.com/#/jobs/101"], ["https://careers.acme.com/#/jobs/202"])).toBe(false);
     expect(sameJob(["https://careers.acme.com/#!/job/101/apply"], ["https://careers.acme.com/#!/job/101"])).toBe(true);
