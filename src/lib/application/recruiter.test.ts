@@ -226,6 +226,17 @@ describe("recruiterChecks: cover letter", () => {
     expect(stock("I’ve grown Acme's design system to 40 teams.")).toBe(false);
   });
 
+  it.each(["I am very excited to apply for the Product Designer role at Acme.", "I am so excited to apply for the role.", "I’m really excited to apply for the role.", "I was so excited to see this role."])(
+    "flags the stock opening %j with an adverb in it (#1837)",
+    (s) => {
+      expect(recruiterChecks("cover_letter", `Dear Hiring Manager,\n\n${s}\n\nBest,\nMaya`).some((x) => x.what === "The opening line is the stock one.")).toBe(true);
+    },
+  );
+
+  it("does not flag an opening that only starts with 'I am so' (#1837)", () => {
+    expect(recruiterChecks("cover_letter", "Dear Team,\n\nI am so used to shipping weekly that Acme's pace fits me.\n\nBest,\nMaya").some((x) => x.what === "The opening line is the stock one.")).toBe(false);
+  });
+
   it("passes a strong short letter", () => {
     expect(recruiterChecks("cover_letter", "Dear Team,\n\nI grew Acme's design system to 40 teams in two years.\n\nBest,\nMaya")).toEqual([]);
   });
