@@ -21,6 +21,8 @@ const EEO = /ethnic|\brace\b|racial|hispanic|latin[oax]|gender|\bsex\b|sexual or
 const ONE_EMPLOYER = /previously (worked|employed)|ever (been )?employed by|worked (here|for us)|\breferr/i;
 // "When would you be available to start?" and "availability to start" too (#1596).
 const START = /start date|earliest.*start|when can you start|availab(le|ility) to start/i;
+// A notice period that names a day ("Ends January 31", "My last day is Friday") is as dated as a start day (#1852).
+const NOTICE = /notice period|how much notice/i;
 // A calendar date ("12/1", "2026-12-01", "Dec 1", "June 1st", "1st December", "January 2027") passes;
 // "2 weeks after an offer" stays true (#1079).
 // Whole month names only: "dec" must not match "decision". "May" alone is a verb too, so it needs a day or year beside it.
@@ -38,7 +40,7 @@ const REFERRAL = /\breferr|\bemployee\b|\bfriend|\bcolleague|\bco-?worker|\brecr
 
 /** An answer that fits only the application it was given on, so it must not travel to the next one (#1032). */
 export const onlyThisOne = (question: string, answer: string) =>
-  (ONE_EMPLOYER.test(question) && !/^no\b/i.test(answer.trim())) || (START.test(question) && DATE.test(answer)) || (HEARD.test(question) && REFERRAL.test(answer));
+  (ONE_EMPLOYER.test(question) && !/^no\b/i.test(answer.trim())) || ((START.test(question) || NOTICE.test(question)) && DATE.test(answer)) || (HEARD.test(question) && REFERRAL.test(answer));
 
 export const answerKey = (q: string) =>
   q
