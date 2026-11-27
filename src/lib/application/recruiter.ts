@@ -61,8 +61,12 @@ const FRAMING = new RegExp(
 // Curly apostrophes too: letters pasted from Word or a phone carry them (#769).
 // One adverb in between is still the stock line: "I am very excited", "I'm really excited", "I was so thrilled" (#1837).
 const ADVERB = "(?:(?:very|so|really|truly|incredibly|extremely|particularly) )?";
+// "I am eager to", "I'm keen to", "I was delighted to", "I am submitting", "Please consider my application", "I came across",
+// "It is with great enthusiasm", "I would be thrilled to" and "Allow me to introduce myself" too (#1888). "I am confident"
+// stays unflagged: it can open a real claim.
+const GLAD_TO = "(?:eager|delighted|happy|keen) to";
 const WEAK_OPEN = new RegExp(
-  `^(?:i am|i['’]m) ${ADVERB}(?:writing|excited|thrilled|pleased|interested|applying|reaching out)|^i(?: would|['’]d) (?:like|love) to|^please accept|^my name is|^i wish to|^i was ${ADVERB}(?:excited|thrilled) to`,
+  `^(?:i am|i['’]m) ${ADVERB}(?:writing|excited|thrilled|pleased|interested|applying|reaching out|submitting|${GLAD_TO})|^i(?: would|['’]d) (?:like|love) to|^i(?: would|['’]d) be ${ADVERB}(?:thrilled|delighted|excited|happy|honou?red) to|^please (?:accept|consider my application)|^my name is|^i wish to|^i was ${ADVERB}(?:excited|thrilled|eager|delighted|happy|keen) to|^i (?:recently |just )?came across|^it is with (?:great |much )?(?:enthusiasm|pleasure|interest|excitement)|^allow me to introduce`,
   "i",
 );
 // "Doubled sign-ups" states the scale too (#776).
