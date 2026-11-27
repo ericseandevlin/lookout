@@ -47,7 +47,11 @@ const short = (s: string) => (s.length > 90 ? `${s.slice(0, 87).trimEnd()}…` :
 const SKILLS = /skills|tools|expertise|competenc/i;
 // Sections whose bullets aren't work results, so the number checks skip them (#704).
 const NOT_WORK = /skills|tools|expertise|competenc|education|certif|award|honou?rs|languages|interests|references/i;
-const VAGUE = /\b(?:[A-Z][\w+#./-]*\s){1,2}(?:Concepts|Fundamentals|Basics|Principles)\b|\b(?:familiar(?:ity)? with|exposure to|basic knowledge of|working knowledge of)\b/;
+// "X Concepts" needs the capital letter; the phrases match in any case, since a skills line starts with one
+// ("Familiar with Kubernetes") (#1836).
+const VAGUE_NAME = /\b(?:[A-Z][\w+#./-]*\s){1,2}(?:Concepts|Fundamentals|Basics|Principles)\b/;
+const VAGUE_PHRASE = /\b(?:familiar(?:ity)? with|exposure to|basic knowledge of|working knowledge of)\b/i;
+const vague = (s: string) => s.match(VAGUE_NAME)?.[0] ?? s.match(VAGUE_PHRASE)?.[0];
 // The person moving into the field, not a team or product: "led the pivot to subscriptions" is a result (#768).
 const MOVE = String.raw`(?:(?:move|break|grow|step|shift)\s+into|(?:transition|pivot)\s+(?:in)?to)`;
 const FRAMING = new RegExp(
@@ -130,8 +134,8 @@ function resumeChecks(md: string): Finding[] {
       all.push(b.text);
       if (roles === 1 && titles <= 1) latest.push(b.text);
     }
-    if ((b.t === "bullet" || b.t === "text") && SKILLS.test(section) && VAGUE.test(b.text)) {
-      const m = b.text.match(VAGUE)![0];
+    const m = (b.t === "bullet" || b.t === "text") && SKILLS.test(section) ? vague(b.text) : undefined;
+    if (m) {
       out.push({
         dim: "scan",
         line: b.text,
