@@ -313,7 +313,7 @@
     const s = String(t || "")
       .replace(/(?<![\d.,])\d{1,3}(?:\.\d{3})+(?:,\d{1,2}|,-{1,2})?(?![\d.,]|\s?[kKmM]\b)/g, (n) => n.split(",")[0].replace(/\./g, ""))
       .replace(/(?<![\d.,'\u2019])\d{1,3}(?:[ \u00a0\u202f'\u2019]\d{3})+(?:,\d{1,2}|,-{1,2})?(?![\d.,'\u2019])/g, (n) => n.split(",")[0].replace(/[ \u00a0\u202f'\u2019]/g, ""));
-    const m = s.match(/(\d[\d,]*(?:\.\d+)?)((?:\s?(?:[kK]|[tT]housand|[mM]illion)|[mM]|\sM)\b)?(?:\s*(?:-|–|—|to|To|TO)\s*(?:[$€£¥₹]|[A-Z]{3}\s?)?\d[\d,]*(?:\.\d+)?((?:\s?(?:[kK]|[tT]housand|[mM]illion)|[mM]|\sM)\b))?/);
+    const m = s.match(/(\d[\d,]*(?:\.\d+)?)((?:\s?(?:[kK]|[tT]housand|[mM]illion)|[mM]|\sM)\b)?(?:\s*(?:-|–|—|to|To|TO|and|And|AND)\s*(?:[$€£¥₹]|[A-Z]{3}\s?)?\d[\d,]*(?:\.\d+)?((?:\s?(?:[kK]|[tT]housand|[mM]illion)|[mM]|\sM)\b))?/);
     if (!m) return "";
     const n = m[1].replace(/,/g, "");
     const unit = m[2] || (Number(n) < 1000 ? m[3] : undefined);
