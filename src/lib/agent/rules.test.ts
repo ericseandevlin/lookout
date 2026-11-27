@@ -479,6 +479,26 @@ describe("listPage: search and board pages are not jobs (#1537)", () => {
       expect(listPage(u), u).toBe(true);
   });
 
+  it("drops a company's job search with a query, not a job its query names (#1806)", () => {
+    for (const u of [
+      "https://acme.com/jobs?page=2",
+      "https://careers.acme.com/jobs/?location=New%20York",
+      "https://www.metacareers.com/jobs?q=designer&teams[0]=Design",
+      "https://acme.com/careers/jobs?department=design&sort=new",
+    ])
+      expect(listPage(u), u).toBe(true);
+    for (const u of [
+      "https://acme.com/careers/jobs?gh_jid=4001234005",
+      "https://acme.com/jobs?jobId=abc12",
+      "https://acme.com/jobs?id=r-55",
+      "https://acme.com/jobs?job=senior-product-designer",
+      "https://acme.com/jobs?req=R123",
+      "https://acme.com/jobs?ref=12345",
+      "https://acme.com/jobs?utm_source=x&opening=0c3f1a2b-4d5e-6f70-8a9b-0c1d2e3f4a5b",
+    ])
+      expect(listPage(u), u).toBe(false);
+  });
+
   it("keeps single postings, on those sites too", () => {
     for (const u of [
       "https://www.glassdoor.com/job-listing/ux-director-acme-JV_IC1132348_KO0,11_KE12,16.htm?jl=1009",
