@@ -18,11 +18,13 @@ const PAY_GAP = /\b(comp|compensation|pay|salary|salaries|wages?)\b/i;
  * Em and en dashes become a comma: reasons are read as plain copy, and Lookout never writes one (#1531). A dash between
  * two numbers is a range, so it becomes a hyphen: "$180k–$220k" is "$180k-$220k", not "$180k, $220k" (#1766). A pay unit or
  * a time of day after the first number keeps it a range too: "$90/hr–$110/hr", "$60 an hour – $75", "10am–6pm" (#1807).
+ * An en dash with no space between two letters or digits is a range in words: "Mon–Fri", "L5–L6", "Series A–B" (#1840).
  */
 const RANGE_START = /(\d[\d,.]*(?:[kKmM%]|\s?[ap]\.?m\.?|\s?(?:\/\s?|an? |per )(?:hr|hour|yr|year|mo|month|wk|week)\b)?)\s*[\u2014\u2013]\s*(?=[$€£]?\d)/g;
 export const noDashes = (s: string) =>
   s
     .replace(RANGE_START, "$1-")
+    .replace(/(?<=[\p{L}\p{N}])\u2013(?=[\p{L}\p{N}])/gu, "-")
     .replace(/\s*[\u2014\u2013]\s*/g, ", ")
     .replace(/,\s*,/g, ",")
     .trim();

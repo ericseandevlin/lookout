@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { applyRules, bareCompany, fingerprint, jobPageUrl, legacyFingerprint, listPage, normUrl, placeId, placesDiffer, remoteFirst, suffixedFingerprint, unspelledCityFingerprint, unspelledFingerprint, usFormFingerprint } from "./rules";
+import { applyRules, bareCompany, fingerprint, jobPageUrl, legacyFingerprint, listPage, noDashes, normUrl, placeId, placesDiffer, remoteFirst, suffixedFingerprint, unspelledCityFingerprint, unspelledFingerprint, usFormFingerprint } from "./rules";
 import { jobKey } from "@/lib/extension/match";
 
 const base = { score: 5, reasonsMatch: ["Director title"], reasonsGap: [], locationFit: true, dealbreaker: false, compMin: 140000, compMax: 160000 };
@@ -466,6 +466,13 @@ describe("no em dashes in match reasons (#1531)", () => {
     const r = applyRules({ score: 4, reasonsMatch: ["Pays $180k–$220k, above your floor", "Salary £90,000 – £110,000"], reasonsGap: ["Hybrid, 2–3 days a week in office", "Series B — 40–60 people"], locationFit: true, dealbreaker: false, compMin: 180000, compMax: 220000 }, null)!;
     expect(r.reasonsMatch).toEqual(["Pays $180k-$220k, above your floor", "Salary £90,000-£110,000"]);
     expect(r.reasonsGap).toEqual(["Hybrid, 2-3 days a week in office", "Series B, 40-60 people"]);
+  });
+  it("keeps an unspaced en dash between words a range: 'Mon–Fri', 'L5–L6', 'Series A–B' (#1840)", () => {
+    expect(noDashes("On-site Mon–Fri")).toBe("On-site Mon-Fri");
+    expect(noDashes("Leveled L5–L6")).toBe("Leveled L5-L6");
+    expect(noDashes("Series A–B startup")).toBe("Series A-B startup");
+    expect(noDashes("Design systems—your core strength")).toBe("Design systems, your core strength");
+    expect(noDashes("Heavy mobile focus – check fit")).toBe("Heavy mobile focus, check fit");
   });
 
   it("keeps an hourly range or a time span a range (#1807)", () => {
