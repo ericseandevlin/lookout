@@ -80,7 +80,11 @@ const JOB_SITE =
 // "Are you willing to relocate?" with no place is about the person and stays.
 const RELOCATE_SITE =
   /\brelocat\w*\b[^?.]{0,40}?\b(?:to|near|for)\s+(?:(?:one|any)\s+of\s+)?(?:our|the company['’]?s|its)\s+(?:[\w-]+\s+){0,3}?(?:headquarters|hq|offices?|campus(?:es)?|sites?|locations?|hubs?|studios?)\b|\brelocat\w*\b[^?.]{0,60}?\bfor\s+(?:this|the)\s+(?:job|opportunity|role|position)\b/i;
-const JOB_PLACE = new RegExp(`${JOB_PLACE_FIRST.source}|${MORE_PLACES.source}|${JOB_SITE.source}|${RELOCATE_SITE.source}`, "i");
+// "The location(s) of this role", "the country(ies) for this position", "the posting country" and "the country where the
+// vacancy is based" (#1818). The "(s)" broke "location of this role", and "vacancy" wasn't read like "role".
+const PLURAL_PLACES =
+  /\b(?:country|countries|location|locations)(?:\s*\((?:s|ies)\))?\s+(?:of|for)\s+(?:this|the)\s+(?:role|job|position|opportunity|posting|vacancy)\b|\bposting (?:country|location)\b|\bvacancy\b[^?.]{0,20}?\b(?:is|will be)\s+(?:based|located)\b|\b(?:country|location)\s+of\s+(?:this|the)\s+vacancy\b/i;
+const JOB_PLACE = new RegExp(`${JOB_PLACE_FIRST.source}|${MORE_PLACES.source}|${JOB_SITE.source}|${RELOCATE_SITE.source}|${PLURAL_PLACES.source}`, "i");
 // "How did you hear about this position?" is the same question as "...this job?", so it travels the same way (#1545).
 const neverKept = (question: string) =>
   JOB_PLACE.test(question) || NEVER.test(AUTH.test(question) || HEARD.test(question) ? question.replace(/\bthis (role|position|job|opportunity)\b/gi, " ") : question);
