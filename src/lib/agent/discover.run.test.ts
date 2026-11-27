@@ -201,16 +201,16 @@ describe("discover (#379)", () => {
     await db.insert(schema.userOpportunities).values({ userId, searchId, opportunityId: old.id, score: 4, addedVia: "agent" });
     results.set("design systems lead", [hit("https://jobs.example.com/x1"), hit("https://jobs.example.com/x2"), hit("https://go.example.com/old")]);
     results.set("design systems lead site:greenhouse.io", [hit("https://jobs.example.com/b")]);
-    redirects.set("https://jobs.example.com/x1", "https://jobs.example.com/careers");
-    redirects.set("https://jobs.example.com/x2", "https://jobs.example.com/careers/");
+    redirects.set("https://jobs.example.com/x1", "https://jobs.example.com/role");
+    redirects.set("https://jobs.example.com/x2", "https://jobs.example.com/role/");
     redirects.set("https://go.example.com/old", "https://jobs.example.com/old");
-    for (const u of ["https://jobs.example.com/careers", "https://jobs.example.com/careers/", "https://jobs.example.com/old", "https://jobs.example.com/b"]) pages.set(u, posting());
+    for (const u of ["https://jobs.example.com/role", "https://jobs.example.com/role/", "https://jobs.example.com/old", "https://jobs.example.com/b"]) pages.set(u, posting());
 
     await expect(discover(searchId)).resolves.toMatchObject({ found: 2, added: 2 });
 
     const scored = completeJSON.mock.calls.map((c) => c[0] as Call).filter((c) => c.name === "score");
     const sent = scored.flatMap((c) => [...c.user.matchAll(/^\[\d+\] URL: (\S+)/gm)].map((m) => m[1].replace(/\/$/, ""))).sort();
-    expect(sent).toEqual(["https://jobs.example.com/b", "https://jobs.example.com/careers"]);
+    expect(sent).toEqual(["https://jobs.example.com/b", "https://jobs.example.com/role"]);
     const run = await runRow();
     // Three different pages opened: two scored, one on the board (#1649).
     expect(run.report).toMatchObject({ read: 3 });

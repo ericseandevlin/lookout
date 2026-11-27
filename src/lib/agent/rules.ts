@@ -393,9 +393,14 @@ const JOB_PARAM = /^(?:.*id|job|req|requisition|posting|position)$/i;
  * A company's own job search with a query: "acme.com/jobs?location=NYC", "metacareers.com/jobs?q=designer", "/jobs/?page=2"
  * (#1806). The bare "/jobs" was already a list; its query only filters it. A query with a job ID or a long number names one job.
  */
+// A company's careers home and its search too, with or without a query (#1820): "acme.com/careers", "/careers/search",
+// "/job-search?q=designer", "/open-positions", "/en/careers/open-roles", and the root of careers.acme.com or jobs.acme.com.
+// "/careers?gh_jid=4001234005" is one job (Greenhouse's embed), and a hash route ("#/jobs/123") is left alone.
+const LIST_PATH = /\/(?:jobs|careers|careers\/search|job-?search|search-jobs|open-positions|open-roles|openings|job-openings|current-openings)\/?$/i;
+const CAREERS_HOST = /^(?:careers|jobs)\.[^.]+\.[a-z.]+$/i;
 const jobsSearch = (url: URL) =>
-  /\/jobs\/?$/i.test(url.pathname) &&
-  !!url.search &&
+  (LIST_PATH.test(url.pathname) || (CAREERS_HOST.test(url.hostname) && /^\/?$/.test(url.pathname))) &&
+  !url.hash.includes("/") &&
   !NAMES_ID.test(url.search) &&
   !url.search
     .slice(1)
