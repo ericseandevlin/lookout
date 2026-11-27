@@ -90,6 +90,9 @@ export function jobKey(raw: string | null | undefined): string | null {
   // links of both forms redirect there.
   const wellfound = /(^|\.)(wellfound\.com|angel\.co)$/.test(host) && u.pathname.match(/^(?:\/company\/[^/]+)?\/jobs\/(\d+)(?:-[^/]*)?\/?$/i)?.[1];
   if (wellfound) return `wellfound:${wellfound}`;
+  // Dice (#1868): the posting is /job-detail/<uuid> and its form /job-applications/<uuid>/wizard. The UUID names the job.
+  const dice = /(^|\.)dice\.com$/.test(host) && u.pathname.match(new RegExp(`^/(?:job-detail|job-applications)/(${UUID.source})(?:/|$)`, "i"))?.[1];
+  if (dice) return `dice:${dice.toLowerCase()}`;
   // Recruitee's form is at /o/<job>/c/new and Teamtailor's at /jobs/<id>-<title>/applications/new: apply steps too (#1200).
   // Teamtailor on its own host is keyed by ID above; a company's own domain still comes here.
   // UltiPro's posting is .../JobBoard/<board>/OpportunityDetail?opportunityId=<id> and its form OpportunityApply (#1497).

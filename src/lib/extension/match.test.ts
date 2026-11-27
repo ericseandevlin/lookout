@@ -187,6 +187,18 @@ describe("sameJob", () => {
     expect(sameJob([tbe("applyRequisition", "ACME", "1234")], [tbe("viewRequisition", "ACME", "1234")])).toBe(true);
   });
 
+  it("keys a Dice job by its ID and matches its apply wizard (#1868)", () => {
+    const id = "0c3f1a2b-4d5e-6f70-8a9b-0c1d2e3f4a5b";
+    const job = `https://www.dice.com/job-detail/${id}`;
+    expect(jobKey(job)).toBe(`dice:${id}`);
+    expect(sameJob([`https://www.dice.com/job-applications/${id}/wizard`], [job])).toBe(true);
+    expect(sameJob([`https://www.dice.com/job-applications/${id.toUpperCase()}/wizard?step=2`], [`${job}?searchlink=x`])).toBe(true);
+    expect(sameJob(["https://www.dice.com/job-applications/11111111-2222-3333-4444-555555555555/wizard"], [job])).toBe(false);
+    // A search or a company page is no one job.
+    expect(jobKey("https://www.dice.com/jobs?q=designer")).toMatch(/^url:/);
+    expect(jobKey("https://www.dice.com/company-profile/acme")).toMatch(/^url:/);
+  });
+
   it("matches a Paylocity form to its posting by job ID (#1435)", () => {
     const job = "https://recruiting.paylocity.com/Recruiting/Jobs/Details/1234567";
     expect(jobKey(job)).toBe("paylocity:1234567");
