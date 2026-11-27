@@ -9,13 +9,20 @@ describe("fileSafe (#1198)", () => {
     expect(fileSafe("Zoë")).toBe("Zoë");
   });
   it("drops what a file name can't carry", () => {
-    expect(fileSafe('Pat Lee - Foo/Bar: "Baz" <Inc>? Resume')).toBe("Pat Lee - FooBar Baz Inc Resume");
+    expect(fileSafe('Pat Lee - Foo/Bar: "Baz" <Inc>? Resume')).toBe("Pat Lee - Foo-Bar Baz Inc Resume");
     expect(fileSafe("Pat\nLee\u0000 - Acme, Inc. Resume")).toBe("Pat Lee - Acme Inc. Resume");
     expect(fileSafe("../../etc")).toBe("....etc");
   });
   it("keeps apostrophes and '&' in names (#1698)", () => {
     expect(fileSafe("Seán O'Brien - AT&T Resume")).toBe("Seán O'Brien - AT&T Resume");
     expect(fileSafe("Dana D’Angelo - Procter & Gamble Cover Letter")).toBe("Dana D’Angelo - Procter & Gamble Cover Letter");
+  });
+  it("keeps '+' and reads a slash between words as a dash (#1808)", () => {
+    expect(fileSafe("Jane Doe - R/GA Resume")).toBe("Jane Doe - R-GA Resume");
+    expect(fileSafe("Jane Doe - Smith+Nephew Cover Letter")).toBe("Jane Doe - Smith+Nephew Cover Letter");
+    expect(fileSafe("Jane Doe - Foo\\Bar Resume")).toBe("Jane Doe - Foo-Bar Resume");
+    expect(fileSafe("Jane Doe - Acme / Labs Resume")).toBe("Jane Doe - Acme Labs Resume");
+    expect(fileSafe("../../etc")).not.toContain("/");
   });
 });
 
