@@ -613,6 +613,21 @@ describe("listPage: search and board pages are not jobs (#1537)", () => {
       expect(listPage(u), u).toBe(false);
   });
 
+  it("drops an Oracle Recruiting Cloud or Avature board, not a posting there (#1881)", () => {
+    const oc = "https://acme.fa.us2.oraclecloud.com/hcmUI/CandidateExperience/en/sites/CX";
+    for (const u of [oc, `${oc}/`, `${oc}/requisitions`, `${oc}/requisitions?keyword=designer&mode=location`, "https://ea.avature.net/en_US/careers/SearchJobs", "https://ea.avature.net/careers/SearchJobs/?keyword=designer"])
+      expect(listPage(u), u).toBe(true);
+    for (const u of [
+      `${oc}/job/12345`,
+      `${oc}/job/12345/?utm_medium=jobshare`,
+      `${oc}/requisitions/preview/12345`,
+      "https://acme.fa.us2.oraclecloud.com/fscmUI/faces/FuseWelcome",
+      "https://ea.avature.net/en_US/careers/JobDetail/Senior-UX-Designer/12345",
+      "https://ea.avature.net/careers/JobDetail?jobId=12345",
+    ])
+      expect(listPage(u), u).toBe(false);
+  });
+
   it("keeps single postings, on those sites too", () => {
     for (const u of [
       "https://www.glassdoor.com/job-listing/ux-director-acme-JV_IC1132348_KO0,11_KE12,16.htm?jl=1009",

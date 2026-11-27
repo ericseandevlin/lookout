@@ -442,6 +442,11 @@ const ATS_POSTING: [RegExp, RegExp][] = [
   [/(^|\.)pinpointhq\.com$/i, /^\/(?:[a-z]{2}(?:-[a-z]{2})?\/)?postings\/[^/]+/i],
   [/^jobs\.polymer\.co$/i, /^\/[^/]+\/\d+(?:\/|$)/i],
   [/(^|\.)hire\.trakstar\.com$/i, /^\/jobs\/[^/]+/i],
+  // Oracle Recruiting Cloud's board, ".../CandidateExperience/en/sites/CX" and its "/requisitions" search, beside postings at
+  // /job/<id> and /requisitions/preview/<id> (#1708). Other Oracle Cloud apps are left alone. Avature's board is
+  // /careers/SearchJobs; its postings are /careers/JobDetail and the form /careers/ApplicationMethods (#1881).
+  [/(^|\.)oraclecloud\.com$/i, /^(?!\/hcmui\/candidateexperience\/)|\/(?:job|requisitions\/(?:preview|job))\/\d+(?:\/|$)/i],
+  [/(^|\.)avature\.net$/i, /^(?:\/[a-z]{2}(?:[-_][a-z]{2})?)?\/careers\/(?:jobdetail|applicationmethods)(?:\/|$)/i],
 ];
 // A query pair that names one job: "?jobId=", "?id=", "?gh_jid=", "?req=", "?posting=" (#1806).
 const JOB_PARAM = /^(?:.*id|job|req|requisition|posting|position)$/i;
