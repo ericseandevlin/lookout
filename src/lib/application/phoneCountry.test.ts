@@ -12,11 +12,18 @@ describe("phoneCountry (#1794)", () => {
     ["+(61) 2 9876 5432", "Australia"],
     ["+1 415 555 0100", "United States"],
     ["+1-416-555-0100", "United States"],
+    // A label or bracket first, or a full-width plus (#1819).
+    ["(+44) 20 7946 0958", "United Kingdom"],
+    ["(0049) 30 1234567", "Germany"],
+    ["Tel: +49 30 1234567", "Germany"],
+    ["UK +44 7700 900123", "United Kingdom"],
+    ["[+33] 1 23 45 67 89", "France"],
+    ["＋44 20 7946 0958", "United Kingdom"],
   ])("%s dials from %s", (phone, country) => {
     expect(phoneCountry(phone)).toBe(country);
   });
 
-  it.each(["(415) 555-0100", "555-0100", "020 7946 0958", "", null, undefined, "+999 123", "call me"])("%s has no code it knows, so United States", (phone) => {
+  it.each(["(415) 555-0100", "555-0100", "020 7946 0958", "", null, undefined, "+999 123", "call me", "Tel: (415) 555-0100", "Mobile 020 7946 0958"])("%s has no code it knows, so United States", (phone) => {
     expect(phoneCountry(phone)).toBe("United States");
   });
 

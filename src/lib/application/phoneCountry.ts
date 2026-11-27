@@ -80,7 +80,12 @@ export const DEFAULT_PHONE_COUNTRY = "United States";
  * or a code not listed, is United States, as before.
  */
 export function phoneCountry(phone: string | null | undefined): string {
-  const m = (phone ?? "").trim().match(/^(?:\+|00)\s*\(?\s*(\d[\d\s().-]*)/);
+  // A label or bracket may come first: "(+44) 20 ...", "(0049) 30 ...", "Tel: +49 ...", "UK +44 ...", and a full-width
+  // plus is a plus (#1819). "(415) 555-0100" has no "+" or "00" after its bracket, so it stays United States.
+  const m = (phone ?? "")
+    .replace(/＋/g, "+")
+    .trim()
+    .match(/^[\p{L}.:\s-]*?[([]?\s*(?:\+|00)\s*\(?\s*(\d[\d\s().-]*)/u);
   if (!m) return DEFAULT_PHONE_COUNTRY;
   const digits = m[1].replace(/\D/g, "");
   for (let n = 3; n >= 1; n--) {
