@@ -5,12 +5,19 @@ type When = { y: number; m: number | null } | "now";
 // "March 2019", "Mar. 2019", "03/2019", "3/2019", "2019" or "Present", in the order they appear.
 // Only real month spellings: "Marketing 2019" or "Marriott 2019" is a year, not March (#1177).
 // A short year needs its apostrophe ("Jan '19", "Mar’21", "'19"); a bare "19" is no year (#1730).
+// The open end is also "to date", "till date", "until now", a dash then "Date", and "Ongoing" (#1844).
 const WHEN =
-  /(?:\b(jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|june?|july?|aug(?:ust)?|sept?(?:ember)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)\b\.?,?(?:\s+|(?=['’‘]))|\b(0?[1-9]|1[0-2])\/)?(?:\b((?:19|20)\d{2})\b|['’‘](\d{2})\b)|\b(present|current|now|today)\b/gi;
+  /(?:\b(jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|june?|july?|aug(?:ust)?|sept?(?:ember)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)\b\.?,?(?:\s+|(?=['’‘]))|\b(0?[1-9]|1[0-2])\/)?(?:\b((?:19|20)\d{2})\b|['’‘](\d{2})\b)|\b(present|current|now|today|ongoing|(?:to|till|til|until)\s+(?:date|now|present)|(?<=-\s*)date)\b/gi;
+// "2019-21" is 2019 to 2021 (#1844). Only when the short end is later than the start, so ISO "2019-05" (May 2019) and a
+// full date "2019-05-01" stay as they are.
+const fullEnd = (s: string) =>
+  s.replace(/(?<![\d/.-])((19|20)(\d{2}))\s*-\s*(\d{2})\b(?![\d/.-])/g, (m, y: string, c: string, yy: string, end: string) =>
+    +end > +yy ? `${y}-${c}${end}` : m,
+  );
 // '19 is 2019 and '98 is 1998.
 const shortYear = (yy: string) => (+yy < 50 ? 2000 : 1900) + +yy;
 const whens = (s: string): When[] =>
-  [...s.matchAll(WHEN)].map((x) =>
+  [...fullEnd(s.replace(/[–—]/g, "-")).matchAll(WHEN)].map((x) =>
     x[5] ? "now" : { y: x[3] ? +x[3] : shortYear(x[4]), m: x[1] ? MONTHS.indexOf(x[1].slice(0, 3).toLowerCase()) + 1 : x[2] ? +x[2] : null },
   );
 // A year-only side matches any month in that year.
