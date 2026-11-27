@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { countryOption, phoneCountry, phoneCountryOf } from "./phoneCountry";
+import { DIAL, countryOption, phoneCountry, phoneCountryOf } from "./phoneCountry";
 
 describe("phoneCountry (#1794)", () => {
   it.each([
@@ -39,5 +39,29 @@ describe("phoneCountry (#1794)", () => {
     expect(us.test("United States Minor Outlying Islands")).toBe(false);
     expect(countryOption("United Kingdom").test(" United Kingdom (+44)")).toBe(true);
     expect(countryOption("United Kingdom").test("United States")).toBe(false);
+  });
+});
+
+describe("more dial codes (#1876)", () => {
+  it.each([
+    ["+51 1 234 5678", "Peru"],
+    ["+212 6 12 34 56 78", "Morocco"],
+    ["+880 1712 345678", "Bangladesh"],
+    ["+506 2222 3333", "Costa Rica"],
+    ["+961 1 234 567", "Lebanon"],
+    ["+995 32 212 3456", "Georgia"],
+    ["00593 2 234 5678", "Ecuador"],
+    ["+58 212 555 1234", "Venezuela"],
+    // Codes that matched before still do.
+    ["+351 21 123 4567", "Portugal"],
+    ["+34 91 123 4567", "Spain"],
+    ["+7 495 123 4567", "Russia"],
+  ])("%s dials from %s", (phone, country) => {
+    expect(phoneCountry(phone)).toBe(country);
+  });
+
+  it("no code is the start of another, so the longest match is the only one", () => {
+    const codes = Object.keys(DIAL);
+    for (const a of codes) for (const b of codes) if (a !== b) expect(b.startsWith(a), `${a} starts ${b}`).toBe(false);
   });
 });
