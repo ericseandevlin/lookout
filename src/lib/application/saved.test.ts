@@ -266,3 +266,27 @@ describe("work permit questions are work authorization (#1619)", () => {
     expect(isCommon("Do you hold a work permit for the country of employment?", "Yes")).toBe(false);
   });
 });
+
+describe("moving to the employer's site or for this one job (#1814)", () => {
+  it("is never kept or reused", () => {
+    for (const q of [
+      "Are you open to relocation to our headquarters?",
+      "Are you willing to relocate to our New York office?",
+      "Would you be willing to relocate to one of our offices?",
+      "Are you able to relocate near our campus?",
+      "Are you willing to relocate to Austin for this job?",
+      "Would you relocate for the opportunity?",
+      "Are you willing to relocate to the company's HQ?",
+    ]) {
+      expect(isCommon(q, "Yes"), q).toBe(false);
+      expect(match(upsert([], q, "Yes"), q, ["Yes", "No"]), q).toBeNull();
+    }
+  });
+  it("never reaches the drafting model when saved before the fix", () => {
+    const q = "Are you open to relocation to our headquarters?";
+    expect(savedBlock([{ key: answerKey(q), question: q, answer: "Yes", updatedAt: "2026-11-01T00:00:00.000Z" }])).toBe("");
+  });
+  it("still keeps whether the person will relocate at all", () => {
+    for (const q of ["Are you willing to relocate?", "Open to relocation?", "Would you consider relocating to another state?"]) expect(isCommon(q, "Yes"), q).toBe(true);
+  });
+});

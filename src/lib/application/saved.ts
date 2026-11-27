@@ -75,7 +75,12 @@ const JOB_PLACE_FIRST =
 // work in?" are facts about the person and stay.
 const JOB_SITE =
   /\b(?:which|what)\s+(?:city|office|site|location)s?\b[^?.]{0,40}?\b(?:(?:are|were)\s+you\s+(?:apply\w*|interested)|you(?:['’]re| are)\s+(?:apply\w*|interested)|(?:would|wish|want|like|prefer|hope|plan)\w*\s+(?:to\s+)?(?:be\s+)?(?:work\w*|join\w*|based))\b|\bpreferred\s+(?:work\s+|office\s+|job\s+)?(?:city|office|site|location)\b|\boffice location\b/i;
-const JOB_PLACE = new RegExp(`${JOB_PLACE_FIRST.source}|${MORE_PLACES.source}|${JOB_SITE.source}`, "i");
+// Moving to the employer's own site, or for this one job: "Are you open to relocation to our headquarters?" and "willing to
+// relocate to Austin for this job?" Each employer's headquarters is somewhere else, so the answer never travels (#1814).
+// "Are you willing to relocate?" with no place is about the person and stays.
+const RELOCATE_SITE =
+  /\brelocat\w*\b[^?.]{0,40}?\b(?:to|near|for)\s+(?:(?:one|any)\s+of\s+)?(?:our|the company['’]?s|its)\s+(?:[\w-]+\s+){0,3}?(?:headquarters|hq|offices?|campus(?:es)?|sites?|locations?|hubs?|studios?)\b|\brelocat\w*\b[^?.]{0,60}?\bfor\s+(?:this|the)\s+(?:job|opportunity|role|position)\b/i;
+const JOB_PLACE = new RegExp(`${JOB_PLACE_FIRST.source}|${MORE_PLACES.source}|${JOB_SITE.source}|${RELOCATE_SITE.source}`, "i");
 // "How did you hear about this position?" is the same question as "...this job?", so it travels the same way (#1545).
 const neverKept = (question: string) =>
   JOB_PLACE.test(question) || NEVER.test(AUTH.test(question) || HEARD.test(question) ? question.replace(/\bthis (role|position|job|opportunity)\b/gi, " ") : question);
