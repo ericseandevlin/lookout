@@ -414,6 +414,12 @@ describe("no em dashes in match reasons (#1531)", () => {
     expect(r.reasonsMatch).toEqual(["Pays $180k-$220k, above your floor", "Salary £90,000-£110,000"]);
     expect(r.reasonsGap).toEqual(["Hybrid, 2-3 days a week in office", "Series B, 40-60 people"]);
   });
+
+  it("keeps an hourly range or a time span a range (#1807)", () => {
+    const r = applyRules({ score: 4, reasonsMatch: ["Pays $90/hr – $110/hr", "$60 an hour – $75 an hour", "Core hours 10am–6pm", "Shift 9 a.m. – 5 p.m."], reasonsGap: ["Contract, $50 per hour – $65 per hour", "Team of 5 designers — 3 open roles"], locationFit: true, dealbreaker: false, compMin: 90, compMax: 110 }, null)!;
+    expect(r.reasonsMatch).toEqual(["Pays $90/hr-$110/hr", "$60 an hour-$75 an hour", "Core hours 10am-6pm", "Shift 9 a.m.-5 p.m."]);
+    expect(r.reasonsGap).toEqual(["Contract, $50 per hour-$65 per hour", "Team of 5 designers, 3 open roles"]);
+  });
 });
 
 describe("listPage: search and board pages are not jobs (#1537)", () => {
