@@ -553,4 +553,34 @@ describe("listPage: search and board pages are not jobs (#1537)", () => {
     ])
       expect(listPage(u), u).toBe(false);
   });
+
+  it("drops BambooHR, Recruitee, Personio, JazzHR and Jobvite board homes, not their postings (#1812)", () => {
+    for (const u of [
+      "https://acme.bamboohr.com/careers",
+      "https://acme.bamboohr.com/careers/",
+      "https://acme.recruitee.com/",
+      "https://acme.recruitee.com/?department=design",
+      "https://acme.jobs.personio.de/",
+      "https://acme.jobs.personio.com/?language=en",
+      "https://acme.applytojob.com/",
+      "https://acme.applytojob.com/apply",
+      "https://acme.applytojob.com/apply/jobs",
+      "https://jobs.jobvite.com/acme",
+      "https://jobs.jobvite.com/acme/search?q=design",
+    ])
+      expect(listPage(u), u).toBe(true);
+    for (const u of [
+      "https://acme.bamboohr.com/careers/123",
+      "https://acme.bamboohr.com/careers/123?source=linkedin",
+      "https://acme.bamboohr.com/jobs/view.php?id=45",
+      "https://acme.recruitee.com/o/product-designer",
+      "https://acme.recruitee.com/o/product-designer/c/new",
+      "https://acme.jobs.personio.de/job/123456",
+      "https://acme.jobs.personio.de/job/123456?language=en&display=en",
+      "https://acme.applytojob.com/apply/AbC123xYz/Product-Designer",
+      "https://jobs.jobvite.com/acme/job/oAbC123x",
+      "https://jobs.jobvite.com/acme/job/oAbC123x/apply",
+    ])
+      expect(listPage(u), u).toBe(false);
+  });
 });

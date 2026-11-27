@@ -377,6 +377,15 @@ const ATS_MORE = /(^|\.)(smartrecruiters\.com|workable\.com|teamtailor\.com|icim
 const NAMES_ID = /\d{4,}|[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i;
 // Paylocity's board for one company is /Recruiting/Jobs/All/<company id>.
 const PAYLOCITY_BOARD = /(^|\.)paylocity\.com\/recruiting\/jobs\/all(\/|$)/i;
+// ATS hosts whose postings sit under one path part (#1812): BambooHR /careers/<id>, Recruitee /o/<slug>, Personio
+// /job/<id>, JazzHR /apply/<code>/<slug>, Jobvite /<company>/job/<id>. Any other address there is the company's board.
+const ATS_POSTING: [RegExp, RegExp][] = [
+  [/(^|\.)bamboohr\.com$/i, /^\/careers\/\d+(?:\/|$)|^\/jobs\/view\.php$/i],
+  [/(^|\.)recruitee\.com$/i, /^\/(?:[a-z]{2}\/)?o\/[^/]+/i],
+  [/(^|\.)jobs\.personio\.(?:de|com)$/i, /^\/job\/\d+(?:\/|$)/i],
+  [/(^|\.)applytojob\.com$/i, /^\/apply\/(?!jobs\/?$)[0-9a-z]{6,}(?:\/|$)/i],
+  [/^jobs\.jobvite\.com$/i, /^\/[^/]+\/job\/[0-9a-z]+(?:\/|$)/i],
+];
 // A query pair that names one job: "?jobId=", "?id=", "?gh_jid=", "?req=", "?posting=" (#1806).
 const JOB_PARAM = /^(?:.*id|job|req|requisition|posting|position)$/i;
 
@@ -413,5 +422,7 @@ export function listPage(u: string): boolean {
   if (jobsSearch(url)) return true;
   const { pathname, search } = url;
   if (PAYLOCITY_BOARD.test(host + pathname)) return true;
+  const ats = ATS_POSTING.find(([h]) => h.test(host));
+  if (ats) return !ats[1].test(pathname);
   return ATS_MORE.test(host) && !/^jobs\.workable\.com$/i.test(host) && !NAMES_ID.test(pathname + search);
 }
