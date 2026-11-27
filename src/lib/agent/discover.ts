@@ -15,7 +15,7 @@ import { traceAs } from "@/lib/ai/trace";
 import { startBudgetedRun, finishRun, progress, startRun } from "@/lib/ai/runs";
 import { webSearch, type SearchHit } from "@/lib/ai/search";
 import { getAiConfig } from "@/lib/config";
-import { applyRules, fingerprint, fullTitle, jobPageUrl, legacyFingerprint, listPage, normUrl, placeId, placesDiffer, suffixedFingerprint } from "./rules";
+import { applyRules, fingerprint, fullTitle, jobPageUrl, legacyFingerprint, listPage, normUrl, placeId, placesDiffer, suffixedFingerprint, unspelledFingerprint } from "./rules";
 import { closeGonePostings } from "./linkCheck";
 import { findEventsIfDue } from "./networking";
 import { featureOn } from "@/lib/features";
@@ -381,13 +381,15 @@ const reposted = sql`(${schema.opportunities.attributes} -> 'linkCheck' ->> 'sta
 const noPay = sql`(${schema.opportunities.compMin} is null and ${schema.opportunities.compMax} is null)`;
 
 /**
- * The fingerprint, or an older key a posting is stored under when none is under the new one: the key from before #1645
- * ("Acme, Inc." keyed with its legal form), then the one from before #1269 ("Montréal" saved with the é as a space). So a
- * posting saved last week is matched, not saved again.
+ * The fingerprint, or an older key a posting is stored under when none is under the new one: the key from before #1828
+ * ("Sr. Designer" keyed with "sr"), then the one from before #1645 ("Acme, Inc." keyed with its legal form), then the one
+ * from before #1269 ("Montréal" saved with the é as a space). So a posting saved last week is matched, not saved again.
  */
 async function baseKey(f: { company: string; title: string; location: string }) {
   const fp = fingerprint(f.company, f.title, f.location);
-  const keys = [...new Set([fp, suffixedFingerprint(f.company, f.title, f.location), legacyFingerprint(f.company, f.title, f.location)])];
+  const keys = [
+    ...new Set([fp, unspelledFingerprint(f.company, f.title, f.location), suffixedFingerprint(f.company, f.title, f.location), legacyFingerprint(f.company, f.title, f.location)]),
+  ];
   if (keys.length === 1) return fp;
   const rows = await db
     .select({ fp: schema.opportunities.fingerprint })
