@@ -93,6 +93,10 @@ export function jobKey(raw: string | null | undefined): string | null {
   // Dice (#1868): the posting is /job-detail/<uuid> and its form /job-applications/<uuid>/wizard. The UUID names the job.
   const dice = /(^|\.)dice\.com$/.test(host) && u.pathname.match(new RegExp(`^/(?:job-detail|job-applications)/(${UUID.source})(?:/|$)`, "i"))?.[1];
   if (dice) return `dice:${dice.toLowerCase()}`;
+  // A SuccessFactors career site on the employer's own domain (#1869): the posting is /job/<city>-<title>-<zip>/<id>/ and
+  // its form /talentcommunity/apply/<id>/. The host and the long number name the job. Built In's /job/<slug>/<id> keys the same way.
+  const sfSite = u.pathname.match(/^\/(?:job\/[^/]+|talentcommunity\/apply)\/(\d{6,})\/?$/i)?.[1];
+  if (sfSite) return `jobid:${host.replace(/^www\./, "")}:${sfSite}`;
   // Recruitee's form is at /o/<job>/c/new and Teamtailor's at /jobs/<id>-<title>/applications/new: apply steps too (#1200).
   // Teamtailor on its own host is keyed by ID above; a company's own domain still comes here.
   // UltiPro's posting is .../JobBoard/<board>/OpportunityDetail?opportunityId=<id> and its form OpportunityApply (#1497).
