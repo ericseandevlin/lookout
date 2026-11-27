@@ -59,7 +59,12 @@ const FRAMING = new RegExp(
   "i",
 );
 // Curly apostrophes too: letters pasted from Word or a phone carry them (#769).
-const WEAK_OPEN = /^(?:i am|i['’]m) (?:writing|excited|thrilled|pleased|interested|applying|reaching out)|^i(?: would|['’]d) (?:like|love) to|^please accept|^my name is|^i wish to|^i was (?:excited|thrilled) to/i;
+// One adverb in between is still the stock line: "I am very excited", "I'm really excited", "I was so thrilled" (#1837).
+const ADVERB = "(?:(?:very|so|really|truly|incredibly|extremely|particularly) )?";
+const WEAK_OPEN = new RegExp(
+  `^(?:i am|i['’]m) ${ADVERB}(?:writing|excited|thrilled|pleased|interested|applying|reaching out)|^i(?: would|['’]d) (?:like|love) to|^please accept|^my name is|^i wish to|^i was ${ADVERB}(?:excited|thrilled) to`,
+  "i",
+);
 // "Doubled sign-ups" states the scale too (#776).
 // A digit right after a letter is a name ("B2B", "HTML5", "S3"), and a number word hyphened onto a word
 // ("one-click", "two-factor") or "one of" is no count; "two-thirds" still is (#1265).
