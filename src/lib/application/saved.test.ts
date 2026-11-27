@@ -92,6 +92,15 @@ describe("saved answers", () => {
     expect(onlyThisOne("Phone", "Q1 Monday")).toBe(false);
   });
 
+  it("keeps a notice period that names a day with one application (#1852)", () => {
+    for (const [q, a] of [["What is your notice period?", "Ends January 31"], ["Notice period", "Until 15/12"], ["What is your notice period?", "My last day is Friday"], ["How much notice do you need to give?", "Until the end of the month"]]) {
+      expect(isCommon(q, a), a).toBe(false);
+      expect(onlyThisOne(q, a), a).toBe(true);
+    }
+    // A length of notice still travels.
+    for (const a of ["2 weeks", "1 month", "One month's notice", "1-2 months", "90 days", "None"]) expect(isCommon("What is your notice period?", a), a).toBe(true);
+  });
+
   it("keeps the age check however it is worded (#1576)", () => {
     for (const q of ["Are you 18 or older?", "Are you over 18?", "Are you at least 18?", "Are you 18+?", "Are you 18 years of age or older?", "Are you 18 and over?"])
       expect(isCommon(q, "Yes"), q).toBe(true);
