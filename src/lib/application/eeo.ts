@@ -67,6 +67,9 @@ export function classify(prompt: string): EeoCategory | null {
   // a disability?" is still their own.
   if (OTHER_PERSON.test(first)) return null;
   if (/discharg|honorabl|court.?martial/.test(p)) return null;
+  // Service in another country's forces, "Did you serve in the military of a country other than the United States?", is
+  // not US veteran status, for a veteran or anyone else: ask the person (#1832).
+  if (/\b(?:military|armed forces) of (?:a|an|any|another) (?:other |foreign )?(?:country|nation)\b|\bforeign (?:military|armed forces)\b|\bnon-?\s*u\.?\s?s\.? (?:military|armed forces)\b/.test(p)) return null;
   // "currently" only about service: "Do you currently have a disability?" is still the disability question (#1683).
   const serving = /\bcurrently (?:serving|enlisted|a member of|in the (?:military|armed forces|reserves?|national guard|service))\b/;
   if (!/veteran/.test(p) && (serving.test(p) || /\b(active duty|now serving|reservists?|national guard)\b/.test(p))) return null;
@@ -164,6 +167,13 @@ function categoryOf(prompt: string, options: string[]): EeoCategory | null {
   return hispanic && named.length && !named.some((o) => RACE_NAME.test(o)) ? "hispanic" : cat;
 }
 
+// A question about one kind of veteran: "Are you a disabled veteran?", "a recently separated veteran?", "an Armed Forces
+// service medal veteran?". The profile says only whether the person is a veteran, so a veteran is asked once; a
+// non-veteran's answer still fills it (#1832). Only a question in that form: "Disabled veteran status" and the protected
+// veteran question are unchanged.
+const VETERAN_KIND =
+  /^\W*(?:are you|do you (?:identify|consider yourself)(?: as)?|would you describe yourself as)\s+(?:an?\s+)?(?:special\s+)?(?:disabled|recently[\s-]+separated|active[\s-]+duty\s+wartime|campaign[\s-]+badge|armed\s+forces\s+service\s+medal)\b/i;
+
 /** The answer to fill for one EEO question: the exact wording first, then the category answer. */
 export function resolve(profile: EeoProfile, prompt: string, options: string[] | null): string | null {
   const opts = options ?? [];
@@ -172,6 +182,7 @@ export function resolve(profile: EeoProfile, prompt: string, options: string[] |
   const cat = categoryOf(prompt, opts);
   const choice = cat ? profile.answers[cat] : undefined;
   if (!choice) return null;
+  if (cat === "veteran" && choice !== "Not a veteran" && VETERAN_KIND.test(prompt)) return null;
   if (!opts.length) return choice;
   // A combined race list says "White (Not Hispanic or Latino)": someone whose profile says Hispanic must never get one
   // of those. With nothing else that fits, ask them once instead of picking for them (#1024).

@@ -351,3 +351,74 @@ describe("options spelled 'Non-' read as 'not' (#1736)", () => {
     }
   });
 });
+
+describe("a question about one kind of veteran (#1832)", () => {
+  const veteran = { answers: { veteran: "Veteran" }, exact: {} } as const;
+  const notVeteran = {
+    answers: { veteran: "Not a veteran" },
+    exact: {},
+  } as const;
+  const kinds = [
+    "Are you a disabled veteran?",
+    "Are you a special disabled veteran?",
+    "Are you a recently separated veteran?",
+    "Are you an active duty wartime or campaign badge veteran?",
+    "Are you an Armed Forces service medal veteran?",
+    "Do you identify as a recently-separated veteran?",
+  ];
+  it("asks a veteran instead of filling Yes", () => {
+    for (const q of kinds)
+      expect(resolve({ ...veteran }, q, ["Yes", "No"])).toBeNull();
+  });
+  it("still fills No for a non-veteran", () => {
+    for (const q of kinds)
+      expect(resolve({ ...notVeteran }, q, ["Yes", "No"])).toBe("No");
+  });
+  it("uses the answer the person gave for that question", () => {
+    const q = kinds[0];
+    expect(
+      resolve(
+        { answers: { veteran: "Veteran" }, exact: { [answerKey(q)]: "No" } },
+        q,
+        ["Yes", "No"],
+      ),
+    ).toBe("No");
+  });
+  it("leaves service in another country's forces unclassified", () => {
+    for (const q of [
+      "Did you serve in the military of a country other than the United States?",
+      "Have you served in a foreign military?",
+      "Have you served in the armed forces of another country?",
+      "Any non-U.S. military service?",
+    ]) {
+      expect(classify(q)).toBeNull();
+      expect(resolve({ ...notVeteran }, q, ["Yes", "No"])).toBeNull();
+    }
+  });
+  it("keeps the veteran status questions as they were", () => {
+    expect(
+      resolve({ ...veteran }, "Are you a protected veteran?", ["Yes", "No"]),
+    ).toBe("Yes");
+    expect(
+      resolve({ ...veteran }, "Disabled veteran status", ["Yes", "No"]),
+    ).toBe("Yes");
+    expect(
+      resolve({ ...veteran }, "Have you served in the U.S. military?", [
+        "Yes",
+        "No",
+      ]),
+    ).toBe("Yes");
+    expect(
+      resolve(
+        { ...veteran },
+        "Veteran Status. If you are a disabled veteran, recently separated veteran, active duty wartime or campaign badge veteran, or Armed Forces service medal veteran, select the first option.",
+        [
+          "I identify as one or more of the classifications of protected veteran",
+          "I am not a protected veteran",
+        ],
+      ),
+    ).toBe(
+      "I identify as one or more of the classifications of protected veteran",
+    );
+  });
+});
