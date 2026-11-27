@@ -178,6 +178,15 @@ describe("sameJob", () => {
     expect(sameJob([ulti.replace("OpportunityDetail", "OpportunityApply").replace("1f2e3d4c", "aaaaaaaa")], [ulti])).toBe(false);
   });
 
+  it("keys a Taleo Business Edition job by employer and ID, and matches its apply page (#1842)", () => {
+    const tbe = (page: string, org: string, rid: string) => `https://chk.tbe.taleo.net/chk01/ats/careers/v2/${page}?org=${org}&cws=39&rid=${rid}`;
+    expect(jobKey(tbe("viewRequisition", "ACME", "1234"))).toBe("taleo:chk.tbe.taleo.net:acme:1234");
+    expect(jobKey(tbe("viewRequisition", "ACME", "1234"))).not.toBe(jobKey(tbe("viewRequisition", "ACME", "5678")));
+    expect(jobKey(tbe("viewRequisition", "ACME", "1234"))).not.toBe(jobKey(tbe("viewRequisition", "GLOBEX", "1234")));
+    expect(sameJob([tbe("viewRequisition", "GLOBEX", "77")], [tbe("viewRequisition", "ACME", "1234")])).toBe(false);
+    expect(sameJob([tbe("applyRequisition", "ACME", "1234")], [tbe("viewRequisition", "ACME", "1234")])).toBe(true);
+  });
+
   it("matches a Paylocity form to its posting by job ID (#1435)", () => {
     const job = "https://recruiting.paylocity.com/Recruiting/Jobs/Details/1234567";
     expect(jobKey(job)).toBe("paylocity:1234567");
