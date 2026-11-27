@@ -183,6 +183,21 @@ describe("saved answers that depend on where the job is (#1227)", () => {
     expect(isCommon("Are you authorized to work in the country you live in?", "Yes")).toBe(true);
     expect(isCommon("Are you authorized to work in the country where you live?", "Yes")).toBe(true);
   });
+  it("never keeps one asked for the location(s) of this role, the posting country or the vacancy's country (#1818)", () => {
+    for (const q of [
+      "Will you now or in the future require sponsorship to work in the location(s) of this role?",
+      "Are you legally authorized to work in the location(s) for this position?",
+      "Are you authorized to work in the country(ies) of this job?",
+      "Are you legally authorized to work in the posting country?",
+      "Do you have the right to work in the country where the vacancy is based?",
+      "Are you legally authorised to work in the country of the vacancy?",
+    ]) {
+      expect(isCommon(q, "No"), q).toBe(false);
+      expect(match(upsert([], q, "No"), q), q).toBeNull();
+    }
+    expect(isCommon("Are you authorized to work in the United States for this position?", "Yes")).toBe(true);
+    expect(isCommon("Will you require sponsorship to work in the United States?", "No")).toBe(true);
+  });
   it("never reuses one saved before the fix", () => {
     const q = "Will you require sponsorship to work in the country where this role is based?";
     expect(match(upsert([], q, "No"), q)).toBeNull();
