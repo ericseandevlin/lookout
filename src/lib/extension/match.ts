@@ -69,6 +69,10 @@ export function jobKey(raw: string | null | undefined): string | null {
   // Taleo (#1497): the posting is /careersection/<section>/jobdetail.ftl?job=<id> and its form jobapply.ftl?job=<id>.
   const taleo = /(^|\.)taleo\.net$/.test(host) && /\/job(detail|apply)\.ftl$/i.test(u.pathname) && u.searchParams.get("job");
   if (taleo) return `taleo:${host}:${taleo.toLowerCase()}`;
+  // Taleo Business Edition (#1842): <pod>.tbe.taleo.net/<pod>/ats/careers/v2/viewRequisition?org=<employer>&rid=<id>, and its
+  // form applyRequisition with the same query. A pod serves many employers, so org joins the key.
+  const tbe = /(^|\.)taleo\.net$/.test(host) && /\/(view|apply)requisition$/i.test(u.pathname) && u.searchParams.get("rid");
+  if (tbe) return `taleo:${host}:${(u.searchParams.get("org") ?? "").toLowerCase()}:${tbe.toLowerCase()}`;
   // Indeed (#1578): one job is viewjob?jk=<id> with any mix of from=, vjs=, tk= after it, or ?vjk=<id> on a search page.
   const indeed = /(^|\.)indeed\.[a-z]{2,3}(\.[a-z]{2})?$/.test(host) && (u.searchParams.get("jk") ?? u.searchParams.get("vjk"))?.match(/^[0-9a-f]{16}$/i)?.[0];
   if (indeed) return `indeed:${indeed.toLowerCase()}`;
