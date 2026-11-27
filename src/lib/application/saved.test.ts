@@ -81,6 +81,17 @@ describe("saved answers", () => {
     for (const a of ["12/1", "12-1", "1/15/2027", "12/1, then 2 weeks of onboarding"]) expect(isCommon("Earliest start date", a), a).toBe(false);
   });
 
+  it("keeps a start day named from the day it was written with one application (#1845)", () => {
+    for (const a of ["Next Monday", "This Friday", "Tomorrow", "End of Q1", "Q2", "After the holidays", "Right after Thanksgiving", "Next month", "End of the year", "Early next year", "Summer 2027"]) {
+      expect(isCommon("When can you start?", a), a).toBe(false);
+      expect(onlyThisOne("Earliest start date", a), a).toBe(true);
+    }
+    // Spans and plain availability still travel.
+    for (const a of ["Immediately", "ASAP", "2 weeks after an offer", "1 month", "One month's notice", "4-6 weeks"]) expect(isCommon("When can you start?", a), a).toBe(true);
+    // Only start questions: a phone answer that holds "Q1" is unchanged.
+    expect(onlyThisOne("Phone", "Q1 Monday")).toBe(false);
+  });
+
   it("keeps the age check however it is worded (#1576)", () => {
     for (const q of ["Are you 18 or older?", "Are you over 18?", "Are you at least 18?", "Are you 18+?", "Are you 18 years of age or older?", "Are you 18 and over?"])
       expect(isCommon(q, "Yes"), q).toBe(true);
