@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { applyRules, bareCompany, fingerprint, jobPageUrl, legacyFingerprint, listPage, normUrl, placeId, placesDiffer, remoteFirst, suffixedFingerprint, unspelledFingerprint } from "./rules";
+import { applyRules, bareCompany, fingerprint, jobPageUrl, legacyFingerprint, listPage, normUrl, placeId, placesDiffer, remoteFirst, suffixedFingerprint, unspelledFingerprint, usFormFingerprint } from "./rules";
 import { jobKey } from "@/lib/extension/match";
 
 const base = { score: 5, reasonsMatch: ["Director title"], reasonsGap: [], locationFit: true, dealbreaker: false, compMin: 140000, compMax: 160000 };
@@ -96,6 +96,24 @@ describe("dedupe keys", () => {
     expect(unspelledFingerprint("Acme, Inc.", "Product Designer", "New York, NY")).toBe(fingerprint("Acme, Inc.", "Product Designer", "New York, NY"));
     // The older keys are frozen: they never spell the rank out.
     expect(suffixedFingerprint("Acme", "Sr. Product Designer", "New York, NY")).toBe(unspelledFingerprint("Acme", "Sr. Product Designer", "New York, NY"));
+  });
+  it("keys a company without a legal form from outside the US too (#1831)", () => {
+    const k = (c: string) => fingerprint(c, "Senior Product Designer", "New York, NY");
+    for (const c of ["Acme Pvt Ltd", "Acme Pvt. Ltd.", "Acme Private Limited", "Acme Pte. Ltd.", "Acme & Co.", "Acme and Company", "Acme SE", "Acme N.V.", "Acme NV", "Acme AB", "Acme Oy", "Acme Oyj", "Acme A/S", "Acme SAS", "Acme S.A.S.", "Acme S.p.A.", "Acme S.r.l.", "Acme SRL", "Acme S.L.", "Acme Ltda", "Acme K.K.", "Acme Sdn Bhd", "Acme GmbH & Co. KG"]) expect(k(c), c).toBe(k("Acme"));
+    expect(bareCompany("Acme & Co.")).toBe("Acme");
+    expect(bareCompany("Procter & Gamble Co.")).toBe("Procter & Gamble");
+    // A form that is also a word stays unless it has its dots, and "Private" stays without "Limited" after it.
+    expect(bareCompany("Acme Spa")).toBe("Acme Spa");
+    expect(bareCompany("Acme Private")).toBe("Acme Private");
+    expect(bareCompany("Acme Bros")).toBe("Acme Bros");
+    expect(bareCompany("Base")).toBe("Base");
+    expect(k("Acme Labs AB")).not.toBe(k("Acme"));
+    // The key from before #1831 keeps the newer forms, and is the same as the new one for a company with none of them.
+    expect(usFormFingerprint("Acme Pvt Ltd", "Designer", "Paris")).not.toBe(fingerprint("Acme Pvt Ltd", "Designer", "Paris"));
+    expect(usFormFingerprint("Acme, Inc.", "Sr. Designer", "Paris")).toBe(fingerprint("Acme, Inc.", "Sr. Designer", "Paris"));
+    // The keys before it are frozen too.
+    expect(unspelledFingerprint("Acme Pvt Ltd", "Designer", "Paris")).toBe(usFormFingerprint("Acme Pvt Ltd", "Designer", "Paris"));
+    expect(unspelledFingerprint("Acme, Inc.", "Designer", "Paris")).toBe(fingerprint("Acme", "Designer", "Paris"));
   });
   it("keeps marks in non-Latin text, so डिज़ाइनर and डिजाइन stay apart (#1269)", () => {
     expect(fingerprint("मेरा", "डिज़ाइनर", "दिल्ली")).toBe(legacyFingerprint("मेरा", "डिज़ाइनर", "दिल्ली"));

@@ -88,14 +88,24 @@ export const fullTitle = (t: string) => withOtherScript(t);
 
 // A legal form after the name: "Acme, Inc." on the ATS page is "Acme" on LinkedIn (#1645). Only at the end, so "Co-op" and
 // "Limited Brands" keep theirs; "Pty Ltd" goes as a pair.
-const LEGAL_FORM = /(?:[\s,]+(?:inc|incorporated|llc|l\.l\.c|ltd|limited|corp|corporation|co|company|gmbh|plc|ag|s\.a|sa|b\.v|bv|pty|llp|l\.p|lp)\.?)+\s*$/i;
+const US_FORM = /(?:[\s,]+(?:inc|incorporated|llc|l\.l\.c|ltd|limited|corp|corporation|co|company|gmbh|plc|ag|s\.a|sa|b\.v|bv|pty|llp|l\.p|lp)\.?)+\s*$/i;
+// Forms from other countries too (#1831): "Acme Pvt Ltd" and "Acme Private Limited" (India), "Acme Pte Ltd" (Singapore),
+// "Acme SE", "N.V.", "AB", "Oy", "A/S", "SAS", "S.p.A.", "S.r.l.", "S.L.", "Ltda", "K.K.", "Sdn Bhd", "GmbH & Co. KG", and
+// "& Co." as a pair, so "Acme & Co." is not "Acme &". Forms that are also words ("spa", "as") only with their dots.
+const LEGAL_FORM =
+  /(?:[\s,]+(?:inc|incorporated|llc|l\.l\.c|ltd|ltda|limited|private(?=\s+limited\b)|pvt|pte|corp|corporation|(?:(?:&|and)\s+)?co|(?:(?:&|and)\s+)?company|gmbh|kg|plc|ag|se|s\.a|sa|s\.a\.s|sas|s\.p\.a|s\.r\.l|srl|s\.l|n\.v|nv|b\.v|bv|ab|oyj?|a\/s|k\.k|sdn|bhd|pty|llp|l\.p|lp)\.?)+\s*$/i;
 export const bareCompany = (c: string) => c.replace(LEGAL_FORM, "").trim() || c;
+/** The company as keyed from #1645 until #1831, with only the forms then known dropped. */
+const usBareCompany = (c: string) => c.replace(US_FORM, "").trim() || c;
 
 // "Sr. Product Designer" on LinkedIn is "Senior Product Designer" on the ATS (#1828). Whole words of the folded title only.
 const spellRank = (t: string) => t.replace(/\b(?:sr|snr)\b/g, "senior").replace(/\bjr\b/g, "junior");
 
-const key = (company: string, title: string, location: string, fold: boolean, bare = fold, spell = fold) => {
-  const [c, t, l] = [bare ? bareCompany(company) : company, title, (fold ? remoteFirst(location) : location).split(",")[0]].map(normPart(fold));
+type Bare = (c: string) => string;
+const asWritten: Bare = (c) => c;
+
+const key = (company: string, title: string, location: string, fold: boolean, bare: Bare = fold ? bareCompany : asWritten, spell = fold) => {
+  const [c, t, l] = [bare(company), title, (fold ? remoteFirst(location) : location).split(",")[0]].map(normPart(fold));
   return (
     // nosemgrep: javascript.lang.security.audit.node-sha1.node_sha1 -- SHA-1 here only fingerprints postings for dedupe, not security
     createHash("sha1")
@@ -111,13 +121,20 @@ export const fingerprint = (company: string, title: string, location: string) =>
  * The key stored from #1645 until #1828, with "Sr." and "Jr." in the title as written. The same as fingerprint for a title
  * with neither. baseKey looks it up so a posting saved under it is matched, not saved again.
  */
-export const unspelledFingerprint = (company: string, title: string, location: string) => key(company, title, location, true, true, false);
+export const unspelledFingerprint = (company: string, title: string, location: string) => key(company, title, location, true, usBareCompany, false);
+
+/**
+ * The key stored from #1828 until #1831, with only US and a few other legal forms dropped ("acme pvt" for "Acme Pvt Ltd").
+ * The same as fingerprint for a company with none of the newer forms. baseKey looks it up so a posting saved under it is
+ * matched, not saved again.
+ */
+export const usFormFingerprint = (company: string, title: string, location: string) => key(company, title, location, true, usBareCompany, true);
 
 /**
  * The key stored from #1269 until #1645, with the company's legal form kept ("acme inc"). The same as fingerprint for a
  * company with none. postingKey looks it up so a posting saved under it is matched, not saved again.
  */
-export const suffixedFingerprint = (company: string, title: string, location: string) => key(company, title, location, true, false, false);
+export const suffixedFingerprint = (company: string, title: string, location: string) => key(company, title, location, true, asWritten, false);
 
 /**
  * The key stored before #1269, when an accented letter became a space ("montr al"). The same as fingerprint for text with
