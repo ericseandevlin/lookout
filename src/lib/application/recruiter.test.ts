@@ -164,6 +164,19 @@ Design Systems Lead
     expect(f.some((x) => x.what.includes('"Accessibility Concepts"'))).toBe(true);
   });
 
+  it.each(["Familiar with Kubernetes, Terraform", "Exposure to Python and SQL", "Working knowledge of SQL", "Basic knowledge of Swift"])(
+    "flags %j at the start of a skills line (#1836)",
+    (skill) => {
+      const r = `# Maya Ortiz\nSenior Product Designer\n\n## Experience\n### Senior Product Designer, Acme\n- Grew the design system to 40 teams\n\n## Skills\n- ${skill}`;
+      expect(recruiterChecks("resume", r).filter((x) => x.what.endsWith("reads as vague."))).toHaveLength(1);
+    },
+  );
+
+  it("does not read lowercase 'design principles' as vague (#1836)", () => {
+    const r = "# Maya Ortiz\n\n## Skills\n- Strong design principles, Figma";
+    expect(recruiterChecks("resume", r).some((x) => x.what.endsWith("reads as vague."))).toBe(false);
+  });
+
   it("every finding says what, why and how", () => {
     for (const x of f) expect(x.what && x.why && x.fix).toBeTruthy();
   });
