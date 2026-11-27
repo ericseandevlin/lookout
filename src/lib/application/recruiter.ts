@@ -193,7 +193,9 @@ function resumeChecks(md: string): Finding[] {
 const GREETING =
   /^(?:(?:dear|hi|hey|hello|greetings|good (?:morning|afternoon|day)|to whom)\b[^,:!?\n]{0,60}|to the\b[^,:!?\n]{0,40}\b(?:team|manager|committee|recruiter|department|panel)s?)([,:!]\s*|$)/i;
 // A sign-off on its own line ("Best regards,", "Thanks,"), with the name and contact lines under it.
-const SIGN_OFF = /^(sincerely|best|thanks|thank you|regards|kind regards|warm regards|warmly|cheers|all the best)\b[\w ]{0,15},?$/i;
+// "Yours sincerely,", "Respectfully,", "Many thanks,", "With gratitude," and "Thank you for your consideration," too (#1846).
+const SIGN_OFF =
+  /^(yours (sincerely|truly|faithfully|respectfully)|(sincerely|truly|faithfully|respectfully)( yours)?|best|thanks|many thanks|thank you( for your (time and consideration|consideration|time))?|regards|kind regards|warm regards|warmly|cheers|all the best|with (gratitude|appreciation|thanks)|gratefully)\b[\w ]{0,15},?$/i;
 
 /**
  * The letter's paragraphs without the greeting and sign-off. Only those lines go, not the paragraph they sit in:
