@@ -27,7 +27,10 @@ const START = /start date|earliest.*start|when can you start|availab(le|ility) t
 const MONTH = /\b(jan(uary)?|feb(ruary)?|mar(ch)?|apr(il)?|june?|july?|aug(ust)?|sept?(ember)?|oct(ober)?|nov(ember)?|dec(ember)?)\b\.?/i;
 // "2-3 weeks" and "4-6 weeks after an offer" are a span, not a day and month (#1575).
 const DATE_FORMS = /\b\d{1,2}[/.-]\d{1,2}([/.-]\d{2,4})?\b(?!\s*(?:business\s+|working\s+)?(?:days?|weeks?|wks?|months?|mos?)\b)|\b\d{4}-\d{2}-\d{2}\b|\bmay,?\s+(\d{1,2}|(19|20)\d{2})\b|\b\d{1,2}(st|nd|rd|th)?\s+(of\s+)?may\b|\b\d{1,2}(st|nd|rd|th)\b|\b(19|20)\d{2}\b/i;
-const DATE = { test: (a: string) => MONTH.test(a) || DATE_FORMS.test(a) };
+// A day named from when it was written is one too: "Next Monday", "Tomorrow", "End of Q1", "After the holidays" (#1845).
+const RELATIVE_DAY =
+  /\b(?:monday|tuesday|wednesday|thursday|friday|saturday|sunday|today|tomorrow|tonight|q[1-4]|holidays?|thanksgiving|christmas|xmas|new year(?:['’]s)?|easter)\b|\b(?:this|next|coming|following)\s+(?:week|month|year|quarter|spring|summer|fall|autumn|winter|season)\b|\bend of (?:the )?(?:week|month|year|quarter)\b|\b(?:spring|summer|fall|autumn|winter)\s+(?:19|20)?\d{2}\b/i;
+const DATE = { test: (a: string) => MONTH.test(a) || DATE_FORMS.test(a) || RELATIVE_DAY.test(a) };
 
 // "How did you hear about us?" answered with a referral, a friend or a recruiter is about that company; "LinkedIn" travels (#1097).
 const HEARD = /how did you (hear|learn|find out)|where did you (hear|learn|find)/i;
