@@ -213,6 +213,17 @@ describe("recruiterChecks: cover letter", () => {
     expect(recruiterChecks("cover_letter", `Dear Team,\n\n${body} One more line of detail here.\n\n${contact}`).find((x) => x.dim === "length")!.what).toBe("About 224 words.");
   });
 
+  it("leaves the contact block out after 'Yours sincerely', 'Respectfully' and the other sign-offs (#1846)", () => {
+    const body = `I grew Acme's design system to 40 teams. ${"More detail here. ".repeat(70)}`.trim();
+    for (const so of ["Yours sincerely,", "Yours truly,", "Yours faithfully,", "Sincerely yours,", "Respectfully,", "Many thanks,", "With gratitude,", "With appreciation,", "Gratefully,", "Thank you for your consideration,", "Thank you for your time and consideration,"]) {
+      const contact = `${so}\nMaya Ortiz\nmaya@example.com\n555 123 4567\nlinkedin.com/in/mayaortiz\nmayaortiz.design`;
+      expect(recruiterChecks("cover_letter", `Dear Team,\n\n${body}\n\n${contact}`), so).toEqual([]);
+    }
+    // A closing sentence is still letter: "Thank you for your time." ends with a full stop.
+    const long = `Dear Team,\n\n${body}\n\nThank you for your time and consideration of my application today.\n\nBest,\nMaya`;
+    expect(recruiterChecks("cover_letter", long).find((x) => x.dim === "length")!.what).toBe("About 229 words.");
+  });
+
   it("flags the person moving into a field, not a team or product changing (#768)", () => {
     const framed = (s: string) => recruiterChecks("cover_letter", `Dear Team,\n\n${s}\n\nBest,\nMaya`).some((x) => x.dim === "relevance");
     for (const s of [
