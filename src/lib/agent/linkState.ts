@@ -53,7 +53,9 @@ const CLOSED = [
   /\b(job|posting|position|listing|vacancy|opportunity|role|advert|opening|requisition)( ad| advert| post| posting| opening)? (is |has )?(now )?expired\b(?![- ]?date\b)(?=\s*(?:[.!?,;:|)\n-]|$)|\s+(?:on|as of|since|and|or)\b)/i,
   // "The job you are trying to apply for is no longer available", "attempting to view" too (#1251). "Apply to" too (#1441).
   /(job|position|posting|role|page) you(['’]re| are| were) (looking for|(trying|attempting) to (apply (for|to)|access|view|reach|open)) ((has|is|was|might have|may have) (been )?(filled|removed|closed|deleted|expired)|is no longer (available|active|open))\b/i,
-  /(job|position|posting|role|opening) is not available anymore/i,
+  // "Oops! This job isn't available anymore", "This role is not open any longer", but not "sponsorship for this role isn't
+  // available anymore": the job must be the subject, as above (#1864).
+  /(?<!\b(?:for|of|to|on|with|in|about) (?:this |the |a |our )?)\b(job|position|posting|role|opening|listing|vacancy)( listing| posting| post| ad)? (is not|isn['’]t) (available|open|active|live) (anymore|any longer)\b/i,
   // A duty about such a screen is not one: "the screen that says the page you're looking for doesn't exist", "customers who
   // can't find the page they need", "users who couldn't find the page, across web" (#1553).
   /(?<!\b(?:says|said|saying|reads|shows|showing|tells (?:them|users|people|you)|like|when|if|where|that|which) (?:that )?(?:the |this )?)page you(['’]re| are| were) looking for (doesn['’]t|does not|no longer) exists?|(?<!\bwho )(can(['’]|no)t|couldn['’]t|could not) find (that|this|the) page(?=\s*(?:[.!?\n]|$)|\s+you(?:['’]re| are| were)? (?:looking for|requested|wanted))/i,
@@ -106,6 +108,13 @@ const CLOSED = [
   // "We're no longer hiring for this role", "We are no longer recruiting for this position" (#1458). The job must follow,
   // so "no longer hiring for our old office" or "we're no longer recruiting through agencies" stays open.
   /\bno longer (hiring|recruiting) for (this|the) (job|role|position|posting|opening|vacancy|requisition|opportunity)\b/i,
+  // "Hiring for this role has paused", "Recruiting for this position has ended", "Recruitment for this vacancy has now
+  // closed", "Hiring is on hold for this role" (#1864). The job must be named, so "hiring is paused for our Berlin office" or
+  // "we paused hiring last year" stays open.
+  /\b(hiring|recruiting|recruitment|the search) for (this|the) (job|role|position|posting|opening|vacancy|requisition|opportunity) (is |has )?(now |currently )?(been )?(paused|on hold|suspended|ended|concluded|closed|complete|completed)\b(?! to\b)/i,
+  /\b(hiring|recruiting|recruitment) (is|has been) (now |currently )?(paused|on hold|suspended) for (this|the) (job|role|position|posting|opening|vacancy|requisition|opportunity)\b/i,
+  // "This role is on hold", only as the end of the sentence (#1864).
+  /\b(this|the) (job|position|posting|role|opening|vacancy|requisition)( posting| post| ad)? is (currently |now )?on hold\s*(?:[.!?\n]|$)/i,
   // "We have stopped accepting applications for this job", but not from agencies or by email, as above (#1458).
   /\b(have|has|we['’]ve) (now )?stopped accepting (applications|applicants|candidates)\b(?!,? (from|via|by|through)\b)/i,
 ];
