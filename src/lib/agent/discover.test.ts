@@ -12,7 +12,7 @@ const db = drizzle(pg, { schema });
 vi.mock("@/lib/db", () => ({ db, schema }));
 
 const { loadContext, save, realDate } = await import("./discover");
-const { fingerprint, legacyFingerprint, suffixedFingerprint, unspelledFingerprint, usFormFingerprint } = await import("./rules");
+const { fingerprint, legacyFingerprint, suffixedFingerprint, unspelledCityFingerprint, unspelledFingerprint, usFormFingerprint } = await import("./rules");
 type Ctx = Awaited<ReturnType<typeof loadContext>>;
 type Find = Parameters<typeof save>[1][number];
 
@@ -500,6 +500,21 @@ describe("save", () => {
     const old = usFormFingerprint("Acme Pvt Ltd", "Director of Design", "New York, NY");
     await db.insert(schema.opportunities).values({ company: "Acme Pvt Ltd", title: "Director of Design", sourceUrl: "https://jobs.example.com/a", fingerprint: old });
     await save(ctx(), [find({ url: "https://jobs.example.com/b", company: "Acme Pvt Ltd", location: "New York, NY" })], "agent");
+    const opps = await db.select().from(schema.opportunities);
+    expect(opps.map((o) => [o.fingerprint, o.sourceUrl])).toEqual([[old, "https://jobs.example.com/a"]]);
+  });
+
+  it("merges 'New York City, NY' and 'New York, NY' as one job (#1830)", async () => {
+    await save(ctx(), [find({ url: "https://job-boards.greenhouse.io/acme/jobs/123", location: "New York City, NY" })], "agent");
+    const t = await save(ctx(), [find({ url: "https://www.linkedin.com/jobs/view/4012345678", location: "New York, NY" })], "agent");
+    expect(t.added).toBe(0);
+    expect(await db.select().from(schema.opportunities)).toHaveLength(1);
+  });
+
+  it("matches a posting stored under the key from before #1830, not a second row", async () => {
+    const old = unspelledCityFingerprint("Acme", "Director of Design", "St. Louis, MO");
+    await db.insert(schema.opportunities).values({ company: "Acme", title: "Director of Design", sourceUrl: "https://jobs.example.com/a", fingerprint: old });
+    await save(ctx(), [find({ url: "https://jobs.example.com/b", company: "Acme", location: "St. Louis, MO" })], "agent");
     const opps = await db.select().from(schema.opportunities);
     expect(opps.map((o) => [o.fingerprint, o.sourceUrl])).toEqual([[old, "https://jobs.example.com/a"]]);
   });
