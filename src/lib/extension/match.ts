@@ -97,6 +97,13 @@ export function jobKey(raw: string | null | undefined): string | null {
   // its form /talentcommunity/apply/<id>/. The host and the long number name the job. Built In's /job/<slug>/<id> keys the same way.
   const sfSite = u.pathname.match(/^\/(?:job\/[^/]+|talentcommunity\/apply)\/(\d{6,})\/?$/i)?.[1];
   if (sfSite) return `jobid:${host.replace(/^www\./, "")}:${sfSite}`;
+  // Avature (#1880): <company>.avature.net/[<locale>/]careers/JobDetail/<Title-Slug>/<id>, or JobDetail?jobId=<id>, and the form
+  // starts at /careers/ApplicationMethods?jobId=<id>. The host names the employer; the ID names the job.
+  const avature =
+    /(^|\.)avature\.net$/.test(host) &&
+    (u.pathname.match(/^(?:\/[a-z]{2}(?:[-_][a-z]{2})?)?\/careers\/jobdetail\/(?:[^/]+\/)?(\d+)\/?$/i)?.[1] ??
+      (/^(?:\/[a-z]{2}(?:[-_][a-z]{2})?)?\/careers\/(?:jobdetail|applicationmethods)\/?$/i.test(u.pathname) ? u.searchParams.get("jobId")?.match(/^\d+$/)?.[0] : undefined));
+  if (avature) return `avature:${host}:${avature}`;
   // JazzHR (#1870): one job is <company>.applytojob.com/apply/<code>/<Title-Slug> and also /apply/<code>. The code names it.
   const jazz = /(^|\.)applytojob\.com$/.test(host) && u.pathname.match(/^\/apply\/([0-9a-z]{6,})(?:\/[^/]*)?\/?$/i)?.[1];
   if (jazz) return `jazzhr:${host}:${jazz.toLowerCase()}`;
