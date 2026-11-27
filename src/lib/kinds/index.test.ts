@@ -212,6 +212,19 @@ describe("parseMoney", () => {
   });
 });
 
+describe("parseMoney: rupees in words (#1894)", () => {
+  it.each([["25 lakh"], ["1.5 lakh"], ["25 lakhs"], ["25 lacs"], ["30 LPA"], ["30 lpa"], ["1 crore"], ["2 crores"], ["Rs 25,00,000"], ["25 lakh rupees"]])("leaves %j unread", (v) => {
+    expect(parseMoney(v)).toBeNull();
+  });
+  it("still reads dollars", () => {
+    expect(parseMoney("150k")).toBe(150000);
+    expect(parseMoney("USD 150,000")).toBe(150000);
+  });
+  it("asks for an amount instead of using it as the floor", () => {
+    expect(payProblem("25 lakh", "")).toBe("Enter the floor as an amount, like 120,000.");
+  });
+});
+
 describe("parseMoney: 'p/h' is per hour (#1386)", () => {
   it("annualizes p/h like /h", () => {
     expect(parseMoney("$85/h")).toBe(176800);

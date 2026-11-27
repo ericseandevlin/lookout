@@ -312,7 +312,8 @@ export function payProblem(floor: unknown, target: unknown): string | null {
 
 export function parseMoney(v: unknown): number | null {
   const s = str(v).toLowerCase().replace(/[,$]/g, "").replace(/(\d)\s+(?=\d{3}\b)/g, "$1");
-  if (!s || /[€£¥₹]|\b(eur|euros?|gbp|pounds?|inr|jpy)\b/.test(s) || /\bfigures?\b/.test(s)) return null;
+  // Lakh, crore and LPA (lakh per annum) are rupees in words, so they stay unread like "₹" and "INR" (#1894).
+  if (!s || /[€£¥₹]|\b(eur|euros?|gbp|pounds?|inr|jpy|rs|rupees?|lakhs?|lacs?|lpa|crores?)\b/.test(s) || /\bfigures?\b/.test(s)) return null;
   const AMOUNT = /(\d+(?:\.\d+)?)(?![\d.])\s*(k|mm|mil|million|m|bn|billion|b)?s?(?![a-z])/g;
   const found = [...s.matchAll(AMOUNT)].filter((a) => !NOT_PAY.test(s.slice(0, a.index)));
   // A tax form, a retirement plan or a year before the pay is not the pay: "1099 $90/hr", "401k + 150k", "2026 target:
