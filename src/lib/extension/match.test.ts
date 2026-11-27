@@ -211,6 +211,18 @@ describe("sameJob", () => {
     expect(jobKey("https://www.dice.com/company-profile/acme")).toMatch(/^url:/);
   });
 
+  it("matches an Avature apply page to its posting, with or without the title and locale (#1880)", () => {
+    const job = "https://ea.avature.net/en_US/careers/JobDetail/Senior-UX-Designer/12345";
+    expect(jobKey(job)).toBe("avature:ea.avature.net:12345");
+    expect(sameJob(["https://ea.avature.net/en_US/careers/ApplicationMethods?jobId=12345"], [job])).toBe(true);
+    expect(sameJob(["https://ea.avature.net/careers/JobDetail?jobId=12345&source=LinkedIn"], [job])).toBe(true);
+    expect(sameJob(["https://ea.avature.net/careers/JobDetail/12345"], [job])).toBe(true);
+    expect(sameJob(["https://ea.avature.net/en_US/careers/ApplicationMethods?jobId=67890"], [job])).toBe(false);
+    expect(sameJob(["https://other.avature.net/en_US/careers/JobDetail/Senior-UX-Designer/12345"], [job])).toBe(false);
+    // The search list isn't one job.
+    expect(jobKey("https://ea.avature.net/en_US/careers/SearchJobs")).toMatch(/^url:/);
+  });
+
   it("keys a JazzHR job by its code, with or without the title (#1870)", () => {
     const job = "https://acme.applytojob.com/apply/AbC123xYz/Product-Designer";
     expect(jobKey(job)).toBe("jazzhr:acme.applytojob.com:abc123xyz");
