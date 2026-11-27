@@ -790,3 +790,30 @@ describe("classifyPage: not available anymore, hiring paused, recruiting ended (
     expect(classifyPage(200, `TITLE: Product Designer\nTEXT: ${text}`).state).toBe("open");
   });
 });
+
+describe("classifyPage: application window closed, closed to applications, no longer open (#1887)", () => {
+  it.each([
+    "The application window has closed.",
+    "The window to apply has closed.",
+    "The application period has ended.",
+    "The application period for this job is over.",
+    "This job is closed to applications.",
+    "This role is now closed for applications.",
+    "Closed for applications",
+    "Applications are no longer open.",
+    "Applications for this role are no longer open",
+  ])("reads %j as closed", (text) => {
+    expect(classifyPage(200, `Acme Careers\n${text}\nSee all jobs`).state).toBe("gone");
+  });
+  it.each([
+    "Applications close on December 15.",
+    "The application window closes Friday.",
+    "The application period is open until March 1.",
+    "This role is closed to applicants outside the EU, and open to everyone inside it.",
+    "Applications are no longer open to agencies.",
+    "Once the application window has closed, we review every application.",
+    "You will tell candidates when the application window has closed.",
+  ])("keeps %j open", (text) => {
+    expect(classifyPage(200, `TITLE: Product Designer\nTEXT: ${text}`).state).toBe("open");
+  });
+});

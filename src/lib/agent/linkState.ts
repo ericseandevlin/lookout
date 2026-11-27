@@ -99,8 +99,8 @@ const CLOSED = [
   /(?:^|\n)\s*(?:(?:this )?(?:job|position|role|posting|vacancy) (?:has been )?filled|not (?:currently )?accepting (?:new )?applications)\s*[.!]?\s*(?:\n|$)/i,
   // "This position is not currently accepting applications", but not from agencies or by email, as above.
   /\b(is|are) not currently accepting (applications|applicants|candidates)\b(?!,? (from|via|by|through)\b)/i,
-  // "Applications closed" on its own line, and "The application deadline has passed".
-  /(?:^|\n)\s*applications? (?:are )?closed\s*[.!]?\s*(?:\n|$)/i,
+  // "Applications closed" on its own line, "Closed for applications" too (#1887), and "The application deadline has passed".
+  /(?:^|\n)\s*(?:applications? (?:are )?closed|closed (?:to|for) (?:new )?applications)\s*[.!]?\s*(?:\n|$)/i,
   /\b(application|applications|submission) deadline (has|have) (now )?passed\b/i,
   // "The deadline to apply for this job has passed", "The deadline for this position has passed", "The application
   // deadline for this role has now passed" (#1714). The job or applying must follow "deadline".
@@ -115,6 +115,14 @@ const CLOSED = [
   /\b(hiring|recruiting|recruitment) (is|has been) (now |currently )?(paused|on hold|suspended) for (this|the) (job|role|position|posting|opening|vacancy|requisition|opportunity)\b/i,
   // "This role is on hold", only as the end of the sentence (#1864).
   /\b(this|the) (job|position|posting|role|opening|vacancy|requisition)( posting| post| ad)? is (currently |now )?on hold\s*(?:[.!?\n]|$)/i,
+  // "The application window has closed", "The application period for this job is over", "The window to apply has
+  // closed" (#1887). "The application window closes Friday" is a deadline still ahead and stays open.
+  /\b(?:application|applications|submission|hiring) (?:window|period)(?: for (?:this|the) (?:job|role|position|posting|vacancy|opening|opportunity))? (?:has |is )?(?:now |already )?(?:closed|ended|over|expired)\b(?! to\b)|\bwindow to apply(?: for (?:this|the) (?:job|role|position|posting|vacancy|opening|opportunity))? (?:has |is )?(?:now |already )?(?:closed|ended|over)\b(?! to\b)/i,
+  // "This job is closed to applications", "This role is closed for applications", only as the end of the sentence, so
+  // "closed to applicants outside the EU" stays open (#1887).
+  /\b(job|posting|position|role|vacancy|opportunity|listing|advert|opening|requisition)( posting| post| ad| advert| opening)? (is |has )?(now )?(been )?closed (?:to|for) (?:applications|applicants|candidates|submissions)\s*(?:[.!?\n]|$)/i,
+  // "Applications are no longer open", ending the sentence, so "no longer open to agencies" stays open (#1887).
+  /\bapplications (for this (job|role|position|posting|vacancy|opportunity|listing|opening) )?(are|is) no longer (open|available)\s*(?:[.!?\n]|$)/i,
   // "We have stopped accepting applications for this job", but not from agencies or by email, as above (#1458).
   /\b(have|has|we['’]ve) (now )?stopped accepting (applications|applicants|candidates)\b(?!,? (from|via|by|through)\b)/i,
 ];
