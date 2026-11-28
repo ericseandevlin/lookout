@@ -154,6 +154,17 @@ const FOREIGN_RANGES = [
   new RegExp(String.raw`\b(${F_CODES})\s?(${F_AMT})(${FIRST_UNIT})?()\s*${F_SEP}\s*()(${F_AMT})${F_TAIL}`, "gi"),
   new RegExp(String.raw`()(?<![\d.,'’$€£¥₹])(${F_AMT})(${FIRST_UNIT})?()\s*${F_SEP}\s*()(${F_AMT})(?=\s?(?:[€£¥₹]|(?:${F_CODES})\b))${F_TAIL}`, "gi"),
 ];
+// Dollar pay with a space or a dot between thousands, with the same match groups as RANGES (#1919): Quebec's
+// "90 000 $ à 110 000 $", "CAD 150 000 - 170 000", "150 000 – 170 000 CAD", and "$150.000 - $180.000" as Latin American
+// postings write it. A "$" alone stays US dollars, as "$90,000" does. At least one thousands group, so a year never reads.
+const D_SEP = "(?:-|–|—|to|à|a)";
+const NO_SIGN_BEFORE = String.raw`(?<![\d.,'’$€£¥₹])`;
+const DOLLAR_GROUPED_RANGES = [
+  new RegExp(String.raw`${PRE}(?<!\bR)\$\s?(${EU_AMT})(${FIRST_UNIT})?(?:\s?(${DOLLARS})\b)?\s*${D_SEP}\s*${PRE}\$?\s?(${EU_AMT})${F_TAIL}`, "gi"),
+  new RegExp(String.raw`\b(${DOLLARS})\s?\$?(${EU_AMT})(${FIRST_UNIT})?()\s*${D_SEP}\s*()\$?\s?(${EU_AMT})${F_TAIL}`, "gi"),
+  new RegExp(String.raw`()${NO_SIGN_BEFORE}(${EU_AMT})\s?\$(${FIRST_UNIT})?(?:\s?(${DOLLARS})\b)?\s*${D_SEP}\s*()(${EU_AMT})\s?\$${F_TAIL}`, "gi"),
+  new RegExp(String.raw`()${NO_SIGN_BEFORE}(${EU_AMT})(${FIRST_UNIT})?()\s*${D_SEP}\s*()(${EU_AMT})(?=\s?(?:${DOLLARS})\b)${F_TAIL}`, "gi"),
+];
 const PREFIX: Record<string, string> = { us: "USD", ca: "CAD", c: "CAD", a: "AUD", s: "SGD", sg: "SGD", nz: "NZD", hk: "HKD", au: "AUD", mx: "MXN", nt: "TWD", "£": "GBP", "€": "EUR", "¥": "JPY", "₹": "INR", r$: "BRL", jpy: "JPY", inr: "INR", pln: "PLN", sek: "SEK", nok: "NOK", dkk: "DKK", brl: "BRL", eur: "EUR", gbp: "GBP", chf: "CHF", usd: "USD", cad: "CAD", aud: "AUD", sgd: "SGD", nzd: "NZD", hkd: "HKD", mxn: "MXN", twd: "TWD" };
 
 // What the range is per, from the words after it. The unit named first wins, so "per year, paid monthly" stays yearly (#484)
@@ -230,7 +241,7 @@ const estimated = (text: string, at: number, end: number) =>
 
 function fromText(text: string): Pay | null {
   // In page order, so the first range on the page still wins.
-  for (const m of [...RANGES, ...EU_RANGES, ...FOREIGN_RANGES].flatMap((re) => [...text.matchAll(re)]).sort((x, y) => x.index - y.index)) {
+  for (const m of [...RANGES, ...EU_RANGES, ...FOREIGN_RANGES, ...DOLLAR_GROUPED_RANGES].flatMap((re) => [...text.matchAll(re)]).sort((x, y) => x.index - y.index)) {
     const [, pre1, first, firstUnit, code, pre2, second, rest = ""] = m;
     if (namesExtra(label(text, m.index), rest) || estimated(text, m.index, m.index + m[0].length)) continue;
     // The unit is read only up to the next dollar amount: "$150,000 - $200,000 ($72-$96/hr)" stays yearly (#746).

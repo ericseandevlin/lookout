@@ -568,6 +568,40 @@ describe("pay in other currencies (#1709)", () => {
   });
 });
 
+describe("dollar pay with a space or a dot between thousands (#1919)", () => {
+  it.each([
+    ["Salaire : 90 000 $ à 110 000 $ par année", 90000, 110000, "USD"],
+    ["Échelle salariale : 90 000 $ – 110 000 $", 90000, 110000, "USD"],
+    ["Salaire : 90 000,00 $ à 110 000,00 $", 90000, 110000, "USD"],
+    ["Salaire : 7 500 $ à 9 000 $ par mois", 90000, 108000, "USD"],
+    ["Salary: 90 000 $ CAD - 110 000 $", 90000, 110000, "CAD"],
+    ["Salary range: CAD 150 000 - 170 000", 150000, 170000, "CAD"],
+    ["Annual salary: 150 000 – 170 000 CAD", 150000, 170000, "CAD"],
+    ["Salary: AUD 150 000 – 170 000", 150000, 170000, "AUD"],
+    ["Salary: CA$150 000 - CA$170 000", 150000, 170000, "CAD"],
+    ["Salary: $150 000 - $170 000", 150000, 170000, "USD"],
+    ["Salary: $150.000 - $180.000", 150000, 180000, "USD"],
+    ["Salario: 150.000 a 180.000 USD", 150000, 180000, "USD"],
+    ["Salary: USD 150.000 - 180.000", 150000, 180000, "USD"],
+  ])("reads %s", (text, min, max, currency) => {
+    expect(findPay(`<p>${text}</p>`)).toMatchObject({ min, max, currency });
+  });
+
+  it("still reads no pay from years, small amounts or plain grouped numbers", () => {
+    expect(findPay("", "From 2 010 to 2 020 we grew")).toBeNull();
+    expect(findPay("", "Budget: $1.500 - $2.000")).toBeNull();
+    expect(findPay("", "We serve 150 000 - 170 000 riders a day")).toBeNull();
+  });
+
+  it("keeps comma ranges and other currencies as they were", () => {
+    expect(findPay("", "$150,000 - $180,000 per year")).toMatchObject({ min: 150000, max: 180000, currency: "USD" });
+    expect(findPay("", "€60.000 - €70.000")).toMatchObject({ min: 60000, max: 70000, currency: "EUR" });
+    expect(findPay("", "SEK 50 000 - 60 000 per month")).toMatchObject({ min: 600000, max: 720000, currency: "SEK" });
+    expect(findPay("", "R$ 15.000 - R$ 20.000 por mês")).toMatchObject({ currency: "BRL" });
+    expect(findPay("", "60 000 € - 70 000 €")).toMatchObject({ min: 60000, max: 70000, currency: "EUR" });
+  });
+});
+
 describe("a job site's own estimate is not posted pay (#1662)", () => {
   it("skips a range marked as an estimate on the next line or in its label", () => {
     expect(findPay("", "Distribution Center Operations Manager\nPosted 3d ago\n$95k - $140k\n\nSite estimate, not employer-provided\n\nDetails")).toBeNull();
