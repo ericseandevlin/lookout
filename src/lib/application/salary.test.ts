@@ -731,6 +731,31 @@ describe("askPer: 'per mo' and 'per wk' (#1395)", () => {
   });
 });
 
+describe("askPer: short forms like 'p.m.', 'pcm' and 'p/d' (#1909)", () => {
+  it.each([
+    ["Expected salary (p.m.)", "month"],
+    ["Expected salary in EUR p.m.", "month"],
+    ["Expected salary p.m. gross", "month"],
+    ["Expected salary (pcm)", "month"],
+    ["Expected salary (p/m)", "month"],
+    ["Expected salary /mth", "month"],
+    ["Expected salary in EUR, like 5000 p.m.", "month"],
+    ["Expected rate (p.h.)", "hour"],
+    ["Expected rate (p/d)", "day"],
+    ["Expected rate (p.d.)", "day"],
+    ["Expected rate (p.w.)", "week"],
+    ["Expected rate (p/w)", "week"],
+    ["Expected salary (p.a.)", null],
+    // A clock time, a degree and working hours are not the pay period.
+    ["Interviews are at 3 p.m. What are your salary expectations?", null],
+    ["Interviews are at 10:30 p.m. What are your salary expectations?", null],
+    ["Expected salary (Ph.D. holders)", null],
+    ["Expected salary, 40 hours p.w.", null],
+  ])("%s -> %s", (prompt, per) => {
+    expect(askPer(prompt)).toBe(per);
+  });
+});
+
 describe("rangeBasis: base only, not bonus, is base (#1487)", () => {
   it.each([
     "The salary range for this role is $150,000 - $180,000. This range includes base salary only, not bonus or equity.",
