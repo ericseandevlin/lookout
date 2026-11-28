@@ -268,6 +268,24 @@ const ASK_CURRENCY: [RegExp, string][] = [
   [/₹|\binr\b|\brupees?\b/i, "INR"],
   [/¥|\bjpy\b|\byen\b/i, "JPY"],
   [/\b(sek|nok|dkk|pln|czk|huf|mxn|brl|zar|cny|ils|aed)\b/i, ""],
+  // More currencies by code, symbol or name (#1907). Codes and names that are also words ("try", "PHP developer", "Ron",
+  // "won", "real", "rand") count only right after "in" or inside brackets, and the codes only in capitals.
+  [/\b(krw|twd|myr|thb|idr|vnd|sar|qar|kwd|egp|ngn|kes|ghs|cop|clp|ars|uah|bgn|isk|pkr|lkr|rmb)\b/i, ""],
+  [/(?<=\b[Ii]n\s+|\(\s*)(TRY|PHP|RON|PEN)\b/, ""],
+  [/zł|\bzloty\b/i, "PLN"],
+  [/₪|\bshekels?\b/i, "ILS"],
+  [/₩|(?:\bin|\()\s*won\b/i, "KRW"],
+  [/₺|\blira\b/i, "TRY"],
+  [/₦|\bnaira\b/i, "NGN"],
+  [/₱|\bphilippine pesos?\b/i, "PHP"],
+  [/\bR\$|\breais\b|(?:\bin|\()\s*(?:brazilian )?real\b/i, "BRL"],
+  [/\byuan\b|\brenminbi\b/i, "CNY"],
+  [/\bringgit\b/i, "MYR"],
+  [/\bbaht\b/i, "THB"],
+  [/(?:\bin|\()\s*(?:south african )?rand\b/i, "ZAR"],
+  [/\bdirhams?\b/i, "AED"],
+  // Kronor, kroner and "kr" are Swedish, Norwegian, Danish or Icelandic, and pesos are several countries': named as written.
+  [/\b(?:kronor|kronur|kroner|krona|krone|kr)\b|\bpesos?\b/i, ""],
 ];
 
 /**
