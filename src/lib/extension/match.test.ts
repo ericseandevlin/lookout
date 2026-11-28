@@ -236,6 +236,18 @@ describe("sameJob", () => {
     expect(jobKey("https://ats.rippling.com/en-GB/acme")).toMatch(/^url:/);
   });
 
+  it("keys a BambooHR job by its ID, on /careers/<id> and the old /jobs/view.php?id= (#1903)", () => {
+    const job = "https://acme.bamboohr.com/careers/123";
+    expect(jobKey(job)).toBe("bamboohr:acme.bamboohr.com:123");
+    expect(sameJob(["https://acme.bamboohr.com/jobs/view.php?id=123"], [job])).toBe(true);
+    expect(sameJob(["https://acme.bamboohr.com/careers/123/apply?source=linkedin"], ["https://acme.bamboohr.com/jobs/view.php?id=123&source=aWQ9MTU="])).toBe(true);
+    expect(sameJob(["https://acme.bamboohr.com/careers/456"], [job])).toBe(false);
+    expect(sameJob(["https://globex.bamboohr.com/careers/123"], [job])).toBe(false);
+    // The board home has no ID.
+    expect(jobKey("https://acme.bamboohr.com/careers")).toMatch(/^url:/);
+    expect(jobKey("https://acme.bamboohr.com/jobs/view.php")).toMatch(/^url:/);
+  });
+
   it("keys a JazzHR job by its code, with or without the title (#1870)", () => {
     const job = "https://acme.applytojob.com/apply/AbC123xYz/Product-Designer";
     expect(jobKey(job)).toBe("jazzhr:acme.applytojob.com:abc123xyz");
