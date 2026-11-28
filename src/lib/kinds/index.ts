@@ -269,6 +269,8 @@ export function answeredCount(cfg: KindConfig, a: Record<string, string | string
   }).length;
 }
 
+const OTHER_CURRENCY =
+  /[₩₪₺₦₱₽₫฿]|zł|\b(?:chf|cad|aud|nzd|sgd|hkd|sek|nok|dkk|isk|pln|czk|huf|ron|bgn|try|mxn|brl|ars|clp|cop|pen|zar|aed|sar|qar|ils|cny|rmb|krw|twd|myr|thb|idr|php|vnd|ngn|kes|egp|pkr|kr|francs?|kronor|kroner|kronur|krona|krone|yuan|reais|pesos?|rand|dirhams?|shekels?|zloty)\b|(?<![a-z0-9])(?!us\$)[a-z]{1,3}\$/;
 const SCALE: Record<string, number> = { k: 1e3, m: 1e6, b: 1e9 };
 // A pay rate per hour, week or month right after the number (or after the top of a range, "85-95/hr"). The floor is
 // compared with yearly salaries, so it is annualized the way ai/pay.ts does it: 2080 hours, 52 weeks, 12 months (#941).
@@ -314,6 +316,9 @@ export function parseMoney(v: unknown): number | null {
   const s = str(v).toLowerCase().replace(/[,$]/g, "").replace(/(\d)\s+(?=\d{3}\b)/g, "$1");
   // Lakh, crore and LPA (lakh per annum) are rupees in words, so they stay unread like "₹" and "INR" (#1894).
   if (!s || /[€£¥₹]|\b(eur|euros?|gbp|pounds?|inr|jpy|rs|rupees?|lakhs?|lacs?|lpa|crores?)\b/.test(s) || /\bfigures?\b/.test(s)) return null;
+  // Other currencies stay unread too, by code before or after the number, by symbol, or as a dollar of another country
+  // ("CHF 150k", "150k CAD", "600 000 kr", "R$ 15000", "₪30,000") (#1908). "USD", "US$" and "$" are still dollars.
+  if (OTHER_CURRENCY.test(str(v).toLowerCase())) return null;
   const AMOUNT = /(\d+(?:\.\d+)?)(?![\d.])\s*(k|mm|mil|million|m|bn|billion|b)?s?(?![a-z])/g;
   const found = [...s.matchAll(AMOUNT)].filter((a) => !NOT_PAY.test(s.slice(0, a.index)));
   // A tax form, a retirement plan or a year before the pay is not the pay: "1099 $90/hr", "401k + 150k", "2026 target:
