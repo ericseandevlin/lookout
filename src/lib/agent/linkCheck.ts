@@ -4,7 +4,7 @@ import { db, schema } from "@/lib/db";
 import { fetchPage, FetchError, pageToText } from "@/lib/ai/fetchPage";
 import { ashbyOrgFromHtml, boardFromHtml, boardGuesses, detectAts } from "@/lib/application/scan";
 import { stripHidden } from "@/lib/application/posting";
-import { classifyPage, closedNote, type LinkState } from "./linkState";
+import { classifyPage, closedNote, sentToBoardHome, type LinkState } from "./linkState";
 import { env } from "@/lib/env";
 import { dayKey } from "@/lib/spend";
 
@@ -35,7 +35,10 @@ async function checkOnce(url: string): Promise<{ state: LinkState; reason: strin
     // posting's "no longer available" past the part classifyPage reads (#1026). Hidden elements go too: a template's
     // closed banner ships on every page and shows only once the job closes; read anyway, it closed live jobs (#1733).
     const page = classifyPage(200, pageToText(stripHidden(html.replace(LD_JSON, " ")).html, 4000), finalUrl, redirects);
-    return page.state === "open" ? ((await embedVerdict(url, html)) ?? page) : page;
+    if (page.state !== "open") return page;
+    // A job sent up to its board's list of jobs is gone, though the list itself reads as open (#1928).
+    if (sentToBoardHome(url, finalUrl)) return { state: "gone", reason: "the job board sent it to its list of jobs" };
+    return (await embedVerdict(url, html)) ?? page;
   } catch (e) {
     const status = statusOf(e);
     return Number.isFinite(status) ? classifyPage(status, "") : { state: "unknown", reason: "couldn't reach it" };
