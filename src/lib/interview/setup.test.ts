@@ -63,6 +63,16 @@ describe("readSetupAnswer: work modes", () => {
     expect(readSetupAnswer(where, "On-site in Austin").answers).toEqual({ modes: ["On-site"], area: "Austin" });
   });
 
+  it("drops every joining word left between the modes and the area", () => {
+    expect(readSetupAnswer(where, "Hybrid or remote in Brooklyn").answers.area).toBe("Brooklyn");
+    expect(readSetupAnswer(where, "Remote, or in or around Boston").answers.area).toBe("Boston");
+  });
+
+  it("keeps an area whose name starts like a joining word", () => {
+    expect(readSetupAnswer(where, "Hybrid in Orlando").answers.area).toBe("Orlando");
+    expect(readSetupAnswer(where, "Remote, Indianapolis").answers.area).toBe("Indianapolis");
+  });
+
   it("reads several modes in the config's order", () => {
     expect(readSetupAnswer(where, "remote or hybrid").answers.modes).toEqual(["Hybrid", "Remote"]);
   });
