@@ -312,6 +312,14 @@ export function payProblem(floor: unknown, target: unknown): string | null {
   return null;
 }
 
+/** A plain dollar amount typed as digits ("115000") reads the way the welcome screen writes it ("$115,000") (#1662). */
+export function tidyPay(v: string): string {
+  if (!/^\s*\$?\s*\d[\d,]*\s*$/.test(v)) return v;
+  const n = parseMoney(v);
+  // Only when the digits are the amount: "500", which parseMoney reads as $500k, stays as typed.
+  return n !== null && n >= 1000 && n === Number(v.replace(/\D/g, "")) ? `$${n.toLocaleString("en-US")}` : v;
+}
+
 export function parseMoney(v: unknown): number | null {
   const s = str(v).toLowerCase().replace(/[,$]/g, "").replace(/(\d)\s+(?=\d{3}\b)/g, "$1");
   // Lakh, crore and LPA (lakh per annum) are rupees in words, so they stay unread like "₹" and "INR" (#1894).

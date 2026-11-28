@@ -4,7 +4,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useState, useSyncExternalStore } from "react";
 import { fillTemplate, parseTemplate, type Chunk } from "@/lib/blanks";
-import { BONUS_KEY, kindOf, payProblem } from "@/lib/kinds";
+import { BONUS_KEY, kindOf, payProblem, tidyPay } from "@/lib/kinds";
 import { WORK_MODE_LABEL } from "@/lib/onboarding";
 import { searchBlocker } from "@/lib/ready";
 import { toggleItem, togglePhrase } from "@/lib/phrases";
@@ -331,7 +331,7 @@ export function Profile() {
                   {([[q.floorKey, "Floor", "$120,000"], [q.targetKey, "Would jump for", "$160,000"]] as const).map(([k, label, ph], j) => (
                     <label key={k} style={{ flex: "1 1 180px", display: "flex", flexDirection: "column", gap: 6, fontSize: font.base, fontWeight: 600, letterSpacing: ".06em", textTransform: "uppercase", color: color.t2 }}>
                       {label}
-                      <input id={j === 0 ? `q-${q.key}` : undefined} className="f-brick" inputMode="numeric" value={str(k)} onChange={set(k)} placeholder={ph} maxLength={40} style={{ ...inputBase, height: 42, padding: "0 13px", fontSize: font.md, textTransform: "none", letterSpacing: 0, fontWeight: 500 }} />
+                      <input id={j === 0 ? `q-${q.key}` : undefined} className="f-brick" inputMode="numeric" value={str(k)} onChange={set(k)} onBlur={() => tidyPay(str(k)) !== str(k) && editAnswers({ [k]: tidyPay(str(k)) }, [k])} placeholder={ph} maxLength={40} style={{ ...inputBase, height: 42, padding: "0 13px", fontSize: font.md, textTransform: "none", letterSpacing: 0, fontWeight: 500 }} />
                     </label>
                   ))}
                   {payProblem(str(q.floorKey), str(q.targetKey)) && (
