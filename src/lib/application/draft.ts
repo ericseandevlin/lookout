@@ -203,10 +203,14 @@ const below100 = (w: string) => {
 
 /**
  * The master's numbers in words, in digits: "thirty engineers" is "30 engineers", so the draft's digits match (#1760,
- * #1798). A lone "one" stays a word, since "one of the leads" is no count.
+ * #1798). A lone "one" stays a word, since "one of the leads" is no count. "One million", "a thousand" and "half a
+ * million" are counts: "1 million" and "500 thousand" (#1920).
  */
 const spelledToDigits = (s: string) =>
-  s.replace(NUMBER_WORD, (all, hundreds?: string, rest?: string, small?: string, dozen?: string) => {
+  s
+    .replace(/\bhalf an? (million|billion)\b/gi, (_, u: string) => (u.toLowerCase() === "million" ? "500 thousand" : "500 million"))
+    .replace(/\b(?:one|a)\s+(thousand|million|billion)\b/gi, "1 $1")
+    .replace(NUMBER_WORD, (all, hundreds?: string, rest?: string, small?: string, dozen?: string) => {
     if (dozen) return "12";
     if (hundreds) return String((hundreds.toLowerCase() === "a" ? 1 : UNITS.indexOf(hundreds.toLowerCase()) + 1) * 100 + (rest ? below100(rest) : 0));
     return small!.toLowerCase() === "one" ? all : String(below100(small!));

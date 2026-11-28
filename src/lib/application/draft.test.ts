@@ -161,6 +161,21 @@ describe("newNumbers", () => {
     expect(newNumbers("One of the leads on the team", "1 of the leads")).toEqual(["1"]);
   });
 
+  it("reads 'one million', 'a thousand' and 'half a million' in the master as the draft's digits (#1920)", () => {
+    expect(newNumbers("Reached one million users", "Reached 1 million users")).toEqual([]);
+    expect(newNumbers("Reached One Million users", "Reached 1M users")).toEqual([]);
+    expect(newNumbers("Opened one thousand stores", "Opened 1,000 stores")).toEqual([]);
+    expect(newNumbers("Served a million riders", "Served 1M riders")).toEqual([]);
+    expect(newNumbers("Managed one billion dollars in spend", "Managed 1 billion dollars in spend")).toEqual([]);
+    expect(newNumbers("Grew to half a million users", "Grew to 500K users")).toEqual([]);
+    expect(newNumbers("Grew to half a million users", "Grew to 500,000 users")).toEqual([]);
+    expect(newNumbers("Processed half a billion events", "Processed 500M events")).toEqual([]);
+    // Still flagged: a different count, and a lone "one" is no count.
+    expect(newNumbers("Reached one million users", "Reached 2 million users")).toEqual(["2m"]);
+    expect(newNumbers("Grew to half a million users", "Grew to 600K users")).toEqual(["600k"]);
+    expect(newNumbers("One of the leads on the team", "1 of the leads")).toEqual(["1"]);
+  });
+
   it("reads a + after a unit the way it reads one after a plain number (#1611)", () => {
     expect(newNumbers("Served 50K+ users.", "Served over 50,000 users.")).toEqual([]);
     expect(newNumbers("Served over 50,000 users.", "Served 50K+ users.")).toEqual([]);
