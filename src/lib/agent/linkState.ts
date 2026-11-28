@@ -1,4 +1,6 @@
 /** Pure classification of a posting check, kept apart from the DB code so it's testable. */
+import { listPage } from "./rules";
+
 export type LinkState = "open" | "gone" | "unknown";
 
 /** The line Lookout adds to a find's notes when it closes the posting. */
@@ -190,4 +192,25 @@ export function classifyPage(status: number, text: string, finalUrl = "", via: s
   if (CLOSED.some((r) => saysClosed(r, head))) return { state: "gone", reason: "page says it's closed" };
   if (NOT_A_VERDICT.some((r) => r.test(head))) return { state: "unknown", reason: "site unavailable or blocked" };
   return { state: "open", reason: "posting is up" };
+}
+
+/**
+ * The job link was sent up to its own board's list of jobs, as Breezy does with a job that's gone: same host, a path
+ * that holds the job's path, and a page listPage reads as a list (#1928). Narrow so no live job closes on it: a locale or
+ * /apply redirect is not a parent path, and a login or careers site on another host proves nothing.
+ */
+export function sentToBoardHome(jobUrl: string, finalUrl: string): boolean {
+  let job: URL, landed: URL;
+  try {
+    job = new URL(jobUrl);
+    landed = new URL(finalUrl);
+  } catch {
+    return false;
+  }
+  const host = (u: URL) => u.hostname.toLowerCase().replace(/^www\./, "");
+  if (host(job) !== host(landed)) return false;
+  const path = (u: URL) => u.pathname.replace(/\/+$/, "").toLowerCase();
+  const [from, to] = [path(job), path(landed)];
+  if (from === to || !from.startsWith(`${to}/`)) return false;
+  return listPage(finalUrl) && !listPage(jobUrl);
 }

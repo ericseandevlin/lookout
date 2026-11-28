@@ -99,6 +99,19 @@ describe("closeGonePostings", () => {
     expect(f.linkCheck).toMatchObject({ state: "gone", reason: "the job board says it's closed" });
   });
 
+  // breezy-hr.breezy.hr/p/<id> -> breezy-hr.breezy.hr/ (#1928).
+  it("closes a job the board sends up to its list of jobs (#1928)", async () => {
+    const url = "https://breezy-hr.breezy.hr/p/0123456789ab-product-designer";
+    const id = await addFind(url);
+    const landed = { url: "https://breezy-hr.breezy.hr/", html: "<h1>Open positions</h1><p>Engineering, Design, Product</p>", redirects: ["https://breezy-hr.breezy.hr/"] };
+    fetchPage.mockImplementationOnce(async () => landed).mockImplementationOnce(async () => landed);
+    await closeGonePostings(userId, T0);
+    expect(await closeGonePostings(userId, hoursLater(20))).toBe(1);
+    const f = await find(id);
+    expect(f.stage).toBe("Closed");
+    expect(f.linkCheck).toMatchObject({ state: "gone", reason: "the job board sent it to its list of jobs" });
+  });
+
   it("dates the closed note in the app's zone, not UTC (#1223)", async () => {
     const id = await addFind("https://jobs.test/1");
     pages.set("https://jobs.test/1", "This job is no longer available.");

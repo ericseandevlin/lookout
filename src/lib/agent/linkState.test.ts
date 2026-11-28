@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { classifyPage, closedNote, ownNotes, repostedNote } from "./linkState";
+import { classifyPage, closedNote, ownNotes, repostedNote, sentToBoardHome } from "./linkState";
 
 describe("ownNotes (#792)", () => {
   it("drops Lookout's closed line and keeps what the person wrote", () => {
@@ -831,5 +831,33 @@ describe("classifyPage: application window closed, closed to applications, no lo
     "You will tell candidates when the application window has closed.",
   ])("keeps %j open", (text) => {
     expect(classifyPage(200, `TITLE: Product Designer\nTEXT: ${text}`).state).toBe("open");
+  });
+});
+
+describe("sentToBoardHome (#1928)", () => {
+  it.each([
+    ["https://breezy-hr.breezy.hr/p/0123456789ab-product-designer", "https://breezy-hr.breezy.hr/"],
+    ["https://acme.bamboohr.com/careers/99", "https://acme.bamboohr.com/careers"],
+    ["https://job-boards.greenhouse.io/acme/jobs/123", "https://www.job-boards.greenhouse.io/acme/"],
+    ["https://acme.wd1.myworkdayjobs.com/External/job/NY/Designer_R1", "https://acme.wd1.myworkdayjobs.com/External"],
+  ])("a job sent up to its board's list is gone: %s -> %s", (job, landed) => {
+    expect(sentToBoardHome(job, landed)).toBe(true);
+  });
+
+  it.each([
+    // a locale, an apply step or the same page
+    ["https://acme.wd1.myworkdayjobs.com/External/job/NY/Designer_R1", "https://acme.wd1.myworkdayjobs.com/en-US/External/job/NY/Designer_R1"],
+    ["https://acme.com/careers/jobs/123-designer", "https://acme.com/careers/jobs/123-designer/apply"],
+    ["https://acme.breezy.hr/p/0123456789ab-designer", "https://acme.breezy.hr/p/0123456789ab-designer/"],
+    // another host: a login page or the company's careers site
+    ["https://acme.breezy.hr/p/0123456789ab-designer", "https://login.acme.com/"],
+    ["https://acme.breezy.hr/p/0123456789ab-designer", "https://acme.com/"],
+    // a list page sent to a shorter list proves nothing
+    ["https://job-boards.greenhouse.io/acme/departments", "https://job-boards.greenhouse.io/acme"],
+    // a parent path that isn't a list of jobs
+    ["https://acme.com/careers/jobs/123-designer", "https://acme.com/careers/jobs/123"],
+    ["not a url", "https://acme.breezy.hr/"],
+  ])("anything else proves nothing: %s -> %s", (job, landed) => {
+    expect(sentToBoardHome(job, landed)).toBe(false);
   });
 });
