@@ -19,8 +19,14 @@ const PAY_GAP = /\b(comp|compensation|pay|salary|salaries|wages?)\b/i;
  * two numbers is a range, so it becomes a hyphen: "$180k–$220k" is "$180k-$220k", not "$180k, $220k" (#1766). A pay unit or
  * a time of day after the first number keeps it a range too: "$90/hr–$110/hr", "$60 an hour – $75", "10am–6pm" (#1807).
  * An en dash with no space between two letters or digits is a range in words: "Mon–Fri", "L5–L6", "Series A–B" (#1840).
+ * Either end may carry a currency the pay reader knows: "US$150k – US$180k", "CHF 150k – CHF 170k", "¥8M – ¥10M",
+ * "150k USD – 180k USD" (#1921).
  */
-const RANGE_START = /(\d[\d,.]*(?:[kKmM%]|\s?[ap]\.?m\.?|\s?(?:\/\s?|an? |per )(?:hr|hour|yr|year|mo|month|wk|week)\b)?)\s*[\u2014\u2013]\s*(?=[$€£]?\d)/g;
+const CURRENCY_CODE = "USD|CAD|AUD|SGD|NZD|HKD|MXN|TWD|GBP|EUR|CHF|JPY|INR|PLN|SEK|NOK|DKK|BRL|KRW|ZAR|CNY";
+const RANGE_START = new RegExp(
+  String.raw`(\d[\d,.]*(?:[kKmMbBL%]|\s?[ap]\.?m\.?|\s?(?:\/\s?|an? |per )(?:hr|hour|yr|year|mo|month|wk|week)\b)?(?:\s?(?:${CURRENCY_CODE})\b)?)\s*[\u2014\u2013]\s*(?=(?:[A-Z]{1,2}\$|[$€£¥₹₩]|(?:${CURRENCY_CODE})\s?)?\d)`,
+  "g",
+);
 export const noDashes = (s: string) =>
   s
     .replace(RANGE_START, "$1-")

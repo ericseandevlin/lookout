@@ -546,6 +546,27 @@ describe("no em dashes in match reasons (#1531)", () => {
     expect(r.reasonsMatch).toEqual(["Pays $90/hr-$110/hr", "$60 an hour-$75 an hour", "Core hours 10am-6pm", "Shift 9 a.m.-5 p.m."]);
     expect(r.reasonsGap).toEqual(["Contract, $50 per hour-$65 per hour", "Team of 5 designers, 3 open roles"]);
   });
+
+  it("keeps a range a range when its ends carry a currency code or a prefixed sign (#1921)", () => {
+    const cases: [string, string][] = [
+      ["Pays US$150k – US$180k", "Pays US$150k-US$180k"],
+      ["Pays CA$140,000 – CA$170,000", "Pays CA$140,000-CA$170,000"],
+      ["Pays A$150k – A$170k", "Pays A$150k-A$170k"],
+      ["Pays S$150k – S$180k", "Pays S$150k-S$180k"],
+      ["Pays R$15k – R$20k", "Pays R$15k-R$20k"],
+      ["Pays CHF 150k – CHF 170k", "Pays CHF 150k-CHF 170k"],
+      ["Pays USD 150k – USD 180k", "Pays USD 150k-USD 180k"],
+      ["Pays GBP 60,000 – GBP 70,000", "Pays GBP 60,000-GBP 70,000"],
+      ["Pays ¥8M – ¥10M", "Pays ¥8M-¥10M"],
+      ["Pays ₹25L – ₹35L", "Pays ₹25L-₹35L"],
+      ["Pays ₩60M – ₩80M", "Pays ₩60M-₩80M"],
+      ["Pays 150k USD – 180k USD", "Pays 150k USD-180k USD"],
+      ["Pays $1.2B – $1.5B in revenue", "Pays $1.2B-$1.5B in revenue"],
+    ];
+    for (const [raw, want] of cases) expect(noDashes(raw), raw).toBe(want);
+    // A dash before a word that starts with a code is not a range.
+    expect(noDashes("Pays 150k USD — USD-based team")).toBe("Pays 150k USD, USD-based team");
+  });
 });
 
 describe("listPage: search and board pages are not jobs (#1537)", () => {
