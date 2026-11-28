@@ -13,7 +13,7 @@ vi.mock("@/lib/db", () => ({ db, schema }));
 
 // Each posting URL answers with whatever the test put here: page text, or an error to throw.
 const pages = new Map<string, string | Error>();
-const fetchPage = vi.fn(async (url: string) => {
+const fetchPage = vi.fn(async (url: string): Promise<{ url: string; html: string; redirects?: string[] }> => {
   const p = pages.get(url);
   if (p instanceof Error) throw p;
   return { url, html: `<p>${p ?? ""}</p>` };
@@ -83,6 +83,20 @@ describe("closeGonePostings", () => {
     expect(f.closedFrom).toBe("Not applied"); // the stage before closing, for a repost (#922)
     expect(f.notes).toBe("Ask Sam about this.\n\nClosed: the posting was gone (page says it's closed) as of 2026-11-01. Lookout archived it.");
     expect(f.linkCheck?.goneSince).toBe(T0.toISOString());
+  });
+
+  // job-boards.greenhouse.io/airbnb/jobs/1 -> /airbnb?error=true -> careers.airbnb.com/positions/ (#1925).
+  it("closes a Greenhouse job whose redirect passes ?error=true on its way to the company's careers page (#1925)", async () => {
+    const url = "https://job-boards.greenhouse.io/airbnb/jobs/4001234005";
+    const id = await addFind(url);
+    const careers = "https://careers.airbnb.com/positions/";
+    const landed = { url: careers, html: "<h1>Open positions</h1><p>Engineering, Design, Product</p>", redirects: ["https://job-boards.greenhouse.io/airbnb?error=true", careers] };
+    fetchPage.mockImplementationOnce(async () => landed).mockImplementationOnce(async () => landed);
+    await closeGonePostings(userId, T0);
+    expect(await closeGonePostings(userId, hoursLater(20))).toBe(1);
+    const f = await find(id);
+    expect(f.stage).toBe("Closed");
+    expect(f.linkCheck).toMatchObject({ state: "gone", reason: "the job board says it's closed" });
   });
 
   it("dates the closed note in the app's zone, not UTC (#1223)", async () => {
