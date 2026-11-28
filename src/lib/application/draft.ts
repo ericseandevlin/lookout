@@ -252,8 +252,9 @@ export function newNumbers(master: string, draft: string): string[] {
   const years = new Set((norm(draft).match(/(?<![a-z\d])\$?\d[\d,.]*/gi) ?? []).map((n) => n.replace(/\.$/, "")).filter((n) => /^(19|20)\d\d$/.test(n)));
   // The master's "five designers" is the draft's "5 designers": the same fact in digits (#1760, #1798).
   const have = new Set([...nums(spelledToDigits(master))].map(short));
-  // The master's "over 20" is "20+": a plain "20" in the draft says no more than that (#1148).
-  return [...nums(draft)].filter((n) => n && !years.has(n) && !have.has(short(n)) && !have.has(short(n) + "+"));
+  // The master's "over 20" is "20+": a plain "20" in the draft says no more than that (#1148). The draft's "twelve designers"
+  // is a count too, read the same way, so a made-up number spelled out is still flagged (#1931).
+  return [...nums(spelledToDigits(draft))].filter((n) => n && !years.has(n) && !have.has(short(n)) && !have.has(short(n) + "+"));
 }
 
 /** The resume's version note, as bullets: score, what was added where, each change, numbers to check. */

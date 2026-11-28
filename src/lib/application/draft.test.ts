@@ -161,6 +161,16 @@ describe("newNumbers", () => {
     expect(newNumbers("One of the leads on the team", "1 of the leads")).toEqual(["1"]);
   });
 
+  it("flags a made-up number the draft spells out (#1931)", () => {
+    expect(newNumbers("Managed a team of 6 designers", "Managed a team of twelve designers")).toEqual(["12"]);
+    expect(newNumbers("10 years in product design", "I bring fifteen years of product design")).toEqual(["15"]);
+    expect(newNumbers("Reached 10,000 users", "Reached one million users")).toEqual(["1m"]);
+    // The same fact in words on either side, and a lone "one", stay unflagged.
+    expect(newNumbers("Managed a team of 6 designers", "Managed a team of six designers")).toEqual([]);
+    expect(newNumbers("Led thirty engineers", "Led thirty engineers")).toEqual([]);
+    expect(newNumbers("Led 4 teams", "One of the leads across 4 teams")).toEqual([]);
+  });
+
   it("reads 'one million', 'a thousand' and 'half a million' in the master as the draft's digits (#1920)", () => {
     expect(newNumbers("Reached one million users", "Reached 1 million users")).toEqual([]);
     expect(newNumbers("Reached One Million users", "Reached 1M users")).toEqual([]);
