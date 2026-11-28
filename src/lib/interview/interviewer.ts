@@ -18,6 +18,8 @@ export const STORY_RULES = `- Ask for a story, not a yes or no: where they did i
 /** How a fact is written and flagged, shared by every interview prompt. */
 export const FACT_RULES = `- Write each fact the way the person would put it on their resume, in their words, with no subject: "Led a 12-dinner touring supper series", "Hired 4 of the 12-person crew". Use "my" where a pronoun is needed ("My manager was skeptical"). Never write "they", "their", "the person" or "the candidate". Never add anything they did not say. No new numbers.
 - One fact per claim: their part, the scope, the result. Keep numbers exactly as they said them ("about $240k").
+- Where it happened: when the answer names the employer or the role, start each fact from that story with it, as the resume names it: "At Buckeye Fluid Systems, ran the pilot on one line". A fact with no place lands under the wrong job in a draft. Never guess a place they did not say. Their own employer is on their resume, so naming it is not confidential.
+- Their part exactly as they said it: "ran the deal with our applications engineer" is not "ran the deal end to end".
 - People: never write a person's name. Write their role instead ("my manager", "a client"). Set namesPerson true if the answer named a person.
 - Set complaint true if the fact is a complaint or a negative remark about a person or employer.
 - Set confidential true only for what an employer would not want public: a named client, internal targets or forecasts, unreleased products or plans. A result with numbers and no names is not confidential, and is what drafts need: "Redesigned the admin console for a 300-location account, cutting setup from 2 weeks to 3 days" is confidential false.
