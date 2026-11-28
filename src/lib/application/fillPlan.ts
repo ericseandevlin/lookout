@@ -40,8 +40,11 @@ export function uploadLabels(steps: Pick<FillStep, "kind" | "itemKind" | "prompt
   });
 }
 
-/** a starts b and ends on a word boundary there: "no" starts "no, thanks" but not "none" (#632). A blank option starts nothing (#722). */
-const startsWord = (a: string, b: string) => !!a && b.startsWith(a) && (b.length === a.length || /\W/.test(b[a.length]) || /\W/.test(a[a.length - 1]));
+/**
+ * a starts b and ends on a word boundary there: "no" starts "no, thanks" but not "none" (#632). A blank option starts nothing
+ * (#722). "#" and "+" are part of a name, so "c" starts neither "c#" nor "c++" (#1939). fill.js carries the same rule.
+ */
+const startsWord = (a: string, b: string) => !!a && b.startsWith(a) && (b.length === a.length || /[^\w#+]/.test(b[a.length]) || /\W/.test(a[a.length - 1]));
 
 /**
  * An option or answer as compared: a required mark ("Yes*") is not part of it (#1061), and curly quotes match straight

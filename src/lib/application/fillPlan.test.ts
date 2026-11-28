@@ -46,6 +46,17 @@ describe("planFill", () => {
 });
 
 describe("pickOptions (#165)", () => {
+  it("keeps C, C# and C++ apart (#1939)", () => {
+    expect(pickOptions("C", ["C++", "Java", "Python"])).toEqual([]);
+    expect(pickOptions("C#", ["C", "Java"])).toEqual([]);
+    expect(pickOptions("C++\nPython", ["C", "Java", "Python"])).toEqual(["Python"]);
+    expect(pickOptions("C++", ["C", "C++", "C#"])).toEqual(["C++"]);
+    expect(pickOne("C#", ["C", "Go"])).toBe(-1);
+    expect(pickOne("C", ["C++", "C#"])).toBe(-1);
+    // Still a word break: "No" starts "No, thanks" and "Yes - I am".
+    expect(pickOne("No", ["Yes, I am", "No, thanks"])).toBe(1);
+  });
+
   const work = [
     "Yes, and I will not require employer support for employment visa status now or in the future for continued employment.",
     "Yes, but I will require employer support for employment visa status in the future for continued employment (if you are currently on H-1B, TN, E-3, or O-1 you will select this answer.)",
