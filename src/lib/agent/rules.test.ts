@@ -724,6 +724,17 @@ describe("listPage: search and board pages are not jobs (#1537)", () => {
       expect(listPage(u), u).toBe(false);
   });
 
+  it("drops a Rippling board home, not its postings (#1902)", () => {
+    for (const u of ["https://ats.rippling.com/acme", "https://ats.rippling.com/acme/", "https://ats.rippling.com/en-GB/acme", "https://ats.rippling.com/acme/jobs"])
+      expect(listPage(u), u).toBe(true);
+    for (const u of [
+      "https://ats.rippling.com/acme/jobs/1b2c3d4e-1111-2222-3333-444455556666",
+      "https://ats.rippling.com/en-GB/acme/jobs/1b2c3d4e-1111-2222-3333-444455556666",
+      "https://ats.rippling.com/acme/jobs/1b2c3d4e-1111-2222-3333-444455556666/apply?step=application",
+    ])
+      expect(listPage(u), u).toBe(false);
+  });
+
   it("drops Gem, Breezy HR, Pinpoint, Polymer and Trakstar Hire board homes, not their postings (#1856)", () => {
     for (const u of [
       "https://jobs.gem.com/acme",

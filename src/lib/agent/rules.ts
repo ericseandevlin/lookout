@@ -442,6 +442,8 @@ const ATS_POSTING: [RegExp, RegExp][] = [
   [/(^|\.)pinpointhq\.com$/i, /^\/(?:[a-z]{2}(?:-[a-z]{2})?\/)?postings\/[^/]+/i],
   [/^jobs\.polymer\.co$/i, /^\/[^/]+\/\d+(?:\/|$)/i],
   [/(^|\.)hire\.trakstar\.com$/i, /^\/jobs\/[^/]+/i],
+  // Rippling /[<locale>/]<company>/jobs/<uuid> (#1902): "ats.rippling.com/acme" and "/en-GB/acme" are the board.
+  [/^ats\.rippling\.com$/i, /^(?:\/[a-z]{2}(?:-[a-z]{2})?)?\/[^/]+\/jobs\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}(?:\/|$)/i],
   // Oracle Recruiting Cloud's board, ".../CandidateExperience/en/sites/CX" and its "/requisitions" search, beside postings at
   // /job/<id> and /requisitions/preview/<id> (#1708). Other Oracle Cloud apps are left alone. Avature's board is
   // /careers/SearchJobs; its postings are /careers/JobDetail and the form /careers/ApplicationMethods (#1881).
