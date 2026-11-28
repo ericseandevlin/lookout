@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { applyRules, bareCompany, fingerprint, jobPageUrl, legacyFingerprint, listPage, noDashes, normUrl, placeId, placesDiffer, rankOnlyFingerprint, remoteFirst, suffixedFingerprint, unspelledCityFingerprint, unspelledFingerprint, usFormFingerprint } from "./rules";
+import { applyRules, bareCompany, fingerprint, jobPageUrl, legacyFingerprint, listPage, noDashes, normUrl, placeId, placesDiffer, rankOnlyFingerprint, remoteFirst, suffixedFingerprint, unspelledCityFingerprint, unspelledFingerprint, usFormFingerprint, withTheFingerprint } from "./rules";
 import { jobKey } from "@/lib/extension/match";
 
 const base = { score: 5, reasonsMatch: ["Director title"], reasonsGap: [], locationFit: true, dealbreaker: false, compMin: 140000, compMax: 160000 };
@@ -162,6 +162,24 @@ describe("dedupe keys", () => {
     // The keys before it are frozen too.
     expect(unspelledCityFingerprint("Acme", "VP of Design", "Paris")).toBe(rankOnlyFingerprint("Acme", "VP of Design", "Paris"));
     for (const old of [usFormFingerprint, unspelledFingerprint, suffixedFingerprint, legacyFingerprint]) expect(old("Acme", "VP of Design", "Paris")).not.toBe(fingerprint("Acme", "VP of Design", "Paris"));
+  });
+  it("keys a company with a leading 'The' like the same name without it (#1914)", () => {
+    const k = (c: string) => fingerprint(c, "Senior Product Designer", "New York, NY");
+    expect(k("The Home Depot")).toBe(k("Home Depot"));
+    expect(k("the new york times")).toBe(k("New York Times"));
+    expect(k("THE Knot")).toBe(k("Knot"));
+    expect(k("The Walt Disney Company")).toBe(k("Walt Disney"));
+    expect(k("The Acme Co., Inc.")).toBe(k("Acme"));
+    // Only "The" as its own first word: "Theorem" and "Thermo Fisher" keep theirs, and "The" alone stays a name.
+    expect(k("Theorem")).not.toBe(k("orem"));
+    expect(k("Thermo Fisher")).not.toBe(k("rmo Fisher"));
+    expect(k("The")).not.toBe(k(""));
+    expect(k("Acme The Studio")).not.toBe(k("Acme Studio"));
+    // The key from before #1914 keeps the "The", and is the same as the new one for a company without it.
+    expect(withTheFingerprint("The Home Depot", "Designer", "NYC")).not.toBe(fingerprint("The Home Depot", "Designer", "NYC"));
+    expect(withTheFingerprint("Acme Pvt Ltd", "VP of Design", "NYC")).toBe(fingerprint("Acme Pvt Ltd", "VP of Design", "NYC"));
+    // The keys before it are frozen too.
+    for (const old of [rankOnlyFingerprint, unspelledCityFingerprint, usFormFingerprint, unspelledFingerprint, suffixedFingerprint, legacyFingerprint]) expect(old("The Home Depot", "Designer", "Paris")).not.toBe(fingerprint("The Home Depot", "Designer", "Paris"));
   });
   it("keeps marks in non-Latin text, so डिज़ाइनर and डिजाइन stay apart (#1269)", () => {
     expect(fingerprint("मेरा", "डिज़ाइनर", "दिल्ली")).toBe(legacyFingerprint("मेरा", "डिज़ाइनर", "दिल्ली"));
