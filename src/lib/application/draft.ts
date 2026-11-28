@@ -233,9 +233,11 @@ export function newNumbers(master: string, draft: string): string[] {
   const nums = (raw: string) => {
     const s = norm(raw);
     // A digit inside a word is part of a name, not a number: B2B, HTML5, CSS3, S3 (#1393, as #1265).
+    // So a unit letter that starts one is no unit: "3 B2B products", "4 K-12 districts", "12 M&A deals" (#1932). A dash
+    // and digit end a spaced unit only: "5K-10K" is still 5k to 10k.
     // A "+" may follow a unit too: "50K+" is "50k+", the way "over 50,000" is "50,000+", so the two meet (#1611).
     return new Set(
-      (s.match(/(?<![a-z\d])\$?\d[\d,.]*(?:\s?(?:%|mm|k|m|b|x)(?![a-z]))?(?:\s?\+)?/gi) ?? []).map((n) =>
+      (s.match(/(?<![a-z\d])\$?\d[\d,.]*(?:\s(?:%|mm|k|m|b|x)(?![a-z\d&]|-\d)|(?:%|mm|k|m|b|x)(?![a-z\d&]))?(?:\s?\+)?/gi) ?? []).map((n) =>
         n.toLowerCase().replace(/[,\s]/g, "").replace(/\.$/, "").replace(/mm(\+?)$/, "m$1"),
       ),
     );
