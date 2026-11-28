@@ -29,6 +29,13 @@ describe("classifyPage", () => {
     expect(classifyPage(200, "Workable", "https://apply.workable.com/acme/j/ABC123/").state).toBe("open");
   });
 
+  // job-boards.greenhouse.io/airbnb/jobs/1 -> /airbnb?error=true -> careers.airbnb.com/positions/ (#1925).
+  it("treats a ?error=true hop on the way to a company careers page as gone (#1925)", () => {
+    const via = ["https://job-boards.greenhouse.io/airbnb?error=true", "https://careers.airbnb.com/positions/"];
+    expect(classifyPage(200, "Open positions. Engineering, Design, Product", "https://careers.airbnb.com/positions/", via)).toEqual({ state: "gone", reason: "the job board says it's closed" });
+    expect(classifyPage(200, "Open positions. Engineering, Design, Product", "https://careers.airbnb.com/positions/", ["https://careers.airbnb.com/positions/"]).state).toBe("open");
+  });
+
   it("treats Greenhouse's ?error=true redirect as gone", () => {
     expect(classifyPage(200, "Open roles at Acme", "https://job-boards.greenhouse.io/acme?error=true").state).toBe("gone");
   });

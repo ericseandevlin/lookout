@@ -30,11 +30,11 @@ async function check(url: string): Promise<{ state: LinkState; reason: string }>
 
 async function checkOnce(url: string): Promise<{ state: LinkState; reason: string }> {
   try {
-    const { url: finalUrl, html } = await fetchPage(url);
+    const { url: finalUrl, html, redirects } = await fetchPage(url);
     // The visible page only: pageToText puts JobPosting data first, and a long description there pushed a closed
     // posting's "no longer available" past the part classifyPage reads (#1026). Hidden elements go too: a template's
     // closed banner ships on every page and shows only once the job closes; read anyway, it closed live jobs (#1733).
-    const page = classifyPage(200, pageToText(stripHidden(html.replace(LD_JSON, " ")).html, 4000), finalUrl);
+    const page = classifyPage(200, pageToText(stripHidden(html.replace(LD_JSON, " ")).html, 4000), finalUrl, redirects);
     return page.state === "open" ? ((await embedVerdict(url, html)) ?? page) : page;
   } catch (e) {
     const status = statusOf(e);

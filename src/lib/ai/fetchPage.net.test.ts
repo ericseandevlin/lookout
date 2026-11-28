@@ -81,15 +81,15 @@ describe("fetchPage", () => {
     expect(opts.headers["user-agent"]).toMatch(/LookoutBot/);
   });
 
-  it("follows relative and absolute redirects and reports the final URL", async () => {
+  it("follows relative and absolute redirects and reports the final URL and each hop (#1925)", async () => {
     http.fetch
-      .mockResolvedValueOnce(redirect("/b", 301))
+      .mockResolvedValueOnce(redirect("/b?error=true", 301))
       .mockResolvedValueOnce(redirect("https://boards.example.org/c", 307))
       .mockResolvedValueOnce(page("done"));
-    expect(await fetchPage("https://jobs.example.com/a")).toEqual({ url: "https://boards.example.org/c", html: "done" });
+    expect(await fetchPage("https://jobs.example.com/a")).toEqual({ url: "https://boards.example.org/c", html: "done", redirects: ["https://jobs.example.com/b?error=true", "https://boards.example.org/c"] });
     expect(http.fetch.mock.calls.map((c) => String(c[0]))).toEqual([
       "https://jobs.example.com/a",
-      "https://jobs.example.com/b",
+      "https://jobs.example.com/b?error=true",
       "https://boards.example.org/c",
     ]);
   });

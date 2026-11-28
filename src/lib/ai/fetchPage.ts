@@ -151,7 +151,10 @@ export function workdayToHtml(json: string): string | null {
   }
 }
 
-export async function fetchPage(rawUrl: string): Promise<{ url: string; html: string }> {
+/** url: where the page landed. redirects: every address a redirect sent it to, in order, the last being url; only when there were any (#1925). */
+export type Fetched = { url: string; html: string; redirects?: string[] };
+
+export async function fetchPage(rawUrl: string): Promise<Fetched> {
   const api = workdayApi(rawUrl);
   if (api) {
     try {
@@ -165,8 +168,12 @@ export async function fetchPage(rawUrl: string): Promise<{ url: string; html: st
   return fetchRaw(rawUrl);
 }
 
-async function fetchRaw(rawUrl: string): Promise<{ url: string; html: string }> {
+async function fetchRaw(rawUrl: string): Promise<Fetched> {
   let url = new URL(rawUrl);
+  // A closed Greenhouse job goes to the board with ?error=true, and that board may send it on to the company's own
+  // careers page, so the last address alone doesn't say the job closed (#1925).
+  const redirects: string[] = [];
+  const landed = (html: string): Fetched => ({ url: url.toString(), html, ...(redirects.length ? { redirects } : {}) });
   for (let hop = 0; hop < 4; hop++) {
     if (!/^https?:$/.test(url.protocol)) throw new FetchError("Only http and https links are supported");
     if (url.port && url.port !== "80" && url.port !== "443") throw new FetchError("That port isn't allowed");
@@ -186,13 +193,14 @@ async function fetchRaw(rawUrl: string): Promise<{ url: string; html: string }> 
       const loc = res.headers.get("location");
       if (!loc) throw new FetchError("Redirect without a location");
       url = new URL(loc, url);
+      redirects.push(url.toString());
       continue;
     }
     if (!res.ok) throw new FetchError(`The page answered ${res.status}`, { status: res.status, retryAfterMs: retryAfterMs(res.headers.get("retry-after")) });
     const type = res.headers.get("content-type") ?? "";
     if (!/html|json|text\/plain|xml/i.test(type)) throw new FetchError("That link isn't a web page");
     const reader = res.body?.getReader();
-    if (!reader) return { url: url.toString(), html: "" };
+    if (!reader) return landed("");
     const chunks: Uint8Array[] = [];
     let size = 0;
     for (;;) {
@@ -205,7 +213,7 @@ async function fetchRaw(rawUrl: string): Promise<{ url: string; html: string }> 
       }
       chunks.push(value);
     }
-    return { url: url.toString(), html: decodeBody(Buffer.concat(chunks), type) };
+    return landed(decodeBody(Buffer.concat(chunks), type));
   }
   throw new FetchError("Too many redirects");
 }
