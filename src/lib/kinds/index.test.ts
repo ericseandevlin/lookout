@@ -225,6 +225,15 @@ describe("parseMoney: rupees in words (#1894)", () => {
   });
 });
 
+describe("parseMoney: other currencies (#1908)", () => {
+  it.each([["CHF 150k"], ["150k CAD"], ["AUD 180k"], ["SGD 120k"], ["MXN 900k"], ["SEK 600 000"], ["600 000 kr"], ["zł 20000"], ["R$ 15000"], ["₩80,000,000"], ["₪30,000/month"], ["150,000 Swiss francs"], ["C$150k"], ["NZ$140k"]])("leaves %j unread", (v) => {
+    expect(parseMoney(v)).toBeNull();
+  });
+  it.each([["150k USD", 150000], ["US$150k", 150000], ["$150k", 150000], ["~$150k", 150000], ["about $150k", 150000], ["150k$", 150000], ["$85/hr", 176800]])("still reads %j as dollars", (v, n) => {
+    expect(parseMoney(v)).toBe(n);
+  });
+});
+
 describe("parseMoney: 'p/h' is per hour (#1386)", () => {
   it("annualizes p/h like /h", () => {
     expect(parseMoney("$85/h")).toBe(176800);
