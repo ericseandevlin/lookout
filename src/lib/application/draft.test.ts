@@ -144,6 +144,17 @@ describe("newNumbers", () => {
     expect(newNumbers("Led 4 teams.", "Led 4 teams and $5 million in spend.")).toEqual(["$5m"]);
   });
 
+  it("doesn't take a word like B2B, K-12 or M&A after a number as its unit (#1932)", () => {
+    expect(newNumbers("Launched 3 B2B products", "Launched 3 products")).toEqual([]);
+    expect(newNumbers("Built tools for 4 K-12 districts", "Built tools for 4 school districts")).toEqual([]);
+    expect(newNumbers("Supported 12 M&A deals", "Supported 12 deals")).toEqual([]);
+    expect(newNumbers("Launched 3 products", "Launched 3 B2B products")).toEqual([]);
+    // Units still read: a range, a plus, and a unit before a stop.
+    expect(newNumbers("Raised $5M-$10M from 50K+ users", "Raised $5M-$10M from 50K+ users")).toEqual([]);
+    expect(newNumbers("Raised $5M.", "Raised $6M.")).toEqual(["$6m"]);
+    expect(newNumbers("Grew to 5K users", "Grew from 5K-10K users")).toEqual(["10k"]);
+  });
+
   it("reads tens, hundreds, a dozen and 'per cent' in the master as the draft's digits (#1798)", () => {
     expect(newNumbers("Led thirty engineers", "Led 30 engineers")).toEqual([]);
     expect(newNumbers("Opened Forty stores", "Opened 40 stores")).toEqual([]);
