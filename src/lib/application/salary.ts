@@ -215,6 +215,14 @@ const orYear = (p: ReturnType<typeof periodIn>) => (p === "year" ? null : p);
 type Per = "hour" | "day" | "week" | "month";
 
 function periodIn(prompt: string): "year" | Per | null {
+  // Short forms from the UK, Europe and India (#1909): "p.m." and "pcm" are per month, "p.h." per hour, "p/d" and "p.d."
+  // per day, "p.w." and "p/w" per week, "p.a." per year. A clock time, "3 p.m." or "10:30 p.m.", is not a period.
+  prompt = prompt
+    .replace(/(?<![a-z])p\s?[./]\s?a\b\.?/gi, " per year ")
+    .replace(/(?<!(?<!\d)\d{1,2}(?:[:.]\d\d)?\s*)(?<![a-z])p\s?[./]\s?m\b\.?|\bpcm\b|\/\s?mths?\b/gi, " per month ")
+    .replace(/(?<![a-z])p\.\s?h\b\.?/gi, " per hour ")
+    .replace(/(?<![a-z])p\s?[./]\s?d\b\.?/gi, " per day ")
+    .replace(/(?<![a-z])p\s?[./]\s?w\b\.?/gi, " per week ");
   // "This role is salaried, not hourly" and "(non-hourly)" rule a period out, not in (#974).
   prompt = prompt.replace(/\b(not|non)[\s-]+(hourly|daily|weekly|monthly|(per|an|a|each) (hour|hr|day|week|wk|month|mo|mth))\b/gi, " ");
   // Working hours ("40 hours per week", "37.5 hrs/week") and a contract's length ("expected to last a year") are not
