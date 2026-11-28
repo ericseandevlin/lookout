@@ -9,6 +9,10 @@ const nextConfig: NextConfig = {
   output: "standalone",
   poweredByHeader: false,
   serverExternalPackages: ["unpdf", "mammoth", "playwright-core"],
+  // The sign-in page is /signin; send the addresses people guess there instead of a 404 (2026-11-27 walkthrough).
+  async redirects() {
+    return ["/login", "/log-in", "/sign-in"].map((source) => ({ source, destination: "/signin", permanent: true }));
+  },
   async headers() {
     return [
       {

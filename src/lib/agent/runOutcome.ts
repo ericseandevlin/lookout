@@ -50,12 +50,14 @@ export function noNewBody(found: number, t: Pick<RunTally, "postings" | "known" 
  * line no longer says pay "only marks a role down". Two or more off on location get their own tip, so only one
  * gets the "still on your board" note here.
  */
-export function dropLine(t: Pick<RunTally, "known" | "dealbreaker" | "belowFloor" | "offLocation">): string {
+export function dropLine(t: Pick<RunTally, "known" | "dealbreaker" | "belowFloor" | "offLocation">, tips: { href?: string }[] = []): string {
+  // A tip under the line already says it, with a link to change it: say it once (2026-11-27 walkthrough).
+  const tipFor = (field: string) => tips.some((x) => x.href?.endsWith(field));
   const outs = [
     t.known && `${t.known} already on your board`,
-    t.dealbreaker && `${t.dealbreaker} hit a dealbreaker`,
-    t.belowFloor && `${t.belowFloor} under your pay floor`,
-    t.offLocation && `${t.offLocation} off on location${t.offLocation === 1 ? ", on your board marked down" : ""}`,
+    t.dealbreaker && !tipFor("#q-q5") && `${t.dealbreaker} hit a dealbreaker`,
+    t.belowFloor && !tipFor("#q-comp") && `${t.belowFloor} under your pay floor`,
+    t.offLocation && !tipFor("#q-where") && !tipFor("#q-geo") && `${t.offLocation} off on location${t.offLocation === 1 ? ", on your board marked down" : ""}`,
   ].filter(Boolean) as string[];
   return outs.length ? `Of the job posts: ${outs.join(" · ")}.` : "";
 }

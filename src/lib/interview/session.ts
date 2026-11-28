@@ -11,7 +11,7 @@ import { getActiveSearch } from "@/lib/searches";
 import type { FactKind, TurnOutcome } from "@/lib/db/schema";
 import { closedTopics, FACTS_IN_PROMPT, INTERVIEW_SYSTEM, interviewPrompt, asksWhatIsKnown, InterviewTurnOut, isYesNoQuestion, nameFinds, plainQuestion, trueFindCount, shortWhy, STORY_ASK, STORY_FOLLOW_UP, type InterviewInput } from "./interviewer";
 import { backKeywords, declineKeywords, keywordQuestion, keywordsBacked, missingKeywords, termsOf } from "./keywords";
-import { asksToStop, factKey, isBareNo, isBareYes, isQuestionBack, lockReason, topicKey } from "./rules";
+import { STOP_NOTE, asksToStop, factKey, isBareNo, isBareYes, isQuestionBack, lockReason, topicKey } from "./rules";
 import { isAnswered, readSetupAnswer, setupFact, setupQuestionText, SETUP_WHY } from "./setup";
 
 /**
@@ -29,7 +29,7 @@ export const MAX_FOLLOW_UPS = 2;
 export const TOP_FINDS = 5;
 
 export const DONE_NOTE = "That's every gap Lookout sees for now. It asks again when new finds come in.";
-export const STOP_NOTE = "Stopped. Your answers are saved. Come back any time and it picks up here.";
+export { STOP_NOTE } from "./rules";
 
 /** A sitting ends after this long with no answer; the next visit starts a new one. */
 export const SITTING_GAP_MS = 2 * 60 * 60_000;
