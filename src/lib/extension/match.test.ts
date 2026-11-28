@@ -223,6 +223,19 @@ describe("sameJob", () => {
     expect(jobKey("https://ea.avature.net/en_US/careers/SearchJobs")).toMatch(/^url:/);
   });
 
+  it("keys a Rippling job by its UUID, with or without a locale or the apply step (#1901)", () => {
+    const id = "1b2c3d4e-1111-2222-3333-444455556666";
+    const job = `https://ats.rippling.com/acme/jobs/${id}`;
+    expect(jobKey(job)).toBe(`rippling:${id}`);
+    expect(sameJob([`https://ats.rippling.com/en-GB/acme/jobs/${id}`], [job])).toBe(true);
+    expect(sameJob([`https://ats.rippling.com/acme/jobs/${id.toUpperCase()}/apply?step=application`], [job])).toBe(true);
+    expect(sameJob([`https://ats.rippling.com/en-US/acme/jobs/${id}/apply/`], [`${job}?jobSite=LinkedIn`])).toBe(true);
+    expect(sameJob(["https://ats.rippling.com/acme/jobs/11111111-2222-3333-4444-555555555555"], [job])).toBe(false);
+    // The board home has no job.
+    expect(jobKey("https://ats.rippling.com/acme/jobs")).toMatch(/^url:/);
+    expect(jobKey("https://ats.rippling.com/en-GB/acme")).toMatch(/^url:/);
+  });
+
   it("keys a JazzHR job by its code, with or without the title (#1870)", () => {
     const job = "https://acme.applytojob.com/apply/AbC123xYz/Product-Designer";
     expect(jobKey(job)).toBe("jazzhr:acme.applytojob.com:abc123xyz");

@@ -30,6 +30,9 @@ export function jobKey(raw: string | null | undefined): string | null {
   if (ashbyJid) return `ashby:${ashbyJid.toLowerCase()}`;
   const uuid = u.pathname.match(UUID)?.[0];
   if (uuid && /(ashbyhq\.com|lever\.co)$/.test(host)) return `${host.includes("ashby") ? "ashby" : "lever"}:${uuid.toLowerCase()}`;
+  // Rippling (#1901): ats.rippling.com/[<locale>/]<company>/jobs/<uuid>, the form at .../apply. The UUID names the job.
+  const rippling = /(^|\.)rippling\.com$/.test(host) && u.pathname.match(new RegExp(`^(?:/[a-z]{2}(?:-[a-z]{2})?)?/[^/]+/jobs/(${UUID.source})(?:/apply)?/?$`, "i"))?.[1];
+  if (rippling) return `rippling:${rippling.toLowerCase()}`;
   // Workday (#622): the form is at .../job/<location>/<title>_R123/apply/applyManually, with or without a locale prefix.
   // A title that starts with "Apply" ("Apply-Engineer_R5") is the job, not the apply step (1107).
   // wdN.myworkdaysite.com/recruiting/<tenant>/... serves many employers, so the tenant joins the key (#666).
