@@ -97,6 +97,12 @@ const US_FORM = /(?:[\s,]+(?:inc|incorporated|llc|l\.l\.c|ltd|limited|corp|corpo
 const LEGAL_FORM =
   /(?:[\s,]+(?:inc|incorporated|llc|l\.l\.c|ltd|ltda|limited|private(?=\s+limited\b)|pvt|pte|corp|corporation|(?:(?:&|and)\s+)?co|(?:(?:&|and)\s+)?company|gmbh|kg|plc|ag|se|s\.a|sa|s\.a\.s|sas|s\.p\.a|s\.r\.l|srl|s\.l|n\.v|nv|b\.v|bv|ab|oyj?|a\/s|k\.k|sdn|bhd|pty|llp|l\.p|lp)\.?)+\s*$/i;
 export const bareCompany = (c: string) => c.replace(LEGAL_FORM, "").trim() || c;
+// "The Home Depot" on one site is "Home Depot" on another (#1914): a leading "The" goes from the key's company too, unless
+// nothing would be left.
+const plainCompany = (c: string) => {
+  const b = bareCompany(c);
+  return b.replace(/^the\s+(?=\S)/i, "").trim() || b;
+};
 /** The company as keyed from #1645 until #1831, with only the forms then known dropped. */
 const usBareCompany = (c: string) => c.replace(US_FORM, "").trim() || c;
 
@@ -134,7 +140,7 @@ const spellCity = (l: string) =>
     .replace(/^mt (?=\S)/, "mount ")
     .replace(/^washington d ?c$/, "washington");
 
-const key = (company: string, title: string, location: string, fold: boolean, bare: Bare = fold ? bareCompany : asWritten, spell: Spell = fold ? spellTitle : unspelled, city = fold) => {
+const key = (company: string, title: string, location: string, fold: boolean, bare: Bare = fold ? plainCompany : asWritten, spell: Spell = fold ? spellTitle : unspelled, city = fold) => {
   const [c, t, l0] = [bare(company), title, (fold ? remoteFirst(location) : location).split(",")[0]].map(normPart(fold));
   const l = city ? spellCity(l0) : l0;
   return (
@@ -153,6 +159,12 @@ export const fingerprint = (company: string, title: string, location: string) =>
  * with neither. baseKey looks it up so a posting saved under it is matched, not saved again.
  */
 export const unspelledFingerprint = (company: string, title: string, location: string) => key(company, title, location, true, usBareCompany, unspelled, false);
+
+/**
+ * The key stored from #1913 until #1914, with a leading "The" kept in the company ("the home depot"). The same as
+ * fingerprint for a company without it. baseKey looks it up so a posting saved under it is matched, not saved again.
+ */
+export const withTheFingerprint = (company: string, title: string, location: string) => key(company, title, location, true, bareCompany, spellTitle, true);
 
 /**
  * The key stored from #1830 until #1913, with only "Sr." and "Jr." spelled out in the title ("vp of design" as written). The
