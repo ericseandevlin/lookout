@@ -37,6 +37,9 @@ describe("shortWhy (#1449)", () => {
 
   it("the prompt asks for the evidence only, with a bad and a good example", () => {
     expect(INTERVIEW_SYSTEM).toContain("Never say what the resume or profile lacks");
+    // A fact keeps where it happened, so a draft puts it under the right job (#1662).
+    expect(INTERVIEW_SYSTEM).toContain('"At Buckeye Fluid Systems, ran the pilot on one line"');
+    expect(INTERVIEW_SYSTEM).toContain("naming it is not confidential");
     expect(INTERVIEW_SYSTEM).toMatch(/Bad: ".*nothing in your resume clearly shows it\."/);
     expect(INTERVIEW_SYSTEM).toContain('Good: "4 of your top 5 finds ask for B2B SaaS or enterprise product experience."');
   });

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { BONUS_KEY, answeredCount, job, kindOf, kinds, parseMoney, payProblem, rfp } from ".";
+import { BONUS_KEY, answeredCount, job, kindOf, kinds, parseMoney, payProblem, rfp, tidyPay } from ".";
 
 describe("job brief", () => {
   it("adds bonus context when given", () => {
@@ -259,5 +259,16 @@ describe("payProblem (#1662)", () => {
   });
   it("flags a floor above the jump number", () => {
     expect(payProblem("200000", "120000")).toBe("The floor is above the pay that would make you jump.");
+  });
+});
+
+describe("tidyPay (#1662)", () => {
+  it("writes a plain amount the way the welcome screen does", () => {
+    expect(tidyPay("115000")).toBe("$115,000");
+    expect(tidyPay("$150000")).toBe("$150,000");
+    expect(tidyPay("120,000")).toBe("$120,000");
+  });
+  it("leaves anything else as typed", () => {
+    for (const v of ["", "120k", "about 120k", "abc", "-5", "150 CAD", "500"]) expect(tidyPay(v)).toBe(v);
   });
 });

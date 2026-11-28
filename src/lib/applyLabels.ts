@@ -1,6 +1,12 @@
 import type { ApplicationStatus } from "@/lib/db/schema";
 import { color } from "@/lib/tokens";
 
+/** Statuses where Lookout is still working, so a page showing one should check back (#1662). */
+export const APPLY_WORKING: readonly ApplicationStatus[] = ["queued", "scanning", "drafting", "submitting"];
+
+/** Whether any find on the board has an application Lookout is still working on. */
+export const anyApplying = (finds: { application: { status: ApplicationStatus } | null }[]) => finds.some((f) => !!f.application && APPLY_WORKING.includes(f.application.status));
+
 /** Status words and colors for auto-apply, shared by the board and the Auto-apply page. */
 export function applicationLabel(status: ApplicationStatus, queuedBy: "user" | "auto") {
   const S: Record<ApplicationStatus, [string, string, string]> = {

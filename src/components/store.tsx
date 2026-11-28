@@ -3,6 +3,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import type { Answers, AppState, Find, Link, RunInfo, SearchInfo, Settings } from "@/lib/types";
 import { latestOnly, nextPoll } from "@/lib/runState";
+import { anyApplying } from "@/lib/applyLabels";
 
 export async function api<T = unknown>(path: string, init?: RequestInit & { json?: unknown }): Promise<T> {
   const { json, ...rest } = init ?? {};
@@ -68,6 +69,14 @@ function useStoreValue(initial: AppState) {
     const t = setInterval(() => refresh().catch(() => {}), 3000);
     return () => clearInterval(t);
   }, [scanning, refresh]);
+
+  // An application Lookout is drafting: reload until it's ready, so the find panel doesn't stay on "Reading the application" (#1662).
+  const applying = anyApplying(state.finds);
+  useEffect(() => {
+    if (!applying) return;
+    const t = setInterval(() => refresh().catch(() => {}), 4000);
+    return () => clearInterval(t);
+  }, [applying, refresh]);
 
   const patchFind = useCallback(
     (id: string, patch: Partial<Pick<Find, "pinned" | "archived" | "stage" | "notes" | "feedback">> & { seen?: true }) => {

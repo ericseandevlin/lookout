@@ -76,7 +76,8 @@ export function postingSnippet(posting: string, term: string) {
   const hit = cleanPostingText(posting)
     .split(/\n+|(?<=[.!?])\s+/)
     .map((s) => s.trim().replace(/^[•·*-]\s*/, ""))
-    .find((s) => s && !/^(Role|Company|Location|Work mode|Pay range on file):/.test(s) && hasKeyword(s, term));
+    // The page title line ("TITLE: Sales Manager at Path Robotics | Dreamwork") is Lookout's, not the posting's (#1662).
+    .find((s) => s && !/^(TITLE|TEXT|Role|Company|Location|Work mode|Pay range on file):/.test(s) && hasKeyword(s, term));
   if (!hit) return undefined;
   if (hit.length <= 220) return hit;
   // A long passage is cut around the term, so the quote always shows it (#1314).

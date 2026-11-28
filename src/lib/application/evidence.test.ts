@@ -27,6 +27,9 @@ describe("keyword evidence (#121)", () => {
   it("shows the posting sentence each keyword came from, never the facts header", () => {
     expect(postingSnippet(posting, "React")).toBe("You will build design systems with React and TypeScript.");
     expect(postingSnippet(posting, "accessibility audits")).toBe("Partner with product on accessibility audits.");
+    // The page title Lookout puts on top is not the posting asking for it (#1662).
+    const titled = "TITLE: Mid-Market Sales Manager at Path Robotics (Remote) | Dreamwork\nTEXT:\nYou bring experience with robotics or automation solutions.";
+    expect(postingSnippet(titled, "robotics")).toBe("You bring experience with robotics or automation solutions.");
     // A posting stored as JSON-escaped HTML quotes as clean text (#1481).
     const escaped = "end-to-end ownership, and product excellence.\\u003c/li\\u003e\\n\\u003cli\\u003eStrong customer advocacy, with design decisions grounded in data.\\u003c/li\\u003e";
     expect(postingSnippet(escaped, "customer advocacy")).toBe("Strong customer advocacy, with design decisions grounded in data.");
