@@ -75,6 +75,19 @@ describe("detectAts", () => {
 });
 
 describe("kindFor", () => {
+  it("keeps an upload that sets itself apart from the resume out of the resume slot (#1937)", () => {
+    expect(kindFor("Portfolio (in addition to your resume)", "file")).toBe("portfolio");
+    expect(kindFor("Work samples (separate from your resume)", "file")).toBe("portfolio");
+    expect(kindFor("Writing sample (separate from your resume)", "file")).toBe("answer");
+    expect(kindFor("Transcript (not your resume)", "file")).toBe("answer");
+    expect(kindFor("Writing sample, not a resume", "file")).toBe("answer");
+    expect(kindFor("Additional documents beyond your CV", "file")).toBe("answer");
+    // Still the resume.
+    expect(kindFor("Please upload your resume", "file")).toBe("resume");
+    expect(kindFor("Upload your resume (references optional)", "file")).toBe("resume");
+    expect(kindFor("Attach CV", "file")).toBe("resume");
+  });
+
   it("sorts fields, uploads and questions", () => {
     expect(kindFor("Resume/CV", "file")).toBe("resume");
     // A leading word before the resume on an upload (#935).
