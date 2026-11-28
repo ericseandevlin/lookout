@@ -111,7 +111,14 @@ export function isCommon(question: string, answer: string) {
 
 export function upsert(list: SavedAnswer[], question: string, answer: string): SavedAnswer[] {
   const key = answerKey(question);
-  const rest = list.filter((s) => s.key !== key);
+  // Two places in parentheses are two questions, as `match` reads them: "(Canada)" never replaces "(United States)" (#1941).
+  // Without one on either side it is the same question reworded: "Phone (mobile)" fixes "Phone" (#575).
+  const q = qualifier(question);
+  const rest = list.filter((s) => {
+    if (s.key !== key) return true;
+    const sq = qualifier(s.question);
+    return !!q && !!sq && sq !== q;
+  });
   return [...rest, { key, question: question.trim(), answer: answer.trim(), updatedAt: new Date().toISOString() }].sort((a, b) => a.question.localeCompare(b.question));
 }
 
