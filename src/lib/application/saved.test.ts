@@ -370,3 +370,23 @@ describe("moving to the employer's site or for this one job (#1814)", () => {
     for (const q of ["Are you willing to relocate?", "Open to relocation?", "Would you consider relocating to another state?"]) expect(isCommon(q, "Yes"), q).toBe(true);
   });
 });
+
+describe("one question asked for two places (#1941)", () => {
+  it("keeps each place's answer when the other is saved", () => {
+    let list = upsert([], "Are you authorized to work? (United States)", "Yes");
+    list = upsert(list, "Are you authorized to work? (Canada)", "No");
+    expect(list).toHaveLength(2);
+    expect(match(list, "Are you authorized to work? (United States)")).toBe("Yes");
+    expect(match(list, "Are you authorized to work? (Canada)")).toBe("No");
+  });
+
+  it("still replaces the same question's earlier answer", () => {
+    let list = upsert([], "Are you authorized to work? (Canada)", "No");
+    list = upsert(list, "Are you authorized to work? (Canada)", "Yes");
+    expect(list).toHaveLength(1);
+    expect(match(list, "Are you authorized to work? (Canada)")).toBe("Yes");
+    list = upsert(list, "Are you authorized to work in the US?", "yes");
+    list = upsert(list, "Are you authorized to work in the US? (Required)", "no");
+    expect(list).toHaveLength(2);
+  });
+});
