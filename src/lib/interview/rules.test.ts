@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { factKey, factsBlock, LOCK, lockReason, topicKey } from "./rules";
+import { factKey, factsBlock, LOCK, lockReason, showsStopNote, topicKey } from "./rules";
 
 describe("lockReason", () => {
   it("leaves a plain fact shareable", () => {
@@ -118,5 +118,15 @@ describe("factsBlock", () => {
     expect(block).toContain("- Led a team of 12.");
     expect(block).not.toContain("140k");
     expect(factsBlock([{ text: "$140k base", kind: "pay", shareable: true }])).toBe("");
+  });
+});
+
+describe("showsStopNote (2026-11-27 walkthrough)", () => {
+  const stop = { outcome: "answered", answer: "Thanks, can we stop for today?" };
+  it("shows the stop reply under a past stop request that something came after", () => expect(showsStopNote(stop, true)).toBe(true));
+  it("leaves the latest turn to the live note", () => expect(showsStopNote(stop, false)).toBe(false));
+  it("ignores other answers and skips", () => {
+    expect(showsStopNote({ outcome: "answered", answer: "I rewrote our paging rules." }, true)).toBe(false);
+    expect(showsStopNote({ outcome: "skipped", answer: null }, true)).toBe(false);
   });
 });

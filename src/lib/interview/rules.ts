@@ -79,6 +79,15 @@ export const asksToStop = (answer: string | null | undefined) => {
   );
 };
 
+export const STOP_NOTE = "Stopped. Your answers are saved. Come back any time and it picks up here.";
+
+/**
+ * Past turns: a "can we stop?" answer shows Lookout's stop reply under it when something came after, so a reload
+ * doesn't show the ask with the next question right under it (2026-11-27 walkthrough). The latest turn's reply is the
+ * live note, so it isn't shown twice.
+ */
+export const showsStopNote = (t: { outcome: string; answer: string | null }, later: boolean) => later && t.outcome === "answered" && asksToStop(t.answer);
+
 /** "Yes" with no story: it backs nothing, so Lookout asks where and how (#1485). */
 export const isBareYes = (answer: string) => /^(yes|yeah|yep|yup|sure|definitely|absolutely|of course|correct|i have|i did|i do)\b[\s.!,]*(i have|i did)?[\s.!]*$/i.test(answer.trim());
 

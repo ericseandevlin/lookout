@@ -7,7 +7,7 @@ import { fillTemplate, parseTemplate, type Chunk } from "@/lib/blanks";
 import { BONUS_KEY, kindOf, payProblem } from "@/lib/kinds";
 import { WORK_MODE_LABEL } from "@/lib/onboarding";
 import { searchBlocker } from "@/lib/ready";
-import { togglePhrase } from "@/lib/phrases";
+import { toggleItem, togglePhrase } from "@/lib/phrases";
 import { CurrentCompField } from "./CurrentComp";
 import { useCounts } from "./Shell";
 import { useStore } from "./store";
@@ -191,7 +191,7 @@ function Starters({ mode, options, value, onChange }: { mode: "insert" | "toggle
   const pick = (t: string) => {
     if (mode === "insert") return setDraft({ chunks: parseTemplate(t), base: value, fills: [] });
     if (mode === "append") return onChange(togglePhrase(value, t));
-    onChange((has(t) ? items.filter((x) => x.toLowerCase() !== t.toLowerCase()) : [...items, t]).join(", "));
+    onChange(toggleItem(items, t, options.map((o) => o.text)));
   };
   return (
     <>

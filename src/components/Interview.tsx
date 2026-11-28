@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useId, useLayoutEffect, useRef, useState } from "react";
 import type { InterviewView, ViewFact, ViewTurn } from "@/lib/interview/session";
+import { STOP_NOTE, showsStopNote } from "@/lib/interview/rules";
 import { Composer, QuestionBubble, Said, Thinking } from "./chat";
 import { PageHead, ProfileTabs } from "./Profile";
 import { btn } from "./Settings";
@@ -197,13 +198,13 @@ export function Interview({ app }: { app?: string }) {
                   />
                 )}
                 {earlierRows.map((t) => (
-                  <Past key={t.id} t={t} />
+                  <Past key={t.id} t={t} later />
                 ))}
                 <Said who="Lookout">
                   {returning ? `Welcome back${first ? `, ${first}` : ""}.` : `Hi${first ? ` ${first}` : ""}.`} Every answer saves as you go.
                 </Said>
-                {data.turns.map((t) => (
-                  <Past key={t.id} t={t} />
+                {data.turns.map((t, i) => (
+                  <Past key={t.id} t={t} later={!!cur || i < data.turns.length - 1} />
                 ))}
                 {ask && <Question t={cur} />}
                 {pending && (
@@ -290,7 +291,7 @@ function EarlierRow({ count, early, onToggle, onMore }: { count: number; early: 
 // Chat bubbles: the side says who is talking, so there is no name above them. Screen readers still hear it.
 const Question = ({ t }: { t: ViewTurn }) => <QuestionBubble question={t.question} why={t.why} />;
 
-function Past({ t }: { t: ViewTurn }) {
+function Past({ t, later }: { t: ViewTurn; later: boolean }) {
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
       <Question t={t} />
@@ -298,6 +299,7 @@ function Past({ t }: { t: ViewTurn }) {
         {t.outcome === "answered" ? t.answer : <em>Skipped</em>}
       </Said>
       {t.facts.length > 0 && <Saved facts={t.facts} />}
+      {showsStopNote(t, later) && <Said who="Lookout">{STOP_NOTE}</Said>}
     </div>
   );
 }

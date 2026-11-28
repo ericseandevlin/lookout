@@ -190,7 +190,7 @@ function Report({ r }: { r: RunReport }) {
     [t.postings, t.postings === 1 ? "job post" : "job posts"],
     [t.added, "added"],
   ];
-  const drops = dropLine(t);
+  const drops = dropLine(t, r.tips);
   const closedNote = t.closed ? `${t.closed} ${t.closed === 1 ? "posting on your board was" : "postings on your board were"} taken down, so ${t.closed === 1 ? "it's" : "they're"} now Closed and archived.` : "";
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 12, marginTop: 8 }}>

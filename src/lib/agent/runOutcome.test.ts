@@ -88,4 +88,10 @@ describe("dropLine (#1662)", () => {
     expect(dropLine({ ...none, offLocation: 3 })).toBe("Of the job posts: 3 off on location.");
     expect(dropLine({ ...none, offLocation: 1 })).toBe("Of the job posts: 1 off on location, on your board marked down.");
   });
+  it("leaves out what a tip under it already says (2026-11-27 walkthrough)", () => {
+    const tips = [{ href: "/profile#q-q5" }, { href: "/profile#q-comp" }];
+    expect(dropLine({ ...none, dealbreaker: 2, belowFloor: 2 }, tips)).toBe("");
+    expect(dropLine({ ...none, known: 1, dealbreaker: 2, belowFloor: 2 }, [tips[1]])).toBe("Of the job posts: 1 already on your board · 2 hit a dealbreaker.");
+    expect(dropLine({ ...none, offLocation: 3 }, [{ href: "/profile#q-where" }])).toBe("");
+  });
 });
