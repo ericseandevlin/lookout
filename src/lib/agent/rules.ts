@@ -103,8 +103,25 @@ const usBareCompany = (c: string) => c.replace(US_FORM, "").trim() || c;
 // "Sr. Product Designer" on LinkedIn is "Senior Product Designer" on the ATS (#1828). Whole words of the folded title only.
 const spellRank = (t: string) => t.replace(/\b(?:sr|snr)\b/g, "senior").replace(/\bjr\b/g, "junior");
 
+// More of one title written two common ways (#1913): "VP", "V.P.", "SVP", "EVP" and "AVP" are vice presidents, "Mgr" a manager and
+// "Dir" a director. "VP of Design" is "VP, Design": an "of" right after the leading role goes, so "Head of Design" is
+// "Head, Design" too. "Designer II" is "Designer 2", and I, III and IV likewise; "Designer I" stays apart from "Designer II".
+const ROMAN: Record<string, string> = { i: "1", ii: "2", iii: "3", iv: "4" };
+const spellTitle = (t: string) =>
+  spellRank(t)
+    .replace(/\bsvp\b/g, "senior vice president")
+    .replace(/\bevp\b/g, "executive vice president")
+    .replace(/\bavp\b/g, "assistant vice president")
+    .replace(/\b(?:vp|v p)\b/g, "vice president")
+    .replace(/\bmgr\b/g, "manager")
+    .replace(/\bdir\b/g, "director")
+    .replace(/^((?:(?:senior|executive|assistant|associate|group) )*(?:vice president|director|head|manager)) of (?=\S)/, "$1 ")
+    .replace(/\b(?:i{1,3}|iv)\b/g, (r) => ROMAN[r]);
+
 type Bare = (c: string) => string;
 const asWritten: Bare = (c) => c;
+type Spell = (t: string) => string;
+const unspelled: Spell = (t) => t;
 
 // One city written two common ways (#1830): "New York City" and "NYC" are "New York", "St. Louis" is "Saint Louis", "Ft.
 // Lauderdale" is "Fort Lauderdale", "Mt. Vernon" is "Mount Vernon", and "Washington D.C." is "Washington" as in
@@ -117,14 +134,14 @@ const spellCity = (l: string) =>
     .replace(/^mt (?=\S)/, "mount ")
     .replace(/^washington d ?c$/, "washington");
 
-const key = (company: string, title: string, location: string, fold: boolean, bare: Bare = fold ? bareCompany : asWritten, spell = fold, city = fold) => {
+const key = (company: string, title: string, location: string, fold: boolean, bare: Bare = fold ? bareCompany : asWritten, spell: Spell = fold ? spellTitle : unspelled, city = fold) => {
   const [c, t, l0] = [bare(company), title, (fold ? remoteFirst(location) : location).split(",")[0]].map(normPart(fold));
   const l = city ? spellCity(l0) : l0;
   return (
     // nosemgrep: javascript.lang.security.audit.node-sha1.node_sha1 -- SHA-1 here only fingerprints postings for dedupe, not security
     createHash("sha1")
       // The legacy key (fold false) keeps the location as written, so postings stored before #1514 are still matched.
-      .update([c, spell ? spellRank(t) : t, l].join("|"))
+      .update([c, spell(t), l].join("|"))
       .digest("hex")
   );
 };
@@ -135,26 +152,33 @@ export const fingerprint = (company: string, title: string, location: string) =>
  * The key stored from #1645 until #1828, with "Sr." and "Jr." in the title as written. The same as fingerprint for a title
  * with neither. baseKey looks it up so a posting saved under it is matched, not saved again.
  */
-export const unspelledFingerprint = (company: string, title: string, location: string) => key(company, title, location, true, usBareCompany, false, false);
+export const unspelledFingerprint = (company: string, title: string, location: string) => key(company, title, location, true, usBareCompany, unspelled, false);
+
+/**
+ * The key stored from #1830 until #1913, with only "Sr." and "Jr." spelled out in the title ("vp of design" as written). The
+ * same as fingerprint for a title with none of the newer forms. baseKey looks it up so a posting saved under it is matched,
+ * not saved again.
+ */
+export const rankOnlyFingerprint = (company: string, title: string, location: string) => key(company, title, location, true, bareCompany, spellRank, true);
 
 /**
  * The key stored from #1831 until #1830, with the city as written ("new york city", "st louis"). The same as
  * fingerprint for a city with no other spelling. baseKey looks it up so a posting saved under it is matched, not saved again.
  */
-export const unspelledCityFingerprint = (company: string, title: string, location: string) => key(company, title, location, true, bareCompany, true, false);
+export const unspelledCityFingerprint = (company: string, title: string, location: string) => key(company, title, location, true, bareCompany, spellRank, false);
 
 /**
  * The key stored from #1828 until #1831, with only US and a few other legal forms dropped ("acme pvt" for "Acme Pvt Ltd").
  * The same as fingerprint for a company with none of the newer forms. baseKey looks it up so a posting saved under it is
  * matched, not saved again.
  */
-export const usFormFingerprint = (company: string, title: string, location: string) => key(company, title, location, true, usBareCompany, true, false);
+export const usFormFingerprint = (company: string, title: string, location: string) => key(company, title, location, true, usBareCompany, spellRank, false);
 
 /**
  * The key stored from #1269 until #1645, with the company's legal form kept ("acme inc"). The same as fingerprint for a
  * company with none. postingKey looks it up so a posting saved under it is matched, not saved again.
  */
-export const suffixedFingerprint = (company: string, title: string, location: string) => key(company, title, location, true, asWritten, false, false);
+export const suffixedFingerprint = (company: string, title: string, location: string) => key(company, title, location, true, asWritten, unspelled, false);
 
 /**
  * The key stored before #1269, when an accented letter became a space ("montr al"). The same as fingerprint for text with
