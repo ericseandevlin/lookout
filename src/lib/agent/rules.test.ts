@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { applyRules, bareCompany, fingerprint, jobPageUrl, legacyFingerprint, listPage, noDashes, normUrl, placeId, placesDiffer, rankOnlyFingerprint, remoteFirst, suffixedFingerprint, unspelledCityFingerprint, unspelledFingerprint, usFormFingerprint, withTheFingerprint } from "./rules";
+import { applyRules, bareCompany, fingerprint, jobPageUrl, legacyFingerprint, listPage, noDashes, normUrl, placedTitleFingerprint, placeId, placesDiffer, rankOnlyFingerprint, remoteFirst, suffixedFingerprint, unspelledCityFingerprint, unspelledFingerprint, usFormFingerprint, withTheFingerprint } from "./rules";
 import { jobKey } from "@/lib/extension/match";
 
 const base = { score: 5, reasonsMatch: ["Director title"], reasonsGap: [], locationFit: true, dealbreaker: false, compMin: 140000, compMax: 160000 };
@@ -180,6 +180,26 @@ describe("dedupe keys", () => {
     expect(withTheFingerprint("Acme Pvt Ltd", "VP of Design", "NYC")).toBe(fingerprint("Acme Pvt Ltd", "VP of Design", "NYC"));
     // The keys before it are frozen too.
     for (const old of [rankOnlyFingerprint, unspelledCityFingerprint, usFormFingerprint, unspelledFingerprint, suffixedFingerprint, legacyFingerprint]) expect(old("The Home Depot", "Designer", "Paris")).not.toBe(fingerprint("The Home Depot", "Designer", "Paris"));
+  });
+  it("keys a title that ends in its own city or work mode like the title alone (#1915)", () => {
+    const k = (t: string, l = "New York, NY") => fingerprint("Acme", t, l);
+    const plain = k("Senior Product Designer");
+    for (const t of ["Senior Product Designer - New York", "Senior Product Designer – New York", "Senior Product Designer — New York", "Senior Product Designer | New York", "Senior Product Designer, New York", "Senior Product Designer - New York, NY", "Senior Product Designer - NYC", "Senior Product Designer - Remote", "Senior Product Designer, Hybrid", "Senior Product Designer (Payments) - New York"]) expect(k(t), t).toBe(plain);
+    expect(k("Staff Designer | London", "London, United Kingdom")).toBe(k("Staff Designer", "London, United Kingdom"));
+    expect(k("Product Designer - Remote US", "Remote, US")).toBe(k("Product Designer", "Remote, US"));
+    expect(k("Sr. Designer - St. Louis", "Saint Louis, MO")).toBe(k("Senior Designer", "Saint Louis, MO"));
+    // A rest that isn't the place stays: another team, another city, a hyphenated word, or the title being only a place.
+    expect(k("Senior Product Designer, Payments")).not.toBe(plain);
+    expect(k("Senior Product Designer - Growth")).not.toBe(plain);
+    expect(k("Senior Product Designer - Boston")).not.toBe(plain);
+    expect(k("Senior Designer, New York Times")).not.toBe(k("Senior Designer"));
+    expect(k("Front-End Designer", "End, NY")).not.toBe(k("Front", "End, NY"));
+    expect(k("- New York")).not.toBe(k(""));
+    // The key from before #1915 keeps the place in the title, and is the same as the new one for a title without it.
+    expect(placedTitleFingerprint("Acme", "Designer - New York", "New York, NY")).not.toBe(fingerprint("Acme", "Designer - New York", "New York, NY"));
+    expect(placedTitleFingerprint("The Home Depot", "VP of Design", "NYC")).toBe(fingerprint("The Home Depot", "VP of Design", "NYC"));
+    // The keys before it are frozen too.
+    for (const old of [withTheFingerprint, rankOnlyFingerprint, unspelledCityFingerprint, usFormFingerprint, unspelledFingerprint, suffixedFingerprint, legacyFingerprint]) expect(old("Acme", "Designer - Paris", "Paris")).not.toBe(fingerprint("Acme", "Designer - Paris", "Paris"));
   });
   it("keeps marks in non-Latin text, so डिज़ाइनर and डिजाइन stay apart (#1269)", () => {
     expect(fingerprint("मेरा", "डिज़ाइनर", "दिल्ली")).toBe(legacyFingerprint("मेरा", "डिज़ाइनर", "दिल्ली"));
