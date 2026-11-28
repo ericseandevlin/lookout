@@ -261,6 +261,19 @@ describe("\"filled\" wording (#957)", () => {
 });
 
 
+describe("how long a job has been open is not closed wording (#1935)", () => {
+  it("keeps 'has been available' and 'no longer filled by' open", () => {
+    expect(classifyPage(200, "Senior Product Designer\nNew York, NY\nThis position has been available since October 1. Apply today.").state).toBe("open");
+    expect(classifyPage(200, "Designer\nThis role has been available for 30 days. We review applications weekly.").state).toBe("open");
+    expect(classifyPage(200, "Designer\nThis position is no longer filled by a contractor; it is now a full-time role.").state).toBe("open");
+  });
+
+  it("still reads 'no longer available' and 'has been filled' as closed", () => {
+    expect(classifyPage(200, "Designer\nThis position is no longer available.").state).toBe("gone");
+    expect(classifyPage(200, "Designer\nThis position has been filled.").state).toBe("gone");
+  });
+});
+
 describe("live wording that reads like closed, and closed wording that was missed (#980)", () => {
   it.each([
     "Applications will be accepted until such time as this position has been filled.",
