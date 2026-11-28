@@ -57,7 +57,7 @@ export function readSetupAnswer(q: Question, text: string): SetupResult {
     const modes = MODES.filter(([re]) => re.test(t)).map(([, m]) => m).filter((m) => q.options.includes(m));
     const area = MODES.reduce((s, [re]) => s.replace(new RegExp(re.source, "gi"), ""), t)
       .replace(/^[\s,.;:-]+|[\s,.;:-]+$/g, "")
-      .replace(/^(or|and|in|around)\s+/i, "")
+      .replace(/^((or|and|in|around)\s+)+/i, "")
       .trim();
     return { answers: { [q.modesKey]: modes, [q.areaKey]: area }, fact: { text: t, kind: "next_role" } };
   }
