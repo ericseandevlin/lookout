@@ -182,7 +182,8 @@ export function classifyPage(status: number, text: string, finalUrl = "", via: s
   if (status === 404 || status === 410) return { state: "gone", reason: `page answered ${status}` };
   // Greenhouse sends a closed job to the company's board with ?error=true, Workable with ?not_found=true (#1099). The board
   // may then send it on to the company's careers page (Airbnb, Stripe, Figma), so any address on the way counts (#1925).
-  if ([...via, finalUrl].some((u) => /[?&](error|not_found)=true\b/.test(u))) return { state: "gone", reason: "the job board says it's closed" };
+  // Jobvite sends one to the company's job list with ?error=404 (#1927).
+  if ([...via, finalUrl].some((u) => /[?&](?:(?:error|not_found)=true|error=(?:404|410))(?![\w.-])/.test(u))) return { state: "gone", reason: "the job board says it's closed" };
   if (status !== 200) return { state: "unknown", reason: `page answered ${status}` };
   const head = text.slice(0, 2500);
   // Closed wording wins: real "job not available" pages often mention maintenance or sign-in somewhere too.

@@ -36,6 +36,15 @@ describe("classifyPage", () => {
     expect(classifyPage(200, "Open positions. Engineering, Design, Product", "https://careers.airbnb.com/positions/", ["https://careers.airbnb.com/positions/"]).state).toBe("open");
   });
 
+  // jobs.jobvite.com/nutanix/job/<id> -> /careers/nutanix/jobs?error=404 (#1927).
+  it.each(["https://jobs.jobvite.com/careers/nutanix/jobs?error=404", "https://jobs.jobvite.com/careers/acme/jobs?c=Design&error=410"])("treats Jobvite's ?error=404 redirect as gone: %s (#1927)", (u) => {
+    expect(classifyPage(200, "Open jobs at Nutanix. Engineering, Design", u)).toEqual({ state: "gone", reason: "the job board says it's closed" });
+  });
+
+  it.each(["https://jobs.example.com/careers?error=4040", "https://jobs.example.com/careers?error=404x", "https://jobs.example.com/careers?error=500", "https://jobs.example.com/careers?myerror=404"])("leaves other error values alone: %s (#1927)", (u) => {
+    expect(classifyPage(200, "Product Designer. Apply now.", u).state).toBe("open");
+  });
+
   it("treats Greenhouse's ?error=true redirect as gone", () => {
     expect(classifyPage(200, "Open roles at Acme", "https://job-boards.greenhouse.io/acme?error=true").state).toBe("gone");
   });
