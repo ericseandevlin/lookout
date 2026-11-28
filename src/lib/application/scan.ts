@@ -113,6 +113,9 @@ const RESUME = /^((upload|attach)( your| a)? )?(r[eé]sum[eé]|cv|curriculum vit
 // On an upload, the word anywhere names it: "Please upload your resume", "Your CV" (#935).
 const RESUME_WORD = /(?<![\p{L}\p{N}])(r[eé]sum[eé]|cv|curriculum vitae)(?![\p{L}\p{N}])/iu;
 const COVER = /cover\s*letter/i;
+// Documents that aren't the resume, and wording that sets the resume apart from the upload (#1937).
+const OTHER_DOC = /portfolio|(?:work|writing) samples?|transcripts?|references?/i;
+const NOT_RESUME = /\b(?:not|in addition to|separate from|besides|beyond|other than|apart from|aside from)\s+(?:(?:a|an|the|your)\s+)?(?:r[eé]sum[eé]|cv|curriculum vitae)(?![\p{L}\p{N}])/iu;
 // One upload for both: "Resume/Cover Letter", "CV & cover letter", "Upload your resume and cover letter", "Cover letter and resume".
 // Not "your cover letter, not your resume" (#1633).
 const BOTH = /(?<![\p{L}\p{N}])(?:r[eé]sum[eé]|cv)\s*(?:\/|&|\+|and|or)\s*(?:(?:a|your)\s+)?cover\s*letter|cover\s*letter\s*(?:\/|&|\+|and|or)\s*(?:(?:a|your)\s+)?(?:r[eé]sum[eé]|cv)(?![\p{L}\p{N}])/iu;
@@ -146,7 +149,9 @@ export function kindFor(label: string, fieldType: string): ApplicationItemKind {
   const l = label.trim();
   // "Resume gaps: anything to explain?" is a question, not the upload. So is "Resume gap explanation" in a text box (#972).
   if (RESUME.test(l) && !l.includes("?") && RESUME_TAIL.test(l.replace(RESUME, ""))) return "resume";
-  if (/file/i.test(fieldType) && RESUME_WORD.test(l) && !COVER.test(l) && !l.includes("?")) return "resume";
+  // Not a label that names another document or sets the resume apart: "Writing sample (separate from your resume)" and
+  // "Portfolio (in addition to your resume)" are their own uploads (#1937).
+  if (/file/i.test(fieldType) && RESUME_WORD.test(l) && !COVER.test(l) && !l.includes("?") && !OTHER_DOC.test(l) && !NOT_RESUME.test(l)) return "resume";
   // One upload for both ("Resume/Cover Letter") is the resume's slot: as a letter, the resume Lookout adds for it
   // went into the same input first and the letter replaced it (#1633).
   if (/file/i.test(fieldType) && BOTH.test(l) && !l.includes("?")) return "resume";
