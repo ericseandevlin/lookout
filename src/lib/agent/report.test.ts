@@ -26,6 +26,15 @@ describe("buildTips", () => {
     expect(buildTips(run({ postings: 4, added: 4 }), profile).some((t) => /couldn't score/.test(t.text))).toBe(false);
   });
 
+  it("says 'it' for one role under the floor and 'them' for more (#1943)", () => {
+    const one = buildTips(run({ postings: 4, belowFloor: 1 }), profile).find((t) => t.href === "/profile#q-comp");
+    expect(one?.text).toBe("1 role pays under your $220K floor and was left off. Lower the floor if you'd take it.");
+    const many = buildTips(run({ postings: 4, belowFloor: 3 }), profile).find((t) => t.href === "/profile#q-comp");
+    expect(many?.text).toMatch(/take them\.$/);
+    const rfp = buildTips(run({ postings: 4, belowFloor: 1 }), { ...profile, kind: "rfp" }).find((t) => t.href === "/profile#q-comp");
+    expect(rfp?.text).toMatch(/bid on it\.$/);
+  });
+
   it("points empty searches at the first answer", () => {
     const tips = buildTips(run({}, { results: 0, picked: 0, read: 0 }), profile);
     expect(tips[0].href).toBe("/profile#q-q1");

@@ -42,8 +42,8 @@ export function buildTips(
   if (t.belowFloor > 0) {
     tips.push(
       job
-        ? { text: `${plural(t.belowFloor, "role")} ${t.belowFloor === 1 ? "pays" : "pay"} under your ${p.floor || "salary"} floor and ${t.belowFloor === 1 ? "was" : "were"} left off. Lower the floor if you'd take them.`, href: "/profile#q-comp", label: "Edit pay" }
-        : { text: `${plural(t.belowFloor, kind.noun.one, kind.noun.many)} came in under your ${p.floor || "contract value"} floor and ${t.belowFloor === 1 ? "was" : "were"} left off. Lower the floor if you'd bid on them.`, href: "/profile#q-comp", label: "Edit contract value" },
+        ? { text: `${plural(t.belowFloor, "role")} ${t.belowFloor === 1 ? "pays" : "pay"} under your ${p.floor || "salary"} floor and ${t.belowFloor === 1 ? "was" : "were"} left off. Lower the floor if you'd take ${t.belowFloor === 1 ? "it" : "them"}.`, href: "/profile#q-comp", label: "Edit pay" }
+        : { text: `${plural(t.belowFloor, kind.noun.one, kind.noun.many)} came in under your ${p.floor || "contract value"} floor and ${t.belowFloor === 1 ? "was" : "were"} left off. Lower the floor if you'd bid on ${t.belowFloor === 1 ? "it" : "them"}.`, href: "/profile#q-comp", label: "Edit contract value" },
     );
   }
   if (t.offLocation >= 2) {
