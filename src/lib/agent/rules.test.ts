@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { applyRules, bareCompany, fingerprint, jobPageUrl, legacyFingerprint, listPage, noDashes, normUrl, placeId, placesDiffer, remoteFirst, suffixedFingerprint, unspelledCityFingerprint, unspelledFingerprint, usFormFingerprint } from "./rules";
+import { applyRules, bareCompany, fingerprint, jobPageUrl, legacyFingerprint, listPage, noDashes, normUrl, placeId, placesDiffer, rankOnlyFingerprint, remoteFirst, suffixedFingerprint, unspelledCityFingerprint, unspelledFingerprint, usFormFingerprint } from "./rules";
 import { jobKey } from "@/lib/extension/match";
 
 const base = { score: 5, reasonsMatch: ["Director title"], reasonsGap: [], locationFit: true, dealbreaker: false, compMin: 140000, compMax: 160000 };
@@ -53,7 +53,8 @@ describe("dedupe keys", () => {
     );
   });
   it("keeps the fingerprints of Latin-script postings stored before #1075", () => {
-    expect(fingerprint("Tishman Speyer", "Director of Banquets", "Rockefeller Center, NY")).toBe("17ef17fd57dd4d6761d52d8fa79b4c4684a3352d");
+    // "Director of" keys as "Director" since #1913; the key from before it still holds the old value, and baseKey looks it up.
+    expect(rankOnlyFingerprint("Tishman Speyer", "Director of Banquets", "Rockefeller Center, NY")).toBe("17ef17fd57dd4d6761d52d8fa79b4c4684a3352d");
     expect(legacyFingerprint("Café Société", "Sous-Chef (Nuit)", "Montréal, QC")).toBe("e82bc15d03229e2083e76c1f412fdc15adb57778");
     expect(legacyFingerprint("Tishman Speyer", "Director of Banquets", "Rockefeller Center, NY")).toBe("17ef17fd57dd4d6761d52d8fa79b4c4684a3352d");
   });
@@ -134,6 +135,33 @@ describe("dedupe keys", () => {
     expect(unspelledCityFingerprint("Acme Pvt Ltd", "Sr. Designer", "Paris")).toBe(fingerprint("Acme Pvt Ltd", "Sr. Designer", "Paris"));
     // The keys before it are frozen too.
     for (const old of [usFormFingerprint, unspelledFingerprint, suffixedFingerprint, legacyFingerprint]) expect(old("Acme", "Designer", "NYC")).not.toBe(fingerprint("Acme", "Designer", "NYC"));
+  });
+  it("reads 'VP', 'Mgr', 'Dir', an 'of' after the role and 'II' the same as their other spellings (#1913)", () => {
+    const k = (t: string) => fingerprint("Acme", t, "New York, NY");
+    for (const t of ["VP of Design", "VP, Design", "V.P. Design", "Vice President of Design", "Vice President, Design"]) expect(k(t), t).toBe(k("VP, Design"));
+    expect(k("Head of Design")).toBe(k("Head, Design"));
+    expect(k("Director of Product Design")).toBe(k("Director, Product Design"));
+    expect(k("Dir. of Design")).toBe(k("Director of Design"));
+    expect(k("Sr. Director of Design")).toBe(k("Senior Director, Design"));
+    expect(k("Mgr, Design")).toBe(k("Manager, Design"));
+    expect(k("Design Mgr")).toBe(k("Design Manager"));
+    expect(k("SVP, Design")).toBe(k("Senior Vice President of Design"));
+    expect(k("Sr. VP, Design")).toBe(k("SVP, Design"));
+    expect(k("EVP, Product")).toBe(k("Executive Vice President, Product"));
+    expect(k("AVP, UX")).toBe(k("Assistant Vice President, UX"));
+    for (const [r, n] of [["I", "1"], ["II", "2"], ["III", "3"], ["IV", "4"]]) expect(k(`Product Designer ${r}`), r).toBe(k(`Product Designer ${n}`));
+    // Other levels and roles stay apart, and "of" stays where it isn't right after the leading role.
+    expect(k("Product Designer I")).not.toBe(k("Product Designer II"));
+    expect(k("VP, Design")).not.toBe(k("SVP, Design"));
+    expect(k("Director of Design")).not.toBe(k("Design Director"));
+    expect(k("Designer of Things")).not.toBe(k("Designer Things"));
+    expect(k("Chief of Staff")).not.toBe(k("Chief Staff"));
+    // The key from before #1913 spells out only "Sr." and "Jr.", and is the same as the new one for a title with none of the newer forms.
+    expect(rankOnlyFingerprint("Acme", "VP of Design", "NYC")).not.toBe(fingerprint("Acme", "VP of Design", "NYC"));
+    expect(rankOnlyFingerprint("Acme Pvt Ltd", "Sr. Designer", "NYC")).toBe(fingerprint("Acme Pvt Ltd", "Sr. Designer", "NYC"));
+    // The keys before it are frozen too.
+    expect(unspelledCityFingerprint("Acme", "VP of Design", "Paris")).toBe(rankOnlyFingerprint("Acme", "VP of Design", "Paris"));
+    for (const old of [usFormFingerprint, unspelledFingerprint, suffixedFingerprint, legacyFingerprint]) expect(old("Acme", "VP of Design", "Paris")).not.toBe(fingerprint("Acme", "VP of Design", "Paris"));
   });
   it("keeps marks in non-Latin text, so डिज़ाइनर and डिजाइन stay apart (#1269)", () => {
     expect(fingerprint("मेरा", "डिज़ाइनर", "दिल्ली")).toBe(legacyFingerprint("मेरा", "डिज़ाइनर", "दिल्ली"));

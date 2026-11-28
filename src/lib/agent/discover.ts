@@ -15,7 +15,7 @@ import { traceAs } from "@/lib/ai/trace";
 import { startBudgetedRun, finishRun, progress, startRun } from "@/lib/ai/runs";
 import { webSearch, type SearchHit } from "@/lib/ai/search";
 import { getAiConfig } from "@/lib/config";
-import { applyRules, fingerprint, fullTitle, jobPageUrl, legacyFingerprint, listPage, normUrl, placeId, placesDiffer, suffixedFingerprint, unspelledCityFingerprint, unspelledFingerprint, usFormFingerprint } from "./rules";
+import { applyRules, fingerprint, fullTitle, jobPageUrl, legacyFingerprint, listPage, normUrl, placeId, placesDiffer, rankOnlyFingerprint, suffixedFingerprint, unspelledCityFingerprint, unspelledFingerprint, usFormFingerprint } from "./rules";
 import { closeGonePostings } from "./linkCheck";
 import { findEventsIfDue } from "./networking";
 import { featureOn } from "@/lib/features";
@@ -381,7 +381,8 @@ const reposted = sql`(${schema.opportunities.attributes} -> 'linkCheck' ->> 'sta
 const noPay = sql`(${schema.opportunities.compMin} is null and ${schema.opportunities.compMax} is null)`;
 
 /**
- * The fingerprint, or an older key a posting is stored under when none is under the new one: the key from before #1830
+ * The fingerprint, or an older key a posting is stored under when none is under the new one: the key from before #1913
+ * ("VP of Design" keyed as written), then the one from before #1830
  * ("New York City" keyed as written), then the one from before #1831 ("Acme Pvt Ltd" keyed as "acme pvt"), then the one from before #1828
  * ("Sr. Designer" keyed with "sr"), then the one from before #1645 ("Acme, Inc." keyed with its legal form), then the one
  * from before #1269 ("Montréal" saved with the é as a space). So a posting saved last week is matched, not saved again.
@@ -391,6 +392,7 @@ async function baseKey(f: { company: string; title: string; location: string }) 
   const keys = [
     ...new Set([
       fp,
+      rankOnlyFingerprint(f.company, f.title, f.location),
       unspelledCityFingerprint(f.company, f.title, f.location),
       usFormFingerprint(f.company, f.title, f.location),
       unspelledFingerprint(f.company, f.title, f.location),
