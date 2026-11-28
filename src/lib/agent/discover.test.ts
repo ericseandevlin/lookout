@@ -12,7 +12,7 @@ const db = drizzle(pg, { schema });
 vi.mock("@/lib/db", () => ({ db, schema }));
 
 const { loadContext, save, realDate } = await import("./discover");
-const { fingerprint, legacyFingerprint, rankOnlyFingerprint, suffixedFingerprint, unspelledCityFingerprint, unspelledFingerprint, usFormFingerprint, withTheFingerprint } = await import("./rules");
+const { fingerprint, legacyFingerprint, placedTitleFingerprint, rankOnlyFingerprint, suffixedFingerprint, unspelledCityFingerprint, unspelledFingerprint, usFormFingerprint, withTheFingerprint } = await import("./rules");
 type Ctx = Awaited<ReturnType<typeof loadContext>>;
 type Find = Parameters<typeof save>[1][number];
 
@@ -545,6 +545,21 @@ describe("save", () => {
     const old = withTheFingerprint("The Home Depot", "Director of Design", "New York, NY");
     await db.insert(schema.opportunities).values({ company: "The Home Depot", title: "Director of Design", sourceUrl: "https://jobs.example.com/a", fingerprint: old });
     await save(ctx(), [find({ url: "https://jobs.example.com/b", company: "The Home Depot", location: "New York, NY" })], "agent");
+    const opps = await db.select().from(schema.opportunities);
+    expect(opps.map((o) => [o.fingerprint, o.sourceUrl])).toEqual([[old, "https://jobs.example.com/a"]]);
+  });
+
+  it("merges 'Senior Product Designer - New York' and 'Senior Product Designer' in New York as one job (#1915)", async () => {
+    await save(ctx(), [find({ url: "https://job-boards.greenhouse.io/acme/jobs/123", title: "Senior Product Designer - New York", location: "New York, NY" })], "agent");
+    const t = await save(ctx(), [find({ url: "https://www.linkedin.com/jobs/view/4012345678", title: "Senior Product Designer", location: "New York, NY" })], "agent");
+    expect(t.added).toBe(0);
+    expect(await db.select().from(schema.opportunities)).toHaveLength(1);
+  });
+
+  it("matches a posting stored under the key from before #1915, not a second row", async () => {
+    const old = placedTitleFingerprint("Acme", "Director of Design - New York", "New York, NY");
+    await db.insert(schema.opportunities).values({ company: "Acme", title: "Director of Design - New York", sourceUrl: "https://jobs.example.com/a", fingerprint: old });
+    await save(ctx(), [find({ url: "https://jobs.example.com/b", company: "Acme", title: "Director of Design - New York", location: "New York, NY" })], "agent");
     const opps = await db.select().from(schema.opportunities);
     expect(opps.map((o) => [o.fingerprint, o.sourceUrl])).toEqual([[old, "https://jobs.example.com/a"]]);
   });

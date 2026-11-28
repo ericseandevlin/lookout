@@ -140,9 +140,36 @@ const spellCity = (l: string) =>
     .replace(/^mt (?=\S)/, "mount ")
     .replace(/^washington d ?c$/, "washington");
 
-const key = (company: string, title: string, location: string, fold: boolean, bare: Bare = fold ? plainCompany : asWritten, spell: Spell = fold ? spellTitle : unspelled, city = fold) => {
-  const [c, t, l0] = [bare(company), title, (fold ? remoteFirst(location) : location).split(",")[0]].map(normPart(fold));
+// A title that ends in its own place (#1915): "Senior Product Designer - New York" on the ATS is "Senior Product Designer" in
+// New York on a job board. After a spaced dash, an en or em dash, a bar or a comma, a rest that is the posting's own city
+// (its first part, so "- New York, NY" counts) or a work mode ("Remote", "Hybrid", "Remote US") goes from the title. Any
+// other rest stays: "Designer, Payments" and "Designer - Growth" are other jobs. "Front-End Designer" has no spaced dash.
+const WORK_MODE = /^(?:(?:fully|100) )?(?:remote|hybrid|onsite|on site|in office)(?: [a-z]{2,})?$|^[a-z]{2,} (?:remote|hybrid)$/;
+const TITLE_SPLIT = /\s+-\s+|\s*[–—|]\s*|\s*,\s*/g;
+const placelessTitle = (title: string, city: string) => {
+  for (const m of title.matchAll(TITLE_SPLIT)) {
+    const head = title.slice(0, m.index).trim();
+    const rest = title.slice(m.index + m[0].length);
+    if (!normPart(true)(head)) continue;
+    const place = spellCity(normPart(true)(rest.split(",")[0]));
+    if ((city && place === city) || WORK_MODE.test(normPart(true)(rest))) return head;
+  }
+  return title;
+};
+
+const key = (
+  company: string,
+  title: string,
+  location: string,
+  fold: boolean,
+  bare: Bare = fold ? plainCompany : asWritten,
+  spell: Spell = fold ? spellTitle : unspelled,
+  city = fold,
+  titlePlace = fold,
+) => {
+  const [c, l0] = [bare(company), (fold ? remoteFirst(location) : location).split(",")[0]].map(normPart(fold));
   const l = city ? spellCity(l0) : l0;
+  const t = normPart(fold)(titlePlace ? placelessTitle(title, l) : title);
   return (
     // nosemgrep: javascript.lang.security.audit.node-sha1.node_sha1 -- SHA-1 here only fingerprints postings for dedupe, not security
     createHash("sha1")
@@ -158,39 +185,45 @@ export const fingerprint = (company: string, title: string, location: string) =>
  * The key stored from #1645 until #1828, with "Sr." and "Jr." in the title as written. The same as fingerprint for a title
  * with neither. baseKey looks it up so a posting saved under it is matched, not saved again.
  */
-export const unspelledFingerprint = (company: string, title: string, location: string) => key(company, title, location, true, usBareCompany, unspelled, false);
+export const unspelledFingerprint = (company: string, title: string, location: string) => key(company, title, location, true, usBareCompany, unspelled, false, false);
+
+/**
+ * The key stored from #1914 until #1915, with a place at the end of the title kept ("senior product designer new york").
+ * The same as fingerprint for a title without one. baseKey looks it up so a posting saved under it is matched, not saved again.
+ */
+export const placedTitleFingerprint = (company: string, title: string, location: string) => key(company, title, location, true, plainCompany, spellTitle, true, false);
 
 /**
  * The key stored from #1913 until #1914, with a leading "The" kept in the company ("the home depot"). The same as
  * fingerprint for a company without it. baseKey looks it up so a posting saved under it is matched, not saved again.
  */
-export const withTheFingerprint = (company: string, title: string, location: string) => key(company, title, location, true, bareCompany, spellTitle, true);
+export const withTheFingerprint = (company: string, title: string, location: string) => key(company, title, location, true, bareCompany, spellTitle, true, false);
 
 /**
  * The key stored from #1830 until #1913, with only "Sr." and "Jr." spelled out in the title ("vp of design" as written). The
  * same as fingerprint for a title with none of the newer forms. baseKey looks it up so a posting saved under it is matched,
  * not saved again.
  */
-export const rankOnlyFingerprint = (company: string, title: string, location: string) => key(company, title, location, true, bareCompany, spellRank, true);
+export const rankOnlyFingerprint = (company: string, title: string, location: string) => key(company, title, location, true, bareCompany, spellRank, true, false);
 
 /**
  * The key stored from #1831 until #1830, with the city as written ("new york city", "st louis"). The same as
  * fingerprint for a city with no other spelling. baseKey looks it up so a posting saved under it is matched, not saved again.
  */
-export const unspelledCityFingerprint = (company: string, title: string, location: string) => key(company, title, location, true, bareCompany, spellRank, false);
+export const unspelledCityFingerprint = (company: string, title: string, location: string) => key(company, title, location, true, bareCompany, spellRank, false, false);
 
 /**
  * The key stored from #1828 until #1831, with only US and a few other legal forms dropped ("acme pvt" for "Acme Pvt Ltd").
  * The same as fingerprint for a company with none of the newer forms. baseKey looks it up so a posting saved under it is
  * matched, not saved again.
  */
-export const usFormFingerprint = (company: string, title: string, location: string) => key(company, title, location, true, usBareCompany, spellRank, false);
+export const usFormFingerprint = (company: string, title: string, location: string) => key(company, title, location, true, usBareCompany, spellRank, false, false);
 
 /**
  * The key stored from #1269 until #1645, with the company's legal form kept ("acme inc"). The same as fingerprint for a
  * company with none. postingKey looks it up so a posting saved under it is matched, not saved again.
  */
-export const suffixedFingerprint = (company: string, title: string, location: string) => key(company, title, location, true, asWritten, unspelled, false);
+export const suffixedFingerprint = (company: string, title: string, location: string) => key(company, title, location, true, asWritten, unspelled, false, false);
 
 /**
  * The key stored before #1269, when an accented letter became a space ("montr al"). The same as fingerprint for text with
